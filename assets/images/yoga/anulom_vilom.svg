@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" width="200" height="150">
+  <defs>
+    <linearGradient id="yogaSkin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="yogaCloth" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <linearGradient id="breathFlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#065F46" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Aura -->
+  <rect x="5" y="5" width="190" height="140" rx="12" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1.5"/>
+  <circle cx="100" cy="72" r="52" fill="#DCFCE7" opacity="0.6"/>
+  
+  <!-- Meditative Seated Body (Cross-legged) -->
+  <!-- Legs / Base -->
+  <ellipse cx="100" cy="116" rx="42" ry="12" fill="url(#yogaCloth)"/>
+  
+  <!-- Torso -->
+  <path d="M 85 82 L 115 82 L 110 114 L 90 114 Z" fill="url(#yogaCloth)"/>
+  
+  <!-- Left Hand resting on knee (Gyan Mudra) -->
+  <path d="M 85 86 Q 70 98 64 112" stroke="#F59E0B" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <circle cx="64" cy="112" r="3.5" fill="#F59E0B"/>
+
+  <!-- Right Hand raised to nose (Vishnu Mudra for Anulom Vilom) -->
+  <path d="M 115 86 Q 128 92 120 70 Q 115 58 107 54" stroke="#F59E0B" stroke-width="5" stroke-linecap="round" fill="none"/>
+  
+  <!-- Head & Calm Face -->
+  <circle cx="100" cy="46" r="14" fill="url(#yogaSkin)"/>
+  <!-- Hair bun -->
+  <circle cx="100" cy="31" r="5" fill="#451A03"/>
+  
+  <!-- Prana / Breath Energy Line -->
+  <path d="M 88 50 Q 82 40 88 32 Q 94 24 88 18" stroke="#10B981" stroke-width="2" stroke-dasharray="3,3" fill="none"/>
+  <path d="M 112 50 Q 118 40 112 32 Q 106 24 112 18" stroke="#3B82F6" stroke-width="2" stroke-dasharray="3,3" fill="none"/>
+
+  <!-- Label -->
+  <text x="100" y="138" fill="#065F46" font-family="Arial, sans-serif" font-size="8" font-weight="bold" text-anchor="middle">ANULOM VILOM (PRANAYAMA)</text>
+</svg>

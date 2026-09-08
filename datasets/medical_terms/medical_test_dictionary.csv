@@ -1,0 +1,6 @@
+test_id,test_name,short_name,category,description,possible_interpretation_notes,source
+T001,Complete Blood Count,CBC / Hemogram,Hematology,"Assesses overall health and checks for anemia, infection, and clotting issues.",Elevated WBC indicates infection; low Hb indicates anemia; low platelets indicate bleeding risk.,MedlinePlus
+T002,Lipid Profile,Cholesterol Panel,Cardiovascular,Measures blood fats to evaluate cardiovascular risk.,High LDL/Triglycerides increase heart disease risk; high HDL is protective.,AHA Guidelines
+T003,Liver Function Test,LFT,Hepatic,"Measures liver enzymes, proteins, and bilirubin.",Elevated ALT/AST suggests liver irritation; high bilirubin causes jaundice.,AASLD Guidelines
+T004,Kidney Function Test,KFT / RFT,Renal,Evaluates how effectively kidneys filter metabolic waste products.,Elevated creatinine or BUN indicates impaired kidney filtration efficiency.,NKF Guidelines
+T005,Thyroid Profile,TFT / TSH,Endocrine,Checks functioning of the thyroid gland.,High TSH suggests hypothyroidism (underactive); Low TSH suggests hyperthyroidism.,ATA Guidelines

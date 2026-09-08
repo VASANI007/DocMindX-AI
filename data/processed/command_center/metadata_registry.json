@@ -1,0 +1,253 @@
+{
+  "pipeline_name": "DocMindX AI National Command Center Ingestion Pipeline",
+  "execution_timestamp": "2026-09-02T16:54:37.891667",
+  "execution_duration_sec": 9.51,
+  "status": "COMPLETE",
+  "sources": {
+    "Pincode_Directory": {
+      "source_name": "Department of Posts, Ministry of Communications, Govt of India",
+      "source_type": "OFFICIAL_CSV",
+      "provenance": "OBSERVED",
+      "coverage": "All-India 150k+ Pincodes & Centroids",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\geography_master.parquet"
+    },
+    "Rajya_Sabha_Beds": {
+      "source_name": "Rajya Sabha Session 266 Unstarred Question AU_911 (MoHFW)",
+      "source_type": "OFFICIAL_GOVT_TABLE",
+      "provenance": "OBSERVED",
+      "coverage": "State/UT-wise Beds across PHC, CHC, SDH, DH, Medical College",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\bed_capacity.parquet"
+    },
+    "HMIS_2019_20": {
+      "source_name": "Health Management Information System (HMIS), MoHFW",
+      "source_type": "OFFICIAL_GOVT_CSV",
+      "provenance": "OBSERVED",
+      "coverage": "Monthly Health Service Utilization & OPD/IPD indicators",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\hmis_service_utilization.parquet"
+    },
+    "NFHS_5": {
+      "source_name": "National Family Health Survey (NFHS-5), MoHFW / IIPS (2019-21)",
+      "source_type": "OFFICIAL_SURVEY_CSV",
+      "provenance": "OBSERVED",
+      "coverage": "District-level demographic and health indicators",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\nfhs5_district_indicators.parquet"
+    },
+    "IMD_Rainfall": {
+      "source_name": "India Meteorological Department (IMD) Hydromet Subdivision Series",
+      "source_type": "OFFICIAL_METEOROLOGY_CSV",
+      "provenance": "OBSERVED",
+      "coverage": "36 Subdivisions Historical Rainfall & Monsoon Seasonality",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\rainfall_features.parquet"
+    },
+    "NLEM_2022": {
+      "source_name": "National List of Essential Medicines 2022, MoHFW",
+      "source_type": "OFFICIAL_REFERENCE_PDF",
+      "provenance": "REFERENCE",
+      "coverage": "Essential Medicines Formulary, Strengths, Categories",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\medicine_master.parquet"
+    },
+    "IPHS_2022": {
+      "source_name": "Indian Public Health Standards (IPHS) 2022 Guidelines, MoHFW",
+      "source_type": "OFFICIAL_REFERENCE_PDF",
+      "provenance": "REFERENCE",
+      "coverage": "Infrastructure, Bed, and Staffing Benchmarks for SHC/PHC/CHC/SDH/DH",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\iphs_benchmarks.parquet"
+    },
+    "WHO_Disease_Outbreak_News": {
+      "source_name": "World Health Organization (WHO) Disease Outbreak News (DON) API",
+      "source_type": "OFFICIAL_GLOBAL_HEALTH_API",
+      "provenance": "OBSERVED",
+      "coverage": "Global & Regional Verified Epidemic Signals & Disease Alerts",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\who_outbreaks.parquet"
+    },
+    "ABDM_Taxonomy": {
+      "source_name": "National Health Authority (NHA) \u2014 Ayushman Bharat Digital Mission",
+      "source_type": "OFFICIAL_TAXONOMY_REGISTRY",
+      "provenance": "OBSERVED",
+      "coverage": "Healthcare Facilities & Professional Taxonomies",
+      "file_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\processed\\command_center\\abdm_taxonomy.parquet"
+    }
+  },
+  "quality_summary": {
+    "India_Pincode_Geography": {
+      "dataset_name": "India_Pincode_Geography",
+      "total_rows": 754,
+      "column_count": 7,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:31.553949",
+      "status": "VALIDATED"
+    },
+    "Rajya_Sabha_Bed_Capacity": {
+      "dataset_name": "Rajya_Sabha_Bed_Capacity",
+      "total_rows": 36,
+      "column_count": 13,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:31.584859",
+      "status": "VALIDATED"
+    },
+    "HMIS_2019_20": {
+      "dataset_name": "HMIS_2019_20",
+      "total_rows": 20904,
+      "column_count": 12,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:32.213643",
+      "status": "VALIDATED"
+    },
+    "NFHS5_District_Health": {
+      "dataset_name": "NFHS5_District_Health",
+      "total_rows": 706,
+      "column_count": 115,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:32.417707",
+      "status": "VALIDATED"
+    },
+    "IMD_Historical_Rainfall": {
+      "dataset_name": "IMD_Historical_Rainfall",
+      "total_rows": 31,
+      "column_count": 18,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:32.463570",
+      "status": "VALIDATED"
+    },
+    "NLEM_2022_Formulary": {
+      "dataset_name": "NLEM_2022_Formulary",
+      "total_rows": 20,
+      "column_count": 14,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:34.930948",
+      "status": "VALIDATED"
+    },
+    "IPHS_2022_Norms": {
+      "dataset_name": "IPHS_2022_Norms",
+      "total_rows": 7,
+      "column_count": 16,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:34.938585",
+      "status": "VALIDATED"
+    },
+    "WHO_Disease_Outbreak_News": {
+      "dataset_name": "WHO_Disease_Outbreak_News",
+      "total_rows": 100,
+      "column_count": 21,
+      "missing_cells_pct": 19.05,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 80.95,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 0.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 79.28,
+      "data_quality_score": 79.28,
+      "timestamp": "2026-09-02T16:54:37.649089",
+      "status": "VALIDATED"
+    },
+    "Canonical_Facility_Master": {
+      "dataset_name": "Canonical_Facility_Master",
+      "total_rows": 3016,
+      "column_count": 16,
+      "missing_cells_pct": 0.0,
+      "duplicate_rows": 0,
+      "missing_required_cols": [],
+      "dimensions": {
+        "completeness": 100.0,
+        "uniqueness": 100.0,
+        "validity": 100.0,
+        "consistency": 100.0,
+        "geographic_integrity": 100.0,
+        "freshness": 100.0
+      },
+      "overall_quality_score": 100.0,
+      "data_quality_score": 100.0,
+      "timestamp": "2026-09-02T16:54:37.889776",
+      "status": "VALIDATED"
+    }
+  }
+}

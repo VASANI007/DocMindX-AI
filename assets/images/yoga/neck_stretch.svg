@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150" width="200" height="150">
+  <defs>
+    <linearGradient id="skin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="cloth" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#6D28D9"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="5" width="190" height="140" rx="12" fill="#FAF5FF" stroke="#E9D5FF" stroke-width="1.5"/>
+  <circle cx="100" cy="72" r="50" fill="#F3E8FF" opacity="0.6"/>
+  
+  <!-- Shoulders & Upper Torso -->
+  <path d="M 68 110 Q 100 95 132 110 L 132 125 L 68 125 Z" fill="url(#cloth)"/>
+  
+  <!-- Neck tilted laterally -->
+  <path d="M 94 98 Q 105 82 108 72" stroke="#F59E0B" stroke-width="10" stroke-linecap="round" fill="none"/>
+  
+  <!-- Head tilted smoothly to right shoulder -->
+  <circle cx="114" cy="58" r="15" fill="url(#skin)"/>
+  <!-- Hair -->
+  <path d="M 103 52 Q 112 40 125 48 Q 128 58 122 66 Z" fill="#3B0764"/>
+  
+  <!-- Gentle Hand assisting stretch -->
+  <path d="M 68 110 Q 60 70 85 50 Q 102 44 116 48" stroke="#F59E0B" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+
+  <!-- Motion arrows indicating lateral stretch -->
+  <path d="M 128 62 Q 138 68 132 78" stroke="#8B5CF6" stroke-width="2" fill="none" stroke-dasharray="2,2"/>
+  <polygon points="132,80 127,74 135,76" fill="#8B5CF6"/>
+
+  <text x="100" y="138" fill="#581C87" font-family="Arial, sans-serif" font-size="8" font-weight="bold" text-anchor="middle">NECK MOBILITY (GREEVA SANCHALANA)</text>
+</svg>

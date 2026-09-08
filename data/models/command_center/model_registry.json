@@ -1,0 +1,129 @@
+{
+  "registry_version": "1.0.0",
+  "last_updated": "2026-09-02T17:46:13.601412",
+  "models": {
+    "ai_demand_forecaster": {
+      "model_name": "ai_demand_forecaster",
+      "version": "2.0.0",
+      "task": "TIME_SERIES_REGRESSION",
+      "target": "actual_demand",
+      "algorithm": "RandomForest",
+      "training_dataset": "HMIS_IMD_NFHS_BEDS_COMPOSITE",
+      "dataset_hash": "86c7e28bab85b1e9",
+      "train_samples": 69600,
+      "validation_samples": 15000,
+      "test_samples": 15000,
+      "leakage_check": "LEAKAGE_FREE",
+      "provenance": "FORECAST",
+      "metrics": {
+        "MAE": 12.169,
+        "RMSE": 19.504,
+        "R2": 0.9839,
+        "MAPE_pct": 6.8,
+        "SMAPE_pct": 6.73,
+        "WAPE_pct": 6.53,
+        "residual_std": 19.503
+      },
+      "feature_schema": [
+        "bed_capacity",
+        "month",
+        "day_of_week",
+        "day_of_year",
+        "is_weekend",
+        "base_burn_ref",
+        "season_mult",
+        "lag_1",
+        "lag_7",
+        "lag_14",
+        "rolling_mean_7",
+        "rolling_mean_14",
+        "rolling_std_7"
+      ],
+      "artifact_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\models\\command_center\\demand_forecasting\\demand_model.pkl",
+      "status": "VALIDATED",
+      "trained_at": "2026-09-02T17:45:38.990474",
+      "training_metadata": {
+        "model_name": "ai_demand_forecaster",
+        "version": "2.0.0",
+        "algorithm": "RandomForest",
+        "train_rows": 69600,
+        "val_rows": 15000,
+        "test_rows": 15000,
+        "residual_std": 19.503422335819206,
+        "trained_at": "2026-09-02T17:45:38.986798"
+      }
+    },
+    "ai_stockout_classifier": {
+      "model_name": "ai_stockout_classifier",
+      "version": "2.0.0",
+      "task": "OPERATIONAL_RISK_CLASSIFICATION",
+      "target": "is_stockout_risk",
+      "algorithm": "Deterministic_Rule_Engine_with_Logistic_Simulation",
+      "training_dataset": "OPERATIONAL_MULTI_FACTOR_RULES",
+      "dataset_hash": "RULE_BASED_ENGINE",
+      "train_samples": 2800,
+      "validation_samples": 600,
+      "test_samples": 600,
+      "leakage_check": "RULE_ALIGNMENT_SIMULATION",
+      "provenance": "RULE-BASED OPERATIONAL RISK",
+      "metrics": {
+        "simulation_accuracy": 0.9983,
+        "precision": 0.9979,
+        "recall": 1.0,
+        "f1_score": 0.9989,
+        "roc_auc": 1.0
+      },
+      "feature_schema": [
+        "days_of_inventory",
+        "daily_burn_surge",
+        "reorder_lead_time_days",
+        "outbreak_signal_severity",
+        "monsoon_rainfall_mm",
+        "facility_bed_pressure"
+      ],
+      "artifact_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\models\\command_center\\stockout_prediction\\stockout_model.pkl",
+      "status": "RULE_BASED",
+      "trained_at": "2026-09-02T17:46:13.601400",
+      "training_metadata": {
+        "operational_engine": "Deterministic_Rule_Engine",
+        "demonstration_classifier": "LogisticRegression"
+      }
+    },
+    "ai_capacity_analyzer": {
+      "model_name": "ai_capacity_analyzer",
+      "version": "2.0.0",
+      "task": "CAPACITY_BENCHMARKING",
+      "target": "bed_and_staff_compliance",
+      "algorithm": "IPHS_2022_Normative_Engine",
+      "training_dataset": "OFFICIAL_PROCESSED_DATA",
+      "dataset_hash": "N/A",
+      "train_samples": 0,
+      "validation_samples": 0,
+      "test_samples": 0,
+      "leakage_check": "LEAKAGE_FREE",
+      "provenance": "DERIVED",
+      "metrics": {
+        "bed_compliance_pct": 203.72
+      },
+      "feature_schema": [
+        "bed_capacity",
+        "doctors_observed",
+        "nurses_observed",
+        "norm_beds_min",
+        "norm_doctors",
+        "norm_nurses"
+      ],
+      "artifact_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\models\\command_center\\capacity_forecasting\\capacity_metrics.json",
+      "status": "VALIDATED",
+      "trained_at": "2026-09-02T16:52:30.435823",
+      "training_metadata": {
+        "total_monitored_facilities": 3016,
+        "total_national_beds": 420184,
+        "average_bed_compliance_pct": 203.72,
+        "facilities_meeting_bed_norms": 3016,
+        "states_covered": 36,
+        "districts_covered": 745
+      }
+    }
+  }
+}

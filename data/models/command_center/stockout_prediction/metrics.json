@@ -1,0 +1,11 @@
+{
+  "model_status": "RULE_BASED",
+  "demonstration_metrics": {
+    "simulation_accuracy": 0.9983,
+    "precision": 0.9979,
+    "recall": 1.0,
+    "f1_score": 0.9989,
+    "roc_auc": 1.0
+  },
+  "notes": "Primary operational risk uses deterministic rule engine. Supervised classifier is research simulation demonstration only."
+}

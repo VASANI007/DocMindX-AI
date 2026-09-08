@@ -1,0 +1,26 @@
+﻿exercise_id,condition_id,exercise_name,description,steps,precautions,avoid_if,image_path
+Y001,D0100,Bhujangasana (Cobra Pose),Gentle backward bend that strengthens lumbar spine and relieves back stiffness.,"1. Lie prone on stomach with palms under shoulders.
+2. Inhale gently and lift chest upward keeping elbows slightly bent.
+3. Hold for 15-20 seconds with normal breathing.
+4. Exhale and lower slowly.",Do not strain or hyperextend lower back. Keep pelvis grounded.,"Acute lumbar disc herniation with severe radiculopathy, severe pregnancy.",assets/yoga/bhujangasana.png
+Y002,D0100,Marjaryasana-Bitilasana (Cat-Cow Stretch),Rhythmic spinal mobilization enhancing flexibility and easing tension.,"1. Start on all fours with hands under shoulders and knees under hips.
+2. Inhale: arch back, look up (Cow).
+3. Exhale: round spine toward ceiling, tuck chin (Cat).
+4. Repeat 8-10 cycles smoothly.",Perform movement gently without jerky motions.,"Severe wrist injury, acute unhealed spinal fracture.",assets/yoga/cat_cow.png
+Y003,D0101,Shavasana & Anulom Vilom Pranayama,Deep relaxation and alternate nostril breathing for stress reduction and headache relief.,"1. Sit comfortably with spine straight.
+2. Close right nostril with thumb, inhale deeply through left nostril (4s).
+3. Close left nostril, exhale through right (4s).
+4. Inhale right (4s), exhale left (4s).
+5. Practice for 5-10 minutes.",Maintain effortless gentle breathing without forceful retention.,Severe acute respiratory distress requiring emergency oxygen.,assets/yoga/anulom_vilom.png
+Y004,D0047,Vajrasana (Thunderbolt Pose),Sitting posture that promotes healthy digestion and reduces post-meal acidity.,"1. Kneel on a yoga mat with knees together and big toes touching.
+2. Sit back on heels with spine straight and palms resting on knees.
+3. Breathe slowly and deeply for 5–10 minutes after light meals.",Keep posture erect without slouching.,"Severe knee osteoarthritis, recent knee or ankle surgery.",assets/yoga/vajrasana.png
+Y005,D0029,Mandukasana (Frog Pose),Gentle abdominal compression supporting pancreatic circulation and digestive vitality.,"1. Sit in Vajrasana.
+2. Make fists with thumbs tucked inside, place beside navel.
+3. Inhale deeply, then exhale and bend forward touching chest to thighs while looking forward.
+4. Hold for 20-30 seconds with calm breathing.",Do not press excessively hard on abdomen.,"Recent abdominal surgery, peptic ulcer exacerbation, hernia, pregnancy.",assets/yoga/mandukasana.png
+Y006,D0031,Bhramari Pranayama (Humming Bee Breath),Calming autonomic resonance breathing that reduces sympathetic tone and mild tension.,"1. Sit comfortably with eyes closed.
+2. Place index fingers lightly on ear tragus.
+3. Take a deep inhale through nose.
+4. Exhale while creating a steady, smooth humming bee sound ('Mmm').
+5. Repeat 6-8 times.",Focus on soothing vibrations in cranial region.,Severe active middle ear infection / discharge.,assets/yoga/bhramari.png

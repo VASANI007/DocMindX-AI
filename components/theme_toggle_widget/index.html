@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+*, *:after, *:before {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --slide-ease: cubic-bezier(.4,-0.3,.6,1.3);
+  --easing: var(--slide-ease);
+  --speed: 0.42s;
+  --sun: hsl(47, 95%, 56%);
+  --moon: hsl(212, 13%, 84%);
+  --crater: hsl(221, 16%, 68%);
+}
+
+html, body {
+  background: transparent !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  user-select: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toggle-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+}
+
+.toggle-btn {
+  position: relative;
+  width: 76px;
+  height: 36px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(59, 130, 246, 0.45);
+  background: linear-gradient(135deg, #38BDF8 0%, #0284C7 100%);
+  box-shadow: inset 0 2px 5px rgba(0,0,0,0.15), 0 2px 8px rgba(56, 189, 248, 0.35);
+  cursor: pointer;
+  outline: none;
+  overflow: hidden;
+  transition: background var(--speed) var(--easing), border-color var(--speed) ease, box-shadow var(--speed) ease;
+  padding: 0;
+  display: block;
+  margin: auto;
+}
+
+body[data-dark-mode="true"] .toggle-btn,
+.toggle-btn[aria-pressed="true"] {
+  background: linear-gradient(135deg, #0B0F19 0%, #1E1B4B 100%);
+  border-color: rgba(99, 102, 241, 0.6);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.6), 0 0 12px rgba(99, 102, 241, 0.45);
+}
+
+/* Sun & Moon Handle */
+.toggle-handle {
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--sun);
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.95), inset -2px -2px 3px rgba(0,0,0,0.15);
+  transform: translateX(0);
+  transition: transform var(--speed) var(--easing), background var(--speed) var(--easing), box-shadow var(--speed) ease;
+  z-index: 5;
+}
+
+body[data-dark-mode="true"] .toggle-handle,
+.toggle-btn[aria-pressed="true"] .toggle-handle {
+  transform: translateX(40px);
+  background: var(--moon);
+  box-shadow: 0 0 10px rgba(226, 232, 240, 0.9), inset -2px -2px 4px rgba(0,0,0,0.3);
+}
+
+/* Craters on Moon */
+.crater {
+  position: absolute;
+  background: var(--crater);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity var(--speed) ease;
+}
+.crater-1 { top: 5px; left: 12px; width: 6px; height: 6px; }
+.crater-2 { top: 15px; left: 6px; width: 5px; height: 5px; }
+.crater-3 { top: 14px; left: 15px; width: 4px; height: 4px; }
+
+body[data-dark-mode="true"] .crater,
+.toggle-btn[aria-pressed="true"] .crater {
+  opacity: 1;
+}
+
+/* Clouds for Day */
+.cloud {
+  position: absolute;
+  background: #FFFFFF;
+  border-radius: 9999px;
+  opacity: 0.95;
+  transition: transform var(--speed) var(--easing), opacity var(--speed) ease;
+}
+.cloud-1 {
+  bottom: 5px;
+  right: 7px;
+  width: 24px;
+  height: 10px;
+  box-shadow: 0 0 6px rgba(255,255,255,0.8);
+}
+.cloud-2 {
+  bottom: 11px;
+  right: 14px;
+  width: 14px;
+  height: 9px;
+}
+
+body[data-dark-mode="true"] .cloud,
+.toggle-btn[aria-pressed="true"] .cloud {
+  opacity: 0;
+  transform: translateY(25px);
+}
+
+/* Stars for Night */
+.star {
+  position: absolute;
+  background: #FFFFFF;
+  border-radius: 50%;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity var(--speed) ease, transform var(--speed) var(--easing);
+}
+.star-1 { top: 6px; left: 10px; width: 2.5px; height: 2.5px; box-shadow: 0 0 3px #FFF; }
+.star-2 { top: 18px; left: 16px; width: 3px; height: 3px; box-shadow: 0 0 4px #FFF; }
+.star-3 { top: 7px; left: 26px; width: 2px; height: 2px; }
+.star-4 { top: 21px; left: 28px; width: 2px; height: 2px; }
+.star-5 { top: 13px; left: 34px; width: 2.5px; height: 2.5px; box-shadow: 0 0 3px #FFF; }
+
+body[data-dark-mode="true"] .star,
+.toggle-btn[aria-pressed="true"] .star {
+  opacity: 1;
+  transform: scale(1);
+}
+</style>
+</head>
+<body data-dark-mode="false">
+  <div class="toggle-wrapper">
+    <button id="toggle_btn" class="toggle-btn" aria-pressed="false" title="Toggle Dark/Light Mode">
+      <div class="star star-1"></div>
+      <div class="star star-2"></div>
+      <div class="star star-3"></div>
+      <div class="star star-4"></div>
+      <div class="star star-5"></div>
+      
+      <div class="cloud cloud-1"></div>
+      <div class="cloud cloud-2"></div>
+
+      <div class="toggle-handle">
+        <div class="crater crater-1"></div>
+        <div class="crater crater-2"></div>
+        <div class="crater crater-3"></div>
+      </div>
+    </button>
+  </div>
+
+  <script>
+    function sendMessageToStreamlitClient(type, data) {
+      var outData = Object.assign({
+        isStreamlitMessage: true,
+        type: type,
+      }, data);
+      window.parent.postMessage(outData, "*");
+    }
+
+    function init() {
+      sendMessageToStreamlitClient("streamlit:componentReady", {apiVersion: 1});
+      sendMessageToStreamlitClient("streamlit:setFrameHeight", {height: 38});
+    }
+
+    function sendValue(value) {
+      sendMessageToStreamlitClient("streamlit:setComponentValue", {value: value});
+    }
+
+    let isDark = false;
+    const btn = document.getElementById("toggle_btn");
+
+    function updateUI(dark) {
+      isDark = !!dark;
+      document.body.setAttribute("data-dark-mode", isDark ? "true" : "false");
+      btn.setAttribute("aria-pressed", isDark ? "true" : "false");
+    }
+
+    btn.addEventListener("click", function() {
+      const nextState = !isDark;
+      updateUI(nextState);
+      sendValue(nextState);
+    });
+
+    window.addEventListener("message", function(event) {
+      if (event.data.type === "streamlit:render") {
+        const args = event.data.args;
+        if (args && typeof args.is_dark !== "undefined") {
+          updateUI(args.is_dark);
+        }
+        sendMessageToStreamlitClient("streamlit:setFrameHeight", {height: 38});
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

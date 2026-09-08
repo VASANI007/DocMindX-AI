@@ -1,0 +1,11 @@
+{
+  "features": [
+    "days_of_inventory",
+    "daily_burn_surge",
+    "reorder_lead_time_days",
+    "outbreak_signal_severity",
+    "monsoon_rainfall_mm",
+    "facility_bed_pressure"
+  ],
+  "target": "is_stockout_risk"
+}

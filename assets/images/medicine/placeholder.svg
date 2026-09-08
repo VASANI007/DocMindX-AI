@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <rect width="160" height="160" rx="16" fill="#F8DAD8" />
+  <circle cx="80" cy="80" r="54" fill="#FFFFFF" stroke="#E7E9EC" stroke-width="2"/>
+  <!-- Pill & Capsule SVG in Clinical Red Theme -->
+  <g transform="translate(48, 48)">
+    <rect x="8" y="18" width="48" height="28" rx="14" fill="#B3261E" transform="rotate(-30 32 32)"/>
+    <path d="M 8,18 A 14,14 0 0,1 32,4 L 32,32 L 8,18 Z" fill="#8C1F19" transform="rotate(-30 32 32)"/>
+    <circle cx="48" cy="20" r="12" fill="#FCEAE9" stroke="#B3261E" stroke-width="3"/>
+    <line x1="40" y1="20" x2="56" y2="20" stroke="#B3261E" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="80" y="142" font-family="Inter, sans-serif" font-size="11" font-weight="600" fill="#8C1F19" text-anchor="middle">MEDICATION REFERENCE</text>
+</svg>

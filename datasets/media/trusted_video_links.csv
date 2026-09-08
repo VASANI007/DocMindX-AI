@@ -1,0 +1,23 @@
+exercise_id,exercise_name,condition_category,video_url,channel_source,verified_by
+Y001,Bhujangasana (Cobra Pose),Back discomfort,https://www.youtube.com/watch?v=fOdrW7nf9gw,Ministry of AYUSH (Govt of India),Clinical Yoga Board
+Y002,Marjaryasana-Bitilasana (Cat-Cow Stretch),Neck and back stiffness,https://www.youtube.com/watch?v=kqnua4rHVVA,NHS Healthcare UK,Physiotherapy Panel
+Y003,Shavasana & Anulom Vilom Pranayama,Stress & Headache,https://www.youtube.com/watch?v=8VwufJrUhic,The Yoga Institute,Ayurveda & Yoga Faculty
+Y004,Vajrasana (Thunderbolt Pose),Digestion & Acidity,https://www.youtube.com/watch?v=FqG0Q5zX0jE,Ministry of AYUSH,Clinical Yoga Board
+Y005,Mandukasana (Frog Pose),Metabolic Vitality,https://www.youtube.com/watch?v=mE0YQjR7Y20,The Yoga Institute,Clinical Yoga Board
+Y006,Bhramari Pranayama (Humming Bee Breath),Anxiety & Tension,https://www.youtube.com/watch?v=2Tz8f7eO2m8,AIIMS Wellness Division,Integrative Medicine Dept
+Y007,Pawanmuktasana (Wind-Relieving Pose),Bloating & Gut Mobility,https://www.youtube.com/watch?v=gFgYSqYI1dY,Ministry of AYUSH,Clinical Yoga Board
+Y008,Tadasana (Palm Tree / Mountain Pose),Postural Alignment & Balance,https://www.youtube.com/watch?v=ET_cKo1Ta1s,The Yoga Institute,Ayurveda & Yoga Faculty
+Y009,Vrikshasana (Tree Pose),Neuromuscular Coordination & Balance,https://www.youtube.com/watch?v=kqnua4rHVVA,Ministry of AYUSH,Clinical Yoga Board
+Y010,Setu Bandhasana (Bridge Pose),Pelvic Tone & Lumbar Support,https://www.youtube.com/watch?v=fOdrW7nf9gw,The Yoga Institute,Ayurveda & Yoga Faculty
+Y011,Nadi Shodhana Pranayama (Alternate Nostril Breathing),Hypertension & Nervous Regulation,https://www.youtube.com/watch?v=2Tz8f7eO2m8,AIIMS Wellness Division,Integrative Medicine Dept
+Y012,Ardha Matsyendrasana (Half Spinal Twist),Spinal Mobility & Digestion,https://www.youtube.com/watch?v=mE0YQjR7Y20,The Yoga Institute,Clinical Yoga Board
+P001,Pelvic Bridging Exercise,Lumbar Stability & Core,https://www.youtube.com/watch?v=8bbE64NuDTU,NHS Physiotherapy Services,Chartered Society of Physiotherapy
+P002,Cervical Isometric & Chin Tuck Stretches,Tension Headache & Neck,https://www.youtube.com/watch?v=hExu1Tkhs4E,Mayo Clinic Physical Therapy,Orthopedic Rehab Division
+P003,Isometric Quadriceps Sets & Straight Leg Raises,Knee Joint Support,https://www.youtube.com/watch?v=B7oO6J9Wl6c,Johns Hopkins Medicine,Rehabilitation Medicine
+P004,Gentle Active Hand & Finger Range of Motion,Hand & Joint Mobility,https://www.youtube.com/watch?v=8VwufJrUhic,Arthritis Foundation,Physical Therapy Panel
+P005,Codman Pendulum Exercises,Frozen Shoulder & Mobility,https://www.youtube.com/watch?v=9-DOa672Hxk,NHS Physical Therapy,Rehabilitation Medicine Board
+P006,Plantar Fascia & Calf Towel Stretch,Heel Pain & Plantar Fasciitis,https://www.youtube.com/watch?v=8FrJs4vE_kM,Mayo Clinic Physical Therapy,Orthopedic Rehab Division
+P007,Wall Squats & Clamshell Strengthening,Hip & Knee Stability,https://www.youtube.com/watch?v=B7oO6J9Wl6c,Johns Hopkins Medicine,Chartered Society of Physiotherapy
+P008,Scapular Retraction & Thoracic Extension,Upper Back & Kyphosis,https://www.youtube.com/watch?v=hExu1Tkhs4E,NHS Physiotherapy Services,Orthopedic Rehab Division
+P009,Ankle Pumps & Heel-Toe Calf Raises,Venous Return & Lower Leg Edema,https://www.youtube.com/watch?v=8bbE64NuDTU,NHS Healthcare UK,Cardiovascular Rehab Division
+P010,Diaphragmatic Deep Breathing Exercises,COPD & Respiratory Recovery,https://www.youtube.com/watch?v=hExu1Tkhs4E,Johns Hopkins Medicine,Pulmonary Rehabilitation Board

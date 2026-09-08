@@ -1,0 +1,41 @@
+test_id,test_name,category,age_group,sex,unit,reference_min,reference_max,description
+L001,Hemoglobin (Hb),Complete Blood Count,Adult,Male,g/dL,13.5,17.5,Oxygen-carrying protein in red blood cells
+L002,Hemoglobin (Hb),Complete Blood Count,Adult,Female,g/dL,12.0,15.5,Oxygen-carrying protein in red blood cells
+L003,Total WBC Count,Complete Blood Count,Adult,Both,cells/mcL,4000.0,11000.0,White blood cells fighting infection
+L004,Platelet Count,Complete Blood Count,Adult,Both,lakh/mcL,1.5,4.5,"Cell fragments essential for blood clotting (150,000 - 450,000/mcL)"
+L005,RBC Count,Complete Blood Count,Adult,Male,million/mcL,4.5,5.9,Red blood cell count
+L006,RBC Count,Complete Blood Count,Adult,Female,million/mcL,4.1,5.1,Red blood cell count
+L007,Fasting Blood Sugar (FBS),Diabetes & Metabolism,Adult,Both,mg/dL,70.0,99.0,"Blood glucose after 8 hours overnight fast (100-125: Prediabetes, >=126: Diabetes)"
+L008,Post Prandial Blood Sugar (PPBS),Diabetes & Metabolism,Adult,Both,mg/dL,70.0,140.0,"Blood glucose 2 hours after meal (140-199: Prediabetes, >=200: Diabetes)"
+L009,HbA1c (Glycated Hemoglobin),Diabetes & Metabolism,Adult,Both,%,4.0,5.6,"Average 3-month blood sugar indicator (5.7-6.4%: Prediabetes, >=6.5%: Diabetes)"
+L010,Serum Creatinine,Kidney Function Test,Adult,Male,mg/dL,0.7,1.3,Waste product filtered by kidneys reflecting renal filtration
+L011,Serum Creatinine,Kidney Function Test,Adult,Female,mg/dL,0.5,1.1,Waste product filtered by kidneys reflecting renal filtration
+L012,Blood Urea Nitrogen (BUN),Kidney Function Test,Adult,Both,mg/dL,7.0,20.0,Kidney metabolic waste parameter
+L013,Serum Uric Acid,Kidney & Metabolic,Adult,Male,mg/dL,3.5,7.2,Purine breakdown product relevant to gout and renal stones
+L014,Serum Uric Acid,Kidney & Metabolic,Adult,Female,mg/dL,2.6,6.0,Purine breakdown product relevant to gout and renal stones
+L015,SGPT / ALT (Alanine Aminotransferase),Liver Function Test,Adult,Both,U/L,7.0,56.0,Key liver enzyme indicator of hepatocellular health
+L016,SGOT / AST (Aspartate Aminotransferase),Liver Function Test,Adult,Both,U/L,10.0,40.0,Liver and muscle tissue enzyme
+L017,Total Bilirubin,Liver Function Test,Adult,Both,mg/dL,0.2,1.2,Bile pigment produced from RBC breakdown; elevated in jaundice
+L018,Serum Total Cholesterol,Lipid Profile,Adult,Both,mg/dL,125.0,200.0,Total circulating cholesterol in blood
+L019,Serum Triglycerides,Lipid Profile,Adult,Both,mg/dL,50.0,150.0,Main form of stored body fat in bloodstream
+L020,Serum HDL Cholesterol ('Good'),Lipid Profile,Adult,Both,mg/dL,40.0,60.0,High-density lipoprotein protecting cardiovascular health
+L021,Serum LDL Cholesterol ('Bad'),Lipid Profile,Adult,Both,mg/dL,50.0,100.0,Low-density lipoprotein linked to plaque formation
+L022,Thyroid Stimulating Hormone (TSH),Thyroid Profile,Adult,Both,uIU/mL,0.4,4.5,Pituitary hormone controlling thyroid hormone production
+L023,Serum Vitamin D3 (25-OH),Vitamins & Minerals,Adult,Both,ng/mL,30.0,100.0,Essential fat-soluble vitamin for bone and immune health
+L024,Serum Vitamin B12,Vitamins & Minerals,Adult,Both,pg/mL,200.0,900.0,Vital cofactor for nerve health and red blood cell creation
+L025,Erythrocyte Sedimentation Rate (ESR),Inflammatory Markers,Adult,Male,mm/hr,0.0,15.0,Nonspecific indicator of systemic inflammation
+L026,Erythrocyte Sedimentation Rate (ESR),Inflammatory Markers,Adult,Female,mm/hr,0.0,20.0,Nonspecific indicator of systemic inflammation
+L027,High Sensitivity C-Reactive Protein (hs-CRP),Inflammatory Markers,Adult,Both,mg/L,0.0,3.0,Marker for acute inflammation and cardiovascular risk stratification
+L028,Serum Calcium (Total),Electrolytes & Minerals,Adult,Both,mg/dL,8.5,10.2,"Mineral essential for bone density, neuromuscular transmission, and cardiac function"
+L029,Serum Sodium (Na+),Electrolytes & Minerals,Adult,Both,mEq/L,135.0,145.0,"Major extracellular electrolyte regulating fluid balance and osmotic pressure"
+L030,Serum Potassium (K+),Electrolytes & Minerals,Adult,Both,mEq/L,3.5,5.1,"Critical intracellular cation for neuromuscular excitability and heart rhythm"
+L031,Serum Chloride (Cl-),Electrolytes & Minerals,Adult,Both,mEq/L,96.0,106.0,"Electrolyte helping maintain proper acid-base balance and hydration"
+L032,Alkaline Phosphatase (ALP),Liver Function Test,Adult,Both,U/L,44.0,147.0,"Enzyme related to bile ducts and bone turnover"
+L033,Serum Albumin,Liver Function Test,Adult,Both,g/dL,3.5,5.0,"Major protein synthesized by liver maintaining oncotic pressure"
+L034,Serum Ferritin,Iron Profile,Adult,Male,ng/mL,24.0,336.0,"Primary intracellular iron storage protein"
+L035,Serum Ferritin,Iron Profile,Adult,Female,ng/mL,11.0,307.0,"Primary intracellular iron storage protein"
+L036,Serum Iron,Iron Profile,Adult,Both,mcg/dL,60.0,170.0,"Circulating iron bound to transferrin"
+L037,Free Triiodothyronine (FT3),Thyroid Profile,Adult,Both,pg/mL,2.0,4.4,"Active thyroid hormone regulating metabolic rate"
+L038,Free Thyroxine (FT4),Thyroid Profile,Adult,Both,ng/dL,0.8,1.8,"Primary circulating hormone secreted by thyroid gland"
+L039,Serum Magnesium,Electrolytes & Minerals,Adult,Both,mg/dL,1.7,2.2,"Essential cofactor for enzyme reactions, nerve conduction, and muscle relaxation"
+L040,Serum Phosphorus,Electrolytes & Minerals,Adult,Both,mg/dL,2.5,4.5,"Mineral partnering with calcium for bone mineralization and energy storage"

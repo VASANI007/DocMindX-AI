@@ -1,0 +1,19 @@
+﻿exercise_id,condition_id,exercise_name,description,steps,precautions,avoid_if,image_path
+P001,D0100,Pelvic Bridging Exercise,Core and gluteal activation to support lumbar stability and relieve lower back pain.,"1. Lie on back with knees bent and feet flat on floor hip-width apart.
+2. Engage abdominal core gently.
+3. Lift hips upward until knees, hips and shoulders form a straight line.
+4. Hold for 5 seconds, lower down slowly.
+5. Repeat 10-12 repetitions.",Avoid hyperextending lower back at the top of the bridge.,"Severe acute spinal instability, unmanaged severe hernia.",assets/physio/pelvic_bridge.png
+P002,D0101,Cervical Isometric & Chin Tuck Stretches,Relieves tension headaches and strengthens deep cervical neck flexors.,"1. Sit upright with shoulders relaxed.
+2. Look straight ahead, gently glide chin straight back (as if making a subtle double chin).
+3. Hold for 5 seconds without tilting head up or down.
+4. Relax and repeat 10 times.",Movement should be pain-free and smooth.,Acute cervical spine fracture or severe dizziness upon movement.,assets/physio/chin_tuck.png
+P003,D0041,Isometric Quadriceps Sets & Straight Leg Raises,Strengthens thigh muscles to stabilize knee joint and reduce knee arthritis pain.,"1. Lie on back with one leg straight and the other knee bent.
+2. Tighten thigh muscle of straight leg pushing back of knee into bed.
+3. Lift straight leg 12 inches off surface.
+4. Hold 5 seconds, slowly lower.
+5. Perform 10 reps per leg.",Do not hold breath while lifting leg.,Acute severe knee effusion / acute ligament tear.,assets/physio/quad_sets.png
+P004,D0042,Gentle Active Hand & Finger Range of Motion,Preserves joint mobility and decreases morning hand stiffness in arthritis.,"1. Sit comfortably with arms supported on table.
+2. Slowly open fingers wide, then gently curl fingers into a soft loose fist.
+3. Touch thumb to tip of each finger sequentially.
+4. Perform 10 gentle repetitions.",Never force movement into sharp joint pain.,Acute infected inflamed hot joint.,assets/physio/hand_mobility.png

@@ -1,0 +1,6 @@
+finding_id,finding_name,finding_name_hi,finding_name_gu,description,patient_advice
+F001,Anemia,एनीमिया (खून की कमी),એનીમિયા (લોહીની ઉણપ),"Low red blood cells or hemoglobin, causing fatigue, pale skin and shortness of breath.","Check iron, vitamin B12, and discuss dietary/iron supplementation with doctor."
+F002,Leukocytosis,ल्यूकोसाइटोसिस (WBC बढ़ना),લ્યુકોસાઇટોસિસ (WBC વધવા),Elevated white blood cell count typically indicating an active bacterial/viral infection or inflammation.,Identify source of infection and consult physician for appropriate treatment.
+F003,Thrombocytopenia,थ्रोम्बोसाइटोपेनिया (प्लेटलेट कम होना),થ્રોમ્બોસાઇટોપેનિયા (પ્લેટલેટ ઘટવા),Low blood platelet count increasing the tendency to bruise or bleed.,"Carefully monitor for bleeding spots, avoid blood-thinning NSAIDs, consult doctor urgently if platelets < 50,000."
+F004,Hyperglycemia,हाइपरग्लाइसीमिया (शुगर बढ़ना),હાઇપરગ્લાયકેમિઆ (શુગર વધવી),Elevated blood sugar level above normal physiological thresholds.,"Follow diabetic meal plan, stay active, monitor fasting/PPBS, and adjust medication with doctor."
+F005,Hyperlipidemia,हाइपरलिपिडिमिया (कोलेस्ट्रॉल बढ़ना),હાઇપરલિપિડેમિઆ (કોલેસ્ટ્રોલ વધવું),Elevated cholesterol or triglycerides in bloodstream.,"Adopt heart-healthy low-oil diet, increase cardiovascular exercise, and follow lipid-lowering advice."

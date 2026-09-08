@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <rect width="160" height="160" rx="16" fill="#EAF2FB" />
+  <circle cx="80" cy="80" r="54" fill="#FFFFFF" stroke="#E7E9EC" stroke-width="2"/>
+  <!-- Physiotherapy / Mobility Stretch Figure in Clinical Blue Theme -->
+  <g transform="translate(48, 44)" stroke="#2563A6" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="32" cy="12" r="7" fill="#2563A6"/>
+    <path d="M 32,22 L 32,48"/>
+    <path d="M 16,28 L 32,34 L 52,24"/>
+    <path d="M 32,48 L 18,64"/>
+    <path d="M 32,48 L 48,64"/>
+    <!-- Mobility motion arrow -->
+    <path d="M 54,40 Q 60,32 56,22" stroke="#B3261E" stroke-width="2.5" stroke-dasharray="2,2"/>
+  </g>
+  <text x="80" y="142" font-family="Inter, sans-serif" font-size="11" font-weight="600" fill="#2563A6" text-anchor="middle">ACTIVE MOBILITY</text>
+</svg>

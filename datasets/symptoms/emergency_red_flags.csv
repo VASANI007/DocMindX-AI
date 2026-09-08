@@ -1,0 +1,80 @@
+﻿flag_id,symptom_id,symptom_name,risk_category,severity_tier,immediate_action_protocol,redirection_target
+RF001,S000002,High Fever (above 103°F/39.4°C),General / Systemic,High,Seek prompt medical evaluation; monitor closely and go to the nearest hospital if symptoms worsen.,Panel 3 - Nearby Hospital
+RF002,S000013,Dehydration,General / Systemic,High,Seek prompt medical evaluation; monitor closely and go to the nearest hospital if symptoms worsen.,Panel 3 - Nearby Hospital
+RF003,S000015,Yellowing of Skin or Eyes (Jaundice),General / Systemic,High,Seek prompt medical evaluation; monitor closely and go to the nearest hospital if symptoms worsen.,Panel 3 - Nearby Hospital
+RF004,S000017,Growth Failure in Children (Failure to Thrive),General / Systemic,High,Seek prompt medical evaluation; monitor closely and go to the nearest hospital if symptoms worsen.,Panel 3 - Nearby Hospital
+RF005,S000022,Severe Dehydration with Reduced Consciousness,General / Systemic,High,Seek prompt medical evaluation; monitor closely and go to the nearest hospital if symptoms worsen.,Panel 3 - Nearby Hospital
+RF006,S000025,Coughing Up Blood (Hemoptysis),Respiratory,High,"Seek prompt medical evaluation, especially if breathing difficulty worsens.",Panel 3 - Nearby Hospital
+RF007,S000027,Severe Difficulty Breathing,Respiratory,Critical,Seek emergency care immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF008,S000031,Noisy Breathing (Stridor),Respiratory / Airway,Critical,Seek emergency care immediately; this can indicate airway obstruction.,Panel 3 - Nearby Hospital (Emergency)
+RF009,S000039,Bluish Lips or Face (Cyanosis),Respiratory,Critical,Seek emergency care immediately; this indicates low oxygen levels.,Panel 3 - Nearby Hospital (Emergency)
+RF010,S000040,Chest Pain While Breathing,Respiratory,High,"Seek prompt medical evaluation, especially if breathing difficulty worsens.",Panel 3 - Nearby Hospital
+RF011,S000043,Choking Sensation,Respiratory / Airway,Critical,"If the person cannot breathe, speak, or cough, perform first aid for choking and call emergency services immediately.",Panel 3 - Nearby Hospital (Emergency)
+RF012,S000045,Sudden Severe Breathlessness with Blue Lips,Respiratory,Critical,Call emergency services immediately; this indicates dangerously low oxygen levels.,Panel 3 - Nearby Hospital (Emergency)
+RF013,S000046,Chest Pain,Cardiac,High,"Seek prompt medical evaluation, especially if pain is severe, persistent, or accompanied by other symptoms.",Panel 3 - Nearby Hospital
+RF014,S000047,"Chest Pain Radiating to Arm, Jaw, or Back",Cardiac / Possible Heart Attack,Critical,Seek emergency evaluation immediately with ECG and cardiac monitoring.,Panel 3 - Nearby Hospital (Emergency)
+RF015,S000049,Irregular Heartbeat (Arrhythmia),Cardiac,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF016,S000050,Fainting (Syncope),Cardiac,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF017,S000054,Bluish Fingertips (Peripheral Cyanosis),Cardiac,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF018,S000055,Chest Pain with Sweating and Nausea,Cardiac / Possible Heart Attack,Critical,Call for emergency medical help immediately; do not let the person drive themselves; chew aspirin only if not allergic and advised by a doctor.,Panel 3 - Nearby Hospital (Emergency)
+RF019,S000060,Sudden Severe Chest Pain with Breathlessness,Cardiac / Respiratory,Critical,Seek immediate emergency care; this combination can indicate a heart or lung emergency.,Panel 3 - Nearby Hospital (Emergency)
+RF020,S000062,Sudden Severe Headache (Thunderclap),Neurological,Critical,Seek emergency evaluation immediately; this can indicate a serious brain condition.,Panel 3 - Nearby Hospital (Emergency)
+RF021,S000066,Sudden One-Sided Weakness (Stroke Warning),Neurological / Stroke,Critical,"Call emergency services immediately; note the time symptoms started, as this affects treatment options.",Panel 3 - Nearby Hospital (Emergency)
+RF022,S000067,Slurred Speech,Neurological / Stroke,Critical,Call emergency services immediately; note the time symptoms started.,Panel 3 - Nearby Hospital (Emergency)
+RF023,S000068,Facial Drooping,Neurological / Stroke,Critical,Call emergency services immediately; this is a classic stroke warning sign.,Panel 3 - Nearby Hospital (Emergency)
+RF024,S000070,Seizures,Neurological,Critical,"Keep the person safe from injury, do not restrain them or put anything in their mouth, and seek emergency care.",Panel 3 - Nearby Hospital (Emergency)
+RF025,S000071,Loss of Consciousness,Neurological,Critical,Seek emergency medical evaluation immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF026,S000073,Difficulty Speaking or Understanding Speech,Neurological / Stroke,Critical,Call emergency services immediately; note the time symptoms started.,Panel 3 - Nearby Hospital (Emergency)
+RF027,S000077,Sudden Vision Loss,Neurological / Ophthalmological,Critical,Seek emergency evaluation immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF028,S000078,Neck Stiffness with Fever,Neurological,High,Seek prompt medical evaluation; note when symptoms started.,Panel 3 - Nearby Hospital
+RF029,S000081,Difficulty Swallowing (Neurological),Neurological,High,Seek prompt medical evaluation; note when symptoms started.,Panel 3 - Nearby Hospital
+RF030,S000082,Head Injury with Vomiting,Neurological,High,Seek prompt medical evaluation; note when symptoms started.,Panel 3 - Nearby Hospital
+RF031,S000083,Persistent Headache with Vomiting,Neurological,High,Seek prompt medical evaluation; note when symptoms started.,Panel 3 - Nearby Hospital
+RF032,S000088,Vomiting Blood (Hematemesis),Gastrointestinal,High,"Seek prompt medical evaluation, especially if there is ongoing bleeding or severe pain.",Panel 3 - Nearby Hospital
+RF033,S000090,Bloody Diarrhea,Gastrointestinal,High,"Seek prompt medical evaluation, especially if there is ongoing bleeding or severe pain.",Panel 3 - Nearby Hospital
+RF034,S000093,Severe Abdominal Pain with Rigidity,Gastrointestinal / Surgical Emergency,Critical,Seek emergency surgical evaluation immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF035,S000096,Black or Tarry Stools (Melena),Gastrointestinal,High,"Seek prompt medical evaluation, especially if there is ongoing bleeding or severe pain.",Panel 3 - Nearby Hospital
+RF036,S000097,Blood in Stool,Gastrointestinal,High,"Seek prompt medical evaluation, especially if there is ongoing bleeding or severe pain.",Panel 3 - Nearby Hospital
+RF037,S000099,Persistent Vomiting in Children,Gastrointestinal,High,"Seek prompt medical evaluation, especially if there is ongoing bleeding or severe pain.",Panel 3 - Nearby Hospital
+RF038,S000107,Severe Dehydration from Diarrhea/Vomiting,Gastrointestinal,High,"Seek prompt medical evaluation, especially if there is ongoing bleeding or severe pain.",Panel 3 - Nearby Hospital
+RF039,S000123,Severe Allergic Skin Swelling (Angioedema),Allergic / Anaphylaxis Risk,Critical,"Seek emergency care immediately, especially if there is any throat tightness or breathing difficulty.",Panel 3 - Nearby Hospital (Emergency)
+RF040,S000127,Petechiae (Small Red or Purple Spots),Skin / Allergic,High,"Seek prompt medical evaluation, especially if swelling spreads or breathing is affected.",Panel 3 - Nearby Hospital
+RF041,S000128,Severe Burns,Skin / Allergic,High,"Seek prompt medical evaluation, especially if swelling spreads or breathing is affected.",Panel 3 - Nearby Hospital
+RF042,S000130,"Redness, Warmth, and Swelling of Skin (Cellulitis Signs)",Skin / Allergic,High,"Seek prompt medical evaluation, especially if swelling spreads or breathing is affected.",Panel 3 - Nearby Hospital
+RF043,S000143,Swelling in a Single Joint with Redness and Warmth,Musculoskeletal,Medium,"Seek prompt medical evaluation, especially if a joint is hot, red, and swollen, or if weight-bearing is not possible.",Panel 3 - Nearby Hospital
+RF044,S000146,Inability to Bear Weight After Injury,Musculoskeletal,Medium,"Seek prompt medical evaluation, especially if a joint is hot, red, and swollen, or if weight-bearing is not possible.",Panel 3 - Nearby Hospital
+RF045,S000160,Suicidal Thoughts,Mental Health / Self-Harm Risk,Critical,Encourage the person to reach out to a mental health crisis line or emergency services immediately; do not leave them alone.,Panel 3 - Nearby Hospital (Emergency)
+RF046,S000162,Hallucinations,Mental Health,Critical,Seek immediate professional support; contact a crisis line or emergency services.,Panel 3 - Nearby Hospital (Emergency)
+RF047,S000166,Self-Harm Behavior,Mental Health / Self-Harm Risk,Critical,Encourage the person to seek immediate professional support; contact a crisis line or emergency services.,Panel 3 - Nearby Hospital (Emergency)
+RF048,S000178,Throat Swelling,Allergic / Airway Risk,Critical,Seek emergency care immediately; swelling of the throat can rapidly block breathing.,Panel 3 - Nearby Hospital (Emergency)
+RF049,S000195,Postmenopausal Bleeding,Women's Health,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF050,S000197,Severe Pelvic Pain with Fever,Women's Health,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF051,S000198,Heavy Vaginal Bleeding with Dizziness (Emergency),Women's Health / Bleeding Emergency,Critical,Seek emergency medical care immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF052,S000199,Pregnancy-related Headache with Swelling,Women's Health,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF053,S000201,Sudden Severe Testicular Pain with Swelling,Urological / Surgical Emergency,Critical,Seek emergency surgical evaluation immediately; delay can risk permanent damage.,Panel 3 - Nearby Hospital (Emergency)
+RF054,S000211,Sudden Vision Loss (Eye),Ophthalmological,Critical,Seek emergency evaluation immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF055,S000223,Sudden Severe Eye Pain with Vision Loss,Ophthalmological,Critical,Seek emergency evaluation immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF056,S000233,"Low Blood Sugar Symptoms (Shakiness, Sweating, Confusion)",Endocrine / Metabolic,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF057,S000235,"Diabetic Emergency Signs (Confusion, Fruity Breath)",Endocrine / Metabolic Emergency,Critical,Seek emergency medical care immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF058,S000236,Sudden Severe Weakness with Sweating (Hypoglycemia Emergency),Endocrine / Metabolic Emergency,Critical,"If able to swallow, give a fast-acting sugar source immediately and seek urgent medical care.",Panel 3 - Nearby Hospital (Emergency)
+RF059,S000238,Blood in Urine,Urological / Renal,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF060,S000242,Lower Back Pain with Fever (Possible Kidney Infection),Urological / Renal,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF061,S000243,Reduced Urine Output,Urological / Renal,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF062,S000248,Complete Inability to Urinate,Urological,Critical,Seek emergency medical care immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF063,S000249,Severe Flank Pain with Vomiting (Possible Kidney Stone),Urological / Renal,High,Seek prompt medical evaluation without delay.,Panel 3 - Nearby Hospital
+RF064,S000252,Fever with Joint Pain (Possible Dengue/Chikungunya),Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF065,S000253,Fever with Chills and Sweating (Possible Malaria),Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF066,S000254,"Prolonged Fever (more than 2 weeks, Possible Typhoid)",Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF067,S000256,Fever with Neck Stiffness (Possible Meningitis),Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF068,S000258,Fever with Yellowing of Skin,Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF069,S000260,Fever with Cough and Breathlessness,Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF070,S000261,Fever with Rash and Bleeding Gums (Emergency),Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF071,S000263,"Fever with Low Platelet Signs (Bruising, Bleeding Gums)",Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF072,S000265,Animal Bite with Wound,Infectious Disease,High,Seek prompt medical evaluation; mention travel history and recent exposures to the doctor.,Panel 3 - Nearby Hospital
+RF073,S000270,High Fever in Infant Under 3 Months,Pediatric,Critical,Seek emergency medical care immediately; fever in very young infants always needs urgent evaluation.,Panel 3 - Nearby Hospital (Emergency)
+RF074,S000271,Bulging Soft Spot in Infant,Pediatric / Neurological,Critical,Seek emergency medical care immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF075,S000272,Lethargy in Infant,Pediatric,Critical,Seek emergency medical care immediately; an unusually unresponsive infant needs urgent evaluation.,Panel 3 - Nearby Hospital (Emergency)
+RF076,S000273,Difficulty Breathing in Infant,Pediatric / Respiratory,Critical,Seek emergency medical care immediately.,Panel 3 - Nearby Hospital (Emergency)
+RF077,S000275,Seizures with Fever in Child (Febrile Seizure),Pediatric,Critical,Seek prompt pediatric medical evaluation without delay.,Panel 3 - Nearby Hospital (Emergency)
+RF078,S000277,"Dehydration Signs in Child (Dry Mouth, Few Wet Diapers)",Pediatric,Critical,Seek prompt pediatric medical evaluation without delay.,Panel 3 - Nearby Hospital (Emergency)
+RF079,S000280,Bluish Lips in Infant,Pediatric / Respiratory,Critical,Call emergency services immediately.,Panel 3 - Nearby Hospital (Emergency)
