@@ -4948,6 +4948,10 @@ div.st-key-gis_city_search_input input,
     border-color: #334155 !important;
 }
 [data-theme="dark"] .mm-footer-slogan-pill {
+    background: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(37, 99, 235, 0.35) !important;
+    color: #93C5FD !important;
+}
 /* ==========================================================================
    ASSESSMENT STEP CARD SYSTEM (Image 2 & Image 4 Design)
    ========================================================================== */

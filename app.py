@@ -4041,7 +4041,7 @@ elif st.session_state["active_panel"] == "Medical Report":
         col_p2_1, col_p2_2 = st.columns([1, 1])
 
         with col_p2_1:
-            with st.container(border=True):
+            with st.container(key="med_report_upload_card", border=True):
                 safe_markdown(f"""
                 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                     <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(37, 99, 235, 0.1); display: flex; align-items: center; justify-content: center;">
@@ -4092,7 +4092,7 @@ elif st.session_state["active_panel"] == "Medical Report":
                 analyze_doc_btn = st.button(T.get("btn_analyze_doc", "Analyze Medical Document"), type="primary", use_container_width=True)
 
         with col_p2_2:
-            with st.container(border=True):
+            with st.container(key="med_report_ocr_card", border=True):
                 safe_markdown(f"""
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -4139,16 +4139,17 @@ elif st.session_state["active_panel"] == "Medical Report":
                         doc_text_stream = st.text_area(
                             "Extracted OCR Text Stream",
                             value=raw_extracted,
-                            height=300,
+                            height=240,
                             disabled=True,
                             label_visibility="collapsed"
                         )
                     else:
                         doc_text_stream = ""
                         safe_markdown("""
-                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-top: 4px; min-height: 300px; display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center;">
+                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-top: 4px; min-height: 240px; display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center;">
                             <b style="color: #EF4444; font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
-                                <img src="https://cdn-icons-png.flaticon.com/512/564/564619.png" style="width: 18px; height: 18px; object-fit: contain;" alt="Warning"/> No Valid Medical Text Detected
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                No Valid Medical Text Detected
                             </b>
                             <span style="font-size: 0.84rem; color: var(--mm-text-secondary); line-height: 1.5; max-width: 480px; margin: 0 auto;">
                                 The uploaded file could not be read or does not contain readable clinical test parameters, doctor prescriptions, or radiology findings.<br/>
@@ -4162,7 +4163,7 @@ elif st.session_state["active_panel"] == "Medical Report":
                         "Extracted OCR Text Stream",
                         value="",
                         placeholder="No document uploaded yet. Please upload a PDF or Image on the left to scan real medical parameters...",
-                        height=300,
+                        height=240,
                         disabled=True,
                         label_visibility="collapsed"
                     )
@@ -7050,33 +7051,33 @@ div[class*="st-key-dyn_chip_"] button p strong {
 .st-key-dyn_chip_r3_2 button,
 .st-key-dyn_chip_r3_3 button,
 .st-key-dyn_chip_r4_1 button {
-    padding: 10px 24px 10px 48px !important;
-    min-height: 54px !important;
+    padding: 8px 26px 8px 48px !important;
+    min-height: 58px !important;
+    height: auto !important;
     display: flex !important;
     align-items: center !important;
     text-align: left !important;
     justify-content: flex-start !important;
+    overflow: visible !important;
 }
 .st-key-dyn_chip_r3_1 button p strong,
 .st-key-dyn_chip_r3_2 button p strong,
 .st-key-dyn_chip_r3_3 button p strong,
 .st-key-dyn_chip_r4_1 button p strong {
-    font-size: 0.80rem !important;
-    line-height: 1.25 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    font-size: 0.82rem !important;
+    line-height: 1.35 !important;
+    display: block !important;
+    overflow: visible !important;
     margin-bottom: 2px !important;
 }
 .st-key-dyn_chip_r3_1 button p,
 .st-key-dyn_chip_r3_2 button p,
 .st-key-dyn_chip_r3_3 button p,
 .st-key-dyn_chip_r4_1 button p {
-    font-size: 0.67rem !important;
-    line-height: 1.25 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    font-size: 0.68rem !important;
+    line-height: 1.30 !important;
+    overflow: visible !important;
+    margin: 0 !important;
 }
 
 /* Right Chevron Arrows on 2-Column Cards */

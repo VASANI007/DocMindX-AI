@@ -1660,7 +1660,6 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                         </svg>
                     </div>
                 </div>
-
                 <!-- Card 2: Projected Stockout Date -->
                 <div class="cc-kpi-card" style="justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -1686,7 +1685,6 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                         </svg>
                     </div>
                 </div>
-
                 <!-- Card 3: Selected ML Algorithm -->
                 <div class="cc-kpi-card" style="justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -1708,7 +1706,6 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                         </svg>
                     </div>
                 </div>
-
                 <!-- Card 4: Model Test Performance -->
                 <div class="cc-kpi-card" style="justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 12px;">
