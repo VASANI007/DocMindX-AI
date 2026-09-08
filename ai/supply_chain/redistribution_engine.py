@@ -113,7 +113,7 @@ class RedistributionOptimizer:
                 "days_remaining": target_days
             },
             "deficit_qty": deficit_qty,
-            "donors": donor_candidates[:5],
+            "donors": donor_candidates,
             "action_status": "RECOMMENDED TRANSFER",
             "provenance": PROVENANCE_RECOMMENDATION
         }

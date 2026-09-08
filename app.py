@@ -71,6 +71,7 @@ from services.places_service import search_nearby_healthcare, search_nearby_hosp
 from services.routes_service import get_route
 from components.google_map import generate_google_map_html
 from components.command_center_view import render_command_center_dashboard
+from components.diagnostic_results_view import render_diagnostic_evaluation_view
 from ai.voice.speech_to_text import transcribe_audio
 from ai.voice.text_to_speech import synthesize_speech
 
@@ -940,23 +941,24 @@ if st.session_state["active_panel"] == "Health Assessment":
     if current_step == 1:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header">
-                <div class="mm-step-header-left">
-                    <div class="mm-step-header-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="#2563EB">
-                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+                <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="12" cy="7" r="4"></circle>
                         </svg>
                     </div>
                     <div>
-                        <div class="mm-step-header-title">{T.get("card_about_you", "Patient Demographics")}</div>
-                        <div class="mm-step-header-sub">{T.get("about_you_note", "Your demographic data helps our clinical AI calculate precise body mass and physiological risk factors.")}</div>
+                        <div class="mm-step-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("card_about_you", "Patient Demographics")}</div>
+                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("about_you_note", "Your demographic data helps our clinical AI calculate precise body mass and physiological risk factors.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-progress-indicator">
-                    <div class="mm-step-progress-bar"></div>
-                    <div class="mm-step-progress-text">
-                        <span class="mm-step-progress-step">STEP 1 OF 4</span>
-                        <span class="mm-step-progress-sub">BASIC INFORMATION</span>
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                    <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
+                    <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 1 OF 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">BASIC INFORMATION</span>
                     </div>
                 </div>
             </div>
@@ -965,9 +967,9 @@ if st.session_state["active_panel"] == "Health Assessment":
             r1_c1, r1_c2, r1_c3 = st.columns(3)
             with r1_c1:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap">
-                    <div class="mm-field-icon-badge">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
                             <line x1="8" y1="2" x2="8" y2="6"></line>
@@ -993,9 +995,9 @@ if st.session_state["active_panel"] == "Health Assessment":
 
             with r1_c2:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap">
-                    <div class="mm-field-icon-badge">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="5"></circle>
                             <path d="M11 16v5M8 18.5h6M14.5 7.5L19 3M19 6.5V3h-3.5"></path>
                         </svg>
@@ -1019,9 +1021,9 @@ if st.session_state["active_panel"] == "Health Assessment":
 
             with r1_c3:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap">
-                    <div class="mm-field-icon-badge">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
                         </svg>
@@ -1046,9 +1048,9 @@ if st.session_state["active_panel"] == "Health Assessment":
             r2_c1, r2_c2, r2_c3 = st.columns(3)
             with r2_c1:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap" style="margin-top: 10px;">
-                    <div class="mm-field-icon-badge">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-top: 10px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="7" y="2" width="10" height="20" rx="2"></rect>
                             <line x1="7" y1="6" x2="11" y2="6"></line>
                             <line x1="7" y1="10" x2="13" y2="10"></line>
@@ -1071,9 +1073,9 @@ if st.session_state["active_panel"] == "Health Assessment":
 
             with r2_c2:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap" style="margin-top: 10px;">
-                    <div class="mm-field-icon-badge">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-top: 10px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="3" width="18" height="18" rx="4"></rect>
                             <path d="M9 7h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"></path>
                         </svg>
@@ -1093,9 +1095,9 @@ if st.session_state["active_panel"] == "Health Assessment":
 
             with r2_c3:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap" style="margin-top: 10px;">
-                    <div class="mm-field-icon-badge">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-top: 10px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                         </svg>
                     </div>
@@ -1400,9 +1402,9 @@ if st.session_state["active_panel"] == "Health Assessment":
     elif current_step == 2:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header">
-                <div class="mm-step-header-left">
-                    <div class="mm-step-header-icon">
+            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+                <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #E0F2FE; border: 1.2px solid #BAE6FD; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4.5 3v5a5.5 5.5 0 0 0 11 0V3"></path>
                             <path d="M10 13.5v3.5a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-1.5"></path>
@@ -1410,8 +1412,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                         </svg>
                     </div>
                     <div>
-                        <div class="mm-step-header-title">{T.get("card_symptoms_title", "Clinical Symptoms")}</div>
-                        <div class="mm-step-header-sub">{T.get("step2_sub", "Tell us about your current symptoms so our AI can analyze them more accurately.")}</div>
+                        <div class="mm-step-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("card_symptoms_title", "Clinical Symptoms")}</div>
+                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("step2_sub", "Tell us about your current symptoms so our AI can analyze them more accurately.")}</div>
                     </div>
                 </div>
             </div>
@@ -1430,12 +1432,12 @@ if st.session_state["active_panel"] == "Health Assessment":
                     step2_syms = [c_nm]
             if not step2_syms:
                 step2_syms = ["Headache"]
-            active_s_html = "".join([f'<span class="mm-symptom-tag">{str(s).upper()} <span class="mm-symptom-tag-x">✕</span></span>' for s in step2_syms])
-            safe_markdown(f"<div style='margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 4px;'>{active_s_html}</div>")
+            active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <span style="font-size: 0.70rem; opacity: 0.75;">✕</span></span>' for s in step2_syms])
+            safe_markdown(f"<div style='margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px;'>{active_s_html}</div>")
 
             col_s1, col_s2 = st.columns(2)
             with col_s1:
-                safe_markdown(f"<div class='mm-field-label-wrap'><span>{T.get('symptom_severity', 'Symptom Severity Level')}</span></div>")
+                safe_markdown(f"<div class='mm-field-label-wrap' style='font-size: 0.85rem; font-weight: 700; color: var(--mm-text-primary); margin-bottom: 6px;'><span>{T.get('symptom_severity', 'Symptom Severity Level')}</span></div>")
                 cur_sev_key = st.session_state["user_context"].get("severity_key", "moderate")
                 if cur_sev_key not in SEVERITY_KEYS:
                     cur_sev_key = "moderate"
@@ -1450,7 +1452,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 st.session_state["user_context"]["severity_key"] = sel_sev_key
                 st.session_state["user_context"]["severity"] = sel_sev_key.capitalize()
             with col_s2:
-                safe_markdown(f"<div class='mm-field-label-wrap'><span>{T.get('symptom_duration', 'Symptom Duration')}</span></div>")
+                safe_markdown(f"<div class='mm-field-label-wrap' style='font-size: 0.85rem; font-weight: 700; color: var(--mm-text-primary); margin-bottom: 6px;'><span>{T.get('symptom_duration', 'Symptom Duration')}</span></div>")
                 cur_dur_key = st.session_state["user_context"].get("duration_key", "1_3")
                 if cur_dur_key not in DURATION_KEYS:
                     cur_dur_key = "1_3"
@@ -1465,7 +1467,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 st.session_state["user_context"]["duration_key"] = sel_dur_key
                 st.session_state["user_context"]["duration"] = T.get(DURATION_LABEL_MAP.get(sel_dur_key, "dur_1_3"), sel_dur_key)
 
-            safe_markdown(f"<div class='mm-field-label-wrap' style='margin-top: 14px;'><span>{T.get('label_additional_notes', 'Additional Clinical Notes & Triggers (Optional)')}</span></div>")
+            safe_markdown(f"<div class='mm-field-label-wrap' style='margin-top: 14px; margin-bottom: 6px; font-size: 0.85rem; font-weight: 700; color: var(--mm-text-primary);'><span>{T.get('label_additional_notes', 'Additional Clinical Notes & Triggers (Optional)')}</span></div>")
             additional_desc = st.text_area(
                 "Additional Details",
                 value=st.session_state.get("user_context", {}).get("details", ""),
@@ -1489,9 +1491,9 @@ if st.session_state["active_panel"] == "Health Assessment":
     elif current_step == 3:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header">
-                <div class="mm-step-header-left">
-                    <div class="mm-step-header-icon">
+            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+                <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round"/>
                             <rect x="8" y="2" width="8" height="4" rx="1.5" fill="#2563EB"/>
@@ -1499,12 +1501,12 @@ if st.session_state["active_panel"] == "Health Assessment":
                         </svg>
                     </div>
                     <div>
-                        <div class="mm-step-header-title">{T.get("step3_title", "Medical History")}</div>
-                        <div class="mm-step-header-sub">{T.get("step3_sub", "Tell us about your existing health background to get more accurate insights.")}</div>
+                        <div class="mm-step-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("step3_title", "Medical History")}</div>
+                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("step3_sub", "Tell us about your existing health background to get more accurate insights.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-info-pill">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 8px 14px; font-size: 0.76rem; color: #1D4ED8; font-weight: 600; line-height: 1.35; max-width: 380px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
                         <circle cx="12" cy="12" r="10"></circle>
                         <line x1="12" y1="16" x2="12" y2="12"></line>
                         <line x1="12" y1="8" x2="12.01" y2="8"></line>
@@ -1515,12 +1517,14 @@ if st.session_state["active_panel"] == "Health Assessment":
             """)
 
             safe_markdown(f"""
-            <div class="mm-field-label-wrap" style="margin-top: 14px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4.5 3v5a5.5 5.5 0 0 0 11 0V3"></path>
-                    <path d="M10 13.5v3.5a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-1.5"></path>
-                    <circle cx="17" cy="15.5" r="2.5"></circle>
-                </svg>
+            <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
+                <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4.5 3v5a5.5 5.5 0 0 0 11 0V3"></path>
+                        <path d="M10 13.5v3.5a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-1.5"></path>
+                        <circle cx="17" cy="15.5" r="2.5"></circle>
+                    </svg>
+                </div>
                 <span>{T.get('label_conditions', 'Pre-existing Medical Conditions')}</span>
             </div>
             """)
@@ -1552,11 +1556,13 @@ if st.session_state["active_panel"] == "Health Assessment":
             col_m1, col_m2 = st.columns(2)
             with col_m1:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path>
-                        <path d="m8.5 8.5 7 7"></path>
-                    </svg>
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path>
+                            <path d="m8.5 8.5 7 7"></path>
+                        </svg>
+                    </div>
                     <span>{T.get('label_medications', 'Current Ongoing Medications')}</span>
                 </div>
                 """)
@@ -1569,18 +1575,20 @@ if st.session_state["active_panel"] == "Health Assessment":
                 st.session_state["user_context"]["medications"] = curr_meds
             with col_m2:
                 safe_markdown(f"""
-                <div class="mm-field-label-wrap">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="4"></circle>
-                        <path d="M12 2v2"></path>
-                        <path d="M12 20v2"></path>
-                        <path d="m4.93 4.93 1.41 1.41"></path>
-                        <path d="m17.66 17.66 1.41 1.41"></path>
-                        <path d="M2 12h2"></path>
-                        <path d="M20 12h2"></path>
-                        <path d="m6.34 17.66-1.41 1.41"></path>
-                        <path d="m19.07 4.93-1.41 1.41"></path>
-                    </svg>
+                <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="4"></circle>
+                            <path d="M12 2v2"></path>
+                            <path d="M12 20v2"></path>
+                            <path d="m4.93 4.93 1.41 1.41"></path>
+                            <path d="m17.66 17.66 1.41 1.41"></path>
+                            <path d="M2 12h2"></path>
+                            <path d="M20 12h2"></path>
+                            <path d="m6.34 17.66-1.41 1.41"></path>
+                            <path d="m19.07 4.93-1.41 1.41"></path>
+                        </svg>
+                    </div>
                     <span>{T.get('label_allergies', 'Known Food or Drug Allergies')}</span>
                 </div>
                 """)
@@ -1593,10 +1601,15 @@ if st.session_state["active_panel"] == "Health Assessment":
                 st.session_state["user_context"]["allergies"] = allergies_val
 
             safe_markdown(f"""
-            <div class="mm-field-label-wrap" style="margin-top: 14px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="#2563EB">
-                    <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
-                </svg>
+            <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-top: 14px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
+                <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
                 <span>{T.get('label_family_history', 'Relevant Family Medical History (Optional)')}</span>
             </div>
             """)
@@ -1610,7 +1623,7 @@ if st.session_state["active_panel"] == "Health Assessment":
 
             nav_c1, nav_c2 = st.columns([1, 1.8])
             with nav_c1:
-                if st.button(f"← {T.get('btn_prev', 'Previous Step')}", key="p3_prev_btn", use_container_width=True):
+                if st.button(f"← {T.get('btn_prev', 'Previous Step')}", key="p2_prev_btn", use_container_width=True):
                     st.session_state["assessment_step"] = 2
                     st.rerun()
             with nav_c2:
@@ -4139,14 +4152,14 @@ elif st.session_state["active_panel"] == "Medical Report":
                         doc_text_stream = st.text_area(
                             "Extracted OCR Text Stream",
                             value=raw_extracted,
-                            height=240,
+                            height=275,
                             disabled=True,
                             label_visibility="collapsed"
                         )
                     else:
                         doc_text_stream = ""
                         safe_markdown("""
-                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-top: 4px; min-height: 240px; display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center;">
+                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-top: 4px; min-height: 275px; display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center;">
                             <b style="color: #EF4444; font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                                 No Valid Medical Text Detected
@@ -4163,7 +4176,7 @@ elif st.session_state["active_panel"] == "Medical Report":
                         "Extracted OCR Text Stream",
                         value="",
                         placeholder="No document uploaded yet. Please upload a PDF or Image on the left to scan real medical parameters...",
-                        height=240,
+                        height=275,
                         disabled=True,
                         label_visibility="collapsed"
                     )
@@ -4361,24 +4374,13 @@ elif st.session_state["active_panel"] == "Medical Report":
         gender_for_report = st.session_state.get("p2_gender", "Male")
         doc_name = st.session_state.get("p2_doc_name", "Medical Document")
 
-        st.markdown(f"""
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <div>
-                <b style="font-size: 1.15rem; color: var(--mm-text-primary);">Diagnostic Evaluation & Clinical Findings</b>
-                <div style="font-size: 0.82rem; color: var(--mm-text-secondary); margin-top: 2px;">
-                    {doc_name} • {doc_type_choice} • Age: {age_for_report}, Gender: {gender_for_report}
-                </div>
-            </div>
-            <span class="mm-badge mm-badge-success" style="font-size: 0.76rem; padding: 4px 12px;">AI Analysis Complete</span>
-        </div>
-        """, unsafe_allow_html=True)
-        
         is_prescription = "Prescription" in str(doc_type_choice) or "पर्ची" in str(doc_type_choice) or "પ્રિસ્ક્રિપ્શન" in str(doc_type_choice) or "Presc" in str(doc_type_choice)
         is_imaging = "Imaging" in str(doc_type_choice) or "Radiology" in str(doc_type_choice) or "रेडियोलॉजी" in str(doc_type_choice) or "इमेजिंग" in str(doc_type_choice) or "રેડિયોલોજી" in str(doc_type_choice) or "ઇમેજિંગ" in str(doc_type_choice)
 
         if is_prescription:
             presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
-            if presc_res.get("total_medicines_identified", 0) == 0:
+            total_meds = presc_res.get("total_medicines_identified", 0)
+            if total_meds == 0:
                 st.markdown(f"""
                 <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
                     <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Prescription Medications Detected</h4>
@@ -4388,8 +4390,6 @@ elif st.session_state["active_panel"] == "Medical Report":
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.success(f"Identified {presc_res['total_medicines_identified']} medications in prescription.")
-
                 # Automatic Clinical AI Patient Guide for Prescriptions
                 rx_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
                 if rx_cache_key not in st.session_state:
@@ -4406,30 +4406,37 @@ elif st.session_state["active_panel"] == "Medical Report":
                 else:
                     rx_breakdown = st.session_state[rx_cache_key]
 
-                if rx_breakdown:
-                    st.markdown(f"""
-                    <div class="mm-card" style="border-left: 4px solid #2563EB; background: rgba(37, 99, 235, 0.04); padding: 20px; margin: 16px 0 16px 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(37, 99, 235, 0.15); padding-bottom: 8px;">
-                            <div>
-                                <b style="font-size: 1.05rem; color: var(--mm-text-primary);">Comprehensive Clinical AI Prescription Guide & Medication Plan</b>
-                                <div style="font-size: 0.80rem; color: var(--mm-text-secondary); margin-top: 2px;">
-                                    Automated Drug Purpose • Dosage Timing • Food Interactions • Precautions
-                                </div>
-                            </div>
-                            <span class="mm-badge mm-badge-brand">AI Analysis</span>
-                        </div>
-                        <div style="font-size: 0.92rem; line-height: 1.6; color: var(--mm-text-primary);">
-                    """, unsafe_allow_html=True)
-                    st.markdown(rx_breakdown)
-                    st.markdown("</div></div>", unsafe_allow_html=True)
+                warn_count = sum(1 for m in presc_res.get("medicines", []) if "warning" in m.get("info", {}).get("warnings", "").lower() or "caution" in m.get("info", {}).get("warnings", "").lower())
+                kpi_data = {
+                    "card1": {
+                        "label": "TOTAL MEDICINES IDENTIFIED",
+                        "val": total_meds,
+                        "sub": "From Doctor Prescription"
+                    },
+                    "card2": {
+                        "label": "SAFETY PRECAUTIONS NOTED",
+                        "val": warn_count,
+                        "sub": f"↑ {warn_count}" if warn_count > 0 else "↓ 0"
+                    },
+                    "card3": {
+                        "label": "OVERALL CLINICAL STATUS",
+                        "val": "Verified Regimen" if warn_count == 0 else "Review Precautions",
+                        "sub": "Prescription Regimen Ready"
+                    }
+                }
 
-                st.markdown("<div class='mm-section-header' style='font-size: 1.05rem; font-weight: 700; color: var(--mm-text-primary); margin: 16px 0 8px 0;'>Prescription Medication Breakdown</div>", unsafe_allow_html=True)
-                for m in presc_res["medicines"]:
-                    with st.expander(f"{m['extracted_name']} — {m['frequency']} ({m['timing']})", expanded=True):
-                        info = m.get("info", {})
-                        st.write(f"**Generic Formulation:** {info.get('generic_name', 'Standard')}")
-                        st.write(f"**Indications:** {info.get('purpose', 'As prescribed')}")
-                        st.warning(f"**Safety & Warnings:** {info.get('warnings', 'Take as directed.')}")
+                render_diagnostic_evaluation_view(
+                    doc_name=doc_name,
+                    doc_type_choice=doc_type_choice,
+                    age_for_report=age_for_report,
+                    gender_for_report=gender_for_report,
+                    findings=presc_res.get("medicines", []),
+                    breakdown_text=rx_breakdown,
+                    kpi_data=kpi_data,
+                    report_category="prescription",
+                    T=T,
+                    lang_code=lang_code
+                )
 
         elif is_imaging:
             with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
@@ -4438,7 +4445,7 @@ elif st.session_state["active_panel"] == "Medical Report":
             total_findings = rad_res.get("total_findings", 0)
             if total_findings == 0 or not rad_res.get("is_valid_radiology_report", True):
                 st.markdown(f"""
-                <div class="mm-card"style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
+                <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
                     <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Radiology / Diagnostic Imaging Findings Detected</h4>
                     <p style="margin: 0; font-size: 0.92rem; color: var(--mm-text-secondary);">
                         {rad_res.get("summary", "The uploaded document does not contain recognizable diagnostic imaging or radiology impressions (such as X-Ray, CT Scan, MRI, Ultrasound, etc.). Please upload a valid medical radiology report.")}
@@ -4459,14 +4466,6 @@ elif st.session_state["active_panel"] == "Medical Report":
                 except Exception as e:
                     print(f"Notice logging radiology report: {e}")
 
-                r_col1, r_col2 = st.columns(2)
-                with r_col1:
-                    st.metric("Total Imaging Findings", total_findings)
-                with r_col2:
-                    sev_status = rad_res.get("overall_severity", "Normal")
-                    st.metric("Overall Radiological Status", sev_status)
-
-                # Automatic Clinical AI Patient Guide for Radiology Reports
                 rad_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
                 if rad_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Radiology Interpretation..."):
@@ -4482,38 +4481,38 @@ elif st.session_state["active_panel"] == "Medical Report":
                 else:
                     rad_breakdown = st.session_state[rad_cache_key]
 
-                if rad_breakdown:
-                    st.markdown(f"""
-                    <div class="mm-card" style="border-left: 4px solid #2563EB; background: rgba(37, 99, 235, 0.04); padding: 20px; margin: 16px 0 16px 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(37, 99, 235, 0.15); padding-bottom: 8px;">
-                            <div>
-                                <b style="font-size: 1.05rem; color: var(--mm-text-primary);">Comprehensive Clinical AI Radiology Interpretation & Guide</b>
-                                <div style="font-size: 0.80rem; color: var(--mm-text-secondary); margin-top: 2px;">
-                                    Plain-Language Scan Meaning • Anatomical Observations • Severity • Next Steps
-                                </div>
-                            </div>
-                            <span class="mm-badge mm-badge-brand">AI Analysis</span>
-                        </div>
-                        <div style="font-size: 0.92rem; line-height: 1.6; color: var(--mm-text-primary);">
-                    """, unsafe_allow_html=True)
-                    st.markdown(rad_breakdown)
-                    st.markdown("</div></div>", unsafe_allow_html=True)
+                sev_status = rad_res.get("overall_severity", "Normal")
+                acute_count = sum(1 for f in rad_res.get("findings", []) if f.get("severity") in ["High", "Emergency", "Medium"])
+                kpi_data = {
+                    "card1": {
+                        "label": "TOTAL IMAGING FINDINGS",
+                        "val": total_findings,
+                        "sub": "From Radiology Scan"
+                    },
+                    "card2": {
+                        "label": "ABNORMAL / ACUTE FLAGS",
+                        "val": acute_count,
+                        "sub": f"↑ {acute_count}" if acute_count > 0 else "↓ 0"
+                    },
+                    "card3": {
+                        "label": "OVERALL CLINICAL STATUS",
+                        "val": sev_status,
+                        "sub": "Diagnostic Impression"
+                    }
+                }
 
-                st.markdown("<div class='mm-section-header'style='font-size: 1.05rem; font-weight: 700; color: var(--mm-text-primary); margin: 16px 0 8px 0;'>Radiological Findings & Clinical Impressions</div>", unsafe_allow_html=True)
-                for item in rad_res.get("findings", []):
-                    sev = item.get("severity", "Normal")
-                    pill_class = "mm-badge-critical"if sev in ["High", "Emergency"] else ("mm-badge-brand"if sev == "Medium"else "mm-badge-success")
-                    st.markdown(f"""
-                    <div class="mm-card"style="padding: 16px; margin-bottom: 10px;">
-                        <div class="mm-card-header">
-                            <h4 class="mm-card-title">{item.get('finding_name', item.get('english_name', 'Radiology Finding'))}</h4>
-                            <span class="mm-badge {pill_class}">{sev.upper()}</span>
-                        </div>
-                        <p style="margin: 6px 0; font-size: 0.88rem; color: var(--mm-text-secondary);"><b>Modality:</b> {item.get('modality', 'Diagnostic Imaging')}</p>
-                        <p style="margin: 4px 0; font-size: 0.92rem; color: var(--mm-text-primary);">{item.get('explanation', '')}</p>
-                        <p style="margin: 6px 0 0 0; font-size: 0.88rem; color: #2563EB;"><b>Clinical Action / Recommendation:</b> {item.get('recommendation', '')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                render_diagnostic_evaluation_view(
+                    doc_name=doc_name,
+                    doc_type_choice=doc_type_choice,
+                    age_for_report=age_for_report,
+                    gender_for_report=gender_for_report,
+                    findings=rad_res.get("findings", []),
+                    breakdown_text=rad_breakdown,
+                    kpi_data=kpi_data,
+                    report_category="radiology",
+                    T=T,
+                    lang_code=lang_code
+                )
 
         else:
             with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
@@ -4523,7 +4522,7 @@ elif st.session_state["active_panel"] == "Medical Report":
 
             if total_detected == 0:
                 st.markdown(f"""
-                <div class="mm-card"style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
+                <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
                     <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Clinical Lab Parameters Detected</h4>
                     <p style="margin: 0; font-size: 0.92rem; color: var(--mm-text-secondary);">
                         {lab_res.get("summary", "The uploaded document does not appear to be a medical lab report or does not contain recognized diagnostic test values. Please ensure you upload a clear laboratory report, blood test (CBC, LFT, KFT, Lipid Profile), or pathology document.")}
@@ -4544,15 +4543,8 @@ elif st.session_state["active_panel"] == "Medical Report":
                 except Exception as e:
                     print(f"Notice logging report analysis: {e}")
 
-                m_col1, m_col2, m_col3 = st.columns(3)
-                with m_col1:
-                    st.metric("Total Parameters Evaluated", total_detected)
-                with m_col2:
-                    ab_count = lab_res.get("abnormal_count", 0)
-                    st.metric("Abnormal / Out-of-Range", ab_count, delta=-ab_count if ab_count > 0 else 0)
-                with m_col3:
-                    status_overall = "Needs Attention" if lab_res.get("abnormal_count", 0) > 0 else "All Normal"
-                    st.metric("Overall Clinical Status", status_overall)
+                ab_count = lab_res.get("abnormal_count", 0)
+                status_overall = "Needs Attention" if ab_count > 0 else "All Normal"
 
                 # Automatic Clinical AI Patient Guide for Blood / Pathology Lab Reports
                 lab_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
@@ -4570,75 +4562,36 @@ elif st.session_state["active_panel"] == "Medical Report":
                 else:
                     lab_breakdown = st.session_state[lab_cache_key]
 
-                if lab_breakdown:
-                    st.markdown(f"""
-                    <div class="mm-card" style="border-left: 4px solid #2563EB; background: rgba(37, 99, 235, 0.04); padding: 20px; margin: 16px 0 16px 0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px solid rgba(37, 99, 235, 0.15); padding-bottom: 8px;">
-                            <div>
-                                <b style="font-size: 1.05rem; color: var(--mm-text-primary);">Comprehensive Clinical AI Patient Guide & Recovery Plan</b>
-                                <div style="font-size: 0.80rem; color: var(--mm-text-secondary); margin-top: 2px;">
-                                    Automated Plain-Language Interpretation • Organ Health • Dietary Recovery • Safety Precautions
-                                </div>
-                            </div>
-                            <span class="mm-badge mm-badge-brand">AI Analysis</span>
-                        </div>
-                        <div style="font-size: 0.92rem; line-height: 1.6; color: var(--mm-text-primary);">
-                    """, unsafe_allow_html=True)
-                    st.markdown(lab_breakdown)
-                    st.markdown("</div></div>", unsafe_allow_html=True)
+                kpi_data = {
+                    "card1": {
+                        "label": "TOTAL PARAMETERS EVALUATED",
+                        "val": total_detected,
+                        "sub": "From Lab Report"
+                    },
+                    "card2": {
+                        "label": "ABNORMAL / OUT-OF-RANGE",
+                        "val": ab_count,
+                        "sub": f"↑ {ab_count}" if ab_count > 0 else "↓ 0"
+                    },
+                    "card3": {
+                        "label": "OVERALL CLINICAL STATUS",
+                        "val": status_overall,
+                        "sub": "Within Reference Range" if status_overall == "All Normal" else "Review Recommended"
+                    }
+                }
 
-                st.markdown("<div class='mm-section-header'style='font-size: 1.05rem; font-weight: 700; color: var(--mm-text-primary); margin: 16px 0 8px 0;'>Detailed Parameter Breakdown</div>", unsafe_allow_html=True)
-                for item in lab_res.get("findings", []):
-                    status = item.get("status", "Normal")
-                    pill_class = "mm-badge-critical" if status in ["Low", "High"] else "mm-badge-success"
-                    st.markdown(f"""
-                    <div class="mm-card"style="padding: 16px; margin-bottom: 10px;">
-                        <div class="mm-card-header">
-                            <h4 class="mm-card-title">{item['test_name']}</h4>
-                            <span class="mm-badge {pill_class}">{status.upper()}</span>
-                        </div>
-                        <p style="margin: 6px 0; font-size: 0.95rem;">
-                            <b>Your Value:</b> <span style="font-size: 1.15rem; font-weight: 800; color: {'#EF4444' if status != 'Normal' else '#22C55E'};">{item['value']} {item.get('unit', '')}</span> &nbsp;|&nbsp; 
-                            <b>Reference Range:</b> {item.get('reference_range', 'Standard')}
-                        </p>
-                        <p style="margin: 4px 0; font-size: 0.88rem; color: var(--mm-text-secondary);">{item.get('explanation', '')}</p>
-                        <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: #2563EB;"><b>Clinical Advice:</b> {item.get('action_advice', '')}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-        # Clinical Advisory & Medical Disclaimer at end of report analysis
-        st.markdown(f"""
-        <div class="mm-clinical-advisory-banner"style="background: rgba(234, 88, 12, 0.08); border: 1.2px solid rgba(234, 88, 12, 0.35); border-left: 5px solid #EA580C; border-radius: 10px; padding: 12px 16px; margin-top: 14px; margin-bottom: 14px;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                <span style="font-size: 1.1rem;"></span>
-                <b style="color: #FB923C; font-size: 0.88rem; letter-spacing: 0.02em; text-transform: uppercase;">{T.get("sidebar_warning_title", "Clinical Advisory")}</b>
-            </div>
-            <p style="margin: 0; font-size: 0.82rem; color: var(--mm-text-primary); line-height: 1.5;">
-                {T.get("sidebar_warning_desc", "DocMindX AI can make mistakes. Do not rely solely on AI suggestions — always consult a certified doctor or licensed physician for clinical decisions.")}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        # Action Buttons: Deep AI Analysis & New Scan
-        p2_act_c1, p2_act_c2 = st.columns([1.2, 1])
-        with p2_act_c1:
-            if st.button(" " + T.get("btn_deep_ai", "Deep Analyze with AI"), type="primary", use_container_width=True, key="btn_p2_deep_ai_action"):
-                show_deep_ai_report_dialog(
-                    report_text=st.session_state.get("p2_doc_text_stream", ""),
-                    report_type=st.session_state.get("p2_doc_type_choice", "Medical Report"),
+                render_diagnostic_evaluation_view(
+                    doc_name=doc_name,
+                    doc_type_choice=doc_type_choice,
+                    age_for_report=age_for_report,
+                    gender_for_report=gender_for_report,
+                    findings=lab_res.get("findings", []),
+                    breakdown_text=lab_breakdown,
+                    kpi_data=kpi_data,
+                    report_category="lab",
+                    T=T,
                     lang_code=lang_code
                 )
-        with p2_act_c2:
-            if st.button(T.get("btn_new_scan", "New Scan / Upload Another Document"), icon=":material/refresh:", use_container_width=True, key="btn_p2_new_scan_action"):
-                st.session_state["p2_step"] = 1
-                st.session_state["p2_cached_doc_key"] = None
-                st.session_state["p2_cached_doc_text"] = ""
-                st.session_state["p2_deep_ai_chat"] = []
-                st.session_state["p2_doc_text_stream"] = ""
-                keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_")]
-                for k in keys_to_clear:
-                    st.session_state.pop(k, None)
-                st.rerun()
 
     # Footer
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
@@ -7045,39 +6998,61 @@ div[class*="st-key-dyn_chip_"] button p strong {
     background-size: 20px 20px !important;
 }
 
-/* Row 3: 3 Column Cards (Food timing?, Danger signs, Yoga poses) */
-/* Row 3 & Row 4: 2 Column Compact Horizontal Cards (Food timing?, Danger signs, Yoga poses, Lab report scanner) */
+/* Row 3 & Row 4: 2 Column Compact Horizontal Cards (Food timing?, Danger signs, Yoga poses, Lab report) */
 .st-key-dyn_chip_r3_1 button,
 .st-key-dyn_chip_r3_2 button,
 .st-key-dyn_chip_r3_3 button,
 .st-key-dyn_chip_r4_1 button {
-    padding: 8px 26px 8px 48px !important;
-    min-height: 58px !important;
+    padding: 10px 28px 10px 48px !important;
+    min-height: 64px !important;
     height: auto !important;
     display: flex !important;
     align-items: center !important;
     text-align: left !important;
     justify-content: flex-start !important;
     overflow: visible !important;
+    box-sizing: border-box !important;
 }
-.st-key-dyn_chip_r3_1 button p strong,
-.st-key-dyn_chip_r3_2 button p strong,
-.st-key-dyn_chip_r3_3 button p strong,
-.st-key-dyn_chip_r4_1 button p strong {
-    font-size: 0.82rem !important;
-    line-height: 1.35 !important;
-    display: block !important;
-    overflow: visible !important;
-    margin-bottom: 2px !important;
+.st-key-dyn_chip_r3_1 button div[data-testid="stMarkdownContainer"],
+.st-key-dyn_chip_r3_2 button div[data-testid="stMarkdownContainer"],
+.st-key-dyn_chip_r3_3 button div[data-testid="stMarkdownContainer"],
+.st-key-dyn_chip_r4_1 button div[data-testid="stMarkdownContainer"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    width: 100% !important;
+    text-align: left !important;
 }
-.st-key-dyn_chip_r3_1 button p,
-.st-key-dyn_chip_r3_2 button p,
-.st-key-dyn_chip_r3_3 button p,
-.st-key-dyn_chip_r4_1 button p {
-    font-size: 0.68rem !important;
-    line-height: 1.30 !important;
-    overflow: visible !important;
+.st-key-dyn_chip_r3_1 button div[data-testid="stMarkdownContainer"] p,
+.st-key-dyn_chip_r3_2 button div[data-testid="stMarkdownContainer"] p,
+.st-key-dyn_chip_r3_3 button div[data-testid="stMarkdownContainer"] p,
+.st-key-dyn_chip_r4_1 button div[data-testid="stMarkdownContainer"] p {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
     margin: 0 !important;
+    padding: 0 !important;
+    font-size: 0.72rem !important;
+    line-height: 1.25 !important;
+    color: #64748B !important;
+}
+.st-key-dyn_chip_r3_1 button div[data-testid="stMarkdownContainer"] p br,
+.st-key-dyn_chip_r3_2 button div[data-testid="stMarkdownContainer"] p br,
+.st-key-dyn_chip_r3_3 button div[data-testid="stMarkdownContainer"] p br,
+.st-key-dyn_chip_r4_1 button div[data-testid="stMarkdownContainer"] p br {
+    display: none !important;
+}
+.st-key-dyn_chip_r3_1 button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-dyn_chip_r3_2 button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-dyn_chip_r3_3 button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-dyn_chip_r4_1 button div[data-testid="stMarkdownContainer"] p strong {
+    font-size: 0.86rem !important;
+    font-weight: 700 !important;
+    line-height: 1.20 !important;
+    color: #0F172A !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
 }
 
 /* Right Chevron Arrows on 2-Column Cards */
@@ -7382,7 +7357,7 @@ if chat_is_open:
                     st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
                     st.rerun()
             with col_qa4_2:
-                if st.button("**Lab report scanner**  \nUpload & analyze reports", key="dyn_chip_r4_1", use_container_width=True):
+                if st.button("**Lab report**  \nUpload & analyze reports", key="dyn_chip_r4_1", use_container_width=True):
                     st.session_state["floating_chat_history"].append({"role": "user", "content": "How and where do I scan my lab blood report or doctor prescription in DocMindX AI?"})
                     with st.spinner("Analyzing query..."):
                         reply = ask_DocMindX_ai("How and where do I scan my lab blood report or doctor prescription in DocMindX AI?", st.session_state["floating_chat_history"], current_context, lang_code)

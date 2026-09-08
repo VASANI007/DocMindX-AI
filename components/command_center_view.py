@@ -1344,15 +1344,15 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
             # Facility Selector & 4 Inventory Summary Stat Cards Row (Image 4)
             fac_col, s1_col, s2_col, s3_col, s4_col = st.columns([1.5, 1, 1, 1, 1])
             with fac_col:
-                with st.container(border=True):
+                with st.container(key="cc_inv_fac_card", border=True):
                     st.markdown("""
-                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                        <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <div style="width: 26px; height: 26px; border-radius: 8px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
                             </svg>
                         </div>
-                        <span style="font-size: 0.76rem; font-weight: 700; color: var(--mm-text-secondary);">Select Health Facility for Inventory Inspection</span>
+                        <span style="font-size: 0.74rem; font-weight: 700; color: var(--mm-text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Select Health Facility for Inspection</span>
                     </div>
                     """, unsafe_allow_html=True)
                     sel_fac_name = st.selectbox(
@@ -1363,38 +1363,38 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                     )
             with s1_col:
                 st.markdown(f"""
-                <div class="cc-kpi-card" style="min-height: 84px; padding: 10px 12px;">
-                    <div class="cc-kpi-icon" style="background: rgba(16, 185, 129, 0.10); color: #10B981; width: 38px; height: 38px;">
+                <div class="cc-kpi-card" style="min-height: 96px; height: 96px; max-height: 96px; padding: 10px 14px; box-sizing: border-box; display: flex; align-items: center;">
+                    <div class="cc-kpi-icon" style="background: rgba(16, 185, 129, 0.10); color: #10B981; width: 40px; height: 40px; flex-shrink: 0;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                         </svg>
                     </div>
                     <div class="cc-kpi-content">
                         <div class="cc-kpi-label" style="font-size: 0.65rem;">TOTAL MEDICINES</div>
-                        <div class="cc-kpi-val" style="font-size: 1.20rem; margin: 1px 0;">{total_meds}</div>
+                        <div class="cc-kpi-val" style="font-size: 1.22rem; margin: 1px 0;">{total_meds}</div>
                         <div style="font-size: 0.68rem; color: var(--mm-text-secondary); font-weight: 600;">In NLEM 2022</div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             with s2_col:
                 st.markdown(f"""
-                <div class="cc-kpi-card" style="min-height: 84px; padding: 10px 12px;">
-                    <div class="cc-kpi-icon" style="background: rgba(59, 130, 246, 0.10); color: #3B82F6; width: 38px; height: 38px;">
+                <div class="cc-kpi-card" style="min-height: 96px; height: 96px; max-height: 96px; padding: 10px 14px; box-sizing: border-box; display: flex; align-items: center;">
+                    <div class="cc-kpi-icon" style="background: rgba(59, 130, 246, 0.10); color: #3B82F6; width: 40px; height: 40px; flex-shrink: 0;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 8v13H3V8"></path><path d="M1 3h22v5H1z"></path><path d="M10 12h4"></path>
                         </svg>
                     </div>
                     <div class="cc-kpi-content">
                         <div class="cc-kpi-label" style="font-size: 0.65rem;">IN STOCK</div>
-                        <div class="cc-kpi-val" style="font-size: 1.20rem; margin: 1px 0;">{in_stock_count}</div>
+                        <div class="cc-kpi-val" style="font-size: 1.22rem; margin: 1px 0;">{in_stock_count}</div>
                         <div><span class="cc-kpi-pill" style="background: rgba(16, 185, 129, 0.12); color: #059669; font-size: 0.65rem; padding: 1px 6px;">↑ {in_stock_pct}% Available</span></div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             with s3_col:
                 st.markdown(f"""
-                <div class="cc-kpi-card" style="min-height: 84px; padding: 10px 12px;">
-                    <div class="cc-kpi-icon" style="background: rgba(245, 158, 11, 0.10); color: #F59E0B; width: 38px; height: 38px;">
+                <div class="cc-kpi-card" style="min-height: 96px; height: 96px; max-height: 96px; padding: 10px 14px; box-sizing: border-box; display: flex; align-items: center;">
+                    <div class="cc-kpi-icon" style="background: rgba(245, 158, 11, 0.10); color: #F59E0B; width: 40px; height: 40px; flex-shrink: 0;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
                             <line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line>
@@ -1402,15 +1402,15 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                     </div>
                     <div class="cc-kpi-content">
                         <div class="cc-kpi-label" style="font-size: 0.65rem;">LOW STOCK</div>
-                        <div class="cc-kpi-val" style="font-size: 1.20rem; margin: 1px 0;">{warning_count}</div>
+                        <div class="cc-kpi-val" style="font-size: 1.22rem; margin: 1px 0;">{warning_count}</div>
                         <div><span class="cc-kpi-pill" style="background: rgba(245, 158, 11, 0.12); color: #D97706; font-size: 0.65rem; padding: 1px 6px;">↑ {warning_pct}% Items</span></div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
             with s4_col:
                 st.markdown(f"""
-                <div class="cc-kpi-card" style="min-height: 84px; padding: 10px 12px;">
-                    <div class="cc-kpi-icon" style="background: rgba(239, 68, 68, 0.10); color: #EF4444; width: 38px; height: 38px;">
+                <div class="cc-kpi-card" style="min-height: 96px; height: 96px; max-height: 96px; padding: 10px 14px; box-sizing: border-box; display: flex; align-items: center;">
+                    <div class="cc-kpi-icon" style="background: rgba(239, 68, 68, 0.10); color: #EF4444; width: 40px; height: 40px; flex-shrink: 0;">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>
@@ -1418,7 +1418,7 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                     </div>
                     <div class="cc-kpi-content">
                         <div class="cc-kpi-label" style="font-size: 0.65rem;">CRITICAL</div>
-                        <div class="cc-kpi-val" style="font-size: 1.20rem; margin: 1px 0;">{critical_count}</div>
+                        <div class="cc-kpi-val" style="font-size: 1.22rem; margin: 1px 0;">{critical_count}</div>
                         <div><span class="cc-kpi-pill" style="background: rgba(239, 68, 68, 0.12); color: #DC2626; font-size: 0.65rem; padding: 1px 6px;">↑ {critical_pct}% Items</span></div>
                     </div>
                 </div>
@@ -2127,7 +2127,27 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                         <span style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-secondary);">Deficit Medicine to Reallocate</span>
                     </div>
                     """, unsafe_allow_html=True)
-                    rec_med = st.selectbox("Deficit Medicine to Reallocate", options=list(target_receiver["inventory"].keys()), format_func=lambda k: target_receiver["inventory"][k]["name"], key="cc_rec_med", label_visibility="collapsed")
+                    # Sort medicines: Deficit/Critical first, then Warning, then Adequate
+                    med_keys = list(target_receiver["inventory"].keys())
+                    def _med_sort_key(m_id):
+                        st_val = target_receiver["inventory"][m_id].get("status", "ADEQUATE")
+                        order = {"CRITICAL": 0, "WARNING": 1, "ADEQUATE": 2}
+                        return (order.get(st_val, 3), target_receiver["inventory"][m_id]["name"])
+                    med_keys.sort(key=_med_sort_key)
+
+                    def _format_med_opt(m_id):
+                        item = target_receiver["inventory"][m_id]
+                        status = item.get("status", "ADEQUATE")
+                        prefix = f"⚠️ [{status}] " if status in ["CRITICAL", "WARNING"] else ""
+                        return f"{prefix}{item['name']} ({item['stock']:,} {item.get('unit', 'units')} • {item.get('days_remaining', 0)}d left)"
+
+                    rec_med = st.selectbox(
+                        "Deficit Medicine to Reallocate",
+                        options=med_keys,
+                        format_func=_format_med_opt,
+                        key="cc_rec_med",
+                        label_visibility="collapsed"
+                    )
 
             solver_res = redistribution_optimizer.find_optimal_donors(
                 target_facility_id=target_receiver["id"],
@@ -2179,28 +2199,37 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
             if not donors:
                 st.warning("No suitable surplus donor facilities found within 350 km radius meeting minimum safety reserve criteria.")
             else:
-                # Subtitle (Image 2)
-                st.markdown("""
-                <div style="display: flex; align-items: center; gap: 10px; margin: 20px 0 14px 0;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="1" y="3" width="15" height="13"></rect>
-                            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
-                            <circle cx="5.5" cy="18.5" r="2.5"></circle>
-                            <circle cx="18.5" cy="18.5" r="2.5"></circle>
-                        </svg>
+                # Subtitle with total count of all identified surplus donors
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; justify-content: space-between; margin: 20px 0 14px 0; flex-wrap: wrap; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="1" y="3" width="15" height="13"></rect>
+                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                                <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                            </svg>
+                        </div>
+                        <h3 style="margin: 0; font-size: 1.20rem; font-weight: 800; color: var(--mm-text-primary);">Optimal Surplus Donors Identified</h3>
                     </div>
-                    <h3 style="margin: 0; font-size: 1.20rem; font-weight: 800; color: var(--mm-text-primary);">Optimal Surplus Donors Identified</h3>
+                    <span style="background: rgba(16, 185, 129, 0.12); color: #059669; font-weight: 800; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; border: 1px solid rgba(16, 185, 129, 0.25);">
+                        {len(donors)} Eligible Facilities Found
+                    </span>
                 </div>
                 """, unsafe_allow_html=True)
 
                 badge_styles = [
                     ("#10B981", "rgba(16, 185, 129, 0.12)"),
                     ("#8B5CF6", "rgba(139, 92, 246, 0.12)"),
-                    ("#F97316", "rgba(249, 115, 22, 0.12)")
+                    ("#F97316", "rgba(249, 115, 22, 0.12)"),
+                    ("#3B82F6", "rgba(59, 130, 246, 0.12)"),
+                    ("#EC4899", "rgba(236, 72, 153, 0.12)"),
+                    ("#06B6D4", "rgba(6, 182, 212, 0.12)"),
                 ]
 
-                for idx, d in enumerate(donors[:3]):
+                # Render all identified surplus donors dynamically without truncating to 3
+                for idx, d in enumerate(donors):
                     color, bg = badge_styles[idx % len(badge_styles)]
                     with st.container(border=True):
                         d_col1, d_col2, d_col3 = st.columns([2.2, 1.1, 1.2], vertical_alignment="center")
@@ -2247,74 +2276,356 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
             active_manifest = st.session_state.get("active_transfer_manifest")
             if active_manifest:
                 st.markdown("---")
-                st.markdown("""
-                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); color: #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                        </svg>
+
+                # Dynamic ATC Formulary Code Lookup (NLEM / WHO standard)
+                atc_lookup = {
+                    "MED_PCM_500": "N02BE01",
+                    "MED_AMX_500": "J01CA04",
+                    "MED_AZI_500": "J01FA10",
+                    "MED_ORS_21G": "A07CA",
+                    "MED_ORS_218": "A07CA",
+                    "MED_ZNC_20": "A12CB01",
+                    "MED_MET_500": "A10BA02",
+                    "MED_AML_05": "C08CA01",
+                    "MED_SAL_100": "R03AC02",
+                    "MED_ALB_400": "P02CA03",
+                    "MED_IFA_L": "B03AA07",
+                    "MED_CIP_500": "J01MA02",
+                    "MED_DOX_100": "J01AA02",
+                    "MED_IV_RL": "B05BB01",
+                    "MED_ART_COMB": "P01BF01",
+                    "MED_ASV_POLY": "J06AA03",
+                    "MED_O2_CYL": "V03AN01",
+                }
+                med_code = active_manifest.get("medicine_id", "")
+                atc_code = atc_lookup.get(med_code, active_manifest.get("atc_code", "N02BE01" if "PCM" in med_code else "NLEM-IND"))
+
+                # Top Header with Government & Trust Badges
+                st.markdown(f"""
+                <div class="mm-manifest-top-header">
+                    <div class="mm-manifest-top-title-group">
+                        <div class="mm-manifest-top-icon">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                                <path d="M12 11h4"></path>
+                                <path d="M12 16h4"></path>
+                                <path d="M8 11h.01"></path>
+                                <path d="M8 16h.01"></path>
+                            </svg>
+                            <div style="position: absolute; bottom: -3px; right: -3px; width: 15px; height: 15px; border-radius: 50%; background: #EF4444; color: #FFF; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; border: 2px solid var(--mm-card-bg, #FFF);">+</div>
+                        </div>
+                        <div>
+                            <h3 class="mm-manifest-top-title">Official Transfer Recommendation Manifest</h3>
+                            <p class="mm-manifest-top-subtitle">Government-approved medicine transfer plan for optimal resource utilization and uninterrupted patient care.</p>
+                        </div>
                     </div>
-                    <h4 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary);">Official Transfer Recommendation Manifest</h4>
+                    <div class="mm-manifest-badges-group">
+                        <div class="mm-gov-badge">
+                            <svg width="22" height="26" viewBox="0 0 24 28" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color: #475569; flex-shrink: 0;">
+                                <path d="M12 2v3M7 5h10M8 5c0 4 4 6 4 6s4-2 4-6M6 13h12M9 13c0 3 3 5 3 5s3-2 3-5M5 21h14M4 25h16"/>
+                                <circle cx="12" cy="17" r="1.5" fill="#3B82F6"/>
+                            </svg>
+                            <div style="line-height: 1.15;">
+                                <div style="font-size: 0.74rem; font-weight: 800; color: var(--mm-text-primary);">Government of India</div>
+                                <div style="font-size: 0.72rem; font-weight: 700; color: var(--mm-text-secondary);">National Health Authority</div>
+                                <div style="font-size: 0.64rem; color: var(--mm-text-secondary); opacity: 0.85;">Ayushman Bharat | Digital Health Mission</div>
+                            </div>
+                        </div>
+                        <div class="mm-trust-badge">
+                            <div style="width: 28px; height: 28px; border-radius: 50%; background: #059669; color: #FFFFFF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                    <polyline points="9 12 11 14 15 10"></polyline>
+                                </svg>
+                            </div>
+                            <div style="line-height: 1.15;">
+                                <div style="font-size: 0.78rem; font-weight: 800; color: #059669;">Public Health First</div>
+                                <div style="font-size: 0.67rem; color: var(--mm-text-secondary);">Safe • Transparent • Accountable</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
-                st.success(f"Transfer Manifest Recommended: `{active_manifest['manifest_id']}` — Consignment of {active_manifest['transfer_quantity']} {active_manifest['unit']} ({active_manifest['medicine_name']}) generated for administrative review.")
 
+                # Green Notification Bar
                 st.markdown(f"""
-                <div style="background: var(--mm-card-bg, #FFFFFF); border: 1.5px solid #10B981; border-radius: 12px; padding: clamp(14px, 4vw, 24px); box-sizing: border-box; box-shadow: 0 4px 18px rgba(16,185,129,0.12); margin-bottom: 16px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(128,128,128,0.2); padding-bottom: 12px; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+                <div class="mm-manifest-notify-banner">
+                    <div class="mm-manifest-notify-left">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="9 12 11 14 15 9"></polyline>
+                        </svg>
+                        <span style="font-weight: 700;">Transfer Manifest Recommended:</span>
+                        <span class="mm-manifest-pill-id">{active_manifest['manifest_id']}</span>
+                        <span>— Consignment of <b>{active_manifest['transfer_quantity']} {active_manifest['unit']}</b> ({active_manifest['medicine_name']}) generated for administrative review.</span>
+                    </div>
+                    <div class="mm-manifest-notify-right">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                        </svg>
+                        <span>Generated: {active_manifest['generated_at']}</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Main Manifest Container
+                st.markdown(f"""
+                <div class="mm-manifest-card-box">
+                    <div class="mm-manifest-header-inner">
                         <div>
-                            <span style="font-size: 0.76rem; font-weight: 700; color: #10B981; letter-spacing: 0.5px; text-transform: uppercase;">GOVERNMENT OF INDIA • NATIONAL HEALTH AUTHORITY</span>
-                            <h3 style="margin: 2px 0 0 0; font-size: 1.35rem; font-weight: 800; color: var(--mm-text-primary);">Manifest ID: {active_manifest['manifest_id']}</h3>
+                            <div style="font-size: 0.72rem; font-weight: 800; color: #059669; letter-spacing: 0.6px; text-transform: uppercase;">GOVERNMENT OF INDIA • NATIONAL HEALTH AUTHORITY</div>
+                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+                                <div style="width: 38px; height: 38px; border-radius: 8px; background: rgba(37, 99, 235, 0.1); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                                        <polyline points="10 9 9 9 8 9"></polyline>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: var(--mm-text-primary); letter-spacing: -0.01em;">Manifest ID: {active_manifest['manifest_id']}</h3>
+                                    <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">Official medicine transfer recommendation for inter-facility resource reallocation</div>
+                                </div>
+                            </div>
                         </div>
-                        <div style="text-align: right;">
-                            <span class="mm-badge mm-badge-brand" style="font-size: 0.72rem; padding: 4px 10px;">{active_manifest.get('status_label', 'RECOMMENDATION — NOT ACTUAL DISPATCH')}</span>
-                            <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 4px;">Generated: {active_manifest['generated_at']}</div>
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 14px; margin-bottom: 16px;">
-                        <div style="background: rgba(0,0,0,0.02); border: 1px solid var(--mm-border, #E2E8F0); border-radius: 8px; padding: 12px;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--mm-text-secondary); text-transform: uppercase;">Consignment Medicine</span>
-                            <div style="font-size: 0.98rem; font-weight: 800; color: var(--mm-text-primary); margin-top: 2px;">{active_manifest['medicine_name']}</div>
-                            <div style="font-size: 0.74rem; color: #3B82F6;">{active_manifest.get('medicine_category', 'Essential Medicine')}</div>
-                        </div>
-                        <div style="background: rgba(0,0,0,0.02); border: 1px solid var(--mm-border, #E2E8F0); border-radius: 8px; padding: 12px;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--mm-text-secondary); text-transform: uppercase;">Allocated Transfer Qty</span>
-                            <div style="font-size: 1.15rem; font-weight: 800; color: #10B981; margin-top: 2px;">{active_manifest['transfer_quantity']} <span style="font-size: 0.82rem;">{active_manifest['unit']}</span></div>
-                            <div style="font-size: 0.74rem; color: var(--mm-text-secondary);">Optimal Batch Allocation</div>
-                        </div>
-                        <div style="background: rgba(0,0,0,0.02); border: 1px solid var(--mm-border, #E2E8F0); border-radius: 8px; padding: 12px;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--mm-text-secondary); text-transform: uppercase;">Transit Route & ETA</span>
-                            <div style="font-size: 0.98rem; font-weight: 800; color: var(--mm-text-primary); margin-top: 2px;">{active_manifest['distance_km']} km</div>
-                            <div style="font-size: 0.74rem; color: #F59E0B;">~{active_manifest['estimated_transit_hours']} Hours Road Transit</div>
-                        </div>
-                        <div style="background: rgba(0,0,0,0.02); border: 1px solid var(--mm-border, #E2E8F0); border-radius: 8px; padding: 12px;">
-                            <span style="font-size: 0.72rem; font-weight: 700; color: var(--mm-text-secondary); text-transform: uppercase;">Provenance & Audit</span>
-                            <div style="font-size: 0.98rem; font-weight: 800; color: var(--mm-text-primary); margin-top: 2px;">RECOMMENDATION</div>
-                            <div style="font-size: 0.74rem; color: #10B981;">HMIS Constrained Solver</div>
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; margin-bottom: 16px;">
-                        <div style="background: rgba(59, 130, 246, 0.05); border-left: 3.5px solid #3B82F6; border-radius: 8px; padding: 12px 14px;">
-                            <b style="font-size: 0.82rem; color: #3B82F6;">Source Facility (Surplus Donor)</b>
-                            <div style="font-size: 0.90rem; font-weight: 700; color: var(--mm-text-primary); margin-top: 3px;">{active_manifest['donor_name']} ({active_manifest.get('donor_facility_type', 'Warehouse')})</div>
-                            <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">ID: <code>{active_manifest['donor_id']}</code> • {active_manifest.get('donor_district', '')}, {active_manifest.get('donor_state', '')}</div>
-                            <div style="font-size: 0.76rem; color: #10B981; margin-top: 4px;"><b>Remaining Safety Buffer:</b> {active_manifest.get('donor_remaining_stock', 0)} {active_manifest['unit']}</div>
-                        </div>
-                        <div style="background: rgba(16, 185, 129, 0.05); border-left: 3.5px solid #10B981; border-radius: 8px; padding: 12px 14px;">
-                            <b style="font-size: 0.82rem; color: #10B981;">Destination Facility (Target Receiver)</b>
-                            <div style="font-size: 0.90rem; font-weight: 700; color: var(--mm-text-primary); margin-top: 3px;">{active_manifest['receiver_name']} ({active_manifest.get('receiver_facility_type', 'PHC')})</div>
-                            <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">ID: <code>{active_manifest['receiver_id']}</code> • {active_manifest.get('receiver_district', '')}, {active_manifest.get('receiver_state', '')}</div>
-                            <div style="font-size: 0.76rem; color: #3B82F6; margin-top: 4px;"><b>Updated Stock Post-Transfer:</b> {active_manifest.get('receiver_updated_stock', 0)} {active_manifest['unit']}</div>
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                            <div style="display: inline-flex; align-items: center; gap: 6px; background: #DBEAFE; color: #1D4ED8; font-size: 0.72rem; font-weight: 700; padding: 5px 12px; border-radius: 9999px; letter-spacing: 0.3px;">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                                </svg>
+                                <span>{active_manifest.get('status_label', 'RECOMMENDATION — NOT ACTUAL DISPATCH')}</span>
+                            </div>
+                            <div style="font-size: 0.72rem; color: var(--mm-text-secondary); text-align: right; line-height: 1.3; max-width: 280px;">
+                                This manifest is for administrative review only.<br/>Physical dispatch requires CMO sign-off.
+                            </div>
                         </div>
                     </div>
-                    <div style="font-size: 0.78rem; color: var(--mm-text-secondary); background: rgba(0,0,0,0.02); padding: 8px 12px; border-radius: 6px; margin-bottom: 14px;">
-                        <b>Justification:</b> {active_manifest['reason']}
+                    <!-- 4 KPI Cards -->
+                    <div class="mm-manifest-kpi-grid">
+                        <div class="mm-manifest-kpi-card">
+                            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                                <div class="mm-manifest-kpi-icon" style="background: #EFF6FF; color: #2563EB;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7z"></path>
+                                        <line x1="8.5" y1="8.5" x2="15.5" y2="15.5"></line>
+                                    </svg>
+                                </div>
+                                <div class="mm-manifest-kpi-content">
+                                    <div class="mm-manifest-kpi-kicker">CONSIGNMENT MEDICINE</div>
+                                    <div class="mm-manifest-kpi-val" title="{active_manifest['medicine_name']}">{active_manifest['medicine_name']}</div>
+                                    <div class="mm-manifest-kpi-sub">{active_manifest.get('medicine_category', 'Essential Medicine')}</div>
+                                    <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; font-weight: 700; color: #2563EB; margin-top: 4px;">
+                                        <span style="display: inline-block; width: 6px; height: 1.5px; background: #2563EB;"></span>
+                                        ATC: {atc_code}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mm-manifest-kpi-card">
+                            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                                <div class="mm-manifest-kpi-icon" style="background: #ECFDF5; color: #10B981;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                    </svg>
+                                </div>
+                                <div class="mm-manifest-kpi-content">
+                                    <div class="mm-manifest-kpi-kicker">ALLOCATED TRANSFER QTY</div>
+                                    <div class="mm-manifest-kpi-val" style="color: #10B981;">{active_manifest['transfer_quantity']} <span style="font-size: 0.84rem; font-weight: 700;">{active_manifest['unit']}</span></div>
+                                    <div class="mm-manifest-kpi-sub">Optimal Batch Allocation</div>
+                                </div>
+                            </div>
+                            <div style="color: #10B981; opacity: 0.85; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+                                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+                                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="mm-manifest-kpi-card">
+                            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                                <div class="mm-manifest-kpi-icon" style="background: #FEF3C7; color: #D97706;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="1" y="3" width="15" height="13"></rect>
+                                        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+                                        <circle cx="5.5" cy="18.5" r="2.5"></circle>
+                                        <circle cx="18.5" cy="18.5" r="2.5"></circle>
+                                    </svg>
+                                </div>
+                                <div class="mm-manifest-kpi-content">
+                                    <div class="mm-manifest-kpi-kicker">TRANSIT ROUTE & ETA</div>
+                                    <div class="mm-manifest-kpi-val">{active_manifest['distance_km']} km</div>
+                                    <div class="mm-manifest-kpi-sub" style="color: #D97706; font-weight: 600;">~{active_manifest['estimated_transit_hours']} Hours Road Transit</div>
+                                </div>
+                            </div>
+                            <div style="color: #F59E0B; opacity: 0.85; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="6" cy="19" r="3"></circle>
+                                    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"></path>
+                                    <circle cx="18" cy="5" r="3"></circle>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="mm-manifest-kpi-card">
+                            <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                                <div class="mm-manifest-kpi-icon" style="background: #F3E8FF; color: #7C3AED;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                                        <polyline points="9 12 11 14 15 10"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="mm-manifest-kpi-content">
+                                    <div class="mm-manifest-kpi-kicker">PROVENANCE & AUDIT</div>
+                                    <div class="mm-manifest-kpi-val">RECOMMENDATION</div>
+                                    <div class="mm-manifest-kpi-sub" style="color: #7C3AED; font-weight: 600;">HMIS Constrained Solver</div>
+                                </div>
+                            </div>
+                            <div style="color: #8B5CF6; opacity: 0.85; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                    <circle cx="11" cy="14" r="3"></circle>
+                                    <line x1="13.5" y1="16.5" x2="17" y2="20"></line>
+                                </svg>
+                            </div>
+                        </div>
                     </div>
-                    <div style="background: rgba(245, 158, 11, 0.08); border-left: 3px solid #F59E0B; padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; color: var(--mm-text-secondary); margin-bottom: 14px;">
-                        <b>Operational Governance Notice:</b> {active_manifest['disclaimer']}
+                    <!-- Facility Reallocation Flow Row -->
+                    <div class="mm-manifest-flow-row">
+                        <!-- Source Facility Card -->
+                        <div class="mm-manifest-facility-card mm-facility-source">
+                            <div class="mm-facility-icon-wrap" style="background: #EFF6FF; color: #2563EB;">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 21h18"></path>
+                                    <path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"></path>
+                                    <path d="M9 10h1"></path>
+                                    <path d="M14 10h1"></path>
+                                    <path d="M9 14h1"></path>
+                                    <path d="M14 14h1"></path>
+                                    <path d="M12 7v4"></path>
+                                    <path d="M10 9h4"></path>
+                                </svg>
+                                <div class="mm-facility-arrow-badge" style="background: #2563EB; color: #FFFFFF;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="19" x2="12" y2="5"></line>
+                                        <polyline points="5 12 12 5 19 12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.80rem; font-weight: 700; color: #2563EB;">Source Facility (Surplus Donor)</div>
+                                <div style="font-size: 0.96rem; font-weight: 800; color: var(--mm-text-primary); margin-top: 2px;">
+                                    {active_manifest['donor_name']} ({active_manifest.get('donor_facility_type', 'DH')})
+                                </div>
+                                <div style="font-size: 0.76rem; color: var(--mm-text-secondary); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <span style="background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); color: #2563EB; font-weight: 700; font-size: 0.70rem; padding: 1px 6px; border-radius: 4px;">ID: {active_manifest['donor_id']}</span>
+                                    <span>• {active_manifest.get('donor_district', '')}, {active_manifest.get('donor_state', '')}</span>
+                                </div>
+                                <div style="display: inline-flex; align-items: center; gap: 4px; background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 6px; padding: 2px 8px; font-size: 0.74rem; font-weight: 700; color: #059669; margin-top: 6px;">
+                                    Remaining Safety Buffer: {active_manifest.get('donor_remaining_stock', 0)} {active_manifest['unit']}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Middle Reallocation Flow Indicator -->
+                        <div class="mm-flow-middle">
+                            <div class="mm-flow-chevron-box">
+                                <svg width="34" height="24" viewBox="0 0 44 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M8 5l7 7-7 7"></path>
+                                    <path d="M18 5l7 7-7 7"></path>
+                                    <path d="M28 5l7 7-7 7"></path>
+                                </svg>
+                            </div>
+                            <div class="mm-flow-pill">Transfer<br/>Reallocation</div>
+                        </div>
+                        <!-- Destination Facility Card -->
+                        <div class="mm-manifest-facility-card mm-facility-dest">
+                            <div class="mm-facility-icon-wrap" style="background: #ECFDF5; color: #10B981;">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M3 21h18"></path>
+                                    <path d="M5 21V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"></path>
+                                    <path d="M9 10h1"></path>
+                                    <path d="M14 10h1"></path>
+                                    <path d="M9 14h1"></path>
+                                    <path d="M14 14h1"></path>
+                                    <path d="M12 7v4"></path>
+                                    <path d="M10 9h4"></path>
+                                </svg>
+                                <div class="mm-facility-arrow-badge" style="background: #059669; color: #FFFFFF;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <polyline points="19 12 12 19 5 12"></polyline>
+                                    </svg>
+                                </div>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.80rem; font-weight: 700; color: #059669;">Destination Facility (Target Receiver)</div>
+                                <div style="font-size: 0.96rem; font-weight: 800; color: var(--mm-text-primary); margin-top: 2px;">
+                                    {active_manifest['receiver_name']} ({active_manifest.get('receiver_facility_type', 'DH')})
+                                </div>
+                                <div style="font-size: 0.76rem; color: var(--mm-text-secondary); margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                    <span style="background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.2); color: #2563EB; font-weight: 700; font-size: 0.70rem; padding: 1px 6px; border-radius: 4px;">ID: {active_manifest['receiver_id']}</span>
+                                    <span>• {active_manifest.get('receiver_district', '')}, {active_manifest.get('receiver_state', '')}</span>
+                                </div>
+                                <div style="display: inline-flex; align-items: center; gap: 4px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 2px 8px; font-size: 0.74rem; font-weight: 700; color: #2563EB; margin-top: 6px;">
+                                    Updated Stock Post-Transfer: {active_manifest.get('receiver_updated_stock', 0)} {active_manifest['unit']}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Justification Box -->
+                    <div class="mm-manifest-justification-box">
+                        <div style="width: 32px; height: 32px; border-radius: 6px; background: rgba(0,0,0,0.04); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--mm-text-secondary);">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.4;">
+                            <b style="color: var(--mm-text-primary); margin-right: 6px;">Justification:</b> {active_manifest['reason']}
+                        </div>
+                    </div>
+                    <!-- Operational Governance Notice with CMO Sign-off -->
+                    <div class="mm-manifest-governance-box">
+                        <div class="mm-gov-left">
+                            <div style="width: 36px; height: 36px; border-radius: 8px; background: #FEF3C7; color: #D97706; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.84rem; font-weight: 800; color: #92400E;">Operational Governance Notice</div>
+                                <div style="font-size: 0.76rem; color: #78350F; margin-top: 1px;">{active_manifest['disclaimer']}</div>
+                            </div>
+                        </div>
+                        <div class="mm-gov-right-signoff">
+                            <div style="width: 36px; height: 36px; border-radius: 8px; background: rgba(59, 130, 246, 0.08); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                    <circle cx="9" cy="7" r="4"></circle>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.78rem; font-weight: 800; color: var(--mm-text-primary);">Approved By</div>
+                                <div style="font-size: 0.74rem; font-weight: 600; color: var(--mm-text-secondary);">Chief Medical Officer (CMO)</div>
+                                <div style="font-size: 0.68rem; color: var(--mm-text-secondary); opacity: 0.8;">(Required for physical dispatch)</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
@@ -2333,6 +2644,7 @@ Medicine Name     : {active_manifest['medicine_name']}
 Category          : {active_manifest.get('medicine_category', 'Essential Medicine')}
 Transfer Quantity : {active_manifest['transfer_quantity']} {active_manifest['unit']}
 Estimated Transit : {active_manifest['distance_km']} km (~{active_manifest['estimated_transit_hours']} hours via road)
+ATC Code          : {atc_code}
 --------------------------------------------------------------------------------
 2. SOURCE FACILITY (DONOR)
 --------------------------------------------------------------------------------
@@ -2363,18 +2675,36 @@ Generated by DocMindX AI National Health Resource Command Center
                 man_col1, man_col2, man_col3 = st.columns([1.2, 1.2, 1.2])
                 with man_col1:
                     st.markdown(f"""
-                    <a href="data:application/json;charset=utf-8,{json_encoded}" download="{active_manifest['manifest_id']}.json" class="manifest-action-btn manifest-action-btn-outline">
-                        Download Manifest (JSON)
+                    <a href="data:application/json;charset=utf-8,{json_encoded}" download="{active_manifest['manifest_id']}.json" class="mm-manifest-action-link mm-manifest-btn-outline">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <div style="text-align: left;">
+                            <div style="font-size: 0.86rem; font-weight: 800; color: #1D4ED8; line-height: 1.2;">Download Manifest (JSON)</div>
+                            <div style="font-size: 0.70rem; color: var(--mm-text-secondary); line-height: 1.2;">Machine-readable format</div>
+                        </div>
                     </a>
                     """, unsafe_allow_html=True)
                 with man_col2:
                     st.markdown(f"""
-                    <a href="data:text/plain;charset=utf-8,{text_encoded}" download="{active_manifest['manifest_id']}.txt" class="manifest-action-btn manifest-action-btn-outline">
-                        Download Manifest (Text / Slip)
+                    <a href="data:text/plain;charset=utf-8,{text_encoded}" download="{active_manifest['manifest_id']}.txt" class="mm-manifest-action-link mm-manifest-btn-outline">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                        <div style="text-align: left;">
+                            <div style="font-size: 0.86rem; font-weight: 800; color: #1D4ED8; line-height: 1.2;">Download Manifest (Text / Slip)</div>
+                            <div style="font-size: 0.70rem; color: var(--mm-text-secondary); line-height: 1.2;">Printable document</div>
+                        </div>
                     </a>
                     """, unsafe_allow_html=True)
                 with man_col3:
-                    if st.button("Close Manifest Preview", use_container_width=True, key="btn_close_manifest"):
+                    if st.button("✕  Close Manifest Preview", use_container_width=True, key="btn_close_manifest"):
                         st.session_state["active_transfer_manifest"] = None
                         st.rerun()
 

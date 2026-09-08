@@ -823,3 +823,163 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     doc.build(story, canvasmaker=CustomCanvas)
     buffer.seek(0)
     return buffer
+
+
+def generate_diagnostic_evaluation_pdf(
+    doc_name: str,
+    doc_type: str,
+    age_group: str,
+    gender: str,
+    findings: list,
+    breakdown_text: str = "",
+    total_eval: int = 0,
+    abnormal_count: int = 0,
+    overall_status: str = "All Normal"
+) -> io.BytesIO:
+    """
+    Builds a beautifully formatted PDF clinical evaluation report for Medical Reports,
+    Prescriptions, and Radiology findings.
+    """
+    findings = findings or []
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36
+    )
+
+    styles = getSampleStyleSheet()
+    PRIMARY_BLUE = colors.HexColor("#2563EB")
+    DARK_NAVY = colors.HexColor("#0F172A")
+    ALERT_RED = colors.HexColor("#DC2626")
+    SUCCESS_GREEN = colors.HexColor("#16A34A")
+    ORANGE_BRAND = colors.HexColor("#EA580C")
+    LIGHT_BG = colors.HexColor("#F8FAFC")
+    BORDER_COLOR = colors.HexColor("#E2E8F0")
+    TEXT_MUTED = colors.HexColor("#64748B")
+    TEXT_DARK = colors.HexColor("#1E293B")
+
+    body_style = ParagraphStyle('DiagBody', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=TEXT_DARK)
+    body_bold = ParagraphStyle('DiagBodyBold', parent=body_style, fontName='Helvetica-Bold')
+    title_style = ParagraphStyle('DiagTitle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, leading=18, textColor=DARK_NAVY)
+    sec_hdr_style = ParagraphStyle('DiagSecHdr', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10.5, leading=14, textColor=PRIMARY_BLUE)
+
+    story = []
+    doc_id_str = f"DOCMINDX-DIAG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+
+    # Header Title
+    story.append(Paragraph("<b>DocMindX AI — Clinical Diagnostic Evaluation & Findings</b>", title_style))
+    story.append(Spacer(1, 4))
+    story.append(Paragraph(f"<font color='#64748B'>Report ID: {doc_id_str} | Generated: {datetime.now().strftime('%d %B %Y, %I:%M %p')}</font>", body_style))
+    story.append(Spacer(1, 10))
+
+    # Patient & Document Profile Table
+    profile_data = [
+        [
+            Paragraph(f"<b>Document:</b> {_clean_pdf_text(doc_name)}", body_style),
+            Paragraph(f"<b>Report Type:</b> {_clean_pdf_text(doc_type)}", body_style)
+        ],
+        [
+            Paragraph(f"<b>Age Group:</b> {_clean_pdf_text(age_group)}", body_style),
+            Paragraph(f"<b>Biological Gender:</b> {_clean_pdf_text(gender)}", body_style)
+        ],
+        [
+            Paragraph(f"<b>Parameters Evaluated:</b> {total_eval}", body_style),
+            Paragraph(f"<b>Abnormal / Out-of-Range:</b> {abnormal_count}", body_style)
+        ],
+        [
+            Paragraph(f"<b>Overall Clinical Status:</b> <b>{_clean_pdf_text(overall_status)}</b>", body_style),
+            Paragraph(f"<b>AI Engine:</b> DocMindX Clinical Pathologist Vision AI", body_style)
+        ]
+    ]
+    t_prof = Table(profile_data, colWidths=[270, 270])
+    t_prof.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), LIGHT_BG),
+        ('BOX', (0,0), (-1,-1), 1, BORDER_COLOR),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, BORDER_COLOR),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('PADDING', (0,0), (-1,-1), 5),
+    ]))
+    story.append(t_prof)
+    story.append(Spacer(1, 14))
+
+    # Detailed Findings / Parameters Table
+    if findings:
+        story.append(Paragraph("<b>Detailed Evaluated Parameters & Findings</b>", sec_hdr_style))
+        story.append(Spacer(1, 6))
+        
+        table_rows = [
+            [
+                Paragraph("<b>Parameter / Item</b>", body_bold),
+                Paragraph("<b>Value / Dose</b>", body_bold),
+                Paragraph("<b>Reference</b>", body_bold),
+                Paragraph("<b>Status</b>", body_bold),
+                Paragraph("<b>Clinical Interpretation</b>", body_bold)
+            ]
+        ]
+        for f in findings[:15]:
+            if isinstance(f, dict):
+                name = f.get("test_name") or f.get("extracted_name") or f.get("finding_name") or f.get("english_name", "Parameter")
+                val = f.get("value") or f.get("frequency", "-")
+                unit = f.get("unit", "")
+                val_str = f"{val} {unit}".strip()
+                ref = f.get("reference_range") or f.get("timing") or f.get("modality", "Standard")
+                st_val = f.get("status") or f.get("severity", "Normal")
+                exp = f.get("explanation") or f.get("action_advice") or f.get("purpose") or f.get("recommendation", "Evaluated")
+                
+                table_rows.append([
+                    Paragraph(_clean_pdf_text(name), body_style),
+                    Paragraph(_clean_pdf_text(val_str), body_style),
+                    Paragraph(_clean_pdf_text(ref), body_style),
+                    Paragraph(f"<b>{_clean_pdf_text(st_val.upper())}</b>", body_bold),
+                    Paragraph(_clean_pdf_text(exp[:160]), body_style)
+                ])
+
+        t_findings = Table(table_rows, colWidths=[120, 75, 75, 70, 200])
+        t_findings.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#EFF6FF")),
+            ('BOX', (0,0), (-1,-1), 1, BORDER_COLOR),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, BORDER_COLOR),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('PADDING', (0,0), (-1,-1), 4),
+        ]))
+        story.append(t_findings)
+        story.append(Spacer(1, 14))
+
+    # AI Clinical Guide Excerpt
+    if breakdown_text and len(breakdown_text.strip()) > 30:
+        story.append(Paragraph("<b>Comprehensive Clinical AI Patient Guide & Recovery Plan</b>", sec_hdr_style))
+        story.append(Spacer(1, 6))
+        # Add sanitized lines
+        for para in breakdown_text.split("\n\n"):
+            p_clean = _clean_pdf_text(para.strip().replace("###", "").replace("**", ""))
+            if p_clean:
+                story.append(Paragraph(p_clean, body_style))
+                story.append(Spacer(1, 4))
+        story.append(Spacer(1, 10))
+
+    # Clinical Advisory
+    advisory_content = [
+        Paragraph("<font color='#EA580C'><b>CLINICAL ADVISORY</b></font>", body_bold),
+        Spacer(1, 2),
+        Paragraph("DocMindX AI can make mistakes. Do not rely solely on AI suggestions — always consult a certified doctor or licensed physician for clinical decisions.", body_style)
+    ]
+    t_adv = Table([[advisory_content]], colWidths=[540])
+    t_adv.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#FFF7ED")),
+        ('BOX', (0,0), (-1,-1), 1.2, ORANGE_BRAND),
+        ('PADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(t_adv)
+
+    curr_id = doc_id_str
+    class DiagCanvas(NumberedCanvas):
+        doc_id_str = curr_id
+
+    doc.build(story, canvasmaker=DiagCanvas)
+    buffer.seek(0)
+    return buffer
+

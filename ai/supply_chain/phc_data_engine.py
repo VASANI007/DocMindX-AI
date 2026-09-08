@@ -127,7 +127,15 @@ NLEM_FORMULARY = [
     {"id": "MED_ALB_400", "name": "Albendazole 400mg Tablets", "category": "Anthelmintic", "unit": "Tablets", "standard_pack": 500, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 1.20},
     {"id": "MED_IFA_L", "name": "Iron & Folic Acid Tablets", "category": "Anti-anaemia", "unit": "Tablets", "standard_pack": 2000, "critical_threshold_days": 5, "warning_threshold_days": 14, "unit_cost_inr": 0.30},
     {"id": "MED_CIP_500", "name": "Ciprofloxacin 500mg Tablets", "category": "Anti-infective Medicines", "unit": "Tablets", "standard_pack": 500, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 1.70},
-    {"id": "MED_IV_RL", "name": "Ringer Lactate Injection 500ml", "category": "IV Fluids", "unit": "Bottles", "standard_pack": 100, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 35.00}
+    {"id": "MED_IV_RL", "name": "Ringer Lactate Injection 500ml", "category": "IV Fluids", "unit": "Bottles", "standard_pack": 100, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 35.00},
+    {"id": "MED_ATV_10", "name": "Atorvastatin 10mg Tablets", "category": "Cardiovascular", "unit": "Tablets", "standard_pack": 1000, "critical_threshold_days": 5, "warning_threshold_days": 14, "unit_cost_inr": 3.20},
+    {"id": "MED_OMP_20", "name": "Omeprazole 20mg Capsules", "category": "Gastrointestinal", "unit": "Capsules", "standard_pack": 500, "critical_threshold_days": 4, "warning_threshold_days": 12, "unit_cost_inr": 1.80},
+    {"id": "MED_CTX_480", "name": "Cotrimoxazole 480mg Tablets", "category": "Anti-infective Medicines", "unit": "Tablets", "standard_pack": 500, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 1.10},
+    {"id": "MED_CEF_200", "name": "Cefixime 200mg Tablets", "category": "Anti-infective Medicines", "unit": "Tablets", "standard_pack": 500, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 6.50},
+    {"id": "MED_LOS_50", "name": "Losartan Potassium 50mg Tablets", "category": "Cardiovascular", "unit": "Tablets", "standard_pack": 1000, "critical_threshold_days": 5, "warning_threshold_days": 14, "unit_cost_inr": 1.90},
+    {"id": "MED_INS_REG", "name": "Insulin Regular (Human) 40 IU/ml", "category": "Antidiabetic", "unit": "Vials", "standard_pack": 50, "critical_threshold_days": 4, "warning_threshold_days": 12, "unit_cost_inr": 140.00},
+    {"id": "MED_OXY_10", "name": "Oxytocin Injection 5 IU/ml", "category": "Obstetrics & Gynaecology", "unit": "Ampoules", "standard_pack": 100, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 18.00},
+    {"id": "MED_ART_COMB", "name": "Artesunate + SP Combi-pack", "category": "Antimalarial", "unit": "Packs", "standard_pack": 100, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 45.00}
 ]
 
 class PHCDataEngine:
