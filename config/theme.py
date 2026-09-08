@@ -6435,6 +6435,83 @@ button[kind="secondary"][aria-label*="View Architecture"]:hover {
     color: #F8FAFC !important;
 }
 
+/* ==========================================================================
+   HEALTH ASSESSMENT WIZARD (STEPS 1-4) CONTAINER & BUTTONS (IMAGE 2 & 4 DESIGN)
+   ========================================================================== */
+.st-key-assessment_step_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: var(--mm-card-bg, #FFFFFF) !important;
+    border: 1.5px solid #BFDBFE !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.08) !important;
+    overflow: hidden !important;
+}
+[data-theme="dark"] .st-key-assessment_step_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Previous Step Buttons (Soft Cornflower Blue) */
+.st-key-p2_prev_btn button,
+.st-key-p3_prev_btn button,
+.st-key-p4_prev_btn button {
+    background: #5B8EF7 !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    border-radius: 10px !important;
+    min-height: 48px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 2px 6px rgba(91, 142, 247, 0.25) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-p2_prev_btn button:hover,
+.st-key-p3_prev_btn button:hover,
+.st-key-p4_prev_btn button:hover {
+    background: #4A7DF4 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(91, 142, 247, 0.35) !important;
+}
+.st-key-p2_prev_btn button p,
+.st-key-p3_prev_btn button p,
+.st-key-p4_prev_btn button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Next Step Buttons (Deep Royal Blue) */
+.st-key-btn_goto_step2 button,
+.st-key-btn_goto_step3 button,
+.st-key-btn_goto_step4 button {
+    background: #1D4ED8 !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    border-radius: 10px !important;
+    min-height: 48px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-btn_goto_step2 button:hover,
+.st-key-btn_goto_step3 button:hover,
+.st-key-btn_goto_step4 button:hover {
+    background: #1E40AF !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35) !important;
+}
+.st-key-btn_goto_step2 button p,
+.st-key-btn_goto_step3 button p,
+.st-key-btn_goto_step4 button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
 </style>
 """
 

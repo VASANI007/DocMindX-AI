@@ -1413,7 +1413,14 @@ if st.session_state["active_panel"] == "Health Assessment":
                     </div>
                     <div>
                         <div class="mm-step-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("card_symptoms_title", "Clinical Symptoms")}</div>
-                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("step2_sub", "Tell us about your current symptoms so our AI can analyze them more accurately.")}</div>
+                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("card_symptoms_sub", "Tell us about your current symptoms so our AI can analyze them more accurately.")}</div>
+                    </div>
+                </div>
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                    <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
+                    <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 2 OF 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">CLINICAL SYMPTOMS</span>
                     </div>
                 </div>
             </div>
@@ -1501,18 +1508,28 @@ if st.session_state["active_panel"] == "Health Assessment":
                         </svg>
                     </div>
                     <div>
-                        <div class="mm-step-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("step3_title", "Medical History")}</div>
-                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("step3_sub", "Tell us about your existing health background to get more accurate insights.")}</div>
+                        <div class="mm-step-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("card_history_title", "Medical History")}</div>
+                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("card_history_sub", "Tell us about your existing health background to get more accurate insights.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 8px 14px; font-size: 0.76rem; color: #1D4ED8; font-weight: 600; line-height: 1.35; max-width: 380px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                    <span>This information helps our AI provide more personalized and safe recommendations.</span>
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                    <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
+                    <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 3 OF 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">MEDICAL HISTORY</span>
+                    </div>
                 </div>
+            </div>
+            """)
+
+            safe_markdown(f"""
+            <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 16px; font-size: 0.78rem; color: #1D4ED8; font-weight: 600; line-height: 1.35; margin-top: 4px; margin-bottom: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>This information helps our AI provide more personalized and safe recommendations.</span>
             </div>
             """)
 
@@ -1623,7 +1640,7 @@ if st.session_state["active_panel"] == "Health Assessment":
 
             nav_c1, nav_c2 = st.columns([1, 1.8])
             with nav_c1:
-                if st.button(f"← {T.get('btn_prev', 'Previous Step')}", key="p2_prev_btn", use_container_width=True):
+                if st.button(f"← {T.get('btn_prev', 'Previous Step')}", key="p3_prev_btn", use_container_width=True):
                     st.session_state["assessment_step"] = 2
                     st.rerun()
             with nav_c2:
@@ -1636,27 +1653,37 @@ if st.session_state["active_panel"] == "Health Assessment":
     elif current_step == 4:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header">
-                <div class="mm-step-header-left">
-                    <div class="mm-step-header-icon">
+            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+                <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                             <polyline points="22 4 12 14.01 9 11.01"></polyline>
                         </svg>
                     </div>
                     <div>
-                        <div class="mm-step-header-title">{T.get("card_review_title", "Review Clinical Details & Run Analysis")}</div>
-                        <div class="mm-step-header-sub">{T.get("card_review_sub", "Verify your submitted details before running the knowledge graph triage engine.")}</div>
+                        <div class="mm-step-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("card_review_title", "Review Clinical Details & Run Analysis")}</div>
+                        <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("card_review_sub", "Verify your submitted details before running the knowledge graph triage engine.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-info-pill">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                    </svg>
-                    <span>Verify all clinical parameters before generating triage diagnosis.</span>
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                    <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
+                    <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 4 OF 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">ANALYSIS &amp; TRIAGE</span>
+                    </div>
                 </div>
+            </div>
+            """)
+
+            safe_markdown(f"""
+            <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 16px; font-size: 0.78rem; color: #1D4ED8; font-weight: 600; line-height: 1.35; margin-top: 4px; margin-bottom: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span>Verify all clinical parameters before generating triage diagnosis.</span>
             </div>
             """)
 
