@@ -1,7 +1,5 @@
-# ==============================================================================
 # DocMindX AI — Core Dependencies & Production Requirements
 # Enterprise Multi-Agent Clinical AI & Healthcare Supply Chain Intelligence Platform
-# ==============================================================================
 
 # --- Core Web Application & Dashboard UI ---
 streamlit>=1.35.0
@@ -22,8 +20,12 @@ groq>=0.5.0
 # --- Document Processing, Vision OCR & PDF Clinical Reports ---
 pillow>=10.0.0
 pypdf>=4.0.0
+PyPDF2>=3.0.0
 reportlab>=4.1.0
 pytesseract>=0.3.10
+
+# --- Authentication & Security ---
+bcrypt>=4.1.0
 
 # --- Multilingual Voice Input & Speech Synthesis ---
 google-cloud-speech>=2.26.0
