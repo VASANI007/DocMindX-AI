@@ -24,12 +24,19 @@ import pandas as pd
 import json
 import base64
 import re
+import uuid
 from datetime import datetime
+import services.email_service as email_service
 
 from config.settings import APP_NAME, APP_VERSION, SUPPORTED_LANGUAGES
 from config.language import load_translations, get_text
 from config.theme import apply_theme
 from components.theme_toggle import theme_toggle_switch
+import database.auth_db as auth_db
+import components.auth_ui as auth_ui
+import components.family_ui as family_ui
+import components.admin_ui as admin_ui
+import services.auth_service as auth_svc
 from database.insert_data import (
     log_triage_session,
     log_report_analysis,
@@ -45,7 +52,7 @@ from ai.report_ai.radiology import RadiologyReportAnalyzer
 from ai.ocr.text_extractor import extract_text_from_file
 from ai.chatbot.rag import generate_health_summary_ai
 from ai.chatbot.chatbot import ask_DocMindX_ai, generate_dynamic_patient_questions, detect_redirect_action
-from ai.utils.report_generator import generate_pdf_report
+from ai.utils.report_generator import generate_pdf_report, generate_scan_record_pdf
 from ai.utils.care_recommendations import (
     get_dynamic_clinical_recommendations,
     get_medicine_gallery,
@@ -117,6 +124,9 @@ if qp_theme is not None:
     st.session_state["dark_mode"] = (qp_theme.lower() == "dark")
 
 # Session State Setup
+auth_ui.init_auth_session_state()
+if "session_scans" not in st.session_state:
+    st.session_state["session_scans"] = []
 if "dark_mode" not in st.session_state:
     st.session_state["dark_mode"] = False
 if "active_panel" not in st.session_state:
@@ -534,57 +544,56 @@ def render_dynamic_browser_translator(target_lang_code: str):
 # Execute Dynamic Browser Translator Engine
 render_dynamic_browser_translator(lang_code)
 
-def render_footer_trust_bar(t_dict):
-    return f"""
-    <div class="mm-footer-trust-bar">
-        <div class="mm-footer-trust-items">
-            <div class="mm-trust-item">
-                <span class="mm-trust-icon" style="display: inline-flex; align-items: center;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                </span>
-                <span class="mm-trust-label">{t_dict.get("trust_encryption", "256-bit AES Encryption")}</span>
+def render_footer_trust_bar(t_dict=None):
+    return """
+    <div class="mm-footer-trust-bar" style="border-top: 1.5px solid rgba(148, 163, 184, 0.25); background: transparent; padding: 18px 24px; margin-top: 28px; margin-bottom: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; width: 100%;">
+            <!-- Brand Info -->
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #1E3A8A; line-height: 1.2;">DocMindX AI &copy; 2026</span>
+                <span style="font-size: 0.75rem; color: #64748B; margin-top: 2px;">Enterprise Multilingual Healthcare Suite</span>
             </div>
-            <div class="mm-trust-dot">•</div>
-            <div class="mm-trust-item">
-                <span class="mm-trust-icon" style="display: inline-flex; align-items: center;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                </span>
-                <span class="mm-trust-label">{t_dict.get("trust_hipaa", "HIPAA Compliant")}</span>
+            <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
+            <!-- Badge 1: Secure & Encrypted -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <polyline points="9 12 11 14 15 10"/>
+                </svg>
+                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">Secure &amp; Encrypted</span>
             </div>
-            <div class="mm-trust-dot">•</div>
-            <div class="mm-trust-item">
-                <span class="mm-trust-icon" style="display: inline-flex; align-items: center;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="2" y1="12" x2="22" y2="12"/>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-                    </svg>
-                </span>
-                <span class="mm-trust-label">{t_dict.get("trust_who", "WHO Protocols")}</span>
+            <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
+            <!-- Badge 2: HIPAA & WHO Compliant -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">HIPAA &amp; WHO Compliant</span>
             </div>
-            <div class="mm-trust-dot">•</div>
-            <div class="mm-trust-item">
-                <span class="mm-trust-icon" style="display: inline-flex; align-items: center;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                        <circle cx="12" cy="10" r="3"/>
-                    </svg>
-                </span>
-                <span class="mm-trust-label">{t_dict.get("trust_india", "Made in India")}</span>
+            <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
+            <!-- Badge 3: Trusted Healthcare -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#2563EB" stroke="none">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">Trusted Healthcare</span>
             </div>
-            <div class="mm-trust-dot">•</div>
-            <div class="mm-trust-item">
-                <span class="mm-trust-icon" style="display: inline-flex; align-items: center;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B" stroke-width="1">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                    </svg>
+            <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
+            <!-- Slogan: Better Health Brighter Tomorrow -->
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="#10B981" stroke="none">
+                    <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" stroke="#10B981" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <span style="font-family: 'Segoe Script', 'Brush Script MT', 'Caveat', cursive; font-size: 1.25rem; color: #2563EB; font-weight: 700; line-height: 1.05; font-style: italic; letter-spacing: -0.2px;">
+                    Better Health<br/><span style="font-size: 1.10rem; padding-left: 4px;">Brighter Tomorrow</span>
                 </span>
-                <span class="mm-trust-label">Clinical Intelligence V2.0</span>
             </div>
         </div>
     </div>
@@ -805,22 +814,88 @@ with st.sidebar:
         "About DocMindX AI": T.get("nav_about", "About DocMindX AI")
         }
     panel_keys = list(panel_map.keys())
-    
-    current_key = "Health Assessment"
-    for k in panel_keys:
-        if k in st.session_state.get("active_panel", ""):
-            current_key = k
-    print(f"[DEBUG NAV START] active_panel: {st.session_state.get('active_panel')}, current_key: {current_key}, index: {panel_keys.index(current_key)}")
 
-    selected_nav_key = st.radio(
+    def _on_clinical_nav_change():
+        chosen = st.session_state.get("clinical_module_nav_radio")
+        if chosen in panel_keys:
+            st.session_state["active_panel"] = chosen
+
+    active_p = st.session_state.get("active_panel", "Health Assessment")
+
+    if "clinical_module_nav_radio" not in st.session_state:
+        st.session_state["clinical_module_nav_radio"] = active_p if active_p in panel_keys else None
+    elif active_p in panel_keys:
+        st.session_state["clinical_module_nav_radio"] = active_p
+    else:
+        st.session_state["clinical_module_nav_radio"] = None
+
+    st.radio(
         "Clinical Module Navigation",
         options=panel_keys,
         format_func=lambda k: panel_map[k],
-        index=panel_keys.index(current_key),
+        key="clinical_module_nav_radio",
+        on_change=_on_clinical_nav_change,
         label_visibility="collapsed"
     )
-    print(f"[DEBUG NAV END] selected_nav_key: {selected_nav_key}")
-    st.session_state["active_panel"] = selected_nav_key
+
+    # Clinical Identity & Profile Card in Sidebar
+    curr_sb_user = auth_ui.get_current_user()
+    if curr_sb_user and auth_ui.is_authenticated():
+        is_sb_admin = auth_svc.is_admin_session(curr_sb_user)
+        badge_text = "ADMINISTRATOR" if is_sb_admin else "PATIENT"
+        badge_bg = "rgba(239, 68, 68, 0.18)" if is_sb_admin else "rgba(37, 99, 235, 0.15)"
+        badge_color = "#F87171" if is_sb_admin else "#60A5FA"
+        avatar_bg = "#DC2626" if is_sb_admin else "#2563EB"
+        st.markdown(f"""
+        <div class="mm-sidebar-user" style="background: #111B2E; border: 1px solid #1E2E4E; border-radius: 12px; padding: 12px; margin-top: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 34px; height: 34px; border-radius: 10px; background: {avatar_bg}; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">
+                    {curr_sb_user.get('full_name', 'U')[:1].upper()}
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 700; font-size: 0.82rem; color: #F8FAFC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{curr_sb_user.get('full_name', 'Patient')}</div>
+                    <div style="font-size: 0.70rem; color: #94A3B8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{curr_sb_user.get('email', '')}</div>
+                </div>
+            </div>
+            <div style="margin-top: 6px; display: inline-block; padding: 2px 8px; border-radius: 5px; background: {badge_bg}; color: {badge_color}; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.05em;">
+                {badge_text}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        if is_sb_admin:
+            sb_c1, sb_c2, sb_c3 = st.columns([1.1, 1.1, 0.9])
+            with sb_c1:
+                if st.button("Admin", key="sb_btn_admin", use_container_width=True):
+                    st.session_state["active_panel"] = "Admin Panel"
+                    st.rerun()
+            with sb_c2:
+                if st.button("Family", key="sb_btn_family", use_container_width=True):
+                    st.session_state["active_panel"] = "Family Management"
+                    st.rerun()
+            with sb_c3:
+                if st.button("Logout", key="sb_btn_signout", use_container_width=True):
+                    auth_ui.logout_user()
+                    st.rerun()
+        else:
+            sb_c1, sb_c2 = st.columns(2)
+            with sb_c1:
+                if st.button("Family Profiles", key="sb_btn_family", use_container_width=True):
+                    st.session_state["active_panel"] = "Family Management"
+                    st.rerun()
+            with sb_c2:
+                if st.button("Sign Out", key="sb_btn_signout", use_container_width=True):
+                    auth_ui.logout_user()
+                    st.rerun()
+    else:
+        st.markdown(f"""
+        <div class="mm-sidebar-guest" style="background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 12px; margin-top: 14px;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: #93C5FD; margin-bottom: 3px;">CLINICAL IDENTITY</div>
+            <div style="font-size: 0.71rem; color: #94A3B8; line-height: 1.35; margin-bottom: 8px;">Sign in to access your permanent health vault & family profiles.</div>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Sign In / Register", key="sb_btn_signin", type="primary", use_container_width=True):
+            st.session_state["active_panel"] = "Account / Authentication"
+            st.rerun()
 
     # 5. Safety & Privacy Card (Unified 12px Radius, Dark Mode Parity, No Emojis)
     st.markdown(f"""
@@ -910,7 +985,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <div class="mm-step-text-sub">{T.get("step1_sub", "Demographic Info")}</div>
             </div>
         </div>
-        <div class="mm-step-connector"><span class="mm-step-line"></span><span class="mm-step-arrow">→</span></div>
+        <div class="mm-step-connector"><span class="mm-step-arrow">→</span></div>
         <div class="mm-step-item">
             <div class="mm-step-num {s2_active}">2</div>
             <div>
@@ -918,7 +993,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <div class="mm-step-text-sub">{T.get("step2_sub", "Clinical Presentation")}</div>
             </div>
         </div>
-        <div class="mm-step-connector"><span class="mm-step-line"></span><span class="mm-step-arrow">→</span></div>
+        <div class="mm-step-connector"><span class="mm-step-arrow">→</span></div>
         <div class="mm-step-item">
             <div class="mm-step-num {s3_active}">3</div>
             <div>
@@ -926,7 +1001,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <div class="mm-step-text-sub">{T.get("step3_sub", "Prior Conditions")}</div>
             </div>
         </div>
-        <div class="mm-step-connector"><span class="mm-step-line"></span><span class="mm-step-arrow">→</span></div>
+        <div class="mm-step-connector"><span class="mm-step-arrow">→</span></div>
         <div class="mm-step-item">
             <div class="mm-step-num {s4_active}">4</div>
             <div>
@@ -936,6 +1011,20 @@ if st.session_state["active_panel"] == "Health Assessment":
         </div>
     </div>
     """, unsafe_allow_html=True)
+
+    # Patient Profile / Family Member Selection for Authenticated Sessions
+    curr_auth_user = auth_ui.get_current_user()
+    if curr_auth_user and auth_ui.is_authenticated():
+        p1_patient_ctx = family_ui.render_scan_patient_selector(curr_auth_user, key_prefix="p1_scan_selector")
+        st.session_state["p1_patient_context"] = p1_patient_ctx
+        if p1_patient_ctx.get("mode") in ["PROFILE", "FAMILY_MEMBER"] and p1_patient_ctx.get("context"):
+            ctx_data = p1_patient_ctx["context"]
+            if ctx_data.get("existing_conditions"):
+                st.session_state["user_context"]["conditions"] = list(set(st.session_state["user_context"].get("conditions", []) + ctx_data["existing_conditions"]))
+            if ctx_data.get("current_medicines"):
+                st.session_state["user_context"]["medications"] = list(set(st.session_state["user_context"].get("medications", []) + ctx_data["current_medicines"]))
+    else:
+        st.session_state["p1_patient_context"] = {"mode": "GENERAL", "member_id": None, "name": "General Patient"}
 
     # ----------------- STEP 1: ABOUT YOU -----------------
     if current_step == 1:
@@ -1987,6 +2076,70 @@ if st.session_state["active_panel"] == "Health Assessment":
                 lang_code=lang_code
             )
             st.session_state["care_recommendations"] = care_res
+
+        # Auto-persist complete clinical assessment record
+        curr_auth_user = auth_ui.get_current_user()
+        p1_ctx = st.session_state.get("p1_patient_context") or {}
+        p_mode = p1_ctx.get("mode", "GENERAL") if curr_auth_user else "GENERAL"
+        p_mem_id = p1_ctx.get("member_id") if p_mode == "FAMILY_MEMBER" else None
+        p_name = p1_ctx.get("name") or (curr_auth_user.get("full_name") if curr_auth_user else "General Patient")
+
+        triage_save_key = f"triage_saved_{t_res.get('session_id', id(t_res))}_{p_mode}_{p_mem_id}"
+        if triage_save_key not in st.session_state:
+            full_scan_record = {
+                "scan_type": "Health Assessment",
+                "scan_mode": p_mode,
+                "result_reference": top_disease_name,
+                "summary": f"{top_disease_name} ({t_res.get('urgency_level', 'NORMAL')} Urgency)",
+                "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "patient_name": p_name,
+                "family_member_name": p_name if p_mode == "FAMILY_MEMBER" else None,
+                "patient_context": p1_ctx,
+                "user_inputs": {
+                    "age": u_ctx.get("age", "Adult"),
+                    "gender": u_ctx.get("gender", "Unspecified"),
+                    "duration": u_ctx.get("duration", "1-3 Days"),
+                    "severity": u_ctx.get("severity", "Moderate"),
+                    "location": u_ctx.get("location") or u_ctx.get("state", "India"),
+                    "blood_group": u_ctx.get("blood_group", "None"),
+                    "height": u_ctx.get("height", "None"),
+                    "weight": u_ctx.get("weight", "None"),
+                    "existing_conditions": u_ctx.get("conditions", []),
+                    "current_medicines": u_ctx.get("medications", []),
+                    "allergies": u_ctx.get("allergies", "None"),
+                    "symptoms": st.session_state.get("selected_symptoms_list", [])
+                },
+                "triage_result": t_res,
+                "care_recommendations": care_res,
+                "ranked_conditions": ranked_conds,
+                "urgency_level": t_res.get("urgency_level", "NORMAL"),
+                "is_emergency": bool(t_res.get("is_emergency") or t_res.get("red_flag_alert")),
+                "red_flags": t_res.get("red_flags", []),
+                "medicines": care_res.get("medicine_gallery", []),
+                "yoga_recommendations": care_res.get("yoga_recommendations", []),
+                "diet_guidance": care_res.get("diet_guidance", {}),
+                "lifestyle_guidance": care_res.get("lifestyle_guidance", []),
+                "precautions": care_res.get("precautions", [])
+            }
+            if curr_auth_user:
+                try:
+                    auth_db.save_medical_scan(
+                        user_id=curr_auth_user["id"],
+                        family_member_id=p_mem_id,
+                        scan_type="Health Assessment",
+                        scan_mode=p_mode,
+                        result_reference=top_disease_name,
+                        summary=f"{top_disease_name} — {t_res.get('urgency_level', 'NORMAL')} Urgency",
+                        details=full_scan_record
+                    )
+                except Exception as save_err:
+                    print(f"Notice auto-saving assessment: {save_err}")
+            st.session_state["current_session_scan"] = full_scan_record
+            if "session_scans" not in st.session_state:
+                st.session_state["session_scans"] = []
+            st.session_state["session_scans"].insert(0, full_scan_record)
+            st.session_state[triage_save_key] = True
+
 
         # Dialog definition for Medicine Compounds and Packaging Image
         if hasattr(st, "dialog"):
@@ -3992,7 +4145,8 @@ if st.session_state["active_panel"] == "Health Assessment":
         """, unsafe_allow_html=True)
 
     st.markdown("</div>", unsafe_allow_html=True)
-
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
+    st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
 
 # ==============================================================================
 # MODULE 2: CLINICAL REPORT & PRESCRIPTION ANALYZER
@@ -4076,9 +4230,110 @@ elif st.session_state["active_panel"] == "Medical Report":
     </div>
     """, unsafe_allow_html=True)
 
+    # Patient Profile / Family Member Selection for Authenticated Sessions
+    curr_auth_user = auth_ui.get_current_user()
+    if curr_auth_user and auth_ui.is_authenticated():
+        p2_patient_ctx = family_ui.render_scan_patient_selector(curr_auth_user, key_prefix="p2_scan_selector")
+        st.session_state["p2_patient_context"] = p2_patient_ctx
+    else:
+        st.session_state["p2_patient_context"] = {"mode": "GENERAL", "member_id": None, "name": "General Patient"}
+
     # ----------------- STEP 1 & 2: UPLOAD & OCR EXTRACTION -----------------
     if p2_cur_step < 3:
-        col_p2_1, col_p2_2 = st.columns([1, 1])
+        st.markdown("""
+        <style>
+        /* Force equal height on Medical Report columns & cards in both light & dark mode */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card),
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]),
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_ocr_card),
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_ocr_card"]) {
+            align-items: stretch !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="stColumn"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="stColumn"] {
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+            height: 100% !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) [data-testid="stLayoutWrapper"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) [data-testid="stLayoutWrapper"] {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+            height: 100% !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) [data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) [data-testid="stVerticalBlockBorderWrapper"] {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+            height: 100% !important;
+        }
+        .st-key-med_report_upload_card,
+        .st-key-med_report_ocr_card,
+        div[class*="st-key-med_report_upload_card"],
+        div[class*="st-key-med_report_ocr_card"] {
+            height: 100% !important;
+            min-height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+            box-sizing: border-box !important;
+            border-radius: 14px !important;
+        }
+        .st-key-med_report_upload_card > div[data-testid="stVerticalBlock"],
+        .st-key-med_report_ocr_card > div[data-testid="stVerticalBlock"],
+        div[class*="st-key-med_report_upload_card"] > div[data-testid="stVerticalBlock"],
+        div[class*="st-key-med_report_ocr_card"] > div[data-testid="stVerticalBlock"] {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+        }
+        .st-key-med_report_upload_card .stButton,
+        div[class*="st-key-med_report_upload_card"] .stButton {
+            margin-top: auto !important;
+            padding-top: 10px !important;
+        }
+        .st-key-med_report_ocr_card [data-testid="stTextArea"],
+        div[class*="st-key-med_report_ocr_card"] [data-testid="stTextArea"],
+        .st-key-med_report_ocr_card .stTextArea,
+        div[class*="st-key-med_report_ocr_card"] .stTextArea {
+            flex: 1 1 auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            height: 100% !important;
+            margin-bottom: 0 !important;
+        }
+        .st-key-med_report_ocr_card [data-testid="stTextArea"] > div,
+        div[class*="st-key-med_report_ocr_card"] [data-testid="stTextArea"] > div {
+            flex: 1 1 auto !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        .st-key-med_report_ocr_card textarea,
+        div[class*="st-key-med_report_ocr_card"] textarea {
+            flex: 1 1 auto !important;
+            height: 100% !important;
+            min-height: 180px !important;
+            box-sizing: border-box !important;
+            resize: none !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        col_p2_1, col_p2_2 = st.columns([1, 1], gap="medium")
 
         with col_p2_1:
             with st.container(key="med_report_upload_card", border=True):
@@ -4179,14 +4434,14 @@ elif st.session_state["active_panel"] == "Medical Report":
                         doc_text_stream = st.text_area(
                             "Extracted OCR Text Stream",
                             value=raw_extracted,
-                            height=275,
+                            height=195,
                             disabled=True,
                             label_visibility="collapsed"
                         )
                     else:
                         doc_text_stream = ""
                         safe_markdown("""
-                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-top: 4px; min-height: 275px; display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center;">
+                        <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 16px; margin-top: 4px; min-height: 100px; display: flex; flex-direction: column; justify-content: center; text-align: center; align-items: center;">
                             <b style="color: #EF4444; font-size: 0.95rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 6px;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                                 No Valid Medical Text Detected
@@ -4203,7 +4458,7 @@ elif st.session_state["active_panel"] == "Medical Report":
                         "Extracted OCR Text Stream",
                         value="",
                         placeholder="No document uploaded yet. Please upload a PDF or Image on the left to scan real medical parameters...",
-                        height=275,
+                        height=195,
                         disabled=True,
                         label_visibility="collapsed"
                     )
@@ -4465,6 +4720,57 @@ elif st.session_state["active_panel"] == "Medical Report":
                     lang_code=lang_code
                 )
 
+                # Auto-persist complete Prescription record
+                curr_auth_user = auth_ui.get_current_user()
+                p2_ctx = st.session_state.get("p2_patient_context") or {}
+                p_mode = p2_ctx.get("mode", "GENERAL") if curr_auth_user else "GENERAL"
+                p_mem_id = p2_ctx.get("member_id") if p_mode == "FAMILY_MEMBER" else None
+                p_name = p2_ctx.get("name") or (curr_auth_user.get("full_name") if curr_auth_user else "General Patient")
+
+                rx_save_key = f"p2_saved_rx_{doc_name}_{p_mode}_{p_mem_id}"
+                if rx_save_key not in st.session_state:
+                    full_rx_record = {
+                        "scan_type": "Prescription",
+                        "scan_mode": p_mode,
+                        "result_reference": doc_name,
+                        "summary": f"{total_meds} Medicines Identified ({'Regimen Verified' if warn_count == 0 else 'Review Precautions'})",
+                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "patient_name": p_name,
+                        "family_member_name": p_name if p_mode == "FAMILY_MEMBER" else None,
+                        "patient_context": p2_ctx,
+                        "doc_name": doc_name,
+                        "medicines": presc_res.get("medicines", []),
+                        "total_medicines": total_meds,
+                        "warning_count": warn_count,
+                        "breakdown": rx_breakdown,
+                        "kpi_data": kpi_data,
+                        "extracted_text": doc_text_stream,
+                        "user_inputs": {
+                            "age": age_for_report,
+                            "gender": gender_for_report,
+                            "doc_type": doc_type_choice
+                        }
+                    }
+                    if curr_auth_user:
+                        try:
+                            auth_db.save_medical_scan(
+                                user_id=curr_auth_user["id"],
+                                family_member_id=p_mem_id,
+                                scan_type="Prescription",
+                                scan_mode=p_mode,
+                                result_reference=doc_name,
+                                summary=f"{total_meds} Prescribed Medicines — Regimen Verified",
+                                details=full_rx_record
+                            )
+                        except Exception as save_err:
+                            print(f"Notice auto-saving prescription scan: {save_err}")
+                    st.session_state["current_session_scan"] = full_rx_record
+                    if "session_scans" not in st.session_state:
+                        st.session_state["session_scans"] = []
+                    if not any(s.get("result_reference") == doc_name and s.get("created_at") == full_rx_record["created_at"] for s in st.session_state["session_scans"]):
+                        st.session_state["session_scans"].insert(0, full_rx_record)
+                    st.session_state[rx_save_key] = True
+
         elif is_imaging:
             with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
                 rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
@@ -4540,6 +4846,58 @@ elif st.session_state["active_panel"] == "Medical Report":
                     T=T,
                     lang_code=lang_code
                 )
+
+                # Auto-persist complete Radiology record
+                curr_auth_user = auth_ui.get_current_user()
+                p2_ctx = st.session_state.get("p2_patient_context") or {}
+                p_mode = p2_ctx.get("mode", "GENERAL") if curr_auth_user else "GENERAL"
+                p_mem_id = p2_ctx.get("member_id") if p_mode == "FAMILY_MEMBER" else None
+                p_name = p2_ctx.get("name") or (curr_auth_user.get("full_name") if curr_auth_user else "General Patient")
+
+                rad_save_key = f"p2_saved_rad_{doc_name}_{p_mode}_{p_mem_id}"
+                if rad_save_key not in st.session_state:
+                    full_rad_record = {
+                        "scan_type": "Radiology",
+                        "scan_mode": p_mode,
+                        "result_reference": doc_name,
+                        "summary": f"{sev_status} ({total_findings} findings, {acute_count} acute)",
+                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "patient_name": p_name,
+                        "family_member_name": p_name if p_mode == "FAMILY_MEMBER" else None,
+                        "patient_context": p2_ctx,
+                        "doc_name": doc_name,
+                        "findings": rad_res.get("findings", []),
+                        "total_findings": total_findings,
+                        "acute_count": acute_count,
+                        "overall_severity": sev_status,
+                        "breakdown": rad_breakdown,
+                        "kpi_data": kpi_data,
+                        "extracted_text": doc_text_stream,
+                        "user_inputs": {
+                            "age": age_for_report,
+                            "gender": gender_for_report,
+                            "doc_type": doc_type_choice
+                        }
+                    }
+                    if curr_auth_user:
+                        try:
+                            auth_db.save_medical_scan(
+                                user_id=curr_auth_user["id"],
+                                family_member_id=p_mem_id,
+                                scan_type="Radiology",
+                                scan_mode=p_mode,
+                                result_reference=doc_name,
+                                summary=f"Radiology — {sev_status} ({total_findings} findings)",
+                                details=full_rad_record
+                            )
+                        except Exception as save_err:
+                            print(f"Notice auto-saving radiology scan: {save_err}")
+                    st.session_state["current_session_scan"] = full_rad_record
+                    if "session_scans" not in st.session_state:
+                        st.session_state["session_scans"] = []
+                    if not any(s.get("result_reference") == doc_name and s.get("created_at") == full_rad_record["created_at"] for s in st.session_state["session_scans"]):
+                        st.session_state["session_scans"].insert(0, full_rad_record)
+                    st.session_state[rad_save_key] = True
 
         else:
             with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
@@ -4620,7 +4978,59 @@ elif st.session_state["active_panel"] == "Medical Report":
                     lang_code=lang_code
                 )
 
+                # Auto-persist complete Lab record
+                curr_auth_user = auth_ui.get_current_user()
+                p2_ctx = st.session_state.get("p2_patient_context") or {}
+                p_mode = p2_ctx.get("mode", "GENERAL") if curr_auth_user else "GENERAL"
+                p_mem_id = p2_ctx.get("member_id") if p_mode == "FAMILY_MEMBER" else None
+                p_name = p2_ctx.get("name") or (curr_auth_user.get("full_name") if curr_auth_user else "General Patient")
+
+                lab_save_key = f"p2_saved_lab_{doc_name}_{p_mode}_{p_mem_id}"
+                if lab_save_key not in st.session_state:
+                    full_lab_record = {
+                        "scan_type": "Lab Report",
+                        "scan_mode": p_mode,
+                        "result_reference": doc_name,
+                        "summary": f"{status_overall} ({ab_count} abnormal / {total_detected} total)",
+                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "patient_name": p_name,
+                        "family_member_name": p_name if p_mode == "FAMILY_MEMBER" else None,
+                        "patient_context": p2_ctx,
+                        "doc_name": doc_name,
+                        "findings": lab_res.get("findings", []),
+                        "abnormal_count": ab_count,
+                        "total_tests": total_detected,
+                        "breakdown": lab_breakdown,
+                        "kpi_data": kpi_data,
+                        "extracted_text": doc_text_stream,
+                        "user_inputs": {
+                            "age": age_for_report,
+                            "gender": gender_for_report,
+                            "doc_type": doc_type_choice
+                        }
+                    }
+                    if curr_auth_user:
+                        try:
+                            auth_db.save_medical_scan(
+                                user_id=curr_auth_user["id"],
+                                family_member_id=p_mem_id,
+                                scan_type="Lab Report",
+                                scan_mode=p_mode,
+                                result_reference=doc_name,
+                                summary=f"Lab Report — {status_overall} ({ab_count} abnormal)",
+                                details=full_lab_record
+                            )
+                        except Exception as save_err:
+                            print(f"Notice auto-saving lab scan: {save_err}")
+                    st.session_state["current_session_scan"] = full_lab_record
+                    if "session_scans" not in st.session_state:
+                        st.session_state["session_scans"] = []
+                    if not any(s.get("result_reference") == doc_name and s.get("created_at") == full_lab_record["created_at"] for s in st.session_state["session_scans"]):
+                        st.session_state["session_scans"].insert(0, full_lab_record)
+                    st.session_state[lab_save_key] = True
+
     # Footer
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
 
 
@@ -5031,7 +5441,7 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                             direct_maps_url = fac.get("google_maps_uri") or f"https://www.google.com/maps/dir/?api=1&destination={fac['lat']},{fac['lon']}"
                             st.link_button(T.get("btn_view_map", "View on Map"), direct_maps_url, icon=":material/map:", use_container_width=True)
                         st.markdown("</div>", unsafe_allow_html=True)
-
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
 
 
@@ -5039,254 +5449,27 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
 # MODULE 4: HEALTH RECORDS & MEDICAL HISTORY (SQLite Vault)
 # ==============================================================================
 elif st.session_state["active_panel"] == "Health Records":
-    def render_report_session_card(r: dict, is_open: bool = False) -> str:
-        created_ts = str(r.get('created_at', ''))[:16]
-        ab_c = r.get('abnormal_count', 0)
-        rep_name = r.get('report_name', 'Lab Report')
-        rep_type = r.get('report_type', 'Biochemistry Report')
-        summary = r.get('summary', 'Report evaluated successfully.')
-        extracted_text = r.get('extracted_text', '')
+    # 1. Consistent Top Header Bar (Module 4)
+    records_icon_html = (
+        '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(37, 99, 235, 0.08); '
+        'border: 1.5px solid #2563EB; display: flex; align-items: center; justify-content: center; '
+        'box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25); flex-shrink: 0;">'
+        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+        '<polyline points="14 2 14 8 20 8"/>'
+        '<path d="M12 18v-6"/>'
+        '<path d="M9 15h6"/>'
+        '</svg></div>'
+    )
+    
+    curr_auth_user = auth_ui.get_current_user()
+    is_user_auth = bool(curr_auth_user and auth_ui.is_authenticated())
 
-        if ab_c > 0:
-            status_pill_cls = "mm-status-pill-abnormal"
-            status_svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-            status_txt = f"{ab_c} OUT OF RANGE"
-        else:
-            status_pill_cls = "mm-status-pill-normal"
-            status_svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
-            status_txt = "ALL NORMAL"
-
-        # Dynamically parse metrics from details_json or extracted_text
-        metrics = []
-        raw_details = r.get("details_json")
-        if raw_details:
-            try:
-                parsed = json.loads(raw_details) if isinstance(raw_details, str) else raw_details
-                if isinstance(parsed, list):
-                    for item in parsed:
-                        if isinstance(item, dict):
-                            t_name = item.get("test_name") or item.get("test") or item.get("name")
-                            val = f"{item.get('value', '')} {item.get('unit', '')}".strip()
-                            st_txt = item.get("status", "Normal")
-                            if t_name and val:
-                                metrics.append({"name": t_name, "value": val, "status": st_txt})
-            except Exception:
-                pass
-
-        if not metrics and extracted_text:
-            import re
-            parts = re.split(r'[,;\n]+', extracted_text)
-            for part in parts:
-                if ":" in part:
-                    k, v = part.split(":", 1)
-                    k = k.strip()
-                    v = v.strip()
-                    if 2 <= len(k) <= 30 and 1 <= len(v) <= 25:
-                        status = "Normal"
-                        lk = k.lower()
-                        nums = re.findall(r'\d+(?:\.\d+)?', v)
-                        if nums:
-                            n = float(nums[0])
-                            if "cholesterol" in lk and n > 200:
-                                status = "High" if n > 240 else "Borderline High"
-                            elif "ldl" in lk and n > 100:
-                                status = "High" if n > 160 else "Borderline High"
-                            elif "glucose" in lk or "sugar" in lk:
-                                status = "High" if n > 140 else ("Low" if n < 70 else "Normal")
-                            elif "triglyceride" in lk and n > 150:
-                                status = "Borderline High" if n < 200 else "High"
-                        metrics.append({"name": k, "value": v, "status": status})
-                        if len(metrics) >= 6:
-                            break
-
-        metrics_cards_html = ""
-        for m in metrics:
-            st_lower = m["status"].lower()
-            if "high" in st_lower or "critical" in st_lower or "emergency" in st_lower or "abnormal" in st_lower:
-                card_cls = "mm-metric-card-high"
-                val_color = "#DC2626"
-                pill_style = "background: #FEE2E2; color: #DC2626;"
-            elif "borderline" in st_lower or "moderate" in st_lower or "warning" in st_lower:
-                card_cls = "mm-metric-card-borderline"
-                val_color = "#D97706"
-                pill_style = "background: #FEF3C7; color: #D97706;"
-            elif "normal" in st_lower:
-                card_cls = "mm-metric-card-normal"
-                val_color = "#16A34A"
-                pill_style = "background: #DCFCE7; color: #16A34A;"
-            else:
-                card_cls = "mm-metric-card-default"
-                val_color = "#2563EB"
-                pill_style = "background: #DBEAFE; color: #2563EB;"
-
-            metrics_cards_html += (
-                f'<div class="mm-metric-card {card_cls}">'
-                f'<div class="mm-metric-val" style="color: {val_color};">{m["value"]}</div>'
-                f'<div class="mm-metric-lbl" title="{m["name"]}">{m["name"]}</div>'
-                f'<span class="mm-metric-pill" style="{pill_style}">{m["status"]}</span>'
-                f'</div>'
-            )
-
-        if not metrics_cards_html:
-            no_metrics_msg = T.get("no_metrics_parsed", "Diagnostic evaluation recorded. Detailed laboratory parameters summarized.")
-            metrics_cards_html = (
-                f'<div style="grid-column: 1 / -1; padding: 14px; text-align: center; color: var(--mm-text-secondary); font-size: 0.82rem; background: rgba(37, 99, 235, 0.04); border-radius: 8px; border: 1px dashed rgba(37, 99, 235, 0.2);">'
-                f'{no_metrics_msg}'
-                f'</div>'
-            )
-
-        open_attr = "open" if is_open else ""
-        excerpt_display = extracted_text[:400] if extracted_text else "No raw text excerpt logged."
-
-        return (
-            f'<details class="mm-session-card" {open_attr}>'
-            f'<summary>'
-            f'<div class="mm-session-summary-left">'
-            f'<span class="mm-chevron-icon">'
-            f'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
-            f'</span>'
-            f'<span style="display: inline-flex; align-items: center; color: #2563EB;">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
-            f'</span>'
-            f'<span>{rep_name} — {created_ts} ({status_txt})</span>'
-            f'</div>'
-            f'<div class="mm-session-summary-right">'
-            f'<span class="mm-session-date">'
-            f'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
-            f'{created_ts}'
-            f'</span>'
-            f'<span class="mm-status-pill {status_pill_cls}">{status_svg}{status_txt}</span>'
-            f'</div>'
-            f'</summary>'
-            f'<div class="mm-session-body">'
-            f'<div class="mm-session-col-left">'
-            f'<div class="mm-field-row">'
-            f'<div class="mm-field-badge mm-badge-blue">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/><line x1="8.5" y1="2" x2="15.5" y2="2"/><path d="M8.5 14h7"/></svg>'
-            f'</div>'
-            f'<div class="mm-field-text" style="padding-top: 6px;"><span style="font-size: 0.86rem; color: var(--mm-text-secondary);">Type: <b style="color: #2563EB;">{rep_type}</b></span></div>'
-            f'</div>'
-            f'<div class="mm-field-row">'
-            f'<div class="mm-field-badge mm-badge-green">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>'
-            f'</div>'
-            f'<div class="mm-field-text"><div class="mm-field-title">Summary:</div><p class="mm-field-desc">{summary}</p></div>'
-            f'</div>'
-            f'<div class="mm-field-row">'
-            f'<div class="mm-field-badge mm-badge-purple">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
-            f'</div>'
-            f'<div class="mm-field-text"><div class="mm-field-title">Extracted Text Excerpt:</div><div class="mm-excerpt-box">{excerpt_display}</div></div>'
-            f'</div>'
-            f'</div>'
-            f'<div class="mm-session-col-right">'
-            f'<div class="mm-right-title">Key Values (Extracted)</div>'
-            f'<div class="mm-metrics-grid">{metrics_cards_html}</div>'
-            f'<div class="mm-doctor-advisory">'
-            f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
-            f'<span>AI has extracted key parameters from your report. Please verify with your doctor.</span>'
-            f'</div>'
-            f'</div>'
-            f'</div>'
-            f'</details>'
-        )
-
-    def render_triage_session_card(t_item: dict, is_open: bool = False) -> str:
-        symps_parsed = []
-        try:
-            symps_parsed = json.loads(t_item.get("symptoms_list", "[]"))
-        except Exception:
-            symps_parsed = []
-        symps_str = ", ".join(symps_parsed) if symps_parsed else "Fever, Fatigue"
-        created_ts = str(t_item.get('created_at', ''))[:16]
-        urg = t_item.get('urgency_level', 'NORMAL')
-
-        if 'Critical' in urg or 'Emergency' in urg:
-            status_pill_cls = "mm-status-pill-abnormal"
-            urg_color = "#DC2626"
-            status_svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-        elif 'Moderate' in urg or 'Urgent' in urg:
-            status_pill_cls = "mm-status-pill-warning"
-            urg_color = "#D97706"
-            status_svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
-        else:
-            status_pill_cls = "mm-status-pill-normal"
-            urg_color = "#16A34A"
-            status_svg = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
-
-        open_attr = "open" if is_open else ""
-        t_card_cls = 'mm-metric-card-high' if ('Critical' in urg or 'Emergency' in urg) else ('mm-metric-card-borderline' if 'Moderate' in urg else 'mm-metric-card-normal')
-        t_pill_style = 'background: #FEE2E2; color: #DC2626;' if ('Critical' in urg or 'Emergency' in urg) else ('background: #FEF3C7; color: #D97706;' if 'Moderate' in urg else 'background: #DCFCE7; color: #16A34A;')
-
-        return (
-            f'<details class="mm-session-card" {open_attr}>'
-            f'<summary>'
-            f'<div class="mm-session-summary-left">'
-            f'<span class="mm-chevron-icon">'
-            f'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
-            f'</span>'
-            f'<span style="display: inline-flex; align-items: center; color: #6366F1;">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>'
-            f'</span>'
-            f'<span>Triage Assessment: {symps_str[:38]} — {created_ts}</span>'
-            f'</div>'
-            f'<div class="mm-session-summary-right">'
-            f'<span class="mm-session-date">'
-            f'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>'
-            f'{created_ts}</span>'
-            f'<span class="mm-status-pill {status_pill_cls}">{status_svg}{urg.upper()}</span>'
-            f'</div>'
-            f'</summary>'
-            f'<div class="mm-session-body">'
-            f'<div class="mm-session-col-left">'
-            f'<div class="mm-field-row">'
-            f'<div class="mm-field-badge mm-badge-blue">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
-            f'</div>'
-            f'<div class="mm-field-text" style="padding-top: 6px;"><span style="font-size: 0.86rem; color: var(--mm-text-secondary);">Patient: <b>{t_item.get("age_group", "Adult")}</b> · <b>{t_item.get("gender", "Male")}</b> · Duration: <b>{t_item.get("duration", "1-3 Days")}</b></span></div>'
-            f'</div>'
-            f'<div class="mm-field-row">'
-            f'<div class="mm-field-badge mm-badge-green">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
-            f'</div>'
-            f'<div class="mm-field-text"><div class="mm-field-title">Reported Symptoms:</div><p class="mm-field-desc">{symps_str}</p></div>'
-            f'</div>'
-            f'<div class="mm-field-row">'
-            f'<div class="mm-field-badge mm-badge-purple">'
-            f'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>'
-            f'</div>'
-            f'<div class="mm-field-text"><div class="mm-field-title">Medical Background:</div><div class="mm-excerpt-box">Pre-existing: {t_item.get("existing_conditions", "None")}<br/>Ongoing Meds: {t_item.get("current_medicines", "None")}</div></div>'
-            f'</div>'
-            f'</div>'
-            f'<div class="mm-session-col-right">'
-            f'<div class="mm-right-title">AI Triage Clinical Classification</div>'
-            f'<div class="mm-metrics-grid">'
-            f'<div class="mm-metric-card {t_card_cls}">'
-            f'<div class="mm-metric-val" style="color: {urg_color};">{urg}</div>'
-            f'<div class="mm-metric-lbl">Urgency Level</div>'
-            f'<span class="mm-metric-pill" style="{t_pill_style}">Classification</span>'
-            f'</div>'
-            f'<div class="mm-metric-card mm-metric-card-default">'
-            f'<div class="mm-metric-val" style="color: #2563EB;">{len(symps_parsed)}</div>'
-            f'<div class="mm-metric-lbl">Symptoms Count</div>'
-            f'<span class="mm-metric-pill" style="background: #DBEAFE; color: #2563EB;">Evaluated</span>'
-            f'</div>'
-            f'</div>'
-            f'<div class="mm-doctor-advisory">'
-            f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>'
-            f'<span>Clinical triage assessment based on reported symptoms. Please consult a licensed physician.</span>'
-            f'</div>'
-            f'</div>'
-            f'</div>'
-            f'</details>'
-        )
-
-    records_icon_html = '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(99, 102, 241, 0.08); border: 1.5px solid #818CF8; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25); flex-shrink: 0;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 10h2l2-3 2 6 2-3h4"/></svg></div>'
     with st.container(key="mm_top_header_card_4"):
         hdr4_c1, hdr4_c2, hdr4_c3, hdr4_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
         with hdr4_c1:
-            title_p4 = T.get("p4_header_title", "Health Records & Clinical History")
-            sub_p4 = T.get("p4_header_subtitle", "Securely manage longitudinal health records, prior assessments, diagnostic reports, and prescriptions.")
+            title_p4 = T.get("p4_header_title", "Health Records & Clinical Vault")
+            sub_p4 = T.get("p4_header_subtitle", "Cryptographically secured medical vault, family longitudinal tracking, and diagnostic archive.")
             safe_markdown(
                 f'<div style="display: flex; align-items: center; gap: 16px;">'
                 f'{records_icon_html}'
@@ -5297,19 +5480,27 @@ elif st.session_state["active_panel"] == "Health Records":
                 f'</div>'
             )
         with hdr4_c2:
-            safe_markdown(
-                f'<div style="display: flex; justify-content: center; align-items: center; height: 38px;">'
-                f'<span style="height: 36px; padding: 0 16px; border-radius: 20px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 8px;">'
-                f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
-                f'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>'
-                f'<polyline points="9 12 11 14 15 10"/>'
-                f'</svg>'
-                f'AES-256 VAULT'
-                f'</span>'
-                f'</div>'
-            )
+            if is_user_auth:
+                badge_html = (
+                    '<span style="height: 36px; padding: 0 16px; border-radius: 20px; background: rgba(16, 185, 129, 0.10); '
+                    'border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-weight: 700; font-size: 0.80rem; '
+                    'display: inline-flex; align-items: center; gap: 8px;">'
+                    '<span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block;"></span>'
+                    'ENCRYPTED VAULT ACTIVE'
+                    '</span>'
+                )
+            else:
+                badge_html = (
+                    '<span style="height: 36px; padding: 0 16px; border-radius: 20px; background: rgba(37, 99, 235, 0.10); '
+                    'border: 1px solid rgba(37, 99, 235, 0.3); color: #2563EB; font-weight: 700; font-size: 0.80rem; '
+                    'display: inline-flex; align-items: center; gap: 8px;">'
+                    '<span style="width: 8px; height: 8px; border-radius: 50%; background: #2563EB; display: inline-block;"></span>'
+                    'GUEST SESSION MODE'
+                    '</span>'
+                )
+            st.markdown(f"<div style='display: flex; justify-content: center; align-items: center; height: 38px;'>{badge_html}</div>", unsafe_allow_html=True)
         with hdr4_c3:
-            header_lang_4 = st.selectbox(
+            st.selectbox(
                 "Header Lang Selector 4",
                 options=LANG_OPTIONS,
                 key="hdr_lang_p4",
@@ -5323,198 +5514,595 @@ elif st.session_state["active_panel"] == "Health Records":
                 st.session_state["dark_mode"] = new_theme_p4
                 st.rerun()
 
-    tab_rep, tab_pres, tab_ass, tab_sav = st.tabs([
-        T.get("tab_lab_reports", "Medical Reports"),
-        T.get("tab_prescriptions", "Prescriptions"),
-        T.get("tab_assessments", "Previous Assessments"),
-        T.get("tab_saved_insights", "Saved Insights")
-    ])
-
-    with tab_rep:
-        reports_data = get_recent_report_history(limit=50)
-        if reports_data:
-            rep_header_html = (
-                f'<div class="mm-card" style="margin-bottom: 14px;">'
-                f'<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">'
-                f'<div style="display: flex; align-items: center; gap: 12px;">'
-                f'<div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center;">'
-                f'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                f'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
-                f'<polyline points="14 2 14 8 20 8"/>'
-                f'<line x1="16" y1="13" x2="8" y2="13"/>'
-                f'<line x1="16" y1="17" x2="8" y2="17"/>'
-                f'<polyline points="10 9 9 9 8 9"/>'
-                f'</svg>'
-                f'</div>'
-                f'<div>'
-                f'<b style="font-size: 1.10rem; color: var(--mm-text-primary); display: block;">{T.get("tab_lab_reports", "Medical Reports")}</b>'
-                f'<span style="font-size: 0.82rem; color: var(--mm-text-secondary);">{T.get("medical_reports_sub", "View, analyze, and manage your medical reports securely.")}</span>'
-                f'</div>'
-                f'</div>'
-                f'<span style="background: #DBEAFE; border: 1px solid #BFDBFE; color: #1D4ED8; font-weight: 700; font-size: 0.78rem; padding: 6px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">'
-                f'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
-                f'<ellipse cx="12" cy="5" rx="9" ry="3"/>'
-                f'<path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>'
-                f'<path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>'
-                f'</svg>'
-                f'{len(reports_data)} STORED REPORTS'
-                f'</span>'
-                f'</div>'
-                f'</div>'
-            )
-            safe_markdown(rep_header_html)
-            for idx, r in enumerate(reports_data):
-                card_html = render_report_session_card(r, is_open=(idx == 0))
-                safe_markdown(card_html)
+    # Reusable Clinical Record Card Renderer
+    def render_clinical_record_view(scan: dict, idx: int, is_authenticated: bool = True):
+        scan_id = scan.get("id") or f"sess_{idx}"
+        scan_type = scan.get("scan_type", "Health Assessment")
+        scan_mode = scan.get("scan_mode", "GENERAL")
+        created_at = str(scan.get("created_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")))[:16]
+        ref_title = scan.get("result_reference") or scan.get("doc_name") or f"{scan_type} Record"
+        summary = scan.get("summary", "Clinical assessment evaluated.")
+        
+        details = scan.get("details") or {}
+        if isinstance(details, str):
+            try:
+                details = json.loads(details)
+            except Exception:
+                details = {}
+        
+        patient_name = scan.get("patient_name") or details.get("patient_name") or ("General Patient" if scan_mode == "GENERAL" else "Patient")
+        urgency = details.get("urgency_level") or details.get("overall_severity") or scan.get("urgency_level") or ("Needs Attention" if details.get("abnormal_count", 0) > 0 else "Normal")
+        is_emerg = bool(details.get("is_emergency") or details.get("red_flag_alert") or str(urgency).upper() in ["EMERGENCY", "HIGH", "CRITICAL"])
+        
+        if is_emerg or str(urgency).upper() in ["EMERGENCY", "HIGH", "CRITICAL"]:
+            badge_bg = "rgba(239, 68, 68, 0.12)"
+            badge_border = "#EF4444"
+            badge_color = "#DC2626"
+            badge_label = f"HIGH URGENCY: {urgency}".upper()
+        elif str(urgency).upper() in ["MEDIUM", "MODERATE", "NEEDS ATTENTION", "REVIEW PRECAUTIONS"]:
+            badge_bg = "rgba(245, 158, 11, 0.12)"
+            badge_border = "#F59E0B"
+            badge_color = "#D97706"
+            badge_label = f"MODERATE: {urgency}".upper()
         else:
-            st.markdown(f"""
-            <div class="mm-card" style="text-align: center; padding: 36px 20px;">
-                <div style="width: 50px; height: 50px; margin: 0 auto 12px auto; border-radius: 14px; background: rgba(37, 99, 235, 0.08); display: flex; align-items: center; justify-content: center;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                        <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                </div>
-                <b style="color: var(--mm-text-primary); font-size: 1.0rem;">{T.get("no_records_found", "No medical report records found in this section yet.")}</b>
-                <p style="color: var(--mm-text-secondary); font-size: 0.84rem; margin-top: 6px;">{T.get("no_records_guidance", "Upload and analyze a report in Panel 2 to securely store your history here.")}</p>
-            </div>
-            """, unsafe_allow_html=True)
+            badge_bg = "rgba(16, 185, 129, 0.12)"
+            badge_border = "#10B981"
+            badge_color = "#059669"
+            badge_label = "NORMAL / STABLE"
 
-    with tab_pres:
-        safe_markdown(f"""
-        <div class="mm-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+        if "Assessment" in scan_type or "Triage" in scan_type:
+            type_icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3v5a5.5 5.5 0 0 0 11 0V3"></path><path d="M10 13.5v3.5a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-1.5"></path><circle cx="17" cy="15.5" r="2.5"></circle></svg>'
+            type_color = "#2563EB"
+        elif "Prescription" in scan_type:
+            type_icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>'
+            type_color = "#10B981"
+        elif "Radiology" in scan_type or "Imaging" in scan_type:
+            type_icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+            type_color = "#8B5CF6"
+        else:
+            type_icon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+            type_color = "#0284C7"
+
+        with st.container(key=f"rec_card_{scan_id}_{idx}", border=True):
+            safe_markdown(f"""
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 10px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.1); border: 1.2px solid rgba(16, 185, 129, 0.3); display: flex; align-items: center; justify-content: center;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/>
-                            <path d="m8.5 8.5 7 7"/>
-                        </svg>
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(37, 99, 235, 0.08); border: 1.5px solid {type_color}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        {type_icon}
                     </div>
                     <div>
-                        <b style="font-size: 1.10rem; color: var(--mm-text-primary); display: block;">{T.get("tab_prescriptions", "Prescriptions & Medications")}</b>
-                        <span style="font-size: 0.82rem; color: var(--mm-text-secondary);">{T.get("prescriptions_sub", "Secure active regimen records, doctor dosage instructions, and reminders.")}</span>
+                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.2;">
+                            {ref_title}
+                        </div>
+                        <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 3px;">
+                            <span style="font-weight: 700; color: {type_color};">{scan_type.upper()}</span> &bull; <span>{created_at}</span> &bull; <span>Patient: <b>{patient_name}</b> ({scan_mode})</span>
+                        </div>
                     </div>
                 </div>
-                <span style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-weight: 700; font-size: 0.78rem; padding: 6px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                    DIGITAL VAULT
-                </span>
-            </div>
-            <div style="background: rgba(37, 99, 235, 0.04); border: 1.5px solid rgba(37, 99, 235, 0.2); border-radius: 12px; padding: 16px; margin-bottom: 12px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
-                    <div>
-                        <b style="font-size: 0.95rem; color: var(--mm-text-primary);">General Medicine & Antipyretic Consultation</b>
-                        <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">Clinical Assessment Prescription · Verified Active</div>
-                    </div>
-                    <span class="mm-status-pill mm-status-pill-normal">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        ACTIVE REGIMEN
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="background: {badge_bg}; border: 1px solid {badge_border}; color: {badge_color}; font-weight: 800; font-size: 0.72rem; padding: 4px 10px; border-radius: 20px;">
+                        {badge_label}
                     </span>
                 </div>
-                <div style="margin-top: 10px; padding: 10px 12px; background: var(--mm-bg-surface, #FFFFFF); border-radius: 8px; border: 1px solid var(--mm-brand-border, #E2E8F0); font-size: 0.82rem; color: var(--mm-text-primary); line-height: 1.5;">
-                    • <b>Paracetamol 650mg</b> — 1 tablet after meals (SOS for fever & body ache)<br/>
-                    • <b>Pantoprazole 40mg</b> — 1 capsule morning on empty stomach (30 mins prior)<br/>
-                    • <b>Electral ORS</b> — 1 sachet in 1 liter clean drinking water throughout the day
-                </div>
-                <div class="mm-doctor-advisory">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="16" x2="12" y2="12"/>
-                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </div>
+            <div style="font-size: 0.86rem; color: var(--mm-text-primary); margin-bottom: 12px; padding: 8px 12px; background: var(--mm-card-bg, rgba(255,255,255,0.03)); border-radius: 8px; border-left: 3px solid {type_color};">
+                <b>Summary:</b> {summary}
+            </div>
+            """)
+
+            with st.expander("View Complete Clinical Details & Protocols", expanded=False):
+                sec1, sec2 = st.columns(2)
+                
+                # Section 1: User Reported Inputs / Context
+                u_inputs = details.get("user_inputs") or {}
+                with sec1:
+                    st.markdown("""<div style="font-size: 0.82rem; font-weight: 800; color: #2563EB; text-transform: uppercase; margin-bottom: 6px;">1. Patient Context & Reported Inputs</div>""", unsafe_allow_html=True)
+                    inp_items = []
+                    if u_inputs.get("age"): inp_items.append(f"<b>Age:</b> {u_inputs['age']}")
+                    if u_inputs.get("gender"): inp_items.append(f"<b>Gender:</b> {u_inputs['gender']}")
+                    if u_inputs.get("duration"): inp_items.append(f"<b>Duration:</b> {u_inputs['duration']}")
+                    if u_inputs.get("severity"): inp_items.append(f"<b>Severity:</b> {u_inputs['severity']}")
+                    if u_inputs.get("blood_group") and u_inputs["blood_group"] != "None": inp_items.append(f"<b>Blood Group:</b> {u_inputs['blood_group']}")
+                    if u_inputs.get("existing_conditions"):
+                        cond_str = ", ".join(u_inputs["existing_conditions"]) if isinstance(u_inputs["existing_conditions"], list) else str(u_inputs["existing_conditions"])
+                        inp_items.append(f"<b>Conditions:</b> {cond_str}")
+                    if u_inputs.get("current_medicines"):
+                        med_str = ", ".join(u_inputs["current_medicines"]) if isinstance(u_inputs["current_medicines"], list) else str(u_inputs["current_medicines"])
+                        inp_items.append(f"<b>Active Meds:</b> {med_str}")
+                    if u_inputs.get("symptoms"):
+                        sym_str = ", ".join(u_inputs["symptoms"]) if isinstance(u_inputs["symptoms"], list) else str(u_inputs["symptoms"])
+                        inp_items.append(f"<b>Symptoms:</b> {sym_str}")
+                    
+                    if inp_items:
+                        st.markdown("<div style='font-size: 0.78rem; line-height: 1.6; color: var(--mm-text-secondary);'>" + "<br/>".join(inp_items) + "</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div style='font-size: 0.78rem; color: var(--mm-text-secondary);'>Standard clinical demographic profile recorded.</div>", unsafe_allow_html=True)
+
+                # Section 2: Clinical Findings / Extracted Data
+                with sec2:
+                    st.markdown("""<div style="font-size: 0.82rem; font-weight: 800; color: #10B981; text-transform: uppercase; margin-bottom: 6px;">2. Extracted Findings & Parameters</div>""", unsafe_allow_html=True)
+                    findings = details.get("findings") or []
+                    medicines = details.get("medicines") or []
+                    
+                    if medicines:
+                        med_html = "<div style='display: flex; flex-direction: column; gap: 6px;'>"
+                        for m in medicines[:5]:
+                            m_name = m.get("name") or m.get("medicine_name") or "Medicine"
+                            dosage = m.get("dosage") or m.get("frequency") or "As directed"
+                            purpose = m.get("purpose") or m.get("indications") or "Prescribed Therapy"
+                            med_html += f"<div style='background: rgba(16, 185, 129, 0.05); padding: 6px 10px; border-radius: 6px; border-left: 2px solid #10B981; font-size: 0.76rem;'><b>{m_name}</b> &bull; {dosage}<br/><span style='color: var(--mm-text-secondary); font-size: 0.72rem;'>{purpose}</span></div>"
+                        med_html += "</div>"
+                        st.markdown(med_html, unsafe_allow_html=True)
+                    elif findings:
+                        f_html = "<div style='display: flex; flex-direction: column; gap: 4px;'>"
+                        for f in findings[:6]:
+                            t_name = f.get("test_name") or f.get("parameter") or f.get("observation") or "Finding"
+                            val = f"{f.get('value', '')} {f.get('unit', '')}".strip()
+                            st_txt = f.get("status") or f.get("severity") or "Evaluated"
+                            color = "#EF4444" if str(st_txt).lower() in ["high", "low", "abnormal", "critical"] else "#10B981"
+                            f_html += f"<div style='display: flex; justify-content: space-between; font-size: 0.76rem; border-bottom: 1px solid rgba(148,163,184,0.15); padding: 3px 0;'><span>{t_name}: <b>{val}</b></span><span style='color: {color}; font-weight: 700;'>{st_txt}</span></div>"
+                        f_html += "</div>"
+                        st.markdown(f_html, unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='font-size: 0.78rem; color: var(--mm-text-secondary);'>{summary}</div>", unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+                # Section 3: AI Clinical Analysis & Ranked Conditions
+                st.markdown("""<div style="font-size: 0.82rem; font-weight: 800; color: #8B5CF6; text-transform: uppercase; margin-bottom: 6px;">3. AI Clinical Evaluation & Diagnostic Analysis</div>""", unsafe_allow_html=True)
+                ranked_conds = details.get("ranked_conditions") or []
+                breakdown = details.get("breakdown") or ""
+                red_flags = details.get("red_flags") or []
+
+                if red_flags:
+                    rf_html = "<div style='background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; font-size: 0.76rem; color: #DC2626;'><b>CRITICAL RED FLAGS NOTED:</b> " + ", ".join([str(rf) for rf in red_flags]) + "</div>"
+                    st.markdown(rf_html, unsafe_allow_html=True)
+
+                if ranked_conds:
+                    rc_html = "<div style='display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;'>"
+                    for rc in ranked_conds[:3]:
+                        rc_name = rc.get("name") or "Condition"
+                        rc_prob = int(float(rc.get("confidence", rc.get("probability", 0.5))) * 100) if isinstance(rc.get("confidence") or rc.get("probability"), (int, float)) else 50
+                        rc_html += f"<span style='background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); color: #7C3AED; font-weight: 700; font-size: 0.74rem; padding: 3px 10px; border-radius: 12px;'>{rc_name} ({rc_prob}%)</span>"
+                    rc_html += "</div>"
+                    st.markdown(rc_html, unsafe_allow_html=True)
+                
+                if breakdown:
+                    st.markdown(f"<div style='font-size: 0.78rem; color: var(--mm-text-secondary); line-height: 1.5; max-height: 140px; overflow-y: auto; padding: 8px; background: rgba(0,0,0,0.02); border-radius: 6px;'>{breakdown[:600]}...</div>", unsafe_allow_html=True)
+
+                # Section 4: Care Guidance, Yoga, Lifestyle
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                st.markdown("""<div style="font-size: 0.82rem; font-weight: 800; color: #D97706; text-transform: uppercase; margin-bottom: 6px;">4. Personalized Regimen & Care Guidance</div>""", unsafe_allow_html=True)
+                yoga = details.get("yoga_recommendations") or []
+                diet = details.get("diet_guidance") or {}
+                lifestyle = details.get("lifestyle_guidance") or []
+                
+                g_col1, g_col2 = st.columns(2)
+                with g_col1:
+                    if yoga:
+                        y_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'><b>Targeted Yoga & Physical Therapy:</b><ul style='margin: 4px 0 0 16px; padding: 0;'>"
+                        for y in yoga[:3]:
+                            y_name = y.get("asana_name") or y.get("name") or "Asana"
+                            y_html += f"<li>{y_name}</li>"
+                        y_html += "</ul></div>"
+                        st.markdown(y_html, unsafe_allow_html=True)
+                    elif lifestyle:
+                        l_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'><b>Lifestyle Protocols:</b><ul style='margin: 4px 0 0 16px; padding: 0;'>"
+                        for l in lifestyle[:3]:
+                            l_html += f"<li>{str(l)}</li>"
+                        l_html += "</ul></div>"
+                        st.markdown(l_html, unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'>General hydration & rest protocol recommended.</div>", unsafe_allow_html=True)
+                with g_col2:
+                    if isinstance(diet, dict) and (diet.get("foods_to_eat") or diet.get("foods_to_avoid")):
+                        d_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'>"
+                        if diet.get("foods_to_eat"):
+                            d_html += f"<b>Include:</b> {', '.join(diet['foods_to_eat'][:4])}<br/>"
+                        if diet.get("foods_to_avoid"):
+                            d_html += f"<b>Limit:</b> {', '.join(diet['foods_to_avoid'][:4])}"
+                        d_html += "</div>"
+                        st.markdown(d_html, unsafe_allow_html=True)
+                    else:
+                        prec = details.get("precautions") or []
+                        if prec:
+                            p_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'><b>Clinical Precautions:</b><ul style='margin: 4px 0 0 16px; padding: 0;'>"
+                            for p in prec[:2]:
+                                p_html += f"<li>{str(p)}</li>"
+                            p_html += "</ul></div>"
+                            st.markdown(p_html, unsafe_allow_html=True)
+
+            # Card Bottom Actions: Direct PDF Download & Deletion
+            st.markdown("<div style='border-top: 1px solid rgba(148,163,184,0.15); margin-top: 10px; padding-top: 10px;'></div>", unsafe_allow_html=True)
+            act_c1, act_c2, act_c3 = st.columns([1.8, 1.2, 1.0], vertical_alignment="center")
+            with act_c1:
+                st.markdown(f"<div style='font-size: 0.72rem; color: var(--mm-text-secondary);'>Vault ID: <code>{scan_id}</code> &bull; Cryptographically Verified</div>", unsafe_allow_html=True)
+            with act_c2:
+                try:
+                    pdf_bytes = generate_scan_record_pdf(scan)
+                    clean_ref = "".join(c for c in ref_title if c.isalnum() or c in (' ', '_', '-')).rstrip()
+                    pdf_filename = f"DocMindX_{scan_type.replace(' ', '_')}_{clean_ref[:20]}_{scan_id}.pdf"
+                    st.download_button(
+                        label="Download Report (PDF)",
+                        data=pdf_bytes.getvalue(),
+                        file_name=pdf_filename,
+                        mime="application/pdf",
+                        key=f"btn_dl_scan_{scan_id}_{idx}",
+                        use_container_width=True
+                    )
+                except Exception as pdf_err:
+                    st.caption(f"PDF unavailable: {pdf_err}")
+            with act_c3:
+                if is_authenticated and scan.get("id"):
+                    if st.button("Delete Record", key=f"btn_del_scan_{scan_id}_{idx}", type="secondary", use_container_width=True):
+                        try:
+                            auth_db.delete_medical_scan(scan_id=scan["id"], user_id=curr_auth_user["id"])
+                            st.success("Record deleted.")
+                            st.rerun()
+                        except Exception as del_err:
+                            st.error(f"Error: {del_err}")
+
+    # =========================================================================
+    # A. USER IS NOT LOGGED IN: GUEST / CURRENT SESSION MODE
+    # =========================================================================
+    if not is_user_auth:
+        safe_markdown(f"""
+        <div style="background: rgba(37, 99, 235, 0.05); border: 1.5px solid rgba(59, 130, 246, 0.25); border-left: 5px solid #2563EB; border-radius: 14px; padding: 18px 22px; margin-bottom: 20px;">
+            <div style="display: flex; align-items: flex-start; gap: 14px;">
+                <div style="width: 40px; height: 40px; border-radius: 10px; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #FFFFFF;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
                     </svg>
-                    <span>Always take medications exactly as prescribed by your consulting physician. Do not discontinue without medical supervision.</span>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary);">
+                        {T.get("guest_mode_title", "Guest / Current Session Mode")}
+                    </div>
+                    <div style="font-size: 0.84rem; color: var(--mm-text-secondary); margin-top: 4px; line-height: 1.45;">
+                        {T.get("guest_mode_desc", "You are viewing clinical records for your active browser session only. Historical records from other accounts or past visits are not accessible. To permanently store records in an encrypted vault, create family member profiles, and track multi-year diagnostic trends, please sign in or register.")}
+                    </div>
                 </div>
             </div>
         </div>
         """)
 
-    with tab_ass:
-        triage_history = get_recent_triage_history(limit=50)
-        if triage_history:
-            ass_header_html = (
-                f'<div class="mm-card" style="margin-bottom: 14px;">'
-                f'<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">'
-                f'<div style="display: flex; align-items: center; gap: 12px;">'
-                f'<div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(99, 102, 241, 0.1); border: 1.2px solid rgba(99, 102, 241, 0.3); display: flex; align-items: center; justify-content: center;">'
-                f'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-                f'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'
-                f'</svg>'
-                f'</div>'
-                f'<div>'
-                f'<b style="font-size: 1.10rem; color: var(--mm-text-primary); display: block;">{T.get("tab_assessments", "Previous Assessments")}</b>'
-                f'<span style="font-size: 0.82rem; color: var(--mm-text-secondary);">{T.get("assessments_sub", "Historical clinical triage sessions and AI risk assessments.")}</span>'
-                f'</div>'
-                f'</div>'
-                f'<span style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); color: #6366F1; font-weight: 700; font-size: 0.78rem; padding: 6px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">'
-                f'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
-                f'<rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>'
-                f'<line x1="8" y1="21" x2="16" y2="21"/>'
-                f'<line x1="12" y1="17" x2="12" y2="21"/>'
-                f'</svg>'
-                f'{len(triage_history)} SESSIONS'
-                f'</span>'
-                f'</div>'
-                f'</div>'
-            )
-            safe_markdown(ass_header_html)
-            for idx, t_item in enumerate(triage_history):
-                t_card_html = render_triage_session_card(t_item, is_open=(idx == 0))
-                safe_markdown(t_card_html)
-        else:
+        # Fetch current session scans (strictly in memory, ZERO database queries)
+        session_scans = list(st.session_state.get("session_scans", []))
+        current_sess_scan = st.session_state.get("current_session_scan")
+        if current_sess_scan and not any(s.get("result_reference") == current_sess_scan.get("result_reference") and s.get("created_at") == current_sess_scan.get("created_at") for s in session_scans):
+            session_scans.insert(0, current_sess_scan)
+
+        if session_scans:
             st.markdown(f"""
-            <div class="mm-card" style="text-align: center; padding: 36px 20px;">
-                <div style="width: 50px; height: 50px; margin: 0 auto 12px auto; border-radius: 14px; background: rgba(99, 102, 241, 0.08); display: flex; align-items: center; justify-content: center;">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                    </svg>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <div style="font-size: 1.10rem; font-weight: 800; color: var(--mm-text-primary);">
+                    Active Session Records ({len(session_scans)})
                 </div>
-                <b style="color: var(--mm-text-primary); font-size: 1.0rem;">{T.get("no_records_found", "No triage assessment records found yet.")}</b>
-                <p style="color: var(--mm-text-secondary); font-size: 0.84rem; margin-top: 6px;">{T.get("no_records_guidance", "Complete a health assessment in Panel 1 to store your clinical history here.")}</p>
+                <span style="background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); color: #2563EB; font-weight: 700; font-size: 0.74rem; padding: 4px 12px; border-radius: 12px;">
+                    TEMPORARY BROWSER STORAGE
+                </span>
             </div>
             """, unsafe_allow_html=True)
 
-    with tab_sav:
-        safe_markdown(f"""
-        <div class="mm-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(245, 158, 11, 0.1); border: 1.2px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <b style="font-size: 1.10rem; color: var(--mm-text-primary); display: block;">{T.get("tab_saved_insights", "Saved Insights & Guidance")}</b>
-                        <span style="font-size: 0.82rem; color: var(--mm-text-secondary);">{T.get("saved_insights_sub", "Personalized lifestyle regimens, dietary guidelines, and clinical notes.")}</span>
-                    </div>
-                </div>
-                <span style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); color: #D97706; font-weight: 700; font-size: 0.78rem; padding: 6px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                    </svg>
-                    AI LIFESTYLE PROTOCOLS
-                </span>
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                <div style="background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 10px; padding: 14px;">
-                    <b style="font-size: 0.90rem; color: #2563EB;">Hydration & Electrolyte Protocol</b>
-                    <p style="font-size: 0.84rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.5;">Maintain 2.5–3 Liters of fluid intake daily (electrolyte water, coconut water, thin vegetable broths) to optimize renal clearance and cellular recovery.</p>
-                </div>
-                <div style="background: rgba(16, 185, 129, 0.04); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 10px; padding: 14px;">
-                    <b style="font-size: 0.90rem; color: #059669;">Cardiometabolic Dietary Optimization</b>
-                    <p style="font-size: 0.84rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.5;">For borderline lipid markers, prioritize soluble fiber (oats, flaxseeds, legumes), replace saturated cooking oils with cold-pressed mustard or olive oil, and limit processed trans-fats.</p>
-                </div>
-                <div style="background: rgba(139, 92, 246, 0.04); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 14px;">
-                    <b style="font-size: 0.90rem; color: #7C3AED;">Rest & Circadian Immune Regeneration</b>
-                    <p style="font-size: 0.84rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.5;">Ensure continuous 7–8 hour nocturnal sleep cycles. Avoid blue screens 45 minutes before bedtime to support melatonin secretion and immune antibody regulation.</p>
-                </div>
-            </div>
-        </div>
-        """)
+            for idx, sc in enumerate(session_scans):
+                render_clinical_record_view(sc, idx, is_authenticated=False)
 
+            st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+            with st.container(border=True):
+                c_msg, c_btn = st.columns([3, 1], vertical_alignment="center")
+                with c_msg:
+                    st.markdown("""
+                    <b style="color: var(--mm-text-primary); font-size: 0.95rem;">Save your session history permanently</b><br/>
+                    <span style="color: var(--mm-text-secondary); font-size: 0.82rem;">Create a free clinical account to permanently encrypt and sync these scans across devices.</span>
+                    """, unsafe_allow_html=True)
+                with c_btn:
+                    if st.button("Sign In / Register", key="btn_guest_save_sync", type="primary", use_container_width=True):
+                        st.session_state["active_panel"] = "Account / Authentication"
+                        st.rerun()
+
+        else:
+            # Polished empty state with actionable CTAs
+            st.markdown(f"""
+            <div class="mm-card" style="text-align: center; padding: 48px 24px; margin-top: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1.5px dashed #CBD5E1; border-radius: 16px;">
+                <div style="width: 58px; height: 58px; margin: 0 auto 16px auto; border-radius: 16px; background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <h3 style="color: var(--mm-text-primary); font-size: 1.25rem; font-weight: 800; margin: 0 0 8px 0;">No Active Session Records</h3>
+                <p style="color: var(--mm-text-secondary); font-size: 0.88rem; max-width: 560px; margin: 0 auto 24px auto; line-height: 1.5;">
+                    You are browsing DocMindX AI as a guest. Any health assessment or medical document you analyze during this visit will be shown here temporarily. Sign in to access your encrypted clinical vault and family member profiles.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            cta1, cta2, cta3 = st.columns(3)
+            with cta1:
+                if st.button("Run Health Assessment", key="cta_guest_triage", type="primary", use_container_width=True):
+                    st.session_state["active_panel"] = "Health Assessment"
+                    st.rerun()
+            with cta2:
+                if st.button("Analyze Medical Report", key="cta_guest_report", type="secondary", use_container_width=True):
+                    st.session_state["active_panel"] = "Medical Report"
+                    st.rerun()
+            with cta3:
+                if st.button("Sign In / Register", key="cta_guest_auth", type="primary", use_container_width=True):
+                    st.session_state["active_panel"] = "Account / Authentication"
+                    st.rerun()
+
+            st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+            st.markdown("""
+            <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 12px; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 28px; height: 28px; border-radius: 8px; background: #10B981; display: flex; align-items: center; justify-content: center; color: #FFFFFF;">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <span style="font-size: 0.82rem; font-weight: 700; color: #059669;">Zero Data Exposure &bull; Strict Guest Session Privacy Guarantees</span>
+                </div>
+                <span style="font-size: 0.74rem; color: #64748B;">HIPAA &amp; WHO Compliant Architecture</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # =========================================================================
+    # B. USER IS LOGGED IN: MULTI-PROFILE ENCRYPTED CLINICAL VAULT
+    # =========================================================================
+    else:
+        user_id = curr_auth_user["id"]
+        profile_summary = auth_db.get_user_profile_summary(user_id)
+        family_members = auth_db.get_family_members(user_id)
+
+        options_list = ["General Scan", "My Profile"]
+        option_map = {
+            "General Scan": {"mode": "GENERAL", "member_id": None, "name": "General Scan", "type": "GENERAL"},
+            "My Profile": {"mode": "PROFILE", "member_id": None, "name": curr_auth_user.get("full_name", "My Profile"), "type": "PROFILE", "details": profile_summary}
+        }
+        for m in family_members:
+            opt_label = f"{m['name']} ({m.get('relationship', 'Family')})"
+            options_list.append(opt_label)
+            option_map[opt_label] = {"mode": "FAMILY_MEMBER", "member_id": m["id"], "name": m["name"], "type": "FAMILY_MEMBER", "details": m}
+
+        sel_col, btn_col = st.columns([3, 1], vertical_alignment="bottom")
+        with sel_col:
+            selected_patient_opt = st.selectbox(
+                "Active Patient / Record Selector",
+                options=options_list,
+                index=0,
+                key="hr_patient_selector_dropdown"
+            )
+        with btn_col:
+            if st.button("Manage Family Profiles", key="hr_manage_fam_btn", type="secondary", use_container_width=True):
+                st.session_state["active_panel"] = "Family Management"
+                st.rerun()
+
+        target_cfg = option_map[selected_patient_opt]
+        target_mode = target_cfg["mode"]
+        target_member_id = target_cfg["member_id"]
+
+        # Profile Summary Card
+        if target_mode == "GENERAL":
+            safe_markdown(f"""
+            <div style="background: rgba(37, 99, 235, 0.05); border: 1.5px solid rgba(59, 130, 246, 0.25); border-left: 5px solid #2563EB; border-radius: 12px; padding: 14px 18px; margin: 12px 0 16px 0;">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <div style="font-weight: 800; font-size: 0.96rem; color: #1E40AF;">GENERAL SCAN VAULT</div>
+                        <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">
+                            Displaying unlinked clinical assessments and triage records performed under this account. Private family member records are isolated and excluded.
+                        </div>
+                    </div>
+                    <span style="font-size: 0.72rem; background: rgba(37, 99, 235, 0.15); color: #2563EB; padding: 3px 10px; border-radius: 12px; font-weight: 700;">DEFAULT REPOSITORY</span>
+                </div>
+            </div>
+            """)
+        elif target_mode == "PROFILE":
+            p_det = target_cfg.get("details") or {}
+            p_name = p_det.get("name") or curr_auth_user.get("full_name", "Account Owner")
+            p_age = p_det.get("age") or "Adult"
+            p_gen = p_det.get("gender") or "Unspecified"
+            p_bg = p_det.get("blood_group") or "None"
+            p_h = f"{p_det['height']} cm" if p_det.get("height") else "None"
+            p_w = f"{p_det['weight']} kg" if p_det.get("weight") else "None"
+            p_conds = p_det.get("conditions") or []
+            p_meds = p_det.get("medications") or []
+
+            cond_badges = " ".join([f"<span style='background: rgba(239, 68, 68, 0.1); color: #DC2626; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;'>{c}</span>" for c in p_conds]) if p_conds else "<span style='color: var(--mm-text-secondary); font-size: 0.74rem;'>None recorded</span>"
+            med_badges = " ".join([f"<span style='background: rgba(16, 185, 129, 0.1); color: #059669; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;'>{m}</span>" for m in p_meds]) if p_meds else "<span style='color: var(--mm-text-secondary); font-size: 0.74rem;'>None recorded</span>"
+
+            safe_markdown(f"""
+            <div style="background: rgba(37, 99, 235, 0.04); border: 1.5px solid rgba(59, 130, 246, 0.25); border-left: 5px solid #2563EB; border-radius: 12px; padding: 14px 18px; margin: 12px 0 16px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                    <div>
+                        <span style="font-weight: 800; font-size: 1.0rem; color: var(--mm-text-primary);">{p_name}</span>
+                        <span style="background: rgba(37, 99, 235, 0.1); color: #2563EB; font-size: 0.70rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: 6px;">MY PROFILE (SELF)</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--mm-text-secondary);">
+                        Age: <b>{p_age}</b> &bull; Gender: <b>{p_gen}</b> &bull; Blood: <b>{p_bg}</b> &bull; Height: <b>{p_h}</b> &bull; Weight: <b>{p_w}</b>
+                    </div>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.76rem; padding-top: 6px; border-top: 1px solid rgba(148,163,184,0.15);">
+                    <div><b style="color: var(--mm-text-primary);">Known Conditions:</b> {cond_badges}</div>
+                    <div><b style="color: var(--mm-text-primary);">Active Meds:</b> {med_badges}</div>
+                </div>
+            </div>
+            """)
+        else:
+            m_det = target_cfg.get("details") or {}
+            m_name = m_det.get("name", "Family Member")
+            m_rel = m_det.get("relationship", "Family")
+            m_age = m_det.get("age") or "Adult"
+            m_gen = m_det.get("gender") or "Unspecified"
+            m_bg = m_det.get("blood_group") or "None"
+            m_h = f"{m_det['height']} cm" if m_det.get("height") else "None"
+            m_w = f"{m_det['weight']} kg" if m_det.get("weight") else "None"
+            raw_conds = m_det.get("conditions") or []
+            m_conds = [c["condition_name"] if isinstance(c, dict) else str(c) for c in raw_conds]
+            raw_meds = m_det.get("medications") or []
+            m_meds = [med["medicine_name"] if isinstance(med, dict) else str(med) for med in raw_meds]
+
+            cond_badges = " ".join([f"<span style='background: rgba(239, 68, 68, 0.1); color: #DC2626; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;'>{c}</span>" for c in m_conds]) if m_conds else "<span style='color: var(--mm-text-secondary); font-size: 0.74rem;'>None recorded</span>"
+            med_badges = " ".join([f"<span style='background: rgba(16, 185, 129, 0.1); color: #059669; padding: 2px 8px; border-radius: 10px; font-size: 0.72rem; font-weight: 700;'>{m}</span>" for m in m_meds]) if m_meds else "<span style='color: var(--mm-text-secondary); font-size: 0.74rem;'>None recorded</span>"
+
+            safe_markdown(f"""
+            <div style="background: rgba(16, 185, 129, 0.04); border: 1.5px solid rgba(16, 185, 129, 0.25); border-left: 5px solid #10B981; border-radius: 12px; padding: 14px 18px; margin: 12px 0 16px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px;">
+                    <div>
+                        <span style="font-weight: 800; font-size: 1.0rem; color: var(--mm-text-primary);">{m_name}</span>
+                        <span style="background: rgba(16, 185, 129, 0.1); color: #059669; font-size: 0.70rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-left: 6px;">{m_rel.upper()}</span>
+                    </div>
+                    <div style="font-size: 0.76rem; color: var(--mm-text-secondary);">
+                        Age: <b>{m_age}</b> &bull; Gender: <b>{m_gen}</b> &bull; Blood: <b>{m_bg}</b> &bull; Height: <b>{m_h}</b> &bull; Weight: <b>{m_w}</b>
+                    </div>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 0.76rem; padding-top: 6px; border-top: 1px solid rgba(148,163,184,0.15);">
+                    <div><b style="color: var(--mm-text-primary);">Recorded Conditions:</b> {cond_badges}</div>
+                    <div><b style="color: var(--mm-text-primary);">Active Meds:</b> {med_badges}</div>
+                </div>
+            </div>
+            """)
+
+        # 3. Query Database with strict profile isolation
+        scans = auth_db.get_user_scans(
+            user_id=user_id,
+            family_member_id=target_member_id,
+            scan_mode=target_mode
+        )
+
+        reports_scans = [s for s in scans if s.get("scan_type") in ["Lab Report", "Radiology", "Medical Report", "Diagnostic Imaging"]]
+        presc_scans = [s for s in scans if s.get("scan_type") == "Prescription" or (s.get("details") and s["details"].get("medicines"))]
+        assess_scans = [s for s in scans if s.get("scan_type") in ["Health Assessment", "Triage"]]
+
+        # 4. Five Dynamic Tabs
+        tab_all, tab_reports, tab_presc, tab_assess, tab_insights = st.tabs([
+            f"All Records ({len(scans)})",
+            f"Medical Reports ({len(reports_scans)})",
+            f"Prescriptions ({len(presc_scans)})",
+            f"Previous Assessments ({len(assess_scans)})",
+            "Saved Insights & Guidance"
+        ])
+
+        # TAB 1: ALL RECORDS & TIMELINE
+        with tab_all:
+            if scans:
+                for idx, sc in enumerate(scans):
+                    render_clinical_record_view(sc, idx, is_authenticated=True)
+            else:
+                st.markdown(f"""
+                <div class="mm-card" style="text-align: center; padding: 36px 20px;">
+                    <b style="color: var(--mm-text-primary); font-size: 1.0rem;">No clinical records found for {selected_patient_opt}</b>
+                    <p style="color: var(--mm-text-secondary); font-size: 0.84rem; margin-top: 6px;">Assess symptoms in Panel 1 or upload medical documents in Panel 2 to build this patient's vault.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # TAB 2: MEDICAL REPORTS
+        with tab_reports:
+            if reports_scans:
+                for idx, sc in enumerate(reports_scans):
+                    render_clinical_record_view(sc, idx, is_authenticated=True)
+            else:
+                st.markdown(f"""
+                <div class="mm-card" style="text-align: center; padding: 36px 20px;">
+                    <b style="color: var(--mm-text-primary); font-size: 1.0rem;">No medical reports or imaging records for {selected_patient_opt}</b>
+                    <p style="color: var(--mm-text-secondary); font-size: 0.84rem; margin-top: 6px;">Upload a blood test, pathology report, or radiology scan in Panel 2.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # TAB 3: PRESCRIPTIONS
+        with tab_presc:
+            if presc_scans:
+                for idx, sc in enumerate(presc_scans):
+                    render_clinical_record_view(sc, idx, is_authenticated=True)
+            else:
+                st.markdown(f"""
+                <div class="mm-card" style="text-align: center; padding: 36px 20px;">
+                    <b style="color: var(--mm-text-primary); font-size: 1.0rem;">No prescription records for {selected_patient_opt}</b>
+                    <p style="color: var(--mm-text-secondary); font-size: 0.84rem; margin-top: 6px;">Upload a doctor's prescription in Panel 2 to extract active medicines and dosage schedules.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # TAB 4: PREVIOUS ASSESSMENTS
+        with tab_assess:
+            if assess_scans:
+                for idx, sc in enumerate(assess_scans):
+                    render_clinical_record_view(sc, idx, is_authenticated=True)
+            else:
+                st.markdown(f"""
+                <div class="mm-card" style="text-align: center; padding: 36px 20px;">
+                    <b style="color: var(--mm-text-primary); font-size: 1.0rem;">No triage assessment records for {selected_patient_opt}</b>
+                    <p style="color: var(--mm-text-secondary); font-size: 0.84rem; margin-top: 6px;">Perform a symptom assessment in Panel 1 to store risk evaluations and ranked conditions.</p>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # TAB 5: SAVED INSIGHTS & GUIDANCE (100% Dynamic from actual patient scans)
+        with tab_insights:
+            insights_found = []
+            for sc in scans:
+                dt = sc.get("details") or {}
+                if isinstance(dt, str):
+                    try: dt = json.loads(dt)
+                    except Exception: dt = {}
+                
+                cond_name = sc.get("result_reference") or dt.get("ranked_conditions", [{}])[0].get("name") if dt.get("ranked_conditions") else sc.get("scan_type")
+                yoga = dt.get("yoga_recommendations") or []
+                diet = dt.get("diet_guidance") or {}
+                lifestyle = dt.get("lifestyle_guidance") or []
+                precautions = dt.get("precautions") or []
+                
+                if yoga or diet or lifestyle or precautions:
+                    insights_found.append({
+                        "condition": cond_name,
+                        "date": str(sc.get("created_at", ""))[:10],
+                        "yoga": yoga,
+                        "diet": diet,
+                        "lifestyle": lifestyle,
+                        "precautions": precautions
+                    })
+
+            if insights_found:
+                for ins in insights_found:
+                    with st.container(border=True):
+                        st.markdown(f"""
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <span style="font-weight: 800; font-size: 0.95rem; color: #2563EB;">Clinical Regimen: {ins['condition']}</span>
+                            <span style="font-size: 0.72rem; color: var(--mm-text-secondary);">Recorded: {ins['date']}</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        i_c1, i_c2 = st.columns(2)
+                        with i_c1:
+                            if ins["yoga"]:
+                                st.markdown("<b style='font-size: 0.80rem; color: #7C3AED;'>Yoga & Physio Protocols:</b>", unsafe_allow_html=True)
+                                y_str = "".join([f"<li style='font-size: 0.76rem;'>{y.get('asana_name', y.get('name', 'Asana'))}</li>" for y in ins["yoga"][:4]])
+                                st.markdown(f"<ul style='margin: 4px 0 0 16px; padding: 0;'>{y_str}</ul>", unsafe_allow_html=True)
+                            elif ins["lifestyle"]:
+                                st.markdown("<b style='font-size: 0.80rem; color: #0284C7;'>Lifestyle Protocols:</b>", unsafe_allow_html=True)
+                                l_str = "".join([f"<li style='font-size: 0.76rem;'>{str(l)}</li>" for l in ins["lifestyle"][:3]])
+                                st.markdown(f"<ul style='margin: 4px 0 0 16px; padding: 0;'>{l_str}</ul>", unsafe_allow_html=True)
+                        with i_c2:
+                            diet_obj = ins.get("diet")
+                            if isinstance(diet_obj, dict) and (diet_obj.get("foods_to_eat") or diet_obj.get("foods_to_avoid")):
+                                st.markdown("<b style='font-size: 0.80rem; color: #059669;'>Dietary Guidelines:</b>", unsafe_allow_html=True)
+                                d_str = ""
+                                if diet_obj.get("foods_to_eat"):
+                                    d_str += f"<div style='font-size: 0.76rem;'><b>Recommended:</b> {', '.join(diet_obj['foods_to_eat'][:4])}</div>"
+                                if diet_obj.get("foods_to_avoid"):
+                                    d_str += f"<div style='font-size: 0.76rem;'><b>Limit:</b> {', '.join(diet_obj['foods_to_avoid'][:4])}</div>"
+                                st.markdown(d_str, unsafe_allow_html=True)
+                            elif ins["precautions"]:
+                                st.markdown("<b style='font-size: 0.80rem; color: #D97706;'>Clinical Precautions:</b>", unsafe_allow_html=True)
+                                p_str = "".join([f"<li style='font-size: 0.76rem;'>{str(p)}</li>" for p in ins["precautions"][:3]])
+                                st.markdown(f"<ul style='margin: 4px 0 0 16px; padding: 0;'>{p_str}</ul>", unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div class="mm-card" style="text-align: center; padding: 36px 20px;">
+                    <b style="color: var(--mm-text-primary); font-size: 1.0rem;">No personalized lifestyle insights recorded yet for {selected_patient_opt}</b>
+                    <p style="color: var(--mm-text-secondary); font-size: 0.84rem; margin-top: 6px;">Run a health assessment in Panel 1 to generate personalized dietary plans, yoga asanas, and lifestyle protocols.</p>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button("Run Health Assessment for this Patient", key="btn_run_triage_for_insights", type="primary"):
+                    st.session_state["active_panel"] = "Health Assessment"
+                    st.rerun()
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
 
 
@@ -5565,6 +6153,7 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
             "tab_diseases": "100+ Major Indian Diseases",
             "tab_datasources": "Authentic Data Sources & Live APIs",
             "tab_features": "Architecture, Security & Privacy",
+            "tab_support": "Customer Support & Helpdesk",
             # Models Tab
             "ml_title": "1. Clinical Disease Prediction Model (Local Engine)",
             "ml_sub": "Scikit-Learn Random Forest Classifier trained over clinical symptom-disease bipartite matrix.",
@@ -5652,7 +6241,11 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
             "feat_3_title": "Strict Privacy & Zero Data Reselling",
             "feat_3_desc": "No health data is sold or stored for advertising. Assessments operate with client-side session isolation following HIPAA guidelines.",
             "feat_4_title": "Offline Resilience & Local Datasets",
-            "feat_4_desc": "If cloud APIs are unreachable, local clinical datasets instantly activate to ensure uninterrupted medical guidance."
+            "feat_4_desc": "If cloud APIs are unreachable, local clinical datasets instantly activate to ensure uninterrupted medical guidance.",
+            "feat_5_title": "AI Medical Report Analysis",
+            "feat_5_desc": "Upload lab reports, prescriptions and scans — Gemini Vision AI with automated OCR extracts structured clinical insights, flags abnormal values and generates a detailed medical summary.",
+            "feat_6_title": "Family Health Profiles",
+            "feat_6_desc": "Manage complete medical history for up to 10 family members. Store conditions, medications, blood groups and health metrics securely under one account."
         },
         "hi": {
             "creator_badge": "संस्थापक, आर्किटेक्ट एवं निर्माता",
@@ -5664,6 +6257,7 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
             "tab_diseases": "भारत की 100+ प्रमुख बीमारियां",
             "tab_datasources": "प्रामाणिक डेटा स्रोत व लाइव APIs",
             "tab_features": "आर्किटेक्चर, सुरक्षा व प्राइवेसी",
+            "tab_support": "ग्राहक सहायता एवं हेल्पडेस्क (Customer Support)",
             # Models Tab
             "ml_title": "1. क्लिनिकल डिजीज प्रेडिक्शन मॉडल (लोकल इंजन)",
             "ml_sub": "क्लिनिकल लक्षण-रोग मैट्रिक्स पर प्रशिक्षित Scikit-Learn रैंडम फॉरेस्ट क्लासिफायर।",
@@ -5751,7 +6345,11 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
             "feat_3_title": "सख्त गोपनीयता एवं शून्य डेटा बिक्री",
             "feat_3_desc": "मरीजों का डेटा किसी विज्ञापनदाता को नहीं बेचा जाता। क्लाइंट-साइड सेशन आइसोलेशन।",
             "feat_4_title": "ऑफ़लाइन फ़ॉलबैक सुरक्षा जाल",
-            "feat_4_desc": "इंटरनेट या API उपलब्ध न होने पर भी लोकल डेटासेट से बिना रुकावट सेवा।"
+            "feat_4_desc": "इंटरनेट या API उपलब्ध न होने पर भी लोकल डेटासेट से बिना रुकावट सेवा।",
+            "feat_5_title": "AI मेडिकल रिपोर्ट विश्लेषण",
+            "feat_5_desc": "लैब रिपोर्ट, पर्चे और स्कैन अपलोड करें — Gemini Vision AI और स्वचालित OCR संरचित क्लिनिकल जानकारी निकालता है, असामान्य मानों को हाइलाइट करता है और विस्तृत मेडिकल सारांश तैयार करता है।",
+            "feat_6_title": "परिवार स्वास्थ्य प्रोफाइल",
+            "feat_6_desc": "10 परिवार सदस्यों तक का पूर्ण चिकित्सा इतिहास प्रबंधित करें। रोग, दवाएं, ब्लड ग्रुप और स्वास्थ्य डेटा सुरक्षित रूप से एक खाते में संग्रहीत करें।"
         },
         "gu": {
             "creator_badge": "સ્થાપક, આર્કિટેક્ટ અને સર્જક",
@@ -5763,6 +6361,7 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
             "tab_diseases": "ભારતના 100+ મુખ્ય રોગો",
             "tab_datasources": "અધિકૃત ડેટા સ્ત્રોતો અને Live APIs",
             "tab_features": "આર્કિટેક્ચર, સુરક્ષા અને પ્રાઇવસી",
+            "tab_support": "ગ્રાહક સહાય અને હેલ્પડેસ્ક (Customer Support)",
             # Models Tab
             "ml_title": "1. ક્લિનિકલ રોગ અનુમાન મોડેલ (લોકલ એન્જિન)",
             "ml_sub": "ક્લિનિકલ લક્ષણ-રોગ મેટ્રિક્સ પર પ્રશિક્ષિત Scikit-Learn રેન્ડમ ફોરેસ્ટ ક્લાસિફાયર.",
@@ -5850,159 +6449,497 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
             "feat_3_title": "સખત ગોપનીયતા અને શૂન્ય ડેટા વેચાણ",
             "feat_3_desc": "દર્દીઓનો ડેટા કોઈ જાહેરાતકર્તાને વેચવામાં આવતો નથી. સંપૂર્ણ તબીબી ગોપનીયતા.",
             "feat_4_title": "ઑફલાઇન ફોલબેક સુરક્ષા કવચ",
-            "feat_4_desc": "ઇન્ટરનેટ કે API ઉપલબ્ધ ન હોય ત્યારે પણ લોકલ ડેટાસેટથી અવિરત સેવા."
+            "feat_4_desc": "ઇન્ટરનેટ કે API ઉપલબ્ધ ન હોય ત્યારે પણ લોકલ ડેટાસેટથી અવિરત સેવા.",
+            "feat_5_title": "AI મેડિકલ રિપોર્ટ વિશ્લેષણ",
+            "feat_5_desc": "લૅબ રિપોર્ટ, પ્રિસ્ક્રિપ્શન અને સ્કૅન અપલોડ કરો — Gemini Vision AI અને સ્વચાલિત OCR માળખાગત ક્લિનિકલ માહિતી કાઢે છે, અસાધારણ મૂલ્યો ચિહ્નિત કરે છે અને વિગતવાર મેડિકલ સારાંશ બનાવે છે.",
+            "feat_6_title": "કુટુંબ આરોગ્ય પ્રોફાઇલ",
+            "feat_6_desc": "10 કુટુંબ સભ્યો સુધીનો સંપૂર્ણ તબીબી ઇતિહાસ સંચાલિત કરો. રોગ, દવા, બ્લડ ગ્રૂપ અને આરોગ્ય ડેટા એક જ ખાતા હેઠળ સુરક્ષિત રીતે સ્ટોર કરો."
         }
     }
     
     A = ABOUT_TEXT.get(lang_code, ABOUT_TEXT["en"])
 
+    # Multilingual labels for badges, tooltips and callout boxes
+    ABOUT_LABELS = {
+        "en": {
+            "trained_val": "Trained & Validated",
+            "time_series": "Time Series + ML",
+            "risk_detect": "Risk Detection",
+            "knowledge_base": "Knowledge Base",
+            "generative_ai": "Generative AI",
+            "vision_ai": "Computer Vision",
+            "fast_reliable": "Fast, accurate and reliable local prediction engine",
+            "ensure_stock": "Helps ensure medicine availability and reduce stockouts",
+            "prevent_stockouts": "Prevent stockouts & ensure continuity",
+            "safe_triage": "Evidence-based & safe triage",
+            "natural_advice": "Natural, safe & personalized advice",
+            "automated_ocr": "Automated clinical report analysis",
+            "quote": "AI for Accessible, Accurate and Equitable Healthcare for Everyone.",
+            "quote_author": "— Daksh Vasani",
+            "doc_btn": "View Project Documentation",
+            "official_cats_sub": "Official Categories",
+            "major_diseases_sub": "Major Indian Diseases",
+            "who_compliant_sub": "WHO ICD-10/11 Compliant Taxonomy",
+            "accuracy_lbl": "ACCURACY",
+            # Tab 3 Data Source button labels
+            "btn_view_api_doc": "View API Documentation",
+            "btn_view_govt_data": "View Government Data",
+            "btn_view_district_data": "View District Data",
+            "btn_view_nlem_cat": "View NLEM Catalog",
+            "btn_browse_fda": "Browse FDA Data",
+            "btn_view_ref_standards": "View Reference Standards",
+            "btn_explore_location": "Explore Location Data",
+            "btn_view_guidelines": "View Practices & Guidelines",
+            # Tab 4 Feature tags
+            "tag_feat_1": "Multilingual • Accessible • Inclusive",
+            "tag_feat_2": "Transparent • Auditable • Reliable",
+            "tag_feat_3": "Private • Secure • HIPAA Compliant",
+            "tag_feat_4": "Always Available • Reliable • Patient-First",
+            "suite_sub": "Empowering a secure, accessible and resilient healthcare ecosystem.",
+            "secure_hc": "Secure Healthcare",
+            "smarter_tom": "Smarter Tomorrow",
+            "trusted_data": "Trusted Data. Better Care.",
+        },
+        "hi": {
+            "trained_val": "प्रशिक्षित एवं सत्यापित",
+            "time_series": "टाइम सीरीज + ML",
+            "risk_detect": "जोखिम पहचान",
+            "knowledge_base": "नॉलेज बेस",
+            "generative_ai": "जनरेटिव AI",
+            "vision_ai": "कंप्यूटर विज़न",
+            "fast_reliable": "तेज़, सटीक एवं विश्वसनीय लोकल प्रेडिक्शन इंजन",
+            "ensure_stock": "दवा उपलब्धता सुनिश्चित एवं कमी को कम करता है",
+            "prevent_stockouts": "दवाओं की कमी रोकें और आपूर्ति बनाए रखें",
+            "safe_triage": "साक्ष्य-आधारित एवं सुरक्षित ट्राइएज",
+            "natural_advice": "स्वाभाविक, सुरक्षित एवं व्यक्तिगत सलाह",
+            "automated_ocr": "स्वचालित क्लिनिकल रिपोर्ट विश्लेषण",
+            "quote": "सुलभ, सटीक और निष्पक्ष स्वास्थ्य सेवा सभी के लिए।",
+            "quote_author": "— दक्ष वसानी",
+            "doc_btn": "प्रोजेक्ट डॉक्यूमेंटेशन देखें",
+            "official_cats_sub": "आधिकारिक श्रेणियां",
+            "major_diseases_sub": "प्रमुख भारतीय बीमारियां",
+            "who_compliant_sub": "WHO ICD-10/11 अनुपालक टैक्सोनॉमी",
+            "accuracy_lbl": "सटीकता",
+            # Tab 3 Data Source button labels
+            "btn_view_api_doc": "API दस्तावेज़ देखें",
+            "btn_view_govt_data": "सरकारी डेटा देखें",
+            "btn_view_district_data": "ज़िला-स्तरीय डेटा देखें",
+            "btn_view_nlem_cat": "NLEM कैटलॉग देखें",
+            "btn_browse_fda": "FDA डेटा ब्राउज़ करें",
+            "btn_view_ref_standards": "रेफरेंस मानक देखें",
+            "btn_explore_location": "लोकेशन डेटा एक्सप्लोर करें",
+            "btn_view_guidelines": "दिशानिर्देश व पद्धतियाँ देखें",
+            # Tab 4 Feature tags
+            "tag_feat_1": "त्रिभाषी • सुलभ • समावेशी",
+            "tag_feat_2": "पारदर्शी • ऑडिट योग्य • विश्वसनीय",
+            "tag_feat_3": "निजी • सुरक्षित • HIPAA अनुपालन",
+            "tag_feat_4": "सदैव उपलब्ध • विश्वसनीय • मरीज-प्रथम",
+            "suite_sub": "एक सुरक्षित, सुलभ और सशक्त स्वास्थ्य सेवा तंत्र का निर्माण।",
+            "secure_hc": "सुरक्षित स्वास्थ्य सेवा",
+            "smarter_tom": "बेहतर भविष्य",
+            "trusted_data": "विश्वसनीय डेटा, बेहतर देखभाल।",
+        },
+        "gu": {
+            "trained_val": "પ્રશિક્ષિત અને પ્રમાણિત",
+            "time_series": "ટાઇમ સિરીઝ + ML",
+            "risk_detect": "જોખમ શોધ",
+            "knowledge_base": "નોલેજ બેઝ",
+            "generative_ai": "જનરેટિવ AI",
+            "vision_ai": "કમ્પ્યુટર વિઝન",
+            "fast_reliable": "ઝડપી, સચોટ અને વિશ્વસનીય સ્થાનિક અનુમાન એન્જિન",
+            "ensure_stock": "દવાની ઉપલબ્ધતા સુનિશ્ચિત કરે છે અને અછત ઘટાડે છે",
+            "prevent_stockouts": "દવાની અછત અટકાવો અને પુરવઠો જાળવો",
+            "safe_triage": "પુરાવા-આધારિત અને સુરક્ષિત ટ્રાયેજ",
+            "natural_advice": "કુદરતી, સુરક્ષિત અને વ્યક્તિગત સલાહ",
+            "automated_ocr": "સ્વચાલિત ક્લિનિકલ રિપોર્ટ વિશ્લેષણ",
+            "quote": "દરેક માટે સુલભ, સચોટ અને સમાન આરોગ્ય સેવા.",
+            "quote_author": "— દક્ષ વસાણી",
+            "doc_btn": "પ્રોજેક્ટ દસ્તાવેજીકરણ જુઓ",
+            "official_cats_sub": "સત્તાવાર શ્રેણીઓ",
+            "major_diseases_sub": "મુખ્ય ભારતીય રોગો",
+            "who_compliant_sub": "WHO ICD-10/11 સુસંગત ટેક્સોનોમી",
+            "accuracy_lbl": "સચોટતા",
+            # Tab 3 Data Source button labels
+            "btn_view_api_doc": "API દસ્તાવેજ જુઓ",
+            "btn_view_govt_data": "સરકારી ડેટા જુઓ",
+            "btn_view_district_data": "જિલ્લા ડેટા જુઓ",
+            "btn_view_nlem_cat": "NLEM કેટલોગ જુઓ",
+            "btn_browse_fda": "FDA ડેટા બ્રાઉઝ કરો",
+            "btn_view_ref_standards": "સંદર્ભ માપદંડો જુઓ",
+            "btn_explore_location": "સ્થાન ડેટા જુઓ",
+            "btn_view_guidelines": "માર્ગદર્શિકા જુઓ",
+            # Tab 4 Feature tags
+            "tag_feat_1": "ત્રિભાષી • સુલભ • સમાવેશી",
+            "tag_feat_2": "પારદર્શક • ઓડિટ યોગ્ય • વિશ્વસનીય",
+            "tag_feat_3": "ખાનગી • સુરક્ષિત • HIPAA સુસંગત",
+            "tag_feat_4": "હંમેશા ઉપલબ્ધ • વિશ્વસનીય • દર્દી-પ્રથમ",
+            "suite_sub": "એક સુરક્ષિત, સુલભ અને સક્ષમ હેલ્થકેર સિસ્ટમનું નિર્માણ.",
+            "secure_hc": "સુરક્ષિત આરોગ્ય સેવા",
+            "smarter_tom": "ઉજ્જવળ ભવિષ્ય",
+            "trusted_data": "વિશ્વસનીય ડેટા, બહેતર સારવાર.",
+        }
+    }
+    L = ABOUT_LABELS.get(lang_code, ABOUT_LABELS["en"])
+
+    def _strip_num(s):
+        import re
+        return re.sub(r'^\d+\.\s*', '', s).strip()
+
+    def _parse_dis_cat(raw_html):
+        import re
+        clean = re.sub(r'<img[^>]*>', '', raw_html).strip()
+        m = re.match(r'<b>(.*?)[:：]?</b>\s*[:：]?\s*(.*)', clean, re.DOTALL)
+        if m:
+            return m.group(1).strip().rstrip(':'), m.group(2).strip()
+        parts = clean.split(':', 1)
+        if len(parts) == 2:
+            return re.sub(r'<[^>]+>', '', parts[0]).strip(), parts[1].strip()
+        return clean, ""
+
+    def _format_stockout_bullets(desc):
+        import re
+        def repl(match):
+            term = match.group(1)
+            lower = term.lower()
+            color = "#3B82F6"
+            if any(k in lower for k in ["critical", "क्रिटिकल", "ક્રિટિકલ"]):
+                color = "#EF4444"
+            elif any(k in lower for k in ["urgent", "अर्जेंट", "અર્જન્ટ"]):
+                color = "#F97316"
+            elif any(k in lower for k in ["safe", "सुरक्षित", "સલામત"]):
+                color = "#10B981"
+            return f'<span style="display: inline-flex; align-items: center; gap: 7px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: {color}; flex-shrink: 0; display: inline-block;"></span><b>{term}</b></span>'
+        return re.sub(r'•\s*<b>(.*?)</b>', repl, desc)
+
+    blue_check_svg = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#2563EB"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    chevron_right_svg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>'
+
     # 1. Creator & Mission Banner Card
     st.markdown(f"""
-    <div class="mm-card" style="border-left: 5px solid #2563EB; margin-bottom: 18px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 14px;">
-            <div>
-                <div style="font-size: 0.72rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;">
-                    {A['creator_badge']}
+    <div class="mm-card" style="border: 1px solid var(--mm-border-color); border-radius: 16px; padding: 22px 24px; margin-bottom: 18px; background: var(--mm-card-bg); box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+            <div style="display: flex; align-items: flex-start; gap: 16px; flex: 1 1 450px;">
+                <div style="width: 52px; height: 52px; border-radius: 14px; background: #EFF6FF; border: 1.5px solid #DBEAFE; display: flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,0.12);">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>
                 </div>
-                <div style="font-size: 1.35rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.2;">
-                    {A['creator_name']}
-                </div>
-                <div style="font-size: 0.84rem; color: var(--mm-text-secondary); margin-top: 3px;">
-                    {A['creator_sub']}
+                <div>
+                    <div style="font-size: 0.72rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;">
+                        {A['creator_badge']}
+                    </div>
+                    <div style="font-size: 1.35rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.25;">
+                        {A['creator_name']}
+                    </div>
+                    <div style="font-size: 0.83rem; color: var(--mm-text-secondary); margin-top: 3px;">
+                        {A['creator_sub']}
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px;">
+                        <span class="mm-badge" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); color: #DC2626; font-size: 0.74rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+                            <span style="display: inline-block; width: 14px; height: 10px; border-radius: 2px; background: linear-gradient(180deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #128807 66%); border: 1px solid rgba(0,0,0,0.15);"></span>
+                            MADE IN INDIA
+                        </span>
+                        <span class="mm-badge" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-size: 0.74rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            DISEASE ML 99.01%
+                        </span>
+                        <span class="mm-badge" style="background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.3); color: #2563EB; font-size: 0.74rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                            DEMAND WAPE 6.53%
+                        </span>
+                        <span class="mm-badge" style="background: rgba(147, 51, 234, 0.08); border: 1px solid rgba(147, 51, 234, 0.3); color: #9333EA; font-size: 0.74rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; display: inline-flex; align-items: center; gap: 5px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                            WHO DATA ACTIVE
+                        </span>
+                    </div>
                 </div>
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                <span class="mm-badge mm-badge-brand" style="font-size: 0.76rem; padding: 6px 12px;">Made in India</span>
-                <span class="mm-badge mm-badge-success" style="font-size: 0.76rem; padding: 6px 12px;">Disease ML 99.01%</span>
-                <span class="mm-badge mm-badge-info" style="font-size: 0.76rem; padding: 6px 12px;">Demand WAPE 6.53%</span>
-                <span class="mm-badge mm-badge-brand" style="font-size: 0.76rem; padding: 6px 12px;">WHO DON API Active</span>
+            <div style="background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.15); border-radius: 12px; padding: 12px 16px; min-width: 240px; max-width: 320px; flex: 1 1 auto;">
+                <div style="display: flex; align-items: flex-start; gap: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="#3B82F6" style="flex-shrink: 0; margin-top: 1px;"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+                    <div>
+                        <div style="font-size: 0.80rem; font-style: italic; color: var(--mm-text-primary); line-height: 1.45;">
+                            "{L['quote']}"
+                        </div>
+                        <div style="font-size: 0.74rem; font-weight: 700; color: #2563EB; margin-top: 4px; text-align: right;">
+                            {L['quote_author']}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <p style="font-size: 0.86rem; color: var(--mm-text-secondary); line-height: 1.6; margin: 14px 0 0 0; padding-top: 12px; border-top: 1px dashed var(--mm-border-color);">
-            <b>{A['mission_title']}:</b> {A['mission_body']}
-        </p>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--mm-border-color);">
+            <p style="font-size: 0.84rem; color: var(--mm-text-secondary); line-height: 1.6; margin: 0; flex: 1 1 500px;">
+                <b>{A['mission_title']}:</b> {A['mission_body']}
+            </p>
+            <a href="https://github.com/VASANI007/DocMindX-AI" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; font-weight: 700; color: #2563EB; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 8px; padding: 6px 12px; text-decoration: none;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                {L['doc_btn']}
+            </a>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # 2. Main About Tabs (4 Comprehensive Tabs)
-    tab_a1, tab_a2, tab_a3, tab_a4 = st.tabs([A["tab_models"], A["tab_diseases"], A["tab_datasources"], A["tab_features"]])
+    # 2. Main About Tabs (5 Comprehensive Tabs including Official Support)
+    tab_a1, tab_a2, tab_a3, tab_a4, tab_a5 = st.tabs([
+        A["tab_models"],
+        A["tab_diseases"],
+        A["tab_datasources"],
+        A["tab_features"],
+        A.get("tab_support", "Customer Support & Helpdesk")
+    ])
 
     # ==================== TAB 1: AI & ML MODELS & ACCURACY ====================
     with tab_a1:
         # Card 1: Custom Trained Disease ML Model
         st.markdown(f"""
-        <div class="mm-card" style="border-top: 4px solid #10B981; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
-                <div>
-                    <b style="font-size: 1.12rem; color: var(--mm-text-primary);"><img src="https://cdn-icons-png.flaticon.com/512/18357/18357328.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['ml_title']}</b>
-                    <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 2px 0 0 0;">{A['ml_sub']}</p>
+        <div class="mm-card" style="border: 1px solid var(--mm-border-color); border-radius: 14px; padding: 20px 22px; margin-bottom: 16px; background: var(--mm-card-bg);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="width: 24px; height: 24px; border-radius: 50%; background: #EF4444; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; flex-shrink: 0;">1</span>
+                    <b style="font-size: 1.10rem; color: var(--mm-text-primary);">{_strip_num(A['ml_title'])}</b>
+                    <span style="background: rgba(16, 185, 129, 0.1); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 14px; font-size: 0.72rem; font-weight: 700; padding: 2px 10px;">{L['trained_val']}</span>
                 </div>
-                <span class="mm-badge mm-badge-success" style="font-size: 0.80rem; font-weight: 700; padding: 6px 14px;">Accuracy: {A['stat_acc']}</span>
+                <span class="mm-badge" style="background: rgba(16, 185, 129, 0.1); border: 1.5px solid rgba(16, 185, 129, 0.4); color: #059669; font-size: 0.78rem; font-weight: 800; padding: 5px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    {L['accuracy_lbl']}: {A['stat_acc']}
+                </span>
             </div>
-            <!-- 4-Stat Metrics Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 14px 0 16px 0;">
-                <div style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
+            <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 0 0 14px 0;">{A['ml_sub']}</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 12px 0 14px 0;">
+                <div style="background: rgba(16, 185, 129, 0.06); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #10B981; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>
+                    </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #10B981;">{A['stat_acc']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_acc_sub']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_acc_sub']}</div>
                 </div>
-                <div style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
-                    <div style="font-size: 1.05rem; font-weight: 800; color: #3B82F6; margin-top: 2px;">{A['stat_algo']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_algo_sub']}</div>
+                <div style="background: rgba(59, 130, 246, 0.06); border: 1.5px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #3B82F6; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="3"/><circle cx="6" cy="19" r="3"/><circle cx="18" cy="19" r="3"/><path d="M12 8v4m0 0l-6 4m6-4l6 4"/></svg>
+                    </div>
+                    <div style="font-size: 1.08rem; font-weight: 800; color: #3B82F6; margin-top: 4px;">{A['stat_algo']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_algo_sub']}</div>
                 </div>
-                <div style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
+                <div style="background: rgba(245, 158, 11, 0.06); border: 1.5px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #F59E0B; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                    </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #F59E0B;">{A['stat_features']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_features_sub']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_features_sub']}</div>
                 </div>
-                <div style="background: rgba(168, 85, 247, 0.08); border: 1.5px solid rgba(168, 85, 247, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
+                <div style="background: rgba(168, 85, 247, 0.06); border: 1.5px solid rgba(168, 85, 247, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #A855F7; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                    </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #A855F7;">{A['stat_classes']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_classes_sub']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_classes_sub']}</div>
                 </div>
             </div>
-            <!-- Pipeline Breakdown -->
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 8px; padding: 12px 14px; font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                <div>• {A['ml_step1']}</div>
-                <div style="margin-top: 4px;">• {A['ml_step2']}</div>
-                <div style="margin-top: 4px;">• {A['ml_step3']}</div>
+            <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: stretch; margin-top: 14px;">
+                <div style="flex: 1 1 520px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 10px; padding: 12px 16px; font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                        {blue_check_svg}
+                        <div>{A['ml_step1']}</div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                        {blue_check_svg}
+                        <div>{A['ml_step2']}</div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        {blue_check_svg}
+                        <div>{A['ml_step3']}</div>
+                    </div>
+                </div>
+                <div style="flex: 0 1 230px; min-width: 190px; background: rgba(59, 130, 246, 0.05); border: 1.5px solid rgba(59, 130, 246, 0.25); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-5.04z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-5.04z"/></svg>
+                    </div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #2563EB; line-height: 1.35;">
+                        {L['fast_reliable']}
+                    </div>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
         # Card 2: Medicine Demand Forecasting Model (HMIS Supply Chain)
         st.markdown(f"""
-        <div class="mm-card" style="border-top: 4px solid #3B82F6; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px;">
-                <div>
-                    <b style="font-size: 1.12rem; color: var(--mm-text-primary);"><img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['demand_title']}</b>
-                    <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 2px 0 0 0;">{A['demand_sub']}</p>
+        <div class="mm-card" style="border: 1px solid var(--mm-border-color); border-radius: 14px; padding: 20px 22px; margin-bottom: 16px; background: var(--mm-card-bg);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="width: 24px; height: 24px; border-radius: 50%; background: #EF4444; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.78rem; flex-shrink: 0;">2</span>
+                    <b style="font-size: 1.10rem; color: var(--mm-text-primary);">{_strip_num(A['demand_title'])}</b>
+                    <span style="background: rgba(59, 130, 246, 0.1); color: #2563EB; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 14px; font-size: 0.72rem; font-weight: 700; padding: 2px 10px;">{L['time_series']}</span>
                 </div>
-                <span class="mm-badge mm-badge-info" style="font-size: 0.80rem; font-weight: 700; padding: 6px 14px;">WAPE: {A['stat_wape']} | R²: {A['stat_r2']}</span>
+                <span class="mm-badge" style="background: rgba(59, 130, 246, 0.1); border: 1.5px solid rgba(59, 130, 246, 0.4); color: #2563EB; font-size: 0.78rem; font-weight: 800; padding: 5px 14px; border-radius: 20px; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    WAPE: {A['stat_wape']} | R²: {A['stat_r2']}
+                </span>
             </div>
-            <!-- 4-Stat Demand Forecaster Grid -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 14px 0 16px 0;">
-                <div style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid rgba(59, 130, 246, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
+            <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 0 0 14px 0;">{A['demand_sub']}</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 12px 0 14px 0;">
+                <div style="background: rgba(59, 130, 246, 0.06); border: 1.5px solid rgba(59, 130, 246, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #3B82F6; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #3B82F6;">{A['stat_wape']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_wape_sub']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_wape_sub']}</div>
                 </div>
-                <div style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
+                <div style="background: rgba(16, 185, 129, 0.06); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #10B981; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #10B981;">{A['stat_r2']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_r2_sub']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_r2_sub']}</div>
                 </div>
-                <div style="background: rgba(245, 158, 11, 0.08); border: 1.5px solid rgba(245, 158, 11, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
+                <div style="background: rgba(245, 158, 11, 0.06); border: 1.5px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #F59E0B; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 4H6l7 8-7 8h12"/></svg>
+                    </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #F59E0B;">{A['stat_mae']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_mae_sub']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_mae_sub']}</div>
                 </div>
-                <div style="background: rgba(168, 85, 247, 0.08); border: 1.5px solid rgba(168, 85, 247, 0.35); border-radius: 10px; padding: 12px; text-align: center;">
+                <div style="background: rgba(168, 85, 247, 0.06); border: 1.5px solid rgba(168, 85, 247, 0.3); border-radius: 10px; padding: 14px 12px; text-align: center;">
+                    <div style="display: flex; justify-content: center; color: #A855F7; margin-bottom: 4px;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="12" width="4" height="8" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><rect x="17" y="9" width="4" height="11" rx="1"/></svg>
+                    </div>
                     <div style="font-size: 1.35rem; font-weight: 800; color: #A855F7;">{A['stat_rmse']}</div>
-                    <div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">{A['stat_rmse_sub']}</div>
+                    <div style="font-size: 0.72rem; color: var(--mm-text-secondary); margin-top: 3px; font-weight: 500;">{A['stat_rmse_sub']}</div>
                 </div>
             </div>
-            <!-- Pipeline Breakdown -->
-            <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 8px; padding: 12px 14px; font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                <div>• {A['demand_step1']}</div>
-                <div style="margin-top: 4px;">• {A['demand_step2']}</div>
-                <div style="margin-top: 4px;">• {A['demand_step3']}</div>
+            <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: stretch; margin-top: 14px;">
+                <div style="flex: 1 1 520px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 10px; padding: 12px 16px; font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                        {blue_check_svg}
+                        <div>{A['demand_step1']}</div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                        {blue_check_svg}
+                        <div>{A['demand_step2']}</div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                        {blue_check_svg}
+                        <div>{A['demand_step3']}</div>
+                    </div>
+                </div>
+                <div style="flex: 0 1 230px; min-width: 190px; background: rgba(59, 130, 246, 0.05); border: 1.5px solid rgba(59, 130, 246, 0.25); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    </div>
+                    <div style="font-size: 0.78rem; font-weight: 600; color: #2563EB; line-height: 1.35;">
+                        {L['ensure_stock']}
+                    </div>
+                </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        # 4-Card Unified 2x2 Grid: Operational Risk, Knowledge Graph, Foundation LLMs, Vision OCR (Strictly 2 per row)
+        # 4-Card Unified 2x2 Grid (Strictly 2 per row on desktop, flexible on mobile)
         st.markdown(f"""
-        <div class="mm-grid-2col" style="margin-top: 14px; align-items: stretch;">
-            <!-- Card 3 -->
-            <div class="mm-card" style="display: flex; flex-direction: column; justify-content: flex-start; min-height: 250px; height: 100%; border-top: 4px solid #EF4444; margin: 0;">
-                <b style="font-size: 1.02rem; color: var(--mm-text-primary);"><img src="https://cdn-icons-png.flaticon.com/512/2965/2965300.png" style="width: 1.15em; height: 1.15em; vertical-align: -0.15em; display: inline-block;" /> {A['stockout_title']}</b>
-                <p style="font-size: 0.80rem; color: var(--mm-text-secondary); margin: 3px 0 10px 0;">{A['stockout_sub']}</p>
-                <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.55;">
-                    {A['stockout_desc']}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; margin-top: 14px; align-items: stretch;">
+            <!-- Card 3: Operational Stockout Risk Engine -->
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #EF4444; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #EF4444; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">3</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['stockout_title'])}</b>
+                        <span style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['risk_detect']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['stockout_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            {_format_stockout_bullets(A['stockout_desc'])}
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #EF4444; line-height: 1.3;">{L['prevent_stockouts']}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <!-- Card 4 -->
-            <div class="mm-card" style="display: flex; flex-direction: column; justify-content: flex-start; min-height: 250px; height: 100%; border-top: 4px solid #3B82F6; margin: 0;">
-                <b style="font-size: 1.02rem; color: var(--mm-text-primary);"><img src="https://cdn-icons-png.flaticon.com/512/404/404621.png" style="width: 1.15em; height: 1.15em; vertical-align: -0.15em; display: inline-block;" /> {A['kg_title']}</b>
-                <p style="font-size: 0.80rem; color: var(--mm-text-secondary); margin: 3px 0 10px 0;">{A['kg_sub']}</p>
-                <div style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                    <div style="margin-bottom: 6px;">• {A['kg_item1']}</div>
-                    <div style="margin-bottom: 6px;">• {A['kg_item2']}</div>
-                    <div>• {A['kg_item3']}</div>
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #3B82F6; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #3B82F6; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">4</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['kg_title'])}</b>
+                        <span style="background: rgba(59, 130, 246, 0.1); color: #2563EB; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['knowledge_base']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['kg_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                {blue_check_svg}
+                                <div>{A['kg_item1']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                {blue_check_svg}
+                                <div>{A['kg_item2']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                {blue_check_svg}
+                                <div>{A['kg_item3']}</div>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="9" y1="9" x2="15" y2="9"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #2563EB; line-height: 1.3;">{L['safe_triage']}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <!-- Card 5 -->
-            <div class="mm-card" style="display: flex; flex-direction: column; justify-content: flex-start; min-height: 250px; height: 100%; border-top: 4px solid #EA580C; margin: 0;">
-                <b style="font-size: 1.02rem; color: var(--mm-text-primary);"><img src="https://cdn-icons-png.flaticon.com/512/12512/12512364.png" style="width: 1.15em; height: 1.15em; vertical-align: -0.15em; display: inline-block;" /> {A['llm_title']}</b>
-                <p style="font-size: 0.80rem; color: var(--mm-text-secondary); margin: 3px 0 10px 0;">{A['llm_sub']}</p>
-                <div style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                    <div style="margin-bottom: 6px;">• {A['llm_item1']}</div>
-                    <div style="margin-bottom: 6px;">• {A['llm_item2']}</div>
-                    <div>• {A['llm_item3']}</div>
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #EA580C; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #EA580C; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">5</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['llm_title'])}</b>
+                        <span style="background: rgba(234, 88, 12, 0.1); color: #EA580C; border: 1px solid rgba(234, 88, 12, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['generative_ai']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['llm_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['llm_item1']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['llm_item2']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['llm_item3']}</div>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(234, 88, 12, 0.05); border: 1px solid rgba(234, 88, 12, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #EA580C; line-height: 1.3;">{L['natural_advice']}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <!-- Card 6 -->
-            <div class="mm-card" style="display: flex; flex-direction: column; justify-content: flex-start; min-height: 250px; height: 100%; border-top: 4px solid #8B5CF6; margin: 0;">
-                <b style="font-size: 1.02rem; color: var(--mm-text-primary);"><img src="https://cdn-icons-png.flaticon.com/512/6024/6024205.png" style="width: 1.15em; height: 1.15em; vertical-align: -0.15em; display: inline-block;" /> {A['ocr_title']}</b>
-                <p style="font-size: 0.80rem; color: var(--mm-text-secondary); margin: 3px 0 10px 0;">{A['ocr_sub']}</p>
-                <div style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                    <div style="margin-bottom: 6px;">• {A['ocr_item1']}</div>
-                    <div>• {A['ocr_item2']}</div>
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #8B5CF6; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #8B5CF6; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">6</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['ocr_title'])}</b>
+                        <span style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['vision_ai']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['ocr_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#8B5CF6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['ocr_item1']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#8B5CF6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['ocr_item2']}</div>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #8B5CF6; line-height: 1.3;">{L['automated_ocr']}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -6010,141 +6947,319 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
 
     # ==================== TAB 2: 100+ MAJOR INDIAN DISEASES ====================
     with tab_a2:
-        st.markdown(f"""
-        <div class="mm-card" style="border-left: 5px solid #2563EB; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
-                <div>
-                    <div style="font-size: 0.72rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.08em;">
+        # Disease categories metadata with dedicated SVG icons and palette
+        dis_meta = [
+            {"color": "#F43F5E", "bg": "rgba(244, 63, 94, 0.08)", "border": "rgba(244, 63, 94, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4.5c2 2 2 5-1 8L7 20"/><path d="M9.5 4.5c-2 2-2 5 1 8L17 20"/><path d="M8.5 7.5c2-2.5 5-2.5 7 0"/></svg>'},
+            {"color": "#EF4444", "bg": "rgba(239, 68, 68, 0.08)", "border": "rgba(239, 68, 68, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>'},
+            {"color": "#10B981", "bg": "rgba(16, 185, 129, 0.08)", "border": "rgba(16, 185, 129, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>'},
+            {"color": "#F97316", "bg": "rgba(249, 115, 22, 0.08)", "border": "rgba(249, 115, 22, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F97316" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v7"/><path d="M12 11c-2-2-4-2-6-1-2.5 1.2-3.5 4.5-2.5 7.5 1 3 3.5 4.5 5.5 4.5 3 0 3-3 3-5"/><path d="M12 11c2-2 4-2 6-1 2.5 1.2 3.5 4.5 2.5 7.5-1 3-3.5 4.5-5.5 4.5-3 0-3-3-3-5"/></svg>'},
+            {"color": "#2563EB", "bg": "rgba(37, 99, 235, 0.08)", "border": "rgba(37, 99, 235, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 5c-2.5 2-3 6.5-1.5 9.5 1.5 3 4.5 3.5 5.5 1.5 1-2 0-5-1.5-6.5C7.5 8.5 7 6.5 6 5z"/><path d="M18 5c2.5 2 3 6.5 1.5 9.5-1.5 3-4.5 3.5-5.5 1.5-1-2 0-5 1.5-6.5C16.5 8.5 17 6.5 18 5z"/></svg>'},
+            {"color": "#9333EA", "bg": "rgba(147, 51, 234, 0.08)", "border": "rgba(147, 51, 234, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8c2-3 8-4 13-2 3 1.2 4 4.5 3 7.5-1.5 4.5-6 6.5-11 5.5-3-.6-5.5-3.5-5-7 .2-1.5 0-3 0-4z"/></svg>'},
+            {"color": "#F59E0B", "bg": "rgba(245, 158, 11, 0.08)", "border": "rgba(245, 158, 11, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 4.44-5.04z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-4.44-5.04z"/></svg>'},
+            {"color": "#E11D48", "bg": "rgba(225, 29, 72, 0.08)", "border": "rgba(225, 29, 72, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12"/></svg>'},
+            {"color": "#DC2626", "bg": "rgba(220, 38, 38, 0.08)", "border": "rgba(220, 38, 38, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/><path d="M12 12a3 3 0 0 0 3-3"/></svg>'},
+            {"color": "#0EA5E9", "bg": "rgba(14, 165, 233, 0.08)", "border": "rgba(14, 165, 233, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><line x1="9" y1="9" x2="15" y2="15"/><circle cx="17" cy="7" r="2.5"/><line x1="15.5" y1="8.5" x2="8.5" y2="15.5"/></svg>'},
+            {"color": "#6366F1", "bg": "rgba(99, 102, 241, 0.08)", "border": "rgba(99, 102, 241, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'},
+            {"color": "#10B981", "bg": "rgba(16, 185, 129, 0.08)", "border": "rgba(16, 185, 129, 0.22)", "svg": '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="2"/><circle cx="16" cy="7" r="2"/><circle cx="4.5" cy="12" r="1.8"/><circle cx="19.5" cy="12" r="1.8"/><path d="M8 14c0 3 2.5 6 4 6s4-3 4-6a4 4 0 0 0-8 0z"/></svg>'},
+        ]
+
+        # Build cards html dynamically without indentation to prevent markdown code block
+        cards_html_list = []
+        for i in range(1, 13):
+            cat_key = f"dis_cat_{i}"
+            raw_text = A.get(cat_key, "")
+            title, desc = _parse_dis_cat(raw_text)
+            meta = dis_meta[i - 1]
+            cards_html_list.append(
+                f'<div class="mm-card" style="margin: 0; padding: 14px 16px; border: 1.5px solid var(--mm-border-color); border-radius: 12px; display: flex; align-items: flex-start; gap: 14px; background: var(--mm-card-bg); transition: transform 0.15s ease, box-shadow 0.15s ease;">'
+                f'<div style="width: 44px; height: 44px; border-radius: 10px; background: {meta["bg"]}; border: 1px solid {meta["border"]}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">{meta["svg"]}</div>'
+                f'<div style="flex: 1 1 auto; min-width: 0;">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">'
+                f'<b style="font-size: 0.90rem; color: var(--mm-text-primary); font-weight: 700; line-height: 1.25;">{title}</b>'
+                f'<span style="color: #94A3B8; flex-shrink: 0;">{chevron_right_svg}</span>'
+                f'</div>'
+                f'<p style="font-size: 0.77rem; color: var(--mm-text-secondary); line-height: 1.45; margin: 4px 0 0 0;">{desc}</p>'
+                f'</div>'
+                f'</div>'
+            )
+        cards_grid_html = "".join(cards_html_list)
+
+        safe_markdown(f"""
+        <div class="mm-card" style="border: 1.5px solid var(--mm-border-color); border-radius: 14px; padding: 22px 24px; margin-bottom: 18px; position: relative; overflow: hidden; background: var(--mm-card-bg);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+                <div style="flex: 1 1 500px; min-width: 280px; z-index: 2;">
+                    <div style="font-size: 0.72rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">
                         NATIONAL HEALTH TAXONOMY (MOHFW & WHO ICD)
                     </div>
-                    <b style="font-size: 1.15rem; color: var(--mm-text-primary);">{A['dis_title']}</b>
+                    <div style="font-size: 1.30rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.25;">
+                        {A['dis_title']}
+                    </div>
+                    <p style="font-size: 0.84rem; color: var(--mm-text-secondary); line-height: 1.55; margin: 8px 0 16px 0;">
+                        {A['dis_sub']}
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 8px;">
+                            <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.90rem; font-weight: 800; color: #2563EB; line-height: 1.1;">18</div>
+                                <div style="font-size: 0.70rem; color: var(--mm-text-secondary); font-weight: 600;">{L['official_cats_sub']}</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 8px;">
+                            <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.90rem; font-weight: 800; color: #2563EB; line-height: 1.1;">100+</div>
+                                <div style="font-size: 0.70rem; color: var(--mm-text-secondary); font-weight: 600;">{L['major_diseases_sub']}</div>
+                            </div>
+                        </div>
+                        <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 8px 14px; display: inline-flex; align-items: center; gap: 8px;">
+                            <div style="width: 28px; height: 28px; border-radius: 6px; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.90rem; font-weight: 800; color: #2563EB; line-height: 1.1;">WHO ICD-10/11</div>
+                                <div style="font-size: 0.70rem; color: var(--mm-text-secondary); font-weight: 600;">{L['who_compliant_sub']}</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <span class="mm-badge mm-badge-brand" style="font-size: 0.75rem; padding: 6px 12px;">18 Official Categories</span>
-            </div>
-            <p style="font-size: 0.84rem; color: var(--mm-text-secondary); line-height: 1.6; margin-bottom: 14px;">
-                {A['dis_sub']}
-            </p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px;">
-                <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_1']}
-                </div>
-                <div style="background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_2']}
-                </div>
-                <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_3']}
-                </div>
-                <div style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_4']}
-                </div>
-                <div style="background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_5']}
-                </div>
-                <div style="background: rgba(234, 88, 12, 0.06); border: 1px solid rgba(234, 88, 12, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_6']}
-                </div>
-                <div style="background: rgba(14, 165, 233, 0.06); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_7']}
-                </div>
-                <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_8']}
-                </div>
-                <div style="background: rgba(6, 182, 212, 0.06); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_9']}
-                </div>
-                <div style="background: rgba(139, 92, 246, 0.06); border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_10']}
-                </div>
-                <div style="background: rgba(6, 182, 212, 0.06); border: 1px solid rgba(6, 182, 212, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_11']}
-                </div>
-                <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 12px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                    {A['dis_cat_12']}
+                <div style="display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; min-height: 120px; z-index: 2;">
+                    <span class="mm-badge" style="background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.3); color: #2563EB; font-size: 0.75rem; font-weight: 800; padding: 6px 14px; border-radius: 20px;">
+                        18 OFFICIAL CATEGORIES
+                    </span>
+                    <div style="opacity: 0.45; margin-top: 10px;">
+                        <svg width="130" height="90" viewBox="0 0 100 75" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M20 20v15a15 15 0 0 0 30 0v-15"/>
+                            <path d="M35 50v8a14 14 0 0 0 28 0v-4"/>
+                            <circle cx="63" cy="54" r="5" fill="rgba(37,99,235,0.2)"/>
+                            <path d="M50 22c4-8 14-8 18 0 4-8 14-8 18 0-6 10-18 16-18 16s-12-6-18-16z" stroke="#3B82F6" stroke-width="2" fill="rgba(59,130,246,0.08)"/>
+                        </svg>
+                    </div>
                 </div>
             </div>
         </div>
-        """, unsafe_allow_html=True)
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 14px;">
+{cards_grid_html}
+        </div>
+        """)
 
     # ==================== TAB 3: AUTHENTIC DATA SOURCES & APIS ====================
     with tab_a3:
         st.markdown(f"""
-        <div class="mm-card" style="border-left: 5px solid #2563EB; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;">
-                <div>
-                    <div style="font-size: 0.72rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.08em;">
-                        CLINICAL DATA GOVERNANCE & PROVENANCE
+        <div class="mm-card" style="border-left: 5px solid #2563EB; border-radius: 16px; padding: 22px 26px; margin-bottom: 20px;">
+            <!-- Header Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 8px;">
+                <div style="max-width: 720px;">
+                    <div style="font-size: 0.74rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 3px;">
+                        CLINICAL DATA GOVERNANCE &amp; PROVENANCE
                     </div>
-                    <b style="font-size: 1.15rem; color: var(--mm-text-primary);">{A['sources_title']}</b>
+                    <b style="font-size: 1.25rem; color: var(--mm-text-primary); display: block; line-height: 1.3;">{A['sources_title']}</b>
+                    <p style="font-size: 0.84rem; color: var(--mm-text-secondary); line-height: 1.5; margin: 4px 0 0 0;">
+                        {A['sources_sub']}
+                    </p>
                 </div>
-                <span class="mm-badge mm-badge-info" style="font-size: 0.75rem; padding: 6px 12px;">100% Real, Audited & Non-Fabricated</span>
+                <!-- Right side trust badge -->
+                <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+                    <div style="opacity: 0.75;">
+                        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <ellipse cx="12" cy="5" rx="9" ry="3" fill="rgba(37,99,235,0.06)"/>
+                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                        </svg>
+                    </div>
+                    <div style="background: rgba(224, 242, 254, 0.85); border: 1.5px solid #7DD3FC; border-radius: 9999px; padding: 7px 16px; display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 22px; height: 22px; border-radius: 50%; background: #0284C7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.72rem; font-weight: 800; color: #0369A1; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.2;">100% REAL, AUDITED &amp; NON-FABRICATED</div>
+                            <div style="font-size: 0.68rem; color: #0284C7; font-weight: 500; line-height: 1.2;">{L.get('trusted_data', 'Trusted Data. Better Care.')}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <p style="font-size: 0.84rem; color: var(--mm-text-secondary); line-height: 1.6; margin-bottom: 14px;">
-                {A['sources_sub']}
-            </p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
-                <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #2563EB; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/4320/4320371.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_who_title']}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr)); gap: 16px; margin-top: 18px;">
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #BFDBFE; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <line x1="2" y1="12" x2="22" y2="12"/>
+                                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #1D4ED8; line-height: 1.35;">{A['src_who_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_who_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_who_desc']}
-                    </div>
+                    <a href="https://www.who.int/api/news/diseaseoutbreaknews" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.25); color: #2563EB; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span>{L.get('btn_view_api_doc', 'View API Documentation')}</span>
+                    </a>
                 </div>
-                <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #10B981; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2966/2966327.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_hmis_title']}
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #A7F3D0; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="3" y1="21" x2="21" y2="21"/>
+                                    <line x1="4" y1="10" x2="20" y2="10"/>
+                                    <polyline points="12 2 20 7 4 7"/>
+                                    <line x1="6" y1="10" x2="6" y2="21"/>
+                                    <line x1="10" y1="10" x2="10" y2="21"/>
+                                    <line x1="14" y1="10" x2="14" y2="21"/>
+                                    <line x1="18" y1="10" x2="18" y2="21"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #059669; line-height: 1.35;">{A['src_hmis_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_hmis_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_hmis_desc']}
-                    </div>
+                    <a href="https://hmis.mohfw.gov.in/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); color: #059669; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        <span>{L.get('btn_view_govt_data', 'View Government Data')}</span>
+                    </a>
                 </div>
-                <div style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #F59E0B; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/2465/2465596.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_nfhs_title']}
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #FDE68A; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #D97706; line-height: 1.35;">{A['src_nfhs_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_nfhs_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_nfhs_desc']}
-                    </div>
+                    <a href="http://rchiips.org/nfhs/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.25); color: #D97706; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span>{L.get('btn_view_district_data', 'View District Data')}</span>
+                    </a>
                 </div>
-                <div style="background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #A855F7; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/883/883407.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_nlem_title']}
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #DDD6FE; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333EA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                    <polyline points="14 2 14 8 20 8"/>
+                                    <line x1="16" y1="13" x2="8" y2="13"/>
+                                    <line x1="16" y1="17" x2="8" y2="17"/>
+                                    <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #9333EA; line-height: 1.35;">{A['src_nlem_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_nlem_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_nlem_desc']}
-                    </div>
+                    <a href="https://cdsco.gov.in/opencms/opencms/en/Home/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); color: #9333EA; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9333EA" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+                        <span>{L.get('btn_view_nlem_cat', 'View NLEM Catalog')}</span>
+                    </a>
                 </div>
-                <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #10B981; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/5228/5228598.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_fda_title']}
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #FECDD3; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(244, 63, 94, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(244, 63, 94, 0.12); border: 1px solid rgba(244, 63, 94, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #E11D48; line-height: 1.35;">{A['src_fda_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_fda_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_fda_desc']}
-                    </div>
+                    <a href="https://open.fda.gov/apis/drug/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(244, 63, 94, 0.08); border: 1px solid rgba(244, 63, 94, 0.25); color: #E11D48; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <span>{L.get('btn_browse_fda', 'Browse FDA Data')}</span>
+                    </a>
                 </div>
-                <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #2563EB; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/18310/18310946.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_nih_title']}
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #BFDBFE; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(37, 99, 235, 0.12); border: 1px solid rgba(37, 99, 235, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M6 18h8"/>
+                                    <path d="M3 22h18"/>
+                                    <path d="M14 22a7 7 0 1 0 0-14h-1"/>
+                                    <path d="M9 14h2"/>
+                                    <path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z"/>
+                                    <path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #2563EB; line-height: 1.35;">{A['src_nih_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_nih_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_nih_desc']}
-                    </div>
+                    <a href="https://loinc.org/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(37, 99, 235, 0.25); color: #2563EB; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                        <span>{L.get('btn_view_ref_standards', 'View Reference Standards')}</span>
+                    </a>
                 </div>
-                <div style="background: rgba(147, 51, 234, 0.06); border: 1px solid rgba(147, 51, 234, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #9333EA; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/4060/4060488.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_gis_title']}
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #E9D5FF; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(168, 85, 247, 0.12); border: 1px solid rgba(168, 85, 247, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9333EA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                    <circle cx="12" cy="10" r="3"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #9333EA; line-height: 1.35;">{A['src_gis_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_gis_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_gis_desc']}
-                    </div>
+                    <a href="https://overpass-turbo.eu/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); color: #9333EA; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9333EA" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+                        <span>{L.get('btn_explore_location', 'Explore Location Data')}</span>
+                    </a>
                 </div>
-                <div style="background: rgba(13, 148, 136, 0.06); border: 1px solid rgba(13, 148, 136, 0.25); border-radius: 10px; padding: 14px;">
-                    <div style="font-size: 0.88rem; font-weight: 700; color: #0D9488; margin-bottom: 4px;">
-                        <img src="https://cdn-icons-png.flaticon.com/512/6266/6266132.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['src_ayush_title']}
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #A7F3D0; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.04);">
+                    <div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <div style="width: 44px; height: 44px; border-radius: 12px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="4" r="2"/>
+                                    <path d="m14 10 2 2 3-1"/>
+                                    <path d="m10 10-2 2-3-1"/>
+                                    <path d="M12 6v6"/>
+                                    <path d="m9 16 3 2 3-2"/>
+                                    <path d="M8 21h8"/>
+                                </svg>
+                            </div>
+                            <b style="font-size: 0.90rem; color: #059669; line-height: 1.35;">{A['src_ayush_title']}</b>
+                        </div>
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                            {A['src_ayush_desc']}
+                        </div>
                     </div>
-                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
-                        {A['src_ayush_desc']}
-                    </div>
+                    <a href="https://ayush.gov.in/" target="_blank" rel="noopener noreferrer" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 8px 14px; border-radius: 10px; background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); color: #059669; font-size: 0.78rem; font-weight: 700; transition: all 0.2s ease; margin-top: auto;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>
+                        <span>{L.get('btn_view_guidelines', 'View Practices & Guidelines')}</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -6153,29 +7268,523 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
     # ==================== TAB 4: ARCHITECTURE, PRIVACY & SECURITY ====================
     with tab_a4:
         st.markdown(f"""
-        <div class="mm-card">
-            <b style="font-size: 1.10rem; color: var(--mm-text-primary);">{A['feat_title']}</b>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin-top: 14px;">
-                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 10px; padding: 14px;">
-                    <b style="color: #3B82F6; font-size: 0.90rem;"><img src="https://cdn-icons-png.flaticon.com/128/486/486505.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['feat_1_title']}</b>
-                    <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.5;">{A['feat_1_desc']}</p>
+        <div class="mm-card" style="border-left: 5px solid #2563EB; border-radius: 16px; padding: 22px 26px; margin-bottom: 20px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(37, 99, 235, 0.1); border: 1.5px solid rgba(37, 99, 235, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <polyline points="9 12 11 14 15 10"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <b style="font-size: 1.25rem; color: var(--mm-text-primary); display: block; line-height: 1.3;">{A['feat_title']}</b>
+                        <span style="font-size: 0.84rem; color: var(--mm-text-secondary); margin-top: 2px; display: block;">{L.get('suite_sub', 'Empowering a secure, accessible and resilient healthcare ecosystem.')}</span>
+                    </div>
                 </div>
-                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 10px; padding: 14px;">
-                    <b style="color: #10B981; font-size: 0.90rem;"><img src="https://cdn-icons-png.flaticon.com/512/595/595764.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['feat_2_title']}</b>
-                    <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.5;">{A['feat_2_desc']}</p>
+                <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+                    <div style="opacity: 0.75;">
+                        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="rgba(37,99,235,0.06)"/>
+                            <rect x="9" y="11" width="6" height="5" rx="1" fill="#3B82F6"/>
+                            <path d="M10 11V9a2 2 0 1 1 4 0v2"/>
+                        </svg>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.74rem; color: var(--mm-text-secondary); font-weight: 500;">{L.get('secure_hc', 'Secure Healthcare')}</div>
+                        <div style="font-size: 0.78rem; color: #2563EB; font-weight: 700;">{L.get('smarter_tom', 'Smarter Tomorrow')}</div>
+                        <div style="width: 28px; height: 2.5px; background: #2563EB; border-radius: 4px; margin-left: auto; margin-top: 2px;"></div>
+                    </div>
                 </div>
-                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 10px; padding: 14px;">
-                    <b style="color: #F59E0B; font-size: 0.90rem;"><img src="https://cdn-icons-png.flaticon.com/512/4503/4503969.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['feat_3_title']}</b>
-                    <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.5;">{A['feat_3_desc']}</p>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 255px), 1fr)); gap: 16px; margin-top: 20px;">
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #BFDBFE; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.04);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <line x1="2" y1="12" x2="22" y2="12"/>
+                                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                    </svg>
+                                </div>
+                                <b style="font-size: 0.92rem; color: #1D4ED8;">{A['feat_1_title']}</b>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.55; margin: 0 0 16px 0;">{A['feat_1_desc']}</p>
+                    </div>
+                    <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 0.72rem; font-weight: 600; color: #2563EB; text-align: center; margin-top: auto;">
+                        {L.get('tag_feat_1', 'Multilingual • Accessible • Inclusive')}
+                    </div>
                 </div>
-                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--mm-border-color); border-radius: 10px; padding: 14px;">
-                    <b style="color: #A855F7; font-size: 0.90rem;"><img src="https://cdn-icons-png.flaticon.com/512/12370/12370940.png" style="width: 1.1em; height: 1.1em; vertical-align: -0.15em; display: inline-block;" /> {A['feat_4_title']}</b>
-                    <p style="font-size: 0.82rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.5;">{A['feat_4_desc']}</p>
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #BBF7D0; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.04);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(16, 185, 129, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                        <polyline points="9 12 11 14 15 10"/>
+                                    </svg>
+                                </div>
+                                <b style="font-size: 0.92rem; color: #059669;">{A['feat_2_title']}</b>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.55; margin: 0 0 16px 0;">{A['feat_2_desc']}</p>
+                    </div>
+                    <div style="background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 0.72rem; font-weight: 600; color: #059669; text-align: center; margin-top: auto;">
+                        {L.get('tag_feat_2', 'Transparent • Auditable • Reliable')}
+                    </div>
+                </div>
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #FED7AA; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(245, 158, 11, 0.04);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(245, 158, 11, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                    </svg>
+                                </div>
+                                <b style="font-size: 0.92rem; color: #D97706;">{A['feat_3_title']}</b>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.55; margin: 0 0 16px 0;">{A['feat_3_desc']}</p>
+                    </div>
+                    <div style="background: rgba(245, 158, 11, 0.06); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 0.72rem; font-weight: 600; color: #D97706; text-align: center; margin-top: auto;">
+                        {L.get('tag_feat_3', 'Private • Secure • HIPAA Compliant')}
+                    </div>
+                </div>
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #E9D5FF; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.04);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(168, 85, 247, 0.12); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#A855F7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                                        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                                        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                                    </svg>
+                                </div>
+                                <b style="font-size: 0.92rem; color: #9333EA;">{A['feat_4_title']}</b>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.55; margin: 0 0 16px 0;">{A['feat_4_desc']}</p>
+                    </div>
+                    <div style="background: rgba(168, 85, 247, 0.06); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 0.72rem; font-weight: 600; color: #9333EA; text-align: center; margin-top: auto;">
+                        {L.get('tag_feat_4', 'Always Available \u2022 Reliable \u2022 Patient-First')}
+                    </div>
+                </div>
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #FECACA; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(244, 63, 94, 0.04);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(244, 63, 94, 0.10); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F43F5E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                        <polyline points="14 2 14 8 20 8"/>
+                                        <line x1="12" y1="18" x2="12" y2="12"/>
+                                        <line x1="9" y1="15" x2="15" y2="15"/>
+                                    </svg>
+                                </div>
+                                <b style="font-size: 0.92rem; color: #E11D48;">{A['feat_5_title']}</b>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.55; margin: 0 0 16px 0;">{A['feat_5_desc']}</p>
+                    </div>
+                    <div style="background: rgba(244, 63, 94, 0.06); border: 1px solid rgba(244, 63, 94, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 0.72rem; font-weight: 600; color: #E11D48; text-align: center; margin-top: auto;">
+                        {L.get('tag_feat_5', 'Intelligent \u2022 Accurate \u2022 Clinical-Grade')}
+                    </div>
+                </div>
+                <div style="background: var(--mm-card-bg); border: 1.5px solid #A5F3FC; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; transition: all 0.25s ease; box-shadow: 0 2px 8px rgba(6, 182, 212, 0.04);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="width: 38px; height: 38px; border-radius: 50%; background: rgba(6, 182, 212, 0.10); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#06B6D4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </div>
+                                <b style="font-size: 0.92rem; color: #0891B2;">{A['feat_6_title']}</b>
+                            </div>
+                        </div>
+                        <p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.55; margin: 0 0 16px 0;">{A['feat_6_desc']}</p>
+                    </div>
+                    <div style="background: rgba(6, 182, 212, 0.06); border: 1px solid rgba(6, 182, 212, 0.2); border-radius: 8px; padding: 6px 10px; font-size: 0.72rem; font-weight: 600; color: #0891B2; text-align: center; margin-top: auto;">
+                        {L.get('tag_feat_6', 'Multi-Member \u2022 Secure \u2022 Comprehensive')}
+                    </div>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
 
+    # ==================== TAB 5: OFFICIAL CLINICAL HELPDESK & SUPPORT ====================
+    with tab_a5:
+        # Top Protocol Banner Card
+        st.markdown(f"""
+        <div class="mm-card" style="background: linear-gradient(135deg, rgba(239, 246, 255, 0.85) 0%, rgba(219, 234, 254, 0.5) 100%); border: 1.5px solid #BFDBFE; border-radius: 16px; padding: 22px 26px; margin-bottom: 22px; position: relative; overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 52px; height: 52px; border-radius: 14px; background: #DBEAFE; border: 1.5px solid #93C5FD; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.12);">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.08em; text-transform: uppercase;">
+                            NATIONAL PATIENT &amp; CLINICIAN SUPPORT PROTOCOL
+                        </div>
+                        <div style="font-size: 1.50rem; font-weight: 800; color: #1E293B; line-height: 1.25; margin-top: 2px;">
+                            Official Clinical <span style="color: #2563EB;">Helpdesk &amp; Grievance Redressal</span>
+                        </div>
+                        <div style="font-size: 0.86rem; color: #64748B; margin-top: 3px;">
+                            Submit any technical issue, clinical query or system feedback directly to the National System Administration.
+                        </div>
+                    </div>
+                </div>
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(224, 242, 254, 0.95); border: 1.5px solid #38BDF8; color: #0284C7; padding: 8px 16px; border-radius: 9999px; font-weight: 800; font-size: 0.76rem; letter-spacing: 0.04em;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    24-HOUR RESOLUTION PROMISE
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(191, 219, 254, 0.8);">
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="#2563EB" stroke="#2563EB" stroke-width="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Quick Response</div>
+                        <div style="font-size: 0.72rem; color: #64748B;">Acknowledgment within minutes</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Direct to Administration</div>
+                        <div style="font-size: 0.72rem; color: #64748B;">Secure &amp; authenticated channel</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Automated Confirmation</div>
+                        <div style="font-size: 0.72rem; color: #64748B;">Instant email notification</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Dedicated Support</div>
+                        <div style="font-size: 0.72rem; color: #64748B;">For clinical &amp; technical issues</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("""
+        <style>
+        /* Force equal height on Customer Support columns & cards in both light & dark mode */
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]),
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) {
+            align-items: stretch !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"],
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"],
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"] {
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: stretch !important;
+            height: 100% !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+        }
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) [data-testid="stLayoutWrapper"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) [data-testid="stLayoutWrapper"] {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 auto !important;
+        }
+        /* Left card container stretches full height */
+        div[class*="st-key-about_supp_form_card"],
+        .st-key-about_supp_form_card,
+        .st-key-about_supp_form_card > div[data-testid="stVerticalBlockBorderWrapper"],
+        .st-key-about_supp_form_card div[data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-about_supp_form_card"]),
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_form_card) {
+            height: 100% !important;
+            min-height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+            box-sizing: border-box !important;
+            border-radius: 14px !important;
+        }
+        div[class*="st-key-about_supp_form_card"] > div[data-testid="stVerticalBlock"],
+        .st-key-about_supp_form_card > div[data-testid="stVerticalBlock"],
+        .st-key-about_supp_form_card [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 100% !important;
+        }
+        .st-key-about_supp_form_card .stButton,
+        div[class*="st-key-about_supp_form_card"] .stButton {
+            margin-top: auto !important;
+            padding-top: 10px !important;
+        }
+        /* Right column stretches cards to fill vertical space */
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"]:last-child > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"]:last-child > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"]:last-child > div[data-testid="stVerticalBlock"],
+        div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"]:last-child > div[data-testid="stVerticalBlock"] {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            gap: 12px !important;
+        }
+        .st-key-about_supp_card_info,
+        .st-key-about_supp_card_report,
+        .st-key-about_supp_card_help,
+        div[class*="st-key-about_supp_card_info"],
+        div[class*="st-key-about_supp_card_report"],
+        div[class*="st-key-about_supp_card_help"],
+        .st-key-about_supp_card_info > div[data-testid="stVerticalBlockBorderWrapper"],
+        .st-key-about_supp_card_report > div[data-testid="stVerticalBlockBorderWrapper"],
+        .st-key-about_supp_card_help > div[data-testid="stVerticalBlockBorderWrapper"],
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_card_info),
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_card_report),
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_card_help) {
+            flex: 1 1 auto !important;
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            border-radius: 12px !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+        col_supp_left, col_supp_right = st.columns([1.75, 1.0], gap="large")
+
+        with col_supp_left:
+            with st.container(key="about_supp_form_card", border=True):
+                st.markdown("""
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+                    <div style="width: 42px; height: 42px; border-radius: 10px; background: rgba(37,99,235,0.08); border: 1.5px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                            <polyline points="22,6 12,13 2,6"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <b style="font-size: 1.05rem; color: var(--mm-text-primary);">Submit Clinical &amp; System Inquiry</b>
+                        <div style="font-size: 0.80rem; color: var(--mm-text-secondary); margin-top: 1px;">
+                            Direct dispatch to Administration (docmindxai@gmail.com) with automated confirmation.
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                default_email = st.session_state.get("auth_user", {}).get("email", "") if isinstance(st.session_state.get("auth_user"), dict) else ""
+
+                st.markdown("""
+                <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.86rem; color: var(--mm-text-primary); margin-bottom: 4px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Your Registered Email Address</span> <span style="color: #EF4444;">*</span>
+                </div>
+                """, unsafe_allow_html=True)
+                supp_email = st.text_input(
+                    "Your Registered Email Address",
+                    value=default_email,
+                    placeholder="yourname@domain.com",
+                    key="about_supp_email_input",
+                    label_visibility="collapsed"
+                )
+                st.caption("Enter the email address registered with your DocMindX AI account.")
+
+                st.markdown("""
+                <div style="display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.86rem; color: var(--mm-text-primary); margin-top: 10px; margin-bottom: 4px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    <span>Detailed Problem Description / Support Inquiry</span> <span style="color: #EF4444;">*</span>
+                </div>
+                """, unsafe_allow_html=True)
+                supp_desc = st.text_area(
+                    "Detailed Problem Description / Support Inquiry",
+                    placeholder="Please describe your issue, affected module, error message, or inquiry in detail...",
+                    key="about_supp_desc_input",
+                    max_chars=1000,
+                    height=135,
+                    label_visibility="collapsed"
+                )
+                chars_used = len(supp_desc) if supp_desc else 0
+                st.markdown(f"<div style='text-align: right; font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: -8px; margin-bottom: 10px;'>{chars_used}/1000 characters</div>", unsafe_allow_html=True)
+
+                submit_btn = st.button(
+                    "Send Support Ticket to Admin →",
+                    key="btn_about_support_submit",
+                    type="primary",
+                    use_container_width=True
+                )
+
+                st.markdown("""
+                <div style="display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 10px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Your information is secure and will be sent directly to the National System Administration.</span>
+                </div>
+                """, unsafe_allow_html=True)
+
+                if submit_btn:
+                    if not supp_email or "@" not in supp_email or "." not in supp_email:
+                        st.error("Please provide a valid registered email address.")
+                    elif not supp_desc or len(supp_desc.strip()) < 8:
+                        st.error("Please provide a detailed problem description or inquiry before submitting.")
+                    else:
+                        ticket_id = f"TKT-{datetime.now().strftime('%y%m%d')}-{uuid.uuid4().hex[:4].upper()}"
+                        user_full_name = "DocMindX AI User"
+                        if isinstance(st.session_state.get("auth_user"), dict):
+                            user_full_name = st.session_state["auth_user"].get("full_name") or "DocMindX AI User"
+
+                        with st.spinner("Dispatching clinical support ticket..."):
+                            admin_ok = email_service.send_support_ticket_to_admin(
+                                user_email=supp_email.strip(),
+                                issue_text=supp_desc.strip(),
+                                ticket_id=ticket_id,
+                                user_name=user_full_name
+                            )
+                            user_ok = email_service.send_support_ticket_confirmation_to_user(
+                                user_email=supp_email.strip(),
+                                issue_text=supp_desc.strip(),
+                                ticket_id=ticket_id,
+                                user_name=user_full_name
+                            )
+
+                        st.success(
+                            f"Support Ticket **#{ticket_id}** has been registered successfully! An automated confirmation has been dispatched to `{supp_email.strip()}`. Our National Administration will review and respond within 24 hours."
+                        )
+
+        with col_supp_right:
+            # Card 1: Support Information
+            with st.container(key="about_supp_card_info", border=True):
+                st.markdown("""
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(37,99,235,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                    </div>
+                    <div>
+                        <b style="font-size: 0.95rem; color: var(--mm-text-primary);">Support Information</b>
+                        <div style="font-size: 0.75rem; color: var(--mm-text-secondary);">We are here to help you</div>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.82rem;">
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        <div>
+                            <div style="font-size: 0.74rem; color: var(--mm-text-secondary);">Admin Email</div>
+                            <div style="font-weight: 600; color: #2563EB;">docmindxai@gmail.com</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <div>
+                            <div style="font-size: 0.74rem; color: var(--mm-text-secondary);">Response Time</div>
+                            <div style="font-weight: 600; color: var(--mm-text-primary);">Within 24 hours</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                        <div>
+                            <div style="font-size: 0.74rem; color: var(--mm-text-secondary);">Supported By</div>
+                            <div style="font-weight: 600; color: var(--mm-text-primary);">National System Administration</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: flex-start; gap: 10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" style="flex-shrink:0; margin-top:2px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                        <div>
+                            <div style="font-size: 0.74rem; color: var(--mm-text-secondary);">Data Security</div>
+                            <div style="font-weight: 600; color: var(--mm-text-primary);">Your data is encrypted and secure</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Card 2: What Can You Report?
+            with st.container(key="about_supp_card_report", border=True):
+                st.markdown("""
+                <div style="background: rgba(16, 185, 129, 0.04); border-radius: 8px; margin: -8px; padding: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        <div style="width: 26px; height: 26px; border-radius: 50%; background: #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                        <b style="font-size: 0.90rem; color: var(--mm-text-primary);">What Can You Report?</b>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px; font-size: 0.80rem; color: var(--mm-text-secondary);">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="16 9 10 15 8 13"/></svg>
+                            <span>Technical issues or errors</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="16 9 10 15 8 13"/></svg>
+                            <span>Clinical query or guidance</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="16 9 10 15 8 13"/></svg>
+                            <span>Feature requests</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="16 9 10 15 8 13"/></svg>
+                            <span>System feedback</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="16 9 10 15 8 13"/></svg>
+                            <span>Any other support related issue</span>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Card 3: Need Immediate Help?
+            with st.container(key="about_supp_card_help", border=True):
+                st.markdown("""
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(37,99,235,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+                            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <b style="font-size: 0.90rem; color: var(--mm-text-primary);">Need Immediate Help?</b>
+                        <p style="font-size: 0.80rem; color: var(--mm-text-secondary); margin: 4px 0 0 0; line-height: 1.45;">
+                            For urgent clinical or security issues, please mark it as <b style="color: #EF4444;">URGENT</b> in your message.
+                        </p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
 
 # ==============================================================================
@@ -6215,7 +7824,47 @@ elif st.session_state["active_panel"] == "National Command Center":
                 st.rerun()
 
     render_command_center_dashboard(lang_code=lang_code, is_dark=st.session_state.get("dark_mode", False))
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
+
+elif st.session_state["active_panel"] == "Account / Authentication":
+    auth_ui.render_auth_portal_panel(T=T, lang_code=lang_code, LANG_OPTIONS=LANG_OPTIONS, sync_language=sync_language)
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
+    st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
+
+elif st.session_state["active_panel"] in ("Family Management", "My Profile & Family"):
+    curr_auth_user = auth_ui.get_current_user()
+    if curr_auth_user and auth_ui.is_authenticated():
+        family_ui.render_family_management_view(curr_auth_user)
+    else:
+        st.session_state["active_panel"] = "Account / Authentication"
+        st.rerun()
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
+    st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
+
+elif st.session_state["active_panel"] in ("Admin Panel", "Admin Console"):
+    curr_auth_user = auth_ui.get_current_user()
+    if curr_auth_user and auth_svc.is_admin_session(curr_auth_user):
+        admin_ui.render_admin_dashboard_view()
+    else:
+        st.error("Admin session required. Please sign in with administrator credentials.")
+        st.session_state["active_panel"] = "Account / Authentication"
+        st.session_state["auth_view"] = "ADMIN_LOGIN"
+        st.rerun()
+    st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
+    st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
+
+else:
+    # Fail-safe handler to ensure white screen NEVER occurs under any circumstance
+    curr_fallback_user = auth_ui.get_current_user()
+    if curr_fallback_user and auth_ui.is_authenticated():
+        if auth_svc.is_admin_session(curr_fallback_user):
+            st.session_state["active_panel"] = "Admin Panel"
+        else:
+            st.session_state["active_panel"] = "Family Management"
+    else:
+        st.session_state["active_panel"] = "Health Assessment"
+    st.rerun()
 
 
 # ==============================================================================
@@ -7517,9 +9166,3 @@ if chat_is_open:
             st.rerun()
 
 
-# Page Footer
-st.markdown("---")
-st.markdown(
-    f"<center style='color: #64748B; font-size: 0.86rem; padding: 14px 0; font-weight: 500;'><b>DocMindX AI</b> © 2026 • Enterprise Multilingual Healthcare Suite • Built for Clinical Safety & Triage Support</center>",
-    unsafe_allow_html=True
-)

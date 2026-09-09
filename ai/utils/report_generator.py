@@ -12,7 +12,7 @@ import base64
 import requests
 from datetime import datetime
 from PIL import Image as PILImage
-
+import json
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -982,4 +982,87 @@ def generate_diagnostic_evaluation_pdf(
     doc.build(story, canvasmaker=DiagCanvas)
     buffer.seek(0)
     return buffer
+
+
+def generate_scan_record_pdf(scan: dict) -> io.BytesIO:
+    """
+    Dynamically generates a professional clinical PDF report for any saved scan record
+    (Health Assessment, Lab Report, Doctor Prescription, or Radiology / Diagnostic Imaging).
+    """
+    if not scan:
+        scan = {}
+    details = scan.get("details") or {}
+    if isinstance(details, str):
+        try:
+            details = json.loads(details)
+        except Exception:
+            details = {}
+            
+    scan_type = scan.get("scan_type", "Health Record")
+    created_at = str(scan.get("created_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")))[:16]
+    
+    # Check if this is an Assessment
+    if "Assessment" in scan_type or "triage_result" in details:
+        u_ctx = details.get("user_inputs", {})
+        p_ctx = details.get("patient_context", {})
+        patient_name = p_ctx.get("name") or scan.get("family_member_name") or "Patient"
+        
+        pdf_user_ctx = {
+            "name": patient_name,
+            "age": u_ctx.get("age") or p_ctx.get("age") or "Adult",
+            "gender": u_ctx.get("gender") or p_ctx.get("gender") or "Unspecified",
+            "state": u_ctx.get("location") or u_ctx.get("state") or p_ctx.get("state") or "India",
+            "location": u_ctx.get("location") or u_ctx.get("state") or p_ctx.get("state") or "India",
+            "height": u_ctx.get("height") or p_ctx.get("height") or "None",
+            "weight": u_ctx.get("weight") or p_ctx.get("weight") or "None",
+            "duration": u_ctx.get("duration", "1-3 Days"),
+            "severity": u_ctx.get("severity", "Moderate"),
+            "blood_group": u_ctx.get("blood_group") or p_ctx.get("blood_group") or "None",
+            "pre_existing": ", ".join(u_ctx.get("conditions", [])) if isinstance(u_ctx.get("conditions"), list) else str(u_ctx.get("conditions", "None")),
+            "current_meds": ", ".join(u_ctx.get("medications", [])) if isinstance(u_ctx.get("medications"), list) else str(u_ctx.get("medications", "None")),
+            "allergies": u_ctx.get("allergies", "None"),
+            "symptoms": u_ctx.get("symptoms", details.get("symptoms", []))
+        }
+        t_res = details.get("triage_result") or {
+            "urgency_level": details.get("urgency_level", "NORMAL"),
+            "ranked_conditions": details.get("ranked_conditions", []),
+            "is_emergency": details.get("is_emergency", False),
+            "red_flags": details.get("red_flags", [])
+        }
+        care_res = details.get("care_recommendations") or {
+            "medicine_gallery": details.get("medicines", []),
+            "yoga_recommendations": details.get("yoga_recommendations", []),
+            "diet_guidance": details.get("diet_guidance", {}),
+            "lifestyle_guidance": details.get("lifestyle_guidance", []),
+            "precautions": details.get("precautions", [])
+        }
+        return generate_pdf_report(pdf_user_ctx, t_res, care_res)
+        
+    else:
+        # Diagnostic Evaluation / Report / Prescription / Radiology
+        p_ctx = details.get("patient_context", {})
+        u_inputs = details.get("user_inputs", {})
+        patient_name = p_ctx.get("name") or scan.get("family_member_name") or "Patient"
+        doc_name = u_inputs.get("doc_name") or scan.get("result_reference") or scan.get("summary") or "Diagnostic Evaluation"
+        doc_type = scan_type
+        age_group = str(u_inputs.get("age") or p_ctx.get("age") or "Adult")
+        gender = str(u_inputs.get("gender") or p_ctx.get("gender") or "Unspecified")
+        findings = details.get("findings") or details.get("medicines") or []
+        breakdown_text = details.get("breakdown") or details.get("summary") or scan.get("summary") or ""
+        total_eval = len(findings)
+        abnormal_count = details.get("abnormal_count", 0)
+        overall_status = "Attention Needed" if abnormal_count > 0 else "All Normal"
+        
+        return generate_diagnostic_evaluation_pdf(
+            doc_name=f"{doc_name} ({patient_name})",
+            doc_type=doc_type,
+            age_group=age_group,
+            gender=gender,
+            findings=findings,
+            breakdown_text=breakdown_text,
+            total_eval=total_eval,
+            abnormal_count=abnormal_count,
+            overall_status=overall_status
+        )
+
 

@@ -1,0 +1,92 @@
+================================================================================
+                    DocMindX AI - Email Emoji Reference Guide
+================================================================================
+
+Yeh file DocMindX AI email system (services/email_service.py) me use hone wale
+sabhi suitable aur professional emojis ki complete list provide karti hai.
+
+Har emoji ke sath:
+- Emoji Character
+- Unicode / HTML Entity (email clients safe)
+- Name / Meaning
+- DocMindX AI me use case (Kaha use ho sakta hai)
+
+--------------------------------------------------------------------------------
+1. MEDICAL & HEALTHCARE (Swasthya & Clinical AI)
+--------------------------------------------------------------------------------
+🏥  | &#127973; | Hospital / Clinic       | Header, Clinic updates, Doctor consultation
+🩺  | &#129658; | Stethoscope             | Medical diagnosis, AI health summary, Checkup
+💊  | &#128138; | Pill / Medicine         | Medication alerts, Prescription reminder
+💉  | &#128137; | Syringe / Vaccine       | Lab reports, Vaccination schedule, Blood tests
+🧬  | &#129516; | DNA                     | Genetic profile, Deep medical history
+❤️  | &#10084;  | Red Heart               | Health score, Wellness reminder, Cardio health
+🫀  | &#129655; | Anatomical Heart        | Cardiology summary, Vital signs
+🧠  | &#129504; | Brain                   | DocMindX Brain / AI analysis, Neurology
+🩹  | &#129657; | Adhesive Bandage        | First aid, Injury log, Recovery notice
+🌡️  | &#127777; | Thermometer             | Vitals log, Fever & temperature tracking
+📋  | &#128203; | Clipboard / Records     | Patient record, Health history, Family health
+
+--------------------------------------------------------------------------------
+2. SECURITY & AUTHENTICATION (OTP, Login, Security Alerts)
+--------------------------------------------------------------------------------
+🔒  | &#128274; | Padlock (Locked)        | OTP emails, Secure verification key, Privacy notice
+🔑  | &#128273; | Key                     | Master login key, Password change, Access granted
+🛡️  | &#128737; | Shield / Security Guard | Account protection, HIPAA compliance, Safe session
+⏱️  | &#9201;   | Stopwatch / Timer       | OTP validity countdown ("Valid for 10 minutes")
+⏳  | &#9203;   | Hourglass               | Expiring link, Action required within timeframe
+🚨  | &#128680; | Siren / Security Alert  | Suspicious login detected, Password reset warning
+⚠️  | &#9888;   | Warning Triangle        | Login failed alert, Max attempts warning
+🔐  | &#128272; | Key with Lock           | End-to-End encrypted data, Vault security
+
+--------------------------------------------------------------------------------
+3. USER ACCOUNTS & FAMILY PROFILES
+--------------------------------------------------------------------------------
+👤  | &#128100; | User Bust / Profile     | Welcome email, User registration, Profile updated
+👥  | &#128101; | Family / Members        | Family member added, Shared health profile
+👨‍⚕️  | &#128104;&#8205;&#9877; | Doctor (Male) | Assigned doctor alert, Consultation note
+👩‍⚕️  | &#128105;&#8205;&#9877; | Doctor (Female) | Specialist recommendation, Clinical review
+👑  | &#128081; | Crown / Admin Badge     | National Administrator key, Root admin access
+⭐  | &#11088;  | Star                    | Verified account badge, Premium healthcare access
+
+--------------------------------------------------------------------------------
+4. STATUS, SUCCESS & ACTION VERIFICATION
+--------------------------------------------------------------------------------
+✅  | &#9989;   | Green Check Mark Box    | Login successful, Email verified, OTP confirmed
+✔️  | &#10004;  | Heavy Check Mark        | Completed registration, Ticket resolved
+❌  | &#10060;  | Cross Mark              | Login failed, Invalid attempt, Blocked request
+🚫  | &#128683; | Prohibited Sign         | Unauthorized access, Session revoked
+🎯  | &#127919; | Target / Goal           | Health target achieved, Step completed
+✨  | &#10024;  | Sparkles                | AI analysis generated, Smart health summary
+
+--------------------------------------------------------------------------------
+5. COMMUNICATION & SUPPORT DESK
+--------------------------------------------------------------------------------
+✉️  | &#9993;   | Envelope / Mail         | New message, Dispatch notification, Email verification
+📩  | &#128233; | Incoming Envelope       | Ticket received, Confirmation copy sent
+💬  | &#128172; | Speech Bubble           | Support query, Chat summary, Doctor notes
+🎫  | &#127915; | Ticket                  | Support ticket created (e.g., Ticket #DOC-1234)
+📞  | &#128222; | Telephone Receiver      | Emergency contact, 24/7 hotline helpline
+🔔  | &#128276; | Bell / Notification     | System update, Reminder notification
+ℹ️  | &#8505;   | Info Symbol             | Important medical note, Disclaimer
+
+--------------------------------------------------------------------------------
+6. TECHNICAL & EMAIL CLIENT COMPATIBILITY TIPS
+--------------------------------------------------------------------------------
+1. HTML Entity Format:
+   Email templates me raw emojis ki jagah unke HTML Decimal Entities (e.g. &#128274;)
+   use karne se older email clients (Outlook desktop, old webmail) me character corruption
+   (jaise `??` ya black square) nahi hota.
+
+2. Subject Line Usage:
+   Subject lines me direct emoji daal sakte hain (e.g. "[DocMindX AI] 🔒 Your OTP is 123456").
+   Isse inbox me open-rate 15-25% tak badh jati hai.
+
+3. Clean/Clinical Choice:
+   Agar clinical/formal look chahiye toh Zero Emojis (SVG icons only) best rehta hai.
+   Agar user-friendly/friendly healthcare look chahiye toh uper diye gaye emojis me se
+   har template me maximum 1 ya 2 emojis use karna recommended hai.
+
+================================================================================
+Generated for: DocMindX-AI Healthcare System
+File: emoji.txt
+================================================================================

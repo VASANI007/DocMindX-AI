@@ -253,5 +253,16 @@
   "physiotherapy_title": "Targeted Physiotherapy & Rehabilitation",
   "physiotherapy_sub": "Condition-specific mobility routines and strengthening exercises.",
   "specialized_therapies_title": "Specialized Hospital Clinical Therapies & Procedures",
-  "specialized_therapies_sub": "Advanced clinical treatments (Chemotherapy, Dialysis, Nebulization) required for this condition."
+  "specialized_therapies_sub": "Advanced clinical treatments (Chemotherapy, Dialysis, Nebulization) required for this condition.",
+  "btn_login_register": "Login / Register",
+  "btn_recovery_password": "Recovery Password",
+  "btn_change_password": "Change Password",
+  "my_profile_title": "My Profile",
+  "my_family_title": "My Family",
+  "add_family_member_btn": "Add Family Member",
+  "who_is_scan_for_label": "Who is this scan for?",
+  "general_scan_label": "General Scan",
+  "admin_panel_title": "Admin Panel",
+  "security_logs_title": "Security Logs",
+  "logout_btn": "Logout"
 }

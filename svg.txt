@@ -1,0 +1,124 @@
+================================================================================
+          DocMindX AI - Email SVGs & Related Emojis Mapping Guide
+================================================================================
+
+Yeh file email templates (services/email_service.py) me use hone wale sabhi
+SVGs aur visual badges ke corresponding/related emojis ki complete list dikhati hai.
+
+--------------------------------------------------------------------------------
+1. SUCCESS CHECKMARK SVG (Kamyab Login / Success Verification)
+--------------------------------------------------------------------------------
+Email me use ho raha SVG code:
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+Kaha use ho raha hai:
+  - services/email_service.py -> send_login_success_notice()
+
+Iske Related Emojis:
+  Emoji | HTML Entity | Name                     | change
+  ------------------------------------------------------------------------------------
+  ✅    | &#9989;     | Green Check Box          | https://cdn-icons-png.flaticon.com/512/5290/5290058.png
+  ✔️    | &#10004;    | Heavy Check Mark         | https://cdn-icons-png.flaticon.com/512/10629/10629607.png
+  ☑️    | &#9745;     | Ballot Box with Check    | https://cdn-icons-png.flaticon.com/512/10703/10703039.png
+  🟢    | &#128994;   | Green Circle             | https://cdn-icons-png.flaticon.com/512/10037/10037255.png
+  🎉    | &#127881;   | Party Popper             | https://cdn-icons-png.flaticon.com/512/13888/13888768.png
+  💚    | &#128154;   | Green Heart              | https://cdn-icons-png.flaticon.com/512/10037/10037362.png
+
+--------------------------------------------------------------------------------
+2. SECURITY BLOCKED CROSS SVG (Galat Login / Unauthorized Attempt)
+--------------------------------------------------------------------------------
+Email me use ho raha SVG code:
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3">
+    <line x1="18" y1="6" x2="6" y2="18"/>
+    <line x1="6" y1="6" x2="18" y2="18"/>
+  </svg>
+Kaha use ho raha hai:
+  - services/email_service.py -> send_login_failed_alert()
+
+Iske Related Emojis:
+  Emoji | HTML Entity | Name                     | change
+  ------------------------------------------------------------------------------------
+  ❌    | &#10060;    | Cross Mark               | https://cdn-icons-png.flaticon.com/512/16083/16083469.png
+  ❎    | &#10062;    | Cross Mark Button        | https://cdn-icons-png.flaticon.com/512/16083/16083479.png
+  🚫    | &#128683;   | Prohibited Symbol        | https://cdn-icons-png.flaticon.com/512/3061/3061375.png 
+  ⛔    | &#9940;     | No Entry                 | https://cdn-icons-png.flaticon.com/512/4067/4067561.png
+  🛑    | &#128721;   | Octagonal Stop Sign      | https://cdn-icons-png.flaticon.com/512/3477/3477145.png
+  🔴    | &#128308;   | Red Circle               | https://cdn-icons-png.flaticon.com/512/10037/10037497.png
+
+--------------------------------------------------------------------------------
+3. SUPPORT ENVELOPE MAIL SVG (Helpdesk Inquiry & 24h Confirmation)
+--------------------------------------------------------------------------------
+Email me use ho raha SVG code:
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2">
+    <rect x="3" y="5" width="18" height="14" rx="2"/>
+    <polyline points="3 7 12 13 21 7"/>
+  </svg>
+Kaha use ho raha hai:
+  - services/email_service.py -> send_support_ticket_confirmation_to_user()
+
+Iske Related Emojis:
+  Emoji | HTML Entity | Name                     | change
+  ------------------------------------------------------------------------------------
+  ✉️    | &#9993;     | Envelope / Mail          | https://cdn-icons-png.flaticon.com/512/2965/2965306.png
+  📩    | &#128233;   | Incoming Envelope        | https://cdn-icons-png.flaticon.com/512/15690/15690686.png
+  📨    | &#128232;   | Outgoing/Flying Envelope | https://cdn-icons-png.flaticon.com/512/5341/5341958.png
+  📧    | &#128231;   | E-Mail Symbol            | https://cdn-icons-png.flaticon.com/512/888/888853.png
+  💬    | &#128172;   | Speech Balloon           | https://cdn-icons-png.flaticon.com/512/14697/14697138.png
+  🎫    | &#127915;   | Ticket                   | https://cdn-icons-png.flaticon.com/512/320/320416.png
+  🛎️    | &#128718;   | Bellhop Bell             | https://cdn-icons-png.flaticon.com/512/4790/4790744.png
+
+--------------------------------------------------------------------------------
+4. SECURITY ALERT EXCLAMATION BADGE (Security Advisory Section)
+--------------------------------------------------------------------------------
+Email me use ho raha Visual code:
+  <div style="... border-radius: 50%; background: #FEE2E2; color: #DC2626;">!</div>
+Kaha use ho raha hai:
+  - services/email_service.py -> send_login_otp()
+  - services/email_service.py -> send_registration_otp()
+  - services/email_service.py -> send_recovery_otp()
+  - services/email_service.py -> send_admin_login_otp()
+  - services/email_service.py -> send_password_changed_notice()
+
+Iske Related Emojis:
+  Emoji | HTML Entity | Name                     | change
+  ------------------------------------------------------------------------------------
+  ⚠️    | &#9888;     | Warning Triangle         | https://cdn-icons-png.flaticon.com/512/564/564619.png
+  ❗    | &#10071;    | Exclamation Mark         | https://cdn-icons-png.flaticon.com/512/5610/5610989.png
+  ❕    | &#10070;    | White Exclamation Mark   | https://cdn-icons-png.flaticon.com/512/2058/2058160.png
+  🚨    | &#128680;   | Flashing Siren           | https://cdn-icons-png.flaticon.com/512/4329/4329979.png
+  🛡️    | &#128737;   | Shield Security          | https://cdn-icons-png.flaticon.com/512/5024/5024446.png
+  🔒    | &#128274;   | Locked Padlock           | https://cdn-icons-png.flaticon.com/512/9640/9640104.png
+
+--------------------------------------------------------------------------------
+5. BRAND HEADER LOGO & MEDICAL IDENTITY (DocMindX AI Header)
+--------------------------------------------------------------------------------
+Email me use ho raha Image/Badge:
+  <img src="https://raw.githubusercontent.com/VASANI007/DocMindX-AI/main/assets/logo/icon.png" />
+Kaha use ho raha hai:
+  - services/email_service.py -> get_base_html_template() (Sabhi 10 emails ka top bar)
+
+Iske Related Emojis:
+  Emoji | HTML Entity | Name                     | chnage
+  ------------------------------------------------------------------------------------
+  🏥    | &#127973;   | Hospital                 | https://cdn-icons-png.flaticon.com/512/4320/4320350.png
+  🧠    | &#129504;   | Brain                    | https://cdn-icons-png.flaticon.com/512/2864/2864614.png
+  🩺    | &#129658;   | Stethoscope              | https://cdn-icons-png.flaticon.com/512/6018/6018699.png
+  🤖    | &#129302;   | Robot Face               | https://cdn-icons-png.flaticon.com/512/2593/2593635.png
+  ➕    | &#10133;    | Plus Sign                | https://cdn-icons-png.flaticon.com/512/448/448843.png
+  ⚕️    | &#9877;     | Staff of Aesculapius     | https://cdn-icons-png.flaticon.com/512/1988/1988622.png
+
+================================================================================
+SUMMARY TABLE (Quick Reference)
+================================================================================
+SVG / Visual Element            | Primary Emoji | Alternative Emojis
+--------------------------------|---------------|-------------------------------
+Success Checkmark (Green)       | ✅ (&#9989;)  | ✔️, ☑️, 🟢, 💚
+Blocked Cross (Red)             | ❌ (&#10060;) | 🚫, ⛔, 🛑, 🔴
+Mail Envelope (Blue)            | ✉️ (&#9993;)  | 📩, 📨, 📧, 💬, 🎫
+Security Exclamation ("!" Badge)| ⚠️ (&#9888;)  | ❗, 🚨, 🛡️, 🔒
+Brand Logo / Medical AI Header  | 🏥 (&#127973;)| 🧠, 🩺, 🤖, ⚕️
+
+================================================================================
+File: svg.txt
+================================================================================

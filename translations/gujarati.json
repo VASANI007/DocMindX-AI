@@ -251,5 +251,16 @@
   "physiotherapy_title": "લક્ષિત ફિઝિયોથેરાપી અને પુનર્વસન કસરતો",
   "physiotherapy_sub": "લક્ષણો મુજબ સ્નાયુઓ અને સાંધાની ગતિશીલતા માટે સલામત કસરતો.",
   "specialized_therapies_title": "વિશેષ હોસ્પિટલ ક્લિનિકલ થેરાપી અને પ્રક્રિયાઓ",
-  "specialized_therapies_sub": "આ સ્થિતિ માટે જરૂરી વિશિષ્ટ સારવાર (જેમ કે કીમોથેરાપી, ડાયાલિસિસ, નેબ્યુલાઇઝર)."
+  "specialized_therapies_sub": "આ સ્થિતિ માટે જરૂરી વિશિષ્ટ સારવાર (જેમ કે કીમોથેરાપી, ડાયાલિસિસ, નેબ્યુલાઇઝર).",
+  "btn_login_register": "લૉગિન / નોંધણી",
+  "btn_recovery_password": "પાસવર્ડ પુનઃપ્રાપ્તિ",
+  "btn_change_password": "પાસવર્ડ બદલો",
+  "my_profile_title": "મારી પ્રોફાઇલ",
+  "my_family_title": "મારો પરિવાર",
+  "add_family_member_btn": "પરિવારના સભ્ય ઉમેરો",
+  "who_is_scan_for_label": "આ સ્કેન કોના માટે છે?",
+  "general_scan_label": "સામાન્ય સ્કેન",
+  "admin_panel_title": "એડમિન કન્સોલ",
+  "security_logs_title": "સુરક્ષા ઑડિટ લૉગ",
+  "logout_btn": "લૉગઆઉટ"
 }

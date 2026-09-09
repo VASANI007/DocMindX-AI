@@ -1627,20 +1627,71 @@ div[class*="st-key-hdr_lang_"] .stSelectbox {
     padding: 0 !important;
 }
 
-/* Modal Dialog Horizontal Large Layout ("Aada" / Landscape) */
+/* Modal Dialog: Backdrop — full-screen centered overlay */
+div[data-testid="stDialog"],
+div[data-modal-container="true"] {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 9999 !important;
+}
+
+/* Ghost card killer: Streamlit's internal border wrappers inside dialogs */
+div[data-testid="stDialog"] > div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="stDialog"] > div[data-testid="stVerticalBlock"],
+div[data-testid="stDialog"] > [data-testid],
+div[data-modal-container="true"] > div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-modal-container="true"] > div[data-testid="stVerticalBlock"] {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 0 !important;
+}
+
+/* Modal Dialog: Large Landscape Layout — scoped ONLY to div[role="dialog"] */
 div[data-testid="stDialog"] div[role="dialog"],
-div[data-testid="stDialog"] > div,
 div[role="dialog"],
 section[role="dialog"],
-div[data-modal-container="true"] > div,
-.stDialog > div > div {
+div[data-modal-container="true"] div[role="dialog"] {
+    position: relative !important;
     max-width: 1220px !important;
     width: min(1220px, 94vw) !important;
+    min-width: unset !important;
+    margin: auto !important;
+    left: unset !important;
+    top: unset !important;
+    transform: none !important;
     border-radius: 20px !important;
     padding: 24px 28px !important;
     background: var(--mm-bg-surface) !important;
     border: 1.5px solid var(--mm-border-color) !important;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35) !important;
+    box-sizing: border-box !important;
+}
+
+/* Small dialogs (Profile Actions, confirm etc.) — compact override */
+div[data-testid="stDialog"][data-size="small"] div[role="dialog"] {
+    max-width: min(480px, 92vw) !important;
+    width: min(480px, 92vw) !important;
+    padding: 1.25rem 1.4rem !important;
+    border-radius: 18px !important;
 }
 
 @media (max-width: 768px) {
@@ -1654,10 +1705,11 @@ div[data-modal-container="true"] > div,
         width: 96vw !important;
         min-width: unset !important;
         padding: 16px 12px !important;
-        margin: 4px auto !important;
+        margin: auto !important;
         border-radius: 16px !important;
     }
 }
+
 
 .mm-badge-online-pill {
     background: #F0FDF4 !important;
@@ -3805,6 +3857,2039 @@ div.st-key-gis_city_search_input input,
         height: 104px !important;
     }
 }
+/* ============================================================
+   CLINICAL AUTHENTICATION PORTAL -- IMAGE 2 SPECIFICATION
+   ============================================================ */
+div[data-testid="stHorizontalBlock"]:has(.st-key-auth_left_vault_card) {
+    display: flex !important;
+    align-items: stretch !important;
+}
+
+div[data-testid="column"]:has(.st-key-auth_left_vault_card),
+div[data-testid="column"]:has(.st-key-auth_right_signin_card) {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 0 !important;
+    align-self: stretch !important;
+    height: 100% !important;
+}
+
+div[data-testid="column"]:has(.st-key-auth_left_vault_card) > div[data-testid="stVerticalBlock"],
+div[data-testid="column"]:has(.st-key-auth_right_signin_card) > div[data-testid="stVerticalBlock"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+}
+
+.st-key-auth_left_vault_card,
+.st-key-auth_right_signin_card {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+}
+
+.st-key-auth_left_vault_card > div,
+.st-key-auth_right_signin_card > div {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+}
+
+.st-key-auth_left_vault_card div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-auth_right_signin_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 24px rgba(37, 99, 235, 0.06) !important;
+    padding: 22px 24px 24px 24px !important;
+    transition: all 0.25s ease !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+    min-height: 600px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+}
+
+.st-key-auth_left_vault_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%) !important;
+}
+
+.auth-trust-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(72px, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+
+.auth-trust-item {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 9px !important;
+    padding: 10px 8px !important;
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    min-height: 64px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+}
+
+.auth-trust-item > div:last-child {
+    min-width: 0 !important;
+    flex: 1 !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+}
+
+/* Auth input labels */
+.auth-input-label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 0.86rem !important;
+    font-weight: 600 !important;
+    color: #1E293B !important;
+    margin-bottom: 6px !important;
+}
+.auth-input-label svg {
+    flex-shrink: 0 !important;
+}
+
+/* Auth Text Inputs */
+.st-key-panel_login_email input,
+.st-key-panel_login_password input {
+    border-radius: 10px !important;
+    border: 1.5px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    padding: 10px 14px !important;
+    font-size: 0.90rem !important;
+    color: #0F172A !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-panel_login_email input:focus,
+.st-key-panel_login_password input:focus {
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Forgot Password Link Button */
+.st-key-auth_btn_forgot_pwd_link {
+    display: flex !important;
+    justify-content: flex-end !important;
+}
+.st-key-auth_btn_forgot_pwd_link button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    min-height: auto !important;
+    height: auto !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+    color: #2563EB !important;
+    cursor: pointer !important;
+    margin: 0 !important;
+    text-align: right !important;
+}
+.st-key-auth_btn_forgot_pwd_link button:hover {
+    color: #1D4ED8 !important;
+    text-decoration: underline !important;
+    background: transparent !important;
+}
+.st-key-auth_btn_forgot_pwd_link button p {
+    color: #2563EB !important;
+    margin: 0 !important;
+    font-size: 0.82rem !important;
+    font-weight: 600 !important;
+}
+
+/* Auth Action Buttons Base */
+.st-key-panel_btn_login_submit button,
+.st-key-panel_btn_goto_reg button,
+.st-key-panel_btn_goto_rec button,
+.st-key-panel_btn_goto_admin button,
+.st-key-panel_btn_return_dashboard button {
+    position: relative !important;
+    padding: 10px 14px 10px 54px !important;
+    min-height: 56px !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+}
+
+.st-key-panel_btn_login_submit button::before,
+.st-key-panel_btn_goto_reg button::before,
+.st-key-panel_btn_goto_rec button::before,
+.st-key-panel_btn_goto_admin button::before,
+.st-key-panel_btn_return_dashboard button::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 16px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 24px !important;
+    height: 24px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+    z-index: 2 !important;
+}
+
+/* Button 1: Continue to 2FA (Primary Solid - High Specificity to prevent button[kind=primary] override) */
+div.st-key-panel_btn_login_submit > button,
+div.st-key-panel_btn_login_submit button[kind="primary"],
+div.st-key-panel_btn_login_submit button[data-testid="baseButton-primary"],
+.st-key-panel_btn_login_submit button {
+    background: #2563EB !important;
+    border: 1.5px solid #1D4ED8 !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28) !important;
+    padding-left: 56px !important;
+    padding-right: 14px !important;
+    padding-top: 10px !important;
+    padding-bottom: 10px !important;
+    min-height: 56px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+}
+div.st-key-panel_btn_login_submit > button:hover,
+div.st-key-panel_btn_login_submit button[kind="primary"]:hover,
+div.st-key-panel_btn_login_submit button[data-testid="baseButton-primary"]:hover,
+.st-key-panel_btn_login_submit button:hover {
+    background: #1D4ED8 !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.38) !important;
+    transform: translateY(-1px) !important;
+}
+div.st-key-panel_btn_login_submit button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3Cpath d='M12 8v8'/%3E%3Cpath d='M8 12h8'/%3E%3C/svg%3E") !important;
+}
+div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    text-align: left !important;
+    width: 100% !important;
+}
+div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] p {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    text-align: left !important;
+    font-size: 0.74rem !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.25 !important;
+}
+div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] p br {
+    display: none !important;
+}
+div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] p strong {
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    margin-bottom: 2px !important;
+    text-align: left !important;
+}
+
+/* Button 2: Create New Account (Outline) */
+.st-key-panel_btn_goto_reg button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #BFDBFE !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+.st-key-panel_btn_goto_reg button:hover {
+    border-color: #3B82F6 !important;
+    background: #F8FAFC !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12) !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-panel_btn_goto_reg button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cline x1='19' y1='8' x2='19' y2='14'/%3E%3Cline x1='22' y1='11' x2='16' y2='11'/%3E%3C/svg%3E") !important;
+}
+
+/* Button 3: Recovery Password (Outline) */
+.st-key-panel_btn_goto_rec button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #BFDBFE !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+.st-key-panel_btn_goto_rec button:hover {
+    border-color: #3B82F6 !important;
+    background: #F8FAFC !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12) !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-panel_btn_goto_rec button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 2l-2 2m-1.5 1.5L14 9l-1.5-1.5L11 9l-1.5-1.5L8 9 2 15a6 6 0 1 0 7 7l6-6 1.5 1.5L18 16l1.5-1.5 1.5 1.5L22 16l2-2-4-4-1-1z'/%3E%3Ccircle cx='7.5' cy='16.5' r='1.5'/%3E%3C/svg%3E") !important;
+}
+
+/* Button 4: Administrator Access (Outline) */
+.st-key-panel_btn_goto_admin button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #BFDBFE !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+.st-key-panel_btn_goto_admin button:hover {
+    border-color: #3B82F6 !important;
+    background: #F8FAFC !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12) !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-panel_btn_goto_admin button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E") !important;
+}
+
+/* Button 5: Return to Clinical Dashboard (Full Width) */
+.st-key-panel_btn_return_dashboard button {
+    background: #EFF6FF !important;
+    border: 1.5px solid #BFDBFE !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    justify-content: center !important;
+    padding-left: 52px !important;
+}
+.st-key-panel_btn_return_dashboard button:hover {
+    background: #DBEAFE !important;
+    border-color: #3B82F6 !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-panel_btn_return_dashboard button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E") !important;
+    left: 24px !important;
+}
+
+/* Secondary Button typography */
+.st-key-panel_btn_goto_reg button div[data-testid="stMarkdownContainer"] p,
+.st-key-panel_btn_goto_rec button div[data-testid="stMarkdownContainer"] p,
+.st-key-panel_btn_goto_admin button div[data-testid="stMarkdownContainer"] p,
+.st-key-panel_btn_return_dashboard button div[data-testid="stMarkdownContainer"] p {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    text-align: left !important;
+    font-size: 0.74rem !important;
+    color: #64748B !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+}
+.st-key-panel_btn_goto_reg button div[data-testid="stMarkdownContainer"] p br,
+.st-key-panel_btn_goto_rec button div[data-testid="stMarkdownContainer"] p br,
+.st-key-panel_btn_goto_admin button div[data-testid="stMarkdownContainer"] p br,
+.st-key-panel_btn_return_dashboard button div[data-testid="stMarkdownContainer"] p br {
+    display: none !important;
+}
+.st-key-panel_btn_goto_reg button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-panel_btn_goto_rec button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-panel_btn_goto_admin button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-panel_btn_return_dashboard button div[data-testid="stMarkdownContainer"] p strong {
+    font-size: 0.90rem !important;
+    font-weight: 700 !important;
+    color: #1E40AF !important;
+    margin-bottom: 2px !important;
+}
+
+/* OR Divider */
+.auth-or-divider {
+    display: flex !important;
+    align-items: center !important;
+    text-align: center !important;
+    margin: 16px 0 !important;
+    color: #94A3B8 !important;
+    font-size: 0.75rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.05em !important;
+}
+.auth-or-divider::before,
+.auth-or-divider::after {
+    content: '' !important;
+    flex: 1 !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+}
+.auth-or-divider span {
+    padding: 0 14px !important;
+}
+
+/* Card Footer */
+.auth-card-footer {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-top: auto !important;
+    padding-top: 14px !important;
+    border-top: 1px solid #F1F5F9 !important;
+    font-size: 0.74rem !important;
+    color: #64748B !important;
+}
+.auth-footer-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+/* Responsive Rules for Auth Cards */
+@media (max-width: 992px) {
+    .auth-left-middle-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .auth-trust-grid {
+        grid-template-columns: repeat(2, minmax(72px, 1fr)) !important;
+    }
+    .auth-trust-item {
+        min-height: 56px !important;
+    }
+}
+@media (max-width: 640px) {
+    .st-key-auth_left_vault_card div[data-testid="stVerticalBlockBorderWrapper"],
+    .st-key-auth_right_signin_card div[data-testid="stVerticalBlockBorderWrapper"] {
+        padding: 16px !important;
+    }
+    .auth-trust-grid {
+        grid-template-columns: repeat(2, minmax(72px, 1fr)) !important;
+    }
+    .auth-trust-item {
+        min-height: 56px !important;
+        flex-direction: row !important;
+        align-items: flex-start !important;
+    }
+    .auth-card-footer {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 6px !important;
+    }
+    .auth-privacy-banner {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+}
+/* Administrator & Recovery Buttons & Inputs */
+.st-key-panel_btn_adm_cred button,
+.st-key-panel_btn_back_from_adm button,
+.st-key-panel_btn_send_rec button,
+.st-key-panel_btn_back_from_rec button {
+    position: relative !important;
+    padding: 10px 14px 10px 52px !important;
+    min-height: 52px !important;
+    border-radius: 10px !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    width: 100% !important;
+}
+
+.st-key-panel_btn_adm_cred button::before,
+.st-key-panel_btn_back_from_adm button::before,
+.st-key-panel_btn_send_rec button::before,
+.st-key-panel_btn_back_from_rec button::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 18px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 22px !important;
+    height: 22px !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: contain !important;
+}
+
+/* Verify Credentials & Request Admin Key (Primary) */
+.st-key-panel_btn_adm_cred button {
+    background: #2563EB !important;
+    border: 1.5px solid #1D4ED8 !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28) !important;
+}
+.st-key-panel_btn_adm_cred button:hover {
+    background: #1D4ED8 !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.38) !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-panel_btn_adm_cred button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3Cpolyline points='9 12 11 14 15 10'/%3E%3C/svg%3E") !important;
+}
+.st-key-panel_btn_adm_cred button div[data-testid="stMarkdownContainer"] p {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    text-align: left !important;
+    font-size: 0.74rem !important;
+    color: rgba(255, 255, 255, 0.88) !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+}
+.st-key-panel_btn_adm_cred button div[data-testid="stMarkdownContainer"] p br {
+    display: none !important;
+}
+.st-key-panel_btn_adm_cred button div[data-testid="stMarkdownContainer"] p strong {
+    font-size: 0.92rem !important;
+    font-weight: 700 !important;
+    color: #FFFFFF !important;
+    margin-bottom: 2px !important;
+}
+
+/* Regular Patient Sign In (Outline) */
+.st-key-panel_btn_back_from_adm button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #BFDBFE !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+.st-key-panel_btn_back_from_adm button:hover {
+    border-color: #3B82F6 !important;
+    background: #F8FAFC !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12) !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-panel_btn_back_from_adm button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E") !important;
+}
+.st-key-panel_btn_back_from_adm button div[data-testid="stMarkdownContainer"] p {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    text-align: left !important;
+    font-size: 0.74rem !important;
+    color: #64748B !important;
+    margin: 0 !important;
+    line-height: 1.25 !important;
+}
+.st-key-panel_btn_back_from_adm button div[data-testid="stMarkdownContainer"] p br {
+    display: none !important;
+}
+.st-key-panel_btn_back_from_adm button div[data-testid="stMarkdownContainer"] p strong {
+    font-size: 0.90rem !important;
+    font-weight: 700 !important;
+    color: #1E40AF !important;
+    margin-bottom: 2px !important;
+}
+
+/* Send Recovery Code Button */
+.st-key-panel_btn_send_rec button {
+    background: #2563EB !important;
+    border: 1.5px solid #1D4ED8 !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.92rem !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28) !important;
+}
+.st-key-panel_btn_send_rec button:hover {
+    background: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.38) !important;
+}
+.st-key-panel_btn_send_rec button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='22' y1='2' x2='11' y2='13'/%3E%3Cpolygon points='22 2 15 22 11 13 2 9 22 2'/%3E%3C/svg%3E") !important;
+    left: 20px !important;
+}
+.st-key-panel_btn_send_rec button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Back to Sign In Button */
+.st-key-panel_btn_back_from_rec button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #BFDBFE !important;
+    color: #2563EB !important;
+    font-weight: 700 !important;
+    font-size: 0.90rem !important;
+    justify-content: center !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+.st-key-panel_btn_back_from_rec button:hover {
+    border-color: #3B82F6 !important;
+    background: #F8FAFC !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-panel_btn_back_from_rec button::before {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='19' y1='12' x2='5' y2='12'/%3E%3Cpolyline points='12 19 5 12 12 5'/%3E%3C/svg%3E") !important;
+    left: 20px !important;
+}
+.st-key-panel_btn_back_from_rec button p {
+    color: #2563EB !important;
+    font-weight: 700 !important;
+}
+
+/* Text Inputs for Admin and Recovery */
+.st-key-panel_adm_email input,
+.st-key-panel_adm_pass input,
+.st-key-panel_rec_email input {
+    border-radius: 10px !important;
+    border: 1.5px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    padding: 10px 14px !important;
+    font-size: 0.90rem !important;
+    color: #0F172A !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-panel_adm_email input:focus,
+.st-key-panel_adm_pass input:focus,
+.st-key-panel_rec_email input:focus {
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Authorized Personnel Alert Box */
+.auth-admin-alert {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px 14px !important;
+    background: #FEF2F2 !important;
+    border: 1px solid #FECACA !important;
+    border-left: 4px solid #EF4444 !important;
+    border-radius: 10px !important;
+    margin-bottom: 18px !important;
+}
+
+/* Info Callout Box (Recovery View) */
+.auth-info-callout {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 11px 14px !important;
+    background: #EFF6FF !important;
+    border: 1px solid #DBEAFE !important;
+    border-radius: 10px !important;
+    margin: 12px 0 18px 0 !important;
+    font-size: 0.78rem !important;
+    color: #1E40AF !important;
+    line-height: 1.4 !important;
+}
+
+/* Privacy Matters Banner (Recovery View) */
+.auth-privacy-banner {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 14px 16px !important;
+    background: #F0FDF4 !important;
+    border: 1px solid #BBF7D0 !important;
+    border-radius: 10px !important;
+    margin-top: 18px !important;
+    min-height: 64px !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+}
+
+/* 3-Step Indicator Dots Animation */
+@keyframes auth-dot-pulse {
+    0%, 100% { opacity: 0.3; transform: scale(0.8); }
+    50%       { opacity: 1;   transform: scale(1.25); }
+}
+.auth-step-dot-1 {
+    display: inline-block !important;
+    width: 9px !important;
+    height: 9px !important;
+    border-radius: 50% !important;
+    background: #3B82F6 !important;
+    animation: auth-dot-pulse 1.5s ease-in-out infinite !important;
+    animation-delay: 0s !important;
+}
+.auth-step-dot-2 {
+    display: inline-block !important;
+    width: 9px !important;
+    height: 9px !important;
+    border-radius: 50% !important;
+    background: #93C5FD !important;
+    animation: auth-dot-pulse 1.5s ease-in-out infinite !important;
+    animation-delay: 0.3s !important;
+}
+.auth-step-dot-3 {
+    display: inline-block !important;
+    width: 9px !important;
+    height: 9px !important;
+    border-radius: 50% !important;
+    background: #93C5FD !important;
+    animation: auth-dot-pulse 1.5s ease-in-out infinite !important;
+    animation-delay: 0.6s !important;
+}
+/* ============================================================
+   PATIENT REGISTRATION & PASSWORD RECOVERY CARDS (IMAGE 2 & 4)
+   ============================================================ */
+.auth-input-icon-box {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 10px !important;
+    background: #EFF6FF !important;
+    border: 1.5px solid #DBEAFE !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    transition: all 0.2s ease !important;
+    margin: 0 auto !important;
+}
+.auth-input-icon-box:hover {
+    border-color: #93C5FD !important;
+    background: #E0F2FE !important;
+}
+.auth-input-help {
+    font-size: 0.74rem !important;
+    color: #64748B !important;
+    margin-top: 2px !important;
+    margin-bottom: 8px !important;
+    padding-left: 2px !important;
+    line-height: 1.3 !important;
+}
+.auth-pwd-req-box {
+    background: #EFF6FF !important;
+    border: 1px solid #BFDBFE !important;
+    border-radius: 12px !important;
+    padding: 13px 16px !important;
+    margin: 14px 0 !important;
+}
+.auth-check-email-card {
+    background: #F0F9FF !important;
+    border: 1.2px solid #BAE6FD !important;
+    border-radius: 12px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 14px !important;
+}
+.auth-card-footer-trust {
+    border-top: 1px solid #E2E8F0 !important;
+    padding-top: 14px !important;
+    margin-top: 16px !important;
+}
+
+/* Secondary & Tertiary Outline Buttons in Registration & Recovery */
+.st-key-panel_btn_back_to_login button,
+.st-key-panel_btn_reg_return_dash button,
+.st-key-panel_btn_cancel_rec button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #2563EB !important;
+    color: #2563EB !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    min-height: 44px !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08) !important;
+}
+.st-key-panel_btn_back_to_login button:hover,
+.st-key-panel_btn_reg_return_dash button:hover,
+.st-key-panel_btn_cancel_rec button:hover {
+    background: rgba(37, 99, 235, 0.08) !important;
+    border-color: #1D4ED8 !important;
+    color: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15) !important;
+}
+.st-key-panel_btn_back_to_login button p,
+.st-key-panel_btn_reg_return_dash button p,
+.st-key-panel_btn_cancel_rec button p {
+    color: #2563EB !important;
+    font-weight: 700 !important;
+}
+.st-key-panel_btn_back_to_login button:hover p,
+.st-key-panel_btn_reg_return_dash button:hover p,
+.st-key-panel_btn_cancel_rec button:hover p {
+    color: #1D4ED8 !important;
+}
+
+/* Primary Registration & Reset Buttons */
+.st-key-panel_btn_submit_reg button,
+.st-key-panel_btn_finish_rec button {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.90rem !important;
+    min-height: 46px !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-panel_btn_submit_reg button:hover,
+.st-key-panel_btn_finish_rec button:hover {
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5) !important;
+}
+.st-key-panel_btn_submit_reg button p,
+.st-key-panel_btn_finish_rec button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Registration & Recovery Inputs */
+.st-key-panel_reg_name input,
+.st-key-panel_reg_email input,
+.st-key-panel_reg_pass input,
+.st-key-panel_reg_conf input,
+.st-key-panel_rec_otp_input input,
+.st-key-panel_rec_p1 input,
+.st-key-panel_rec_p2 input {
+    border-radius: 10px !important;
+    border: 1.5px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    padding: 10px 14px !important;
+    font-size: 0.90rem !important;
+    color: #0F172A !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-panel_reg_name input:focus,
+.st-key-panel_reg_email input:focus,
+.st-key-panel_reg_pass input:focus,
+.st-key-panel_reg_conf input:focus,
+.st-key-panel_rec_otp_input input:focus,
+.st-key-panel_rec_p1 input:focus,
+.st-key-panel_rec_p2 input:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* ============================================================
+   MY PROFILE & FAMILY VAULT ENHANCEMENTS (IMAGE 2 & IMAGE 4)
+   ============================================================ */
+.patient-hero-card {
+    background: linear-gradient(180deg, #F0F7FF 0%, #FFFFFF 100%) !important;
+    border: 1.5px solid #DBEAFE !important;
+    border-radius: 18px !important;
+    padding: 22px 26px !important;
+    margin-bottom: 22px !important;
+    position: relative !important;
+    overflow: hidden !important;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.06) !important;
+}
+
+.family-member-card {
+    background: #FFFFFF !important;
+    border: 1.2px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 16px 20px !important;
+    margin-bottom: 12px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02) !important;
+    transition: all 0.2s ease !important;
+}
+.family-member-card:hover {
+    border-color: #BFDBFE !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08) !important;
+}
+
+.account-settings-card {
+    background: #FFFFFF !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 18px !important;
+    padding: 24px 28px !important;
+    margin-top: 10px !important;
+    margin-bottom: 20px !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04) !important;
+}
+
+.account-field-icon-box {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 10px !important;
+    background: #EFF6FF !important;
+    border: 1.5px solid #DBEAFE !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    margin: 0 0 0 auto !important;
+}
+
+/* Tighten icon-to-input gap in account profile fields */
+[data-testid="stHorizontalBlock"]:has(.account-field-icon-box) {
+    gap: 4px !important;
+    column-gap: 4px !important;
+    align-items: center !important;
+}
+[data-testid="stHorizontalBlock"]:has(.account-field-icon-box) > [data-testid="column"]:first-child {
+    padding-right: 0 !important;
+    flex: 0 0 48px !important;
+    max-width: 48px !important;
+    min-width: 48px !important;
+    width: 48px !important;
+}
+[data-testid="stHorizontalBlock"]:has(.account-field-icon-box) > [data-testid="column"]:not(:first-child) {
+    padding-left: 0 !important;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+}
+
+/* Update Name Button (Image 4) */
+.st-key-btn_update_prof_name button {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    min-height: 42px !important;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-btn_update_prof_name button:hover {
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 5px 14px rgba(37, 99, 235, 0.45) !important;
+}
+.st-key-btn_update_prof_name button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Sign Out / Logout Outline Button (Image 4) */
+.st-key-btn_prof_logout_main button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #2563EB !important;
+    color: #2563EB !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    min-height: 42px !important;
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-btn_prof_logout_main button:hover {
+    background: rgba(37, 99, 235, 0.08) !important;
+    border-color: #1D4ED8 !important;
+    color: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+}
+.st-key-btn_prof_logout_main button p {
+    color: #2563EB !important;
+    font-weight: 700 !important;
+}
+.st-key-btn_prof_logout_main button:hover p {
+    color: #1D4ED8 !important;
+}
+
+/* Add New Family Member Button (Image 2) */
+.st-key-btn_add_family_hero button {
+    background: #2563EB !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    min-height: 40px !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+}
+.st-key-btn_add_family_hero button:hover {
+    background: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+.st-key-btn_add_family_hero button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Account Profile Inputs */
+.st-key-panel_prof_email input,
+.st-key-panel_prof_name input,
+.st-key-panel_prof_status input,
+.st-key-panel_prof_last_login input,
+.st-key-panel_prof_member_since input {
+    border-radius: 10px !important;
+    border: 1.5px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    padding: 10px 14px !important;
+    font-size: 0.90rem !important;
+    color: #0F172A !important;
+}
+.st-key-panel_prof_status input {
+    background: #F0FDF4 !important;
+    color: #166534 !important;
+    border-color: #BBF7D0 !important;
+    font-weight: 700 !important;
+}
+/* Form Sub-Cards (Add Family Member & Password Requirements) */
+.form-subcard {
+    background: #FFFFFF !important;
+    border: 1.2px solid #E2E8F0 !important;
+    border-radius: 14px !important;
+    padding: 16px 20px !important;
+    margin-bottom: 16px !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Save Family Member Button */
+.st-key-btn_save_family_profile button {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.92rem !important;
+    min-height: 46px !important;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-btn_save_family_profile button:hover {
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 5px 14px rgba(37, 99, 235, 0.45) !important;
+}
+.st-key-btn_save_family_profile button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Cancel Password Button */
+.st-key-btn_cancel_change_pwd button {
+    background: #FFFFFF !important;
+    border: 1.5px solid #2563EB !important;
+    color: #2563EB !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    min-height: 42px !important;
+    box-shadow: 0 1px 4px rgba(37, 99, 235, 0.08) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-btn_cancel_change_pwd button:hover {
+    background: rgba(37, 99, 235, 0.08) !important;
+    border-color: #1D4ED8 !important;
+    color: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+}
+.st-key-btn_cancel_change_pwd button p {
+    color: #2563EB !important;
+    font-weight: 700 !important;
+}
+
+/* Update Password Submit Button */
+.st-key-btn_update_pwd_submit button {
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.90rem !important;
+    min-height: 42px !important;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.3) !important;
+    transition: all 0.2s ease !important;
+}
+.st-key-btn_update_pwd_submit button:hover {
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 5px 14px rgba(37, 99, 235, 0.45) !important;
+}
+.st-key-btn_update_pwd_submit button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* ============================================================
+   ADMINISTRATOR SESSION CARD -- IMAGE 2 SPECIFICATION
+   ============================================================ */
+.adm-session-outer-wrap {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 20px 0;
+    box-sizing: border-box;
+}
+
+.adm-session-top-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 0 4px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.adm-session-card {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 18px;
+    box-shadow: 0 6px 28px rgba(37, 99, 235, 0.07);
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+.adm-session-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.adm-session-hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.adm-session-lock-box {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 100%);
+    border: 1.5px solid #BFDBFE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.16);
+    flex-shrink: 0;
+}
+
+.adm-session-title {
+    margin: 0;
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.adm-session-title span {
+    color: #2563EB;
+}
+
+.adm-session-subtitle {
+    margin: 3px 0 0 0;
+    font-size: 0.86rem;
+    color: #64748B;
+    line-height: 1.35;
+}
+
+.adm-session-hdr-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    position: relative;
+    padding-right: 12px;
+}
+
+.adm-session-cursive {
+    font-family: 'Segoe Script', 'Comic Sans MS', cursive, sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #38BDF8;
+    line-height: 1.25;
+    text-align: right;
+    transform: rotate(-3deg);
+    position: relative;
+}
+
+/* Middle Navy Banner */
+.adm-session-banner {
+    background: linear-gradient(135deg, #07152B 0%, #0D2342 55%, #13335D 100%);
+    border: 1px solid rgba(59, 130, 246, 0.35);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.adm-session-admin-block {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.adm-session-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+    border: 2px solid #60A5FA;
+    color: #FFFFFF;
+    font-size: 1.3rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+    flex-shrink: 0;
+}
+
+.adm-session-crown-badge {
+    background: rgba(13, 148, 136, 0.18);
+    border: 1px solid #14B8A6;
+    border-radius: 16px;
+    padding: 2px 10px;
+    color: #2DD4BF;
+    font-size: 0.68rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    letter-spacing: 0.03em;
+}
+
+.adm-session-divider {
+    width: 1px;
+    height: 44px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.adm-session-metric-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.adm-session-icon-box {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.adm-session-status-pill {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1.5px solid #10B981;
+    border-radius: 24px;
+    padding: 7px 18px;
+    color: #34D399;
+    font-weight: 800;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+}
+
+.adm-session-status-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #10B981;
+    box-shadow: 0 0 8px #10B981;
+}
+
+/* Notice Bar */
+.adm-session-notice {
+    background: #EFF6FF;
+    border: 1px solid #BFDBFE;
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    color: #1E40AF;
+}
+
+/* Logout Button */
+div.st-key-btn_admin_logout > button,
+.st-key-btn_admin_logout button {
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+    border: 1.5px solid #1D4ED8 !important;
+    border-radius: 10px !important;
+    padding: 10px 22px 10px 52px !important;
+    min-height: 48px !important;
+    font-weight: 700 !important;
+    font-size: 0.90rem !important;
+    position: relative !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+}
+
+div.st-key-btn_admin_logout > button:hover,
+.st-key-btn_admin_logout button:hover {
+    background: #1D4ED8 !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.38) !important;
+    transform: translateY(-1px) !important;
+}
+
+div.st-key-btn_admin_logout > button::before,
+.st-key-btn_admin_logout button::before {
+    content: '' !important;
+    position: absolute !important;
+    left: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 6px !important;
+    background-color: #EF4444 !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 14px 14px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4'/%3E%3Cpolyline points='16 17 21 12 16 7'/%3E%3Cline x1='21' y1='12' x2='9' y2='12'/%3E%3C/svg%3E") !important;
+    z-index: 2 !important;
+}
+
+div.st-key-btn_admin_logout > button p,
+.st-key-btn_admin_logout button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.90rem !important;
+    margin: 0 !important;
+}
+
+/* Footer Trust Badges */
+.adm-session-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 22px;
+    padding-top: 14px;
+    border-top: 1px solid #E2E8F0;
+    font-size: 0.74rem;
+    color: #64748B;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* Responsive Rules for Mobile */
+@media (max-width: 768px) {
+    .adm-session-card {
+        padding: 16px;
+    }
+    .adm-session-card-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .adm-session-hdr-right {
+        align-items: flex-start;
+        padding-right: 0;
+        margin-top: 10px;
+    }
+    .adm-session-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 16px;
+    }
+    .adm-session-divider {
+        display: none;
+    }
+    .adm-session-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+/* ============================================================
+   DocMindX AI -- ADMIN PORTAL UNIFIED DESIGN SYSTEM
+   ============================================================ */
+.adm-portal-outer-wrap {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 0 24px 0;
+    box-sizing: border-box;
+}
+
+.adm-portal-card {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 18px;
+    box-shadow: 0 6px 28px rgba(37, 99, 235, 0.07);
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s ease;
+}
+
+.adm-portal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.adm-portal-hdr-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.adm-portal-icon-box {
+    width: 54px;
+    height: 54px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #DBEAFE 0%, #EFF6FF 100%);
+    border: 1.5px solid #BFDBFE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.16);
+    flex-shrink: 0;
+}
+
+.adm-portal-title {
+    margin: 0;
+    font-size: 1.65rem;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+}
+
+.adm-portal-title span {
+    color: #2563EB;
+}
+
+.adm-portal-subtitle {
+    margin: 3px 0 0 0;
+    font-size: 0.86rem;
+    color: #64748B;
+    line-height: 1.35;
+}
+
+.adm-portal-filter-lbl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 6px;
+}
+
+.adm-portal-counter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 14px 0 16px 0;
+    font-size: 0.84rem;
+    color: #475569;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.adm-portal-status-pill-green {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #ECFDF5;
+    border: 1px solid #A7F3D0;
+    color: #059669;
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+/* User Account Cards */
+.adm-user-row-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.adm-user-row-card:hover {
+    border-color: #BFDBFE;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+}
+
+.adm-avatar-circle {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+/* ============================================================
+   ADMIN USER MANAGEMENT RESPONSIVE CARD SYSTEM
+   ============================================================ */
+.adm-user-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+.adm-user-card-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 220px;
+}
+
+.adm-user-meta-wrap {
+    min-width: 0;
+    flex: 1;
+}
+
+.adm-user-row-id-mail {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.adm-user-badge-id {
+    background: #EFF6FF;
+    color: #2563EB;
+    border: 1px solid #DBEAFE;
+    padding: 1px 7px;
+    border-radius: 6px;
+    font-size: 0.70rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.adm-user-mail-txt {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--mm-text-primary);
+    word-break: break-word;
+    line-height: 1.3;
+}
+
+.adm-user-name-txt {
+    font-size: 0.80rem;
+    color: #64748B;
+    margin-top: 2px;
+    font-weight: 600;
+}
+
+.adm-user-chips-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+}
+
+.adm-chip-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 2px 7px;
+    font-size: 0.70rem;
+    color: #64748B;
+    font-weight: 500;
+}
+
+.adm-user-card-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-self: flex-start;
+}
+
+/* Action Toolbar: Strictly Forces 3 Side-by-Side Equal Columns Even On Mobile */
+.adm-user-actions-wrap {
+    margin-top: 4px;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.adm-user-actions-wrap [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
+}
+
+.adm-user-actions-wrap [data-testid="column"] {
+    min-width: 0 !important;
+    flex: 1 1 0 !important;
+    width: 33.333% !important;
+    padding: 0 !important;
+}
+
+.adm-user-actions-wrap button {
+    width: 100% !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    padding: 2px 6px !important;
+    border-radius: 8px !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+}
+
+/* Button 1: Disable/Enable styling */
+.adm-user-actions-wrap [data-testid="column"]:first-child button {
+    background: #EFF6FF !important;
+    border: 1px solid #BFDBFE !important;
+    color: #2563EB !important;
+}
+.adm-user-actions-wrap [data-testid="column"]:first-child button:hover {
+    background: #DBEAFE !important;
+    border-color: #93C5FD !important;
+    color: #1D4ED8 !important;
+}
+
+/* Button 2: Edit popover styling */
+.adm-user-actions-wrap [data-testid="column"]:nth-child(2) button {
+    background: #F8FAFC !important;
+    border: 1px solid #CBD5E1 !important;
+    color: #334155 !important;
+}
+.adm-user-actions-wrap [data-testid="column"]:nth-child(2) button:hover {
+    background: #F1F5F9 !important;
+    border-color: #94A3B8 !important;
+    color: #0F172A !important;
+}
+
+/* Button 3: Delete popover styling */
+.adm-user-actions-wrap [data-testid="column"]:nth-child(3) button {
+    background: #FFF1F2 !important;
+    border: 1px solid #FECDD3 !important;
+    color: #E11D48 !important;
+}
+.adm-user-actions-wrap [data-testid="column"]:nth-child(3) button:hover {
+    background: #FFE4E6 !important;
+    border-color: #FDA4AF !important;
+    color: #BE123C !important;
+}
+
+/* Scan Record Cards */
+.adm-scan-row-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
+}
+
+.adm-scan-row-card:hover {
+    border-color: #BFDBFE;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+}
+
+.adm-scan-id-badge {
+    background: #EFF6FF;
+    border: 1px solid #DBEAFE;
+    border-radius: 12px;
+    padding: 6px 16px;
+    text-align: center;
+}
+
+/* Audit Log Cards */
+.adm-audit-row-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
+}
+
+.adm-audit-row-card:hover {
+    border-color: #BFDBFE;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.06);
+}
+
+.adm-chip-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 0.74rem;
+    color: #475569;
+}
+
+/* "View All Logs ->" Button Styling */
+.st-key-btn_adm_view_all_logs {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+}
+
+.st-key-btn_adm_view_all_logs button {
+    background: #EFF6FF !important;
+    border: 1px solid #DBEAFE !important;
+    color: #2563EB !important;
+    font-size: 0.76rem !important;
+    font-weight: 700 !important;
+    padding: 5px 14px !important;
+    border-radius: 8px !important;
+    line-height: 1.3 !important;
+    min-height: 32px !important;
+    height: 32px !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    width: auto !important;
+    margin-left: auto !important;
+}
+
+.st-key-btn_adm_view_all_logs button:hover {
+    background: #DBEAFE !important;
+    border-color: #93C5FD !important;
+    color: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12) !important;
+}
+
+.st-key-btn_adm_view_all_logs button:active {
+    transform: translateY(0) !important;
+}
+
+/* User Metadata Detail Box */
+.adm-user-details-box {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+
+/* Top Admin Header Card */
+.adm-top-header-card {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 16px 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* KPI Cards */
+.adm-kpi-card {
+    background: #FFFFFF;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 14px;
+    padding: 16px 18px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
+}
+
+.adm-kpi-card:hover {
+    border-color: #BFDBFE;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.08);
+}
+
+.adm-kpi-icon-box {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* Activity Items */
+.adm-activity-card {
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+}
+
+.adm-activity-card:hover {
+    border-color: #BFDBFE;
+}
+
+@media (max-width: 768px) {
+    .adm-portal-card {
+        padding: 16px;
+    }
+    .adm-portal-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .adm-scan-row-card, .adm-user-row-card, .adm-audit-row-card, .adm-top-header-card {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 14px;
+    }
+    .adm-kpi-card {
+        padding: 12px;
+    }
+}
+
+/* ==========================================================================
+   MEDICAL REPORT - EQUAL SIZED CARDS (DOCUMENT UPLOAD & OCR TEXT STREAM)
+   ========================================================================== */
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card),
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]),
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_ocr_card),
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_ocr_card"]) {
+    align-items: stretch !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="stColumn"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: stretch !important;
+    height: 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) [data-testid="stLayoutWrapper"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) [data-testid="stLayoutWrapper"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+}
+
+div[class*="st-key-med_report_upload_card"],
+div[class*="st-key-med_report_ocr_card"],
+.st-key-med_report_upload_card,
+.st-key-med_report_ocr_card,
+.st-key-med_report_upload_card > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-med_report_ocr_card > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-med_report_upload_card div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-med_report_ocr_card div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_upload_card),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-med_report_upload_card"]),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-med_report_ocr_card"]) {
+    height: 100% !important;
+    min-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 14px !important;
+}
+
+div[class*="st-key-med_report_upload_card"] > div[data-testid="stVerticalBlock"],
+div[class*="st-key-med_report_ocr_card"] > div[data-testid="stVerticalBlock"],
+.st-key-med_report_upload_card > div[data-testid="stVerticalBlock"],
+.st-key-med_report_ocr_card > div[data-testid="stVerticalBlock"],
+.st-key-med_report_upload_card [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"],
+.st-key-med_report_ocr_card [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+}
+
+/* Ensure action button aligns at the bottom of upload card */
+.st-key-med_report_upload_card .stButton,
+div[class*="st-key-med_report_upload_card"] .stButton {
+    margin-top: auto !important;
+    padding-top: 10px !important;
+}
+
+/* Ensure OCR textarea expands to fill exact available vertical space */
+div[class*="st-key-med_report_ocr_card"] .stTextArea,
+.st-key-med_report_ocr_card .stTextArea,
+div[class*="st-key-med_report_ocr_card"] [data-testid="stTextArea"],
+.st-key-med_report_ocr_card [data-testid="stTextArea"] {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    margin-bottom: 0 !important;
+}
+
+div[class*="st-key-med_report_ocr_card"] .stTextArea > div,
+.st-key-med_report_ocr_card .stTextArea > div,
+div[class*="st-key-med_report_ocr_card"] [data-testid="stTextArea"] > div,
+.st-key-med_report_ocr_card [data-testid="stTextArea"] > div {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+div[class*="st-key-med_report_ocr_card"] .stTextArea textarea,
+.st-key-med_report_ocr_card .stTextArea textarea,
+div[class*="st-key-med_report_ocr_card"] textarea,
+.st-key-med_report_ocr_card textarea {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    min-height: 180px !important;
+    box-sizing: border-box !important;
+    resize: none !important;
+}
+
+/* ==========================================================================
+   CUSTOMER SUPPORT & HELPDESK - EQUAL SIZED CARDS (FORM & INFO PANELS)
+   ========================================================================== */
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]),
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) {
+    align-items: stretch !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: stretch !important;
+    height: 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) [data-testid="stLayoutWrapper"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) [data-testid="stLayoutWrapper"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+/* Left card container stretches full height */
+div[class*="st-key-about_supp_form_card"],
+.st-key-about_supp_form_card,
+.st-key-about_supp_form_card > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-about_supp_form_card div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-about_supp_form_card"]),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_form_card) {
+    height: 100% !important;
+    min-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 14px !important;
+}
+
+div[class*="st-key-about_supp_form_card"] > div[data-testid="stVerticalBlock"],
+.st-key-about_supp_form_card > div[data-testid="stVerticalBlock"],
+.st-key-about_supp_form_card [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+}
+
+/* Ensure Send Support Ticket button aligns nicely to bottom */
+.st-key-about_supp_form_card .stButton,
+div[class*="st-key-about_supp_form_card"] .stButton {
+    margin-top: auto !important;
+    padding-top: 10px !important;
+}
+
+/* Right column stretches cards to fill vertical space */
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"]:last-child > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"]:last-child > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"]:last-child > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"]:last-child > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+}
+
+.st-key-about_supp_card_info,
+.st-key-about_supp_card_report,
+.st-key-about_supp_card_help,
+div[class*="st-key-about_supp_card_info"],
+div[class*="st-key-about_supp_card_report"],
+div[class*="st-key-about_supp_card_help"],
+.st-key-about_supp_card_info > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-about_supp_card_report > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-about_supp_card_help > div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_card_info),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_card_report),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_card_help) {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
+}
 </style>
 """
 DARK_CSS_OVERRIDE = """
@@ -5281,6 +7366,8 @@ div[class*="st-key-btn_run_triage"] button:hover {
     .mm-step-card-header {
         padding: 14px 16px;
     }
+}
+
 /* ==========================================================================
    MEDICAL REPORT - EQUAL SIZED CARDS (DOCUMENT UPLOAD & OCR TEXT STREAM)
    ========================================================================== */
@@ -5296,6 +7383,7 @@ div[class*="st-key-btn_run_triage"] button:hover {
     display: flex !important;
     flex-direction: column !important;
     justify-content: stretch !important;
+    height: 100% !important;
 }
 
 [data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="column"] > div,
@@ -5308,18 +7396,57 @@ div[class*="st-key-btn_run_triage"] button:hover {
     flex: 1 1 auto !important;
 }
 
+/* ==========================================================================
+   MEDICAL REPORT (P2) - EQUAL SIZED CARDS (UPLOAD & OCR TEXT STREAM)
+   ========================================================================== */
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card),
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) {
+    align-items: stretch !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="stColumn"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: stretch !important;
+    height: 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-med_report_upload_card) [data-testid="stLayoutWrapper"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-med_report_upload_card"]) [data-testid="stLayoutWrapper"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    height: 100% !important;
+}
+
 div[class*="st-key-med_report_upload_card"],
 div[class*="st-key-med_report_ocr_card"],
 .st-key-med_report_upload_card,
 .st-key-med_report_ocr_card,
-div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-med_report_upload_card"]),
-div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-med_report_ocr_card"]),
+.st-key-med_report_upload_card > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-med_report_ocr_card > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-med_report_upload_card div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-med_report_ocr_card div[data-testid="stVerticalBlockBorderWrapper"],
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_upload_card),
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card) {
     height: 100% !important;
-    min-height: 490px !important;
+    min-height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
+    flex: 1 1 100% !important;
     box-sizing: border-box !important;
     border-radius: 14px !important;
 }
@@ -5328,20 +7455,25 @@ div[class*="st-key-med_report_upload_card"] > div[data-testid="stVerticalBlock"]
 div[class*="st-key-med_report_ocr_card"] > div[data-testid="stVerticalBlock"],
 .st-key-med_report_upload_card > div[data-testid="stVerticalBlock"],
 .st-key-med_report_ocr_card > div[data-testid="stVerticalBlock"],
-div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-med_report_upload_card"]) > div[data-testid="stVerticalBlock"],
-div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-med_report_ocr_card"]) > div[data-testid="stVerticalBlock"],
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_upload_card) > div[data-testid="stVerticalBlock"],
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card) > div[data-testid="stVerticalBlock"] {
+.st-key-med_report_upload_card [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"],
+.st-key-med_report_ocr_card [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
     height: 100% !important;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: space-between !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 100% !important;
 }
 
+/* Ensure action button aligns at the bottom of upload card */
+.st-key-med_report_upload_card .stButton {
+    margin-top: auto !important;
+    padding-top: 10px !important;
+}
+
+/* Ensure OCR textarea expands to fill exact available vertical space */
 div[class*="st-key-med_report_ocr_card"] .stTextArea,
 .st-key-med_report_ocr_card .stTextArea,
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card) .stTextArea {
+div[class*="st-key-med_report_ocr_card"] [data-testid="stTextArea"],
+.st-key-med_report_ocr_card [data-testid="stTextArea"] {
     flex: 1 1 auto !important;
     display: flex !important;
     flex-direction: column !important;
@@ -5351,7 +7483,8 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card)
 
 div[class*="st-key-med_report_ocr_card"] .stTextArea > div,
 .st-key-med_report_ocr_card .stTextArea > div,
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card) .stTextArea > div {
+div[class*="st-key-med_report_ocr_card"] [data-testid="stTextArea"] > div,
+.st-key-med_report_ocr_card [data-testid="stTextArea"] > div {
     flex: 1 1 auto !important;
     height: 100% !important;
     display: flex !important;
@@ -5360,12 +7493,109 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card)
 
 div[class*="st-key-med_report_ocr_card"] .stTextArea textarea,
 .st-key-med_report_ocr_card .stTextArea textarea,
-div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-med_report_ocr_card) .stTextArea textarea {
+div[class*="st-key-med_report_ocr_card"] textarea,
+.st-key-med_report_ocr_card textarea {
     flex: 1 1 auto !important;
     height: 100% !important;
-    min-height: 275px !important;
+    min-height: 180px !important;
     box-sizing: border-box !important;
     resize: none !important;
+}
+
+/* ==========================================================================
+   CUSTOMER SUPPORT & HELPDESK - EQUAL SIZED CARDS (FORM & INFO PANELS)
+   ========================================================================== */
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]),
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) {
+    align-items: stretch !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"] {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: stretch !important;
+    height: 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"] > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+}
+
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) [data-testid="stLayoutWrapper"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) [data-testid="stLayoutWrapper"] {
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 auto !important;
+}
+
+/* Left card container stretches full height */
+div[class*="st-key-about_supp_form_card"],
+.st-key-about_supp_form_card,
+.st-key-about_supp_form_card > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-about_supp_form_card div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(div[class*="st-key-about_supp_form_card"]),
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_form_card) {
+    height: 100% !important;
+    min-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 14px !important;
+}
+
+div[class*="st-key-about_supp_form_card"] > div[data-testid="stVerticalBlock"],
+.st-key-about_supp_form_card > div[data-testid="stVerticalBlock"],
+.st-key-about_supp_form_card [data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex: 1 1 100% !important;
+}
+
+/* Ensure Send Support Ticket button aligns nicely to bottom */
+.st-key-about_supp_form_card .stButton {
+    margin-top: auto !important;
+    padding-top: 10px !important;
+}
+
+/* Right column stretches cards to fill vertical space */
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="column"]:last-child > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.st-key-about_supp_form_card) > div[data-testid="stColumn"]:last-child > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="column"]:last-child > div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(div[class*="st-key-about_supp_form_card"]) > div[data-testid="stColumn"]:last-child > div[data-testid="stVerticalBlock"] {
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+}
+
+.st-key-about_supp_card_info,
+.st-key-about_supp_card_report,
+.st-key-about_supp_card_help,
+div[class*="st-key-about_supp_card_info"],
+div[class*="st-key-about_supp_card_report"],
+div[class*="st-key-about_supp_card_help"],
+.st-key-about_supp_card_info > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-about_supp_card_report > div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-about_supp_card_help > div[data-testid="stVerticalBlockBorderWrapper"] {
+    flex: 1 1 auto !important;
+    height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    border-radius: 12px !important;
 }
 
 /* ==========================================================================
@@ -6511,6 +8741,585 @@ button[kind="secondary"][aria-label*="View Architecture"]:hover {
 .st-key-btn_goto_step4 button p {
     color: #FFFFFF !important;
     font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   SYMPTOMS SEARCH & CLINICAL EXTRACTOR CARD (IMAGE 2 DESIGN)
+   ========================================================================== */
+.st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: var(--mm-card-bg, #FFFFFF) !important;
+    border: 1.5px solid #BFDBFE !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.08) !important;
+    overflow: hidden !important;
+    margin-top: 24px !important;
+}
+[data-theme="dark"] .st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Describe in Your Own Words Button (Outline Button) */
+.st-key-btn_describe_words button {
+    background: var(--mm-card-bg, #FFFFFF) !important;
+    border: 1.5px solid #3B82F6 !important;
+    color: #1D4ED8 !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    border-radius: 10px !important;
+    min-height: 48px !important;
+    height: 100% !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-btn_describe_words button:hover {
+    background: #EFF6FF !important;
+    border-color: #1D4ED8 !important;
+    color: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+}
+.st-key-btn_describe_words button p {
+    color: #1D4ED8 !important;
+    font-weight: 700 !important;
+}
+[data-theme="dark"] .st-key-btn_describe_words button {
+    background: #1E293B !important;
+    border-color: #3B82F6 !important;
+    color: #60A5FA !important;
+}
+[data-theme="dark"] .st-key-btn_describe_words button p {
+    color: #60A5FA !important;
+}
+[data-theme="dark"] .st-key-btn_describe_words button:hover {
+    background: rgba(59, 130, 246, 0.15) !important;
+    border-color: #60A5FA !important;
+}
+
+/* Multilingual Extractor Form Button */
+form[data-testid="stForm"] button[kind="primary"] {
+    background: #1D4ED8 !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.90rem !important;
+    border-radius: 10px !important;
+    min-height: 46px !important;
+    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+form[data-testid="stForm"] button[kind="primary"]:hover {
+    background: #1E40AF !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35) !important;
+}
+form[data-testid="stForm"] button[kind="primary"] p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Audio Input Container (Speech to Text) */
+div[data-testid="stAudioInput"] {
+    background: var(--mm-card-bg, #FFFFFF) !important;
+    border: 1.2px solid #BFDBFE !important;
+    border-radius: 12px !important;
+    padding: 6px 14px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"] {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+}
+
+/* Common Symptoms Chips (Horizontal 7-Pill Layout) */
+div[class*="st-key-pop_sym_chip_"] button {
+    background: #2563EB !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.84rem !important;
+    border-radius: 10px !important;
+    min-height: 42px !important;
+    padding: 6px 12px !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.20) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+div[class*="st-key-pop_sym_chip_"] button:hover {
+    background: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+div[class*="st-key-pop_sym_chip_"] button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+@media (max-width: 768px) {
+    .st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 12px !important;
+    }
+    div[class*="st-key-pop_sym_chip_"] button {
+        font-size: 0.76rem !important;
+        padding: 4px 8px !important;
+        min-height: 38px !important;
+    }
+}
+/* ============================================================
+   CLINICAL AUTHENTICATION PORTAL -- DARK MODE OVERRIDE
+   ============================================================ */
+.st-key-auth_left_vault_card div[data-testid="stVerticalBlockBorderWrapper"],
+.st-key-auth_right_signin_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+.st-key-auth_left_vault_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: linear-gradient(180deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.85) 100%) !important;
+}
+
+.auth-input-label {
+    color: #F8FAFC !important;
+}
+
+.st-key-panel_login_email input,
+.st-key-panel_login_password input {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    color: #F8FAFC !important;
+}
+.st-key-panel_login_email input:focus,
+.st-key-panel_login_password input:focus {
+    border-color: #60A5FA !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+}
+
+.st-key-auth_btn_forgot_pwd_link button,
+.st-key-auth_btn_forgot_pwd_link button p {
+    color: #60A5FA !important;
+}
+
+.st-key-panel_btn_goto_reg button,
+.st-key-panel_btn_goto_rec button,
+.st-key-panel_btn_goto_admin button {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+.st-key-panel_btn_goto_reg button:hover,
+.st-key-panel_btn_goto_rec button:hover,
+.st-key-panel_btn_goto_admin button:hover {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border-color: #60A5FA !important;
+}
+.st-key-panel_btn_goto_reg button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-panel_btn_goto_rec button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-panel_btn_goto_admin button div[data-testid="stMarkdownContainer"] p strong,
+.st-key-panel_btn_return_dashboard button div[data-testid="stMarkdownContainer"] p strong {
+    color: #93C5FD !important;
+}
+.st-key-panel_btn_goto_reg button div[data-testid="stMarkdownContainer"] p,
+.st-key-panel_btn_goto_rec button div[data-testid="stMarkdownContainer"] p,
+.st-key-panel_btn_goto_admin button div[data-testid="stMarkdownContainer"] p,
+.st-key-panel_btn_return_dashboard button div[data-testid="stMarkdownContainer"] p {
+    color: #94A3B8 !important;
+}
+
+.st-key-panel_btn_return_dashboard button {
+    background: rgba(30, 41, 59, 0.45) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+.st-key-panel_btn_return_dashboard button:hover {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border-color: #60A5FA !important;
+}
+
+.auth-or-divider::before,
+.auth-or-divider::after {
+    border-bottom-color: rgba(51, 65, 85, 0.8) !important;
+}
+.auth-or-divider {
+    color: #64748B !important;
+}
+
+.auth-card-footer {
+    border-top-color: rgba(51, 65, 85, 0.5) !important;
+    color: #94A3B8 !important;
+}
+
+/* Feature and Trust cards in dark mode */
+.auth-feat-item {
+    background: rgba(30, 41, 59, 0.45) !important;
+    border-color: rgba(51, 65, 85, 0.6) !important;
+}
+.auth-trust-item {
+    background: rgba(30, 41, 59, 0.45) !important;
+    border-color: rgba(51, 65, 85, 0.6) !important;
+}
+.auth-card-title {
+    color: #F8FAFC !important;
+}
+.auth-card-subtitle {
+    color: #94A3B8 !important;
+}
+.auth-alert-banner {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    border-left-color: #EF4444 !important;
+    color: #FECACA !important;
+}
+/* Dark Mode Overrides for Admin & Recovery */
+.st-key-panel_adm_email input,
+.st-key-panel_adm_pass input,
+.st-key-panel_rec_email input {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    color: #F8FAFC !important;
+}
+.st-key-panel_adm_email input:focus,
+.st-key-panel_adm_pass input:focus,
+.st-key-panel_rec_email input:focus {
+    border-color: #60A5FA !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+}
+
+.st-key-panel_btn_back_from_adm button,
+.st-key-panel_btn_back_from_rec button {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+.st-key-panel_btn_back_from_adm button:hover,
+.st-key-panel_btn_back_from_rec button:hover {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border-color: #60A5FA !important;
+}
+.st-key-panel_btn_back_from_adm button div[data-testid="stMarkdownContainer"] p strong {
+    color: #93C5FD !important;
+}
+.st-key-panel_btn_back_from_adm button div[data-testid="stMarkdownContainer"] p {
+    color: #94A3B8 !important;
+}
+.st-key-panel_btn_back_from_rec button p {
+    color: #93C5FD !important;
+}
+
+.auth-admin-alert {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    border-left-color: #EF4444 !important;
+}
+.auth-info-callout {
+    background: rgba(30, 58, 138, 0.25) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    color: #93C5FD !important;
+}
+.auth-privacy-banner {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Dark Mode overrides for Registration & Password Reset (Image 2 & 4) */
+.auth-input-icon-box {
+    background: rgba(30, 58, 138, 0.35) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+.auth-input-help {
+    color: #94A3B8 !important;
+}
+.auth-pwd-req-box {
+    background: rgba(30, 58, 138, 0.22) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+}
+.auth-pwd-req-box div {
+    color: #E2E8F0 !important;
+}
+.auth-pwd-req-box span {
+    color: #CBD5E1 !important;
+}
+.auth-check-email-card {
+    background: rgba(30, 58, 138, 0.25) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+.auth-check-email-card div {
+    color: #E2E8F0 !important;
+}
+.auth-card-footer-trust {
+    border-top-color: rgba(51, 65, 85, 0.5) !important;
+    color: #94A3B8 !important;
+}
+.st-key-panel_reg_name input,
+.st-key-panel_reg_email input,
+.st-key-panel_reg_pass input,
+.st-key-panel_reg_conf input,
+.st-key-panel_rec_otp_input input,
+.st-key-panel_rec_p1 input,
+.st-key-panel_rec_p2 input {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    color: #F8FAFC !important;
+}
+.st-key-panel_reg_name input:focus,
+.st-key-panel_reg_email input:focus,
+.st-key-panel_reg_pass input:focus,
+.st-key-panel_reg_conf input:focus,
+.st-key-panel_rec_otp_input input:focus,
+.st-key-panel_rec_p1 input:focus,
+.st-key-panel_rec_p2 input:focus {
+    border-color: #60A5FA !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+}
+.st-key-panel_btn_back_to_login button,
+.st-key-panel_btn_reg_return_dash button,
+.st-key-panel_btn_cancel_rec button {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    color: #60A5FA !important;
+}
+.st-key-panel_btn_back_to_login button:hover,
+.st-key-panel_btn_reg_return_dash button:hover,
+.st-key-panel_btn_cancel_rec button:hover {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border-color: #93C5FD !important;
+    color: #93C5FD !important;
+}
+.st-key-panel_btn_back_to_login button p,
+.st-key-panel_btn_reg_return_dash button p,
+.st-key-panel_btn_cancel_rec button p {
+    color: #60A5FA !important;
+}
+.st-key-panel_btn_back_to_login button:hover p,
+.st-key-panel_btn_reg_return_dash button:hover p,
+.st-key-panel_btn_cancel_rec button:hover p {
+    color: #93C5FD !important;
+}
+
+/* Dark Mode Overrides for Family Vault & Account Settings */
+.patient-hero-card {
+    background: linear-gradient(180deg, #0D1B36 0%, #081124 100%) !important;
+    border-color: #1E3A8A !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+.patient-hero-card h2 {
+    color: #F8FAFC !important;
+}
+.family-member-card {
+    background: rgba(30, 41, 59, 0.5) !important;
+    border-color: rgba(51, 65, 85, 0.6) !important;
+}
+.family-member-card:hover {
+    border-color: #38BDF8 !important;
+}
+.account-settings-card {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+}
+.account-field-icon-box {
+    background: rgba(30, 58, 138, 0.35) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+.st-key-panel_prof_email input,
+.st-key-panel_prof_name input,
+.st-key-panel_prof_last_login input,
+.st-key-panel_prof_member_since input {
+    background: rgba(15, 23, 42, 0.85) !important;
+    border-color: rgba(59, 130, 246, 0.25) !important;
+    color: #F8FAFC !important;
+}
+.st-key-panel_prof_status input {
+    background: rgba(22, 101, 52, 0.2) !important;
+    color: #4ADE80 !important;
+    border-color: rgba(34, 197, 94, 0.3) !important;
+    font-weight: 700 !important;
+}
+.st-key-btn_prof_logout_main button {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    color: #60A5FA !important;
+}
+.st-key-btn_prof_logout_main button:hover {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border-color: #93C5FD !important;
+    color: #93C5FD !important;
+}
+.st-key-btn_prof_logout_main button p {
+    color: #60A5FA !important;
+}
+.st-key-btn_prof_logout_main button:hover p {
+    color: #93C5FD !important;
+}
+.form-subcard {
+    background: rgba(30, 41, 59, 0.45) !important;
+    border-color: rgba(51, 65, 85, 0.6) !important;
+}
+.st-key-btn_cancel_change_pwd button {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    color: #60A5FA !important;
+}
+.st-key-btn_cancel_change_pwd button:hover {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border-color: #93C5FD !important;
+    color: #93C5FD !important;
+}
+.st-key-btn_cancel_change_pwd button p {
+    color: #60A5FA !important;
+}
+.st-key-btn_cancel_change_pwd button:hover p {
+    color: #93C5FD !important;
+}
+
+/* Administrator Session Card Dark Mode Override */
+.adm-session-card {
+    background: #0F172A !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+}
+.adm-session-title {
+    color: #F8FAFC !important;
+}
+.adm-session-title span {
+    color: #60A5FA !important;
+}
+.adm-session-title-brand {
+    color: #F8FAFC !important;
+}
+.adm-session-sec-brand {
+    color: #F8FAFC !important;
+}
+.adm-session-lock-box {
+    background: rgba(30, 41, 59, 0.7) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+.adm-session-notice {
+    background: rgba(37, 99, 235, 0.12) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+    color: #93C5FD !important;
+}
+.adm-session-notice span {
+    color: #BFDBFE !important;
+}
+.adm-session-footer {
+    border-top-color: rgba(51, 65, 85, 0.6) !important;
+    color: #94A3B8 !important;
+}
+.adm-session-ftr-title {
+    color: #F8FAFC !important;
+}
+.adm-session-ftr-sep {
+    background: rgba(51, 65, 85, 0.6) !important;
+}
+.adm-session-ftr-cursive {
+    color: #60A5FA !important;
+}
+
+/* Admin Portal Unified Dark Mode Overrides */
+.adm-portal-card {
+    background: #0F172A !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+}
+.adm-portal-title {
+    color: #F8FAFC !important;
+}
+.adm-portal-title span {
+    color: #60A5FA !important;
+}
+.adm-portal-icon-box {
+    background: rgba(30, 41, 59, 0.7) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+}
+.adm-portal-subtitle {
+    color: #94A3B8 !important;
+}
+.adm-portal-filter-lbl {
+    color: #CBD5E1 !important;
+}
+.adm-portal-counter-bar {
+    color: #94A3B8 !important;
+}
+.adm-user-row-card, .adm-scan-row-card, .adm-audit-row-card {
+    background: rgba(15, 23, 42, 0.75) !important;
+    border-color: rgba(51, 65, 85, 0.7) !important;
+}
+.adm-user-row-card:hover, .adm-scan-row-card:hover, .adm-audit-row-card:hover {
+    border-color: rgba(96, 165, 250, 0.5) !important;
+    background: rgba(30, 41, 59, 0.7) !important;
+}
+.adm-chip-meta {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+    color: #94A3B8 !important;
+}
+.adm-scan-id-badge {
+    background: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    color: #93C5FD !important;
+}
+.adm-user-details-box {
+    background: rgba(15, 23, 42, 0.8) !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+}
+.adm-top-header-card {
+    background: #0F172A !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+}
+.adm-kpi-card {
+    background: rgba(15, 23, 42, 0.75) !important;
+    border-color: rgba(51, 65, 85, 0.7) !important;
+}
+.adm-kpi-card:hover {
+    border-color: rgba(96, 165, 250, 0.5) !important;
+    background: rgba(30, 41, 59, 0.7) !important;
+}
+.adm-activity-card {
+    background: rgba(15, 23, 42, 0.65) !important;
+    border-color: rgba(51, 65, 85, 0.6) !important;
+}
+.adm-activity-card:hover {
+    border-color: rgba(96, 165, 250, 0.4) !important;
+}
+.st-key-btn_adm_view_all_logs button {
+    background: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    color: #60A5FA !important;
+}
+.st-key-btn_adm_view_all_logs button:hover {
+    background: rgba(37, 99, 235, 0.28) !important;
+    border-color: #60A5FA !important;
+    color: #93C5FD !important;
+}
+[data-theme="dark"] .adm-chip-item {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(51, 65, 85, 0.7) !important;
+    color: #94A3B8 !important;
+}
+[data-theme="dark"] .adm-user-badge-id {
+    background: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+    color: #60A5FA !important;
+}
+[data-theme="dark"] .adm-user-actions-wrap [data-testid="column"]:first-child button {
+    background: rgba(37, 99, 235, 0.15) !important;
+    border-color: rgba(59, 130, 246, 0.4) !important;
+    color: #60A5FA !important;
+}
+[data-theme="dark"] .adm-user-actions-wrap [data-testid="column"]:nth-child(2) button {
+    background: rgba(30, 41, 59, 0.6) !important;
+    border-color: rgba(51, 65, 85, 0.8) !important;
+    color: #CBD5E1 !important;
+}
+[data-theme="dark"] .adm-user-actions-wrap [data-testid="column"]:nth-child(3) button {
+    background: rgba(225, 29, 72, 0.15) !important;
+    border-color: rgba(244, 63, 94, 0.4) !important;
+    color: #FB7185 !important;
 }
 </style>
 """

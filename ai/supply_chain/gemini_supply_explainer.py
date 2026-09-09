@@ -35,8 +35,16 @@ class GeminiSupplyExplainer:
         if _GENAI_AVAILABLE and self.api_key and len(self.api_key.strip()) > 5:
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel("gemini-1.5-flash")
-                logger.info("Gemini Supply Explainer initialized successfully.")
+                # Try models in order — gemini-2.0-flash is current stable
+                for _model_name in ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-flash-lite"]:
+                    try:
+                        self.model = genai.GenerativeModel(_model_name)
+                        self._active_model_name = _model_name
+                        logger.info(f"Gemini Supply Explainer initialized successfully with {_model_name}.")
+                        break
+                    except Exception:
+                        self.model = None
+                        continue
             except Exception as e:
                 logger.warning(f"Failed to configure Gemini model: {e}")
                 self.model = None

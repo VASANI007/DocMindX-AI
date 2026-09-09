@@ -253,5 +253,16 @@
   "physiotherapy_title": "लक्षित फिजियोथेरेपी एवं पुनर्वास व्यायाम",
   "physiotherapy_sub": "लक्षणों के अनुसार हड्डियों, जोड़ों और मांसपेशियों के लिए सुरक्षित व्यायाम।",
   "specialized_therapies_title": "विशेष अस्पताल क्लीनिकल थेरेपी एवं प्रक्रियाएं",
-  "specialized_therapies_sub": "इस स्थिति के लिए आवश्यक उन्नत उपचार (जैसे कीमोथेरेपी, डायलिसिस, नेबुलाइज़र)।"
+  "specialized_therapies_sub": "इस स्थिति के लिए आवश्यक उन्नत उपचार (जैसे कीमोथेरेपी, डायलिसिस, नेबुलाइज़र)।",
+  "btn_login_register": "लॉगिन / पंजीकरण",
+  "btn_recovery_password": "पासवर्ड रिकवरी",
+  "btn_change_password": "पासवर्ड बदलें",
+  "my_profile_title": "मेरी प्रोफाइल",
+  "my_family_title": "मेरा परिवार",
+  "add_family_member_btn": "परिवार का सदस्य जोड़ें",
+  "who_is_scan_for_label": "यह स्कैन किसके लिए है?",
+  "general_scan_label": "सामान्य स्कैन",
+  "admin_panel_title": "एडमिन कंसोल",
+  "security_logs_title": "सुरक्षा ऑडिट लॉग",
+  "logout_btn": "लॉगआउट"
 }
