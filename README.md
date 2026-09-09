@@ -19,7 +19,7 @@
 
 An **enterprise-grade, end-to-end clinical intelligence and healthcare logistics platform** engineered to solve critical bottlenecks in healthcare access and public health response. DocMindX AI empowers citizens, frontline health workers, and administrators to **assess symptoms across Indic languages, extract insights from handwritten prescriptions and lab reports, cross-reference verified pharmaceutical databases, predict clinical conditions with 97.58% differential accuracy, and optimize public health supply chain resilience** — all in one unified, real-time ecosystem.
 
-🔗 **Platform Demo / Repository:** [DocMindX AI on Streamlit](https://DocMindX-ai-official.streamlit.app/)  
+🔗 **Platform Demo / Repository:** [DocMindX AI on Streamlit](https://docmindx-ai.streamlit.app/)  
 🏆 **Recognition:** Developed for Google Cloud Hackathon — Track 03: Smart Health & Public Health Supply Chain Resilience
 
 ---
