@@ -950,10 +950,6 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 </div>
                 """, unsafe_allow_html=True)
 
-                dev_otp = auth_svc.get_dev_otp_fallback(email, "REGISTRATION")
-                if dev_otp:
-                    st.caption(f"Testing Fallback Notice: Activation Code is: `{dev_otp}`")
-
                 reg_otp_code = st.text_input("Enter 6-Digit Activation Code", max_chars=6, key="panel_reg_otp_input", placeholder="123456")
 
                 c_a1, c_a2 = st.columns([1, 1])
