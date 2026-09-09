@@ -28,7 +28,6 @@ def render_admin_dashboard_view():
     admin_email = user.get("email", "docmindxai@gmail.com") if user else "docmindxai@gmail.com"
     st.markdown(f"""
     <div class="adm-top-header-card">
-        <!-- Left: Logo & Identity -->
         <div style="display: flex; align-items: center; gap: 16px;">
             <div style="width: 52px; height: 52px; border-radius: 14px; background: #EFF6FF; border: 1.5px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.12);">
                 <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -45,11 +44,8 @@ def render_admin_dashboard_view():
                 </div>
             </div>
         </div>
-        <!-- Center/Right: Brand Logo & Super Admin Pill -->
         <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-            <!-- Soft decorative plus icon -->
             <div style="color: #BAE6FD; font-size: 2.2rem; font-weight: 200; opacity: 0.4; line-height: 1; pointer-events: none; margin-right: -4px;">+</div>
-            <!-- DocMindX AI Brand -->
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 36px; height: 36px; border-radius: 10px; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
@@ -61,7 +57,6 @@ def render_admin_dashboard_view():
                     <div style="font-size: 0.65rem; color: #64748B; font-weight: 700; letter-spacing: 0.06em;">CLINICAL AI HEALTHCARE SYSTEM</div>
                 </div>
             </div>
-            <!-- Super Admin Badge -->
             <div style="background: #FFE4E6; color: #E11D48; border: 1.5px solid #FECDD3; padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 800; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08);">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>
@@ -71,17 +66,6 @@ def render_admin_dashboard_view():
         </div>
     </div>
     """, unsafe_allow_html=True)
-
-    # Quick Navigation Bar for Admin
-    adm_nav_c1, adm_nav_c2, adm_nav_c3 = st.columns([1.5, 1.5, 4.0])
-    with adm_nav_c1:
-        if st.button("Family Profiles", key="adm_bar_btn_family", use_container_width=True):
-            st.session_state["active_panel"] = "Family Management"
-            st.rerun()
-    with adm_nav_c2:
-        if st.button("Clinical Portal", key="adm_bar_btn_portal", use_container_width=True):
-            st.session_state["active_panel"] = "Health Assessment"
-            st.rerun()
 
     # Admin Navigation Tabs
     tab_dash, tab_users, tab_fam, tab_scans, tab_audit, tab_settings = st.tabs([
@@ -332,7 +316,6 @@ def render_admin_dashboard_view():
 
             st.markdown("""
             <div style="background: #0F172A; border: 1.5px solid #1E2E4E; border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);">
-                <!-- Row 1 -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.82rem;">
                     <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -346,7 +329,6 @@ def render_admin_dashboard_view():
                         <span style="width: 6px; height: 6px; border-radius: 50%; background: #34D399; display: inline-block;"></span> Online
                     </span>
                 </div>
-                <!-- Row 2 -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.82rem;">
                     <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -359,7 +341,6 @@ def render_admin_dashboard_view():
                         <span style="width: 6px; height: 6px; border-radius: 50%; background: #34D399; display: inline-block;"></span> Active
                     </span>
                 </div>
-                <!-- Row 3 -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.82rem;">
                     <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -372,7 +353,6 @@ def render_admin_dashboard_view():
                         <span style="width: 6px; height: 6px; border-radius: 50%; background: #34D399; display: inline-block;"></span> Active
                     </span>
                 </div>
-                <!-- Row 4 -->
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 0.82rem;">
                     <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -386,7 +366,6 @@ def render_admin_dashboard_view():
                     </span>
                 </div>
                 <div style="border-top: 1px solid rgba(51, 65, 85, 0.6); margin: 10px 0 12px 0;"></div>
-                <!-- Row 5: Master Control Status -->
                 <div style="display: flex; align-items: flex-start; gap: 10px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -398,7 +377,6 @@ def render_admin_dashboard_view():
                     </div>
                 </div>
             </div>
-            <!-- Soft blue Info Notice Callout -->
             <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 12px; padding: 12px 16px; margin-top: 14px; display: flex; align-items: center; gap: 12px;">
                 <div style="width: 24px; height: 24px; border-radius: 50%; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 0.78rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     i
@@ -533,7 +511,6 @@ def render_admin_dashboard_view():
             with st.container(border=True):
                 st.markdown(f"""
                 <div class="adm-user-card-header">
-                    <!-- Avatar & Info -->
                     <div class="adm-user-card-main">
                         <div class="adm-avatar-circle" style="background: {pal['bg']}; border: 1.5px solid {pal['border']}; color: {pal['text']};">
                             {initials}

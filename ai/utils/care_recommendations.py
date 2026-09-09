@@ -1225,3 +1225,161 @@ def get_compress_guidance(disease_name: str = "", symptoms: list = None, lang_co
         "title": "Cold / Tepid Sponge Compress",
         "text": "Apply a damp, cool cloth to the forehead and neck to safely bring down elevated body temperature."
     }
+
+
+def localize_care_recommendations(care_res: dict, target_lang_code: str) -> dict:
+    """
+    Translates textual clinical fields of an existing care recommendation into the target language
+    while strictly locking and preserving the exact same medicines (gallery items), dosages, and yoga routines.
+    """
+    if not care_res or not isinstance(care_res, dict):
+        return care_res
+
+    current_lang = care_res.get("lang_code", "en")
+    if current_lang == target_lang_code:
+        return care_res
+
+    _LANG_NAME_MAP = {
+        "en": "English",
+        "hi": "Hindi (हिंदी)",
+        "gu": "Gujarati (ગુજરાતી)",
+        "mr": "Marathi (मराठी)",
+        "bn": "Bengali (বাংলা)",
+        "ta": "Tamil (தமிழ்)",
+        "te": "Telugu (తెలుగు)",
+        "kn": "Kannada (ಕನ್ನಡ)",
+        "ml": "Malayalam (മലയാളം)",
+        "pa": "Punjabi (ਪੰਜਾਬੀ)",
+        "or": "Odia (ଓଡ଼ିଆ)",
+        "ur": "Urdu (اردو)",
+    }
+    lang_name = _LANG_NAME_MAP.get(target_lang_code, target_lang_code.title())
+
+    # Update seasonal context
+    st_val = care_res.get("state") or "Gujarat"
+    seasonal_data = get_seasonal_health_context(st_val, lang_code=target_lang_code)
+    care_res["seasonal_context"] = seasonal_data
+    care_res["seasonal_alert"] = {
+        "is_active": True,
+        "title": seasonal_data["alert_title"],
+        "message": seasonal_data["alert_description"]
+    }
+
+    # Food timing translation — all 12 supported languages
+    ft_map = {
+        "en": {"after": "After Food", "before": "Before Food (Empty Stomach)", "water": "With Water (Sip Throughout Day)"},
+        "hi": {"after": "भोजन के बाद", "before": "भोजन से पहले (खाली पेट)", "water": "पानी के साथ (दिन भर घूंट लें)"},
+        "gu": {"after": "જમ્યા પછી", "before": "જમ્યા પહેલા (ખાલી પેટે)", "water": "પાણી સાથે (દિવસ દરમ્યાન)"},
+        "mr": {"after": "जेवणानंतर", "before": "जेवणापूर्वी (रिकाम्या पोटी)", "water": "पाण्यासोबत (दिवसभर)"},
+        "bn": {"after": "খাওয়ার পরে", "before": "খাওয়ার আগে (খালি পেটে)", "water": "জলের সাথে (সারাদিন)"},
+        "ta": {"after": "சாப்பிட்ட பிறகு", "before": "சாப்பிடுவதற்கு முன்பு (வெறும் வயிற்றில்)", "water": "தண்ணீருடன் (நாள் முழுவதும்)"},
+        "te": {"after": "భోజనం తర్వాత", "before": "భోజనానికి ముందు (ఖాళీ కడుపుతో)", "water": "నీటితో (రోజంతా)"},
+        "kn": {"after": "ಊಟದ ನಂತರ", "before": "ಊಟಕ್ಕೂ ಮುನ್ನ (ಖಾಲಿ ಹೊಟ್ಟೆಯಲ್ಲಿ)", "water": "ನೀರಿನೊಂದಿಗೆ (ದಿನವಿಡೀ)"},
+        "ml": {"after": "ഭക്ഷണത്തിനു ശേഷം", "before": "ഭക്ഷണത്തിനു മുമ്പ് (ശൂന്യ ഉദരത്തിൽ)", "water": "വെള്ളത്തോടൊപ്പം (ദിവസം മുഴുവൻ)"},
+        "pa": {"after": "ਖਾਣੇ ਤੋਂ ਬਾਅਦ", "before": "ਖਾਣੇ ਤੋਂ ਪਹਿਲਾਂ (ਖਾਲੀ ਪੇਟ)", "water": "ਪਾਣੀ ਨਾਲ (ਪੂਰਾ ਦਿਨ)"},
+        "or": {"after": "ଖାଇବା ପରେ", "before": "ଖାଇବା ପୂର୍ବରୁ (ଖାଲି ପେଟ)", "water": "ପାଣି ସହ (ଦିନ ସାରା)"},
+        "ur": {"after": "کھانے کے بعد", "before": "کھانے سے پہلے (خالی پیٹ)", "water": "پانی کے ساتھ (دن بھر)"},
+    }
+    target_ft = ft_map.get(target_lang_code, ft_map["en"])
+    for med in care_res.get("medicine_gallery", []):
+        old_ft = str(med.get("food_timing", "")).lower()
+        if "before" in old_ft or "खाली" in old_ft or "પહેલા" in old_ft or "pehle" in old_ft:
+            med["food_timing"] = target_ft["before"]
+        elif "water" in old_ft or "पानी" in old_ft or "પાણી" in old_ft:
+            med["food_timing"] = target_ft["water"]
+        else:
+            med["food_timing"] = target_ft["after"]
+
+    # Bundle text items to translate
+    items_to_translate = {
+        "summary": care_res.get("summary", ""),
+        "recovery_duration": care_res.get("recovery_duration", ""),
+        "hydration_advice": care_res.get("hydration_advice", ""),
+        "foods_to_eat": care_res.get("foods_to_eat", []),
+        "foods_to_avoid": care_res.get("foods_to_avoid", []),
+        "clinical_dos": care_res.get("clinical_dos", []),
+        "clinical_donts": care_res.get("clinical_donts", []),
+        "red_flags": care_res.get("red_flags", []),
+        "med_indications": [m.get("indication", "") for m in care_res.get("medicine_gallery", [])],
+        "yoga_benefits": [y.get("benefits", "") for y in care_res.get("yoga_recommendations", [])]
+    }
+
+    trans_prompt = f"""You are DocMindX Medical Localization AI.
+Translate this clinical care JSON dictionary from {current_lang} into 100% pure {lang_name} ({target_lang_code}).
+CRITICAL RULES:
+1. All text MUST be strictly in {lang_name} script without mixing other languages.
+2. Return STRICT JSON with identical keys.
+
+Bundle to translate:
+{json.dumps(items_to_translate, ensure_ascii=False)}
+"""
+    translated_bundle = None
+    if GEMINI_API_KEY:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={GEMINI_API_KEY}"
+            res = requests.post(
+                url,
+                headers={"Content-Type": "application/json"},
+                json={
+                    "contents": [{"parts": [{"text": trans_prompt}]}],
+                    "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
+                },
+                timeout=10
+            )
+            if res.status_code == 200:
+                raw_t = res.json()["candidates"][0]["content"]["parts"][0]["text"]
+                translated_bundle = _clean_json_response(raw_t)
+        except Exception as e:
+            print(f"Gemini localization notice: {e}")
+
+    if not translated_bundle and GROQ_API_KEY:
+        try:
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+            body = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": f"Translate all medical text into 100% pure {lang_name}. Output strict JSON only."},
+                    {"role": "user", "content": trans_prompt}
+                ],
+                "temperature": 0.1,
+                "response_format": {"type": "json_object"}
+            }
+            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
+            if res.status_code == 200:
+                raw_t = res.json()["choices"][0]["message"]["content"]
+                translated_bundle = _clean_json_response(raw_t)
+        except Exception as e:
+            print(f"Groq localization notice: {e}")
+
+    if translated_bundle and isinstance(translated_bundle, dict):
+        if translated_bundle.get("summary"):
+            care_res["summary"] = translated_bundle["summary"]
+        if translated_bundle.get("recovery_duration"):
+            care_res["recovery_duration"] = translated_bundle["recovery_duration"]
+        if translated_bundle.get("hydration_advice"):
+            care_res["hydration_advice"] = translated_bundle["hydration_advice"]
+        if translated_bundle.get("foods_to_eat"):
+            care_res["foods_to_eat"] = translated_bundle["foods_to_eat"]
+        if translated_bundle.get("foods_to_avoid"):
+            care_res["foods_to_avoid"] = translated_bundle["foods_to_avoid"]
+        if translated_bundle.get("clinical_dos"):
+            care_res["clinical_dos"] = translated_bundle["clinical_dos"]
+        if translated_bundle.get("clinical_donts"):
+            care_res["clinical_donts"] = translated_bundle["clinical_donts"]
+        if translated_bundle.get("red_flags"):
+            care_res["red_flags"] = translated_bundle["red_flags"]
+
+        med_inds = translated_bundle.get("med_indications", [])
+        if isinstance(med_inds, list):
+            for idx, med in enumerate(care_res.get("medicine_gallery", [])):
+                if idx < len(med_inds) and med_inds[idx]:
+                    med["indication"] = med_inds[idx]
+
+        yoga_bens = translated_bundle.get("yoga_benefits", [])
+        if isinstance(yoga_bens, list):
+            for idx, y in enumerate(care_res.get("yoga_recommendations", [])):
+                if idx < len(yoga_bens) and yoga_bens[idx]:
+                    y["benefits"] = yoga_bens[idx]
+
+    care_res["lang_code"] = target_lang_code
+    return care_res

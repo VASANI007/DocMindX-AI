@@ -55,6 +55,7 @@ from ai.chatbot.chatbot import ask_DocMindX_ai, generate_dynamic_patient_questio
 from ai.utils.report_generator import generate_pdf_report, generate_scan_record_pdf
 from ai.utils.care_recommendations import (
     get_dynamic_clinical_recommendations,
+    localize_care_recommendations,
     get_medicine_gallery,
     get_youtube_search_url
 )
@@ -446,103 +447,92 @@ lang_code = lang_code_map.get(lang_choice, "en")
 st.session_state["language"] = lang_code
 T = load_translations(lang_code)
 
+def get_localized_user_val(val_key, raw_val, T, lang_code):
+    if not raw_val or str(raw_val).strip().lower() in ["none", "null", "none_selected", "unknown", "કંઈ નથી", "कोई नहीं"]:
+        return T.get("val_none", "None")
+    
+    raw_str = str(raw_val).strip()
+    raw_lower = raw_str.lower()
+    
+    if val_key == "gender":
+        if "male" in raw_lower and "female" not in raw_lower:
+            return T.get("gender_male", "Male")
+        elif "female" in raw_lower:
+            return T.get("gender_female", "Female")
+        elif "other" in raw_lower:
+            return T.get("gender_other", "Other")
+            
+    elif val_key == "severity":
+        if "mild" in raw_lower or "हल्का" in raw_lower or "હળવું" in raw_lower:
+            return T.get("severity_mild", "Mild").split("(")[0].strip()
+        elif "mod" in raw_lower or "मध्यम" in raw_lower or "મધ્યમ" in raw_lower:
+            return T.get("severity_moderate", "Moderate").split("(")[0].strip()
+        elif "sev" in raw_lower or "गंभीर" in raw_lower or "ગંભીર" in raw_lower:
+            return T.get("severity_severe", "Severe").split("(")[0].strip()
+            
+    elif val_key == "duration":
+        if "today" in raw_lower or "आज" in raw_lower or "આજ" in raw_lower:
+            return T.get("dur_today", "Started Today")
+        elif "1" in raw_lower and "3" in raw_lower:
+            return T.get("dur_1_3", "1 - 3 Days")
+        elif "4" in raw_lower and "7" in raw_lower:
+            return T.get("dur_4_7", "4 - 7 Days")
+        elif "1" in raw_lower and "2" in raw_lower and "week" in raw_lower:
+            return T.get("dur_1_2w", "1 - 2 Weeks")
+        elif "more" in raw_lower or "વધુ" in raw_lower or "अधिक" in raw_lower:
+            return T.get("dur_more_2w", "More than 2 Weeks")
+            
+    elif val_key == "age":
+        if lang_code == "gu":
+            return raw_str.replace("Years", "વર્ષ").replace("years", "વર્ષ")
+        elif lang_code == "hi":
+            return raw_str.replace("Years", "वर्ष").replace("years", "वर्ष")
+            
+    return raw_str
+
+
 def render_dynamic_browser_translator(target_lang_code: str):
     """
-    Injects Google Translate client-side engine directly into the browser.
-    Dynamically translates all UI text across the entire web page in real time
-    without needing any static .json translation dictionaries.
-    """
-    import streamlit.components.v1 as components
-    if target_lang_code == "en":
-        js_code = """
-        <script>
-        (function() {
-            try {
-                if (!window.parent.__st_vite_recovery_hook) {
-                    window.parent.__st_vite_recovery_hook = true;
-                    window.parent.addEventListener('vite:preloadError', function() {
-                        window.parent.location.reload();
-                    });
-                    window.parent.addEventListener('error', function(e) {
-                        var msg = (e && e.message) ? e.message : '';
-                        if (msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
-                            msg.indexOf('Importing a module script failed') !== -1) {
-                            window.parent.location.reload();
-                        }
-                    });
-                }
-                var doc = window.parent.document;
-                doc.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-                doc.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
-                var iframe = doc.querySelector('iframe.goog-te-banner-frame');
-                if (iframe) iframe.style.display = 'none';
-            } catch(e) {}
-        })();
-        </script>
-        """
-    else:
-        js_code = f"""
-        <div id="google_translate_element" style="display:none;"></div>
-        <script type="text/javascript">
-        (function() {{
-            try {{
-                if (!window.parent.__st_vite_recovery_hook) {{
-                    window.parent.__st_vite_recovery_hook = true;
-                    window.parent.addEventListener('vite:preloadError', function() {{
-                        window.parent.location.reload();
-                    }});
-                    window.parent.addEventListener('error', function(e) {{
-                        var msg = (e && e.message) ? e.message : '';
-                        if (msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
-                            msg.indexOf('Importing a module script failed') !== -1) {{
-                            window.parent.location.reload();
-                        }}
-                    }});
-                }}
-            }} catch(e) {{}}
-            var targetLang = "{target_lang_code}";
-            function applyGoogleTranslate() {{
-                try {{
-                    var doc = window.parent.document;
-                    doc.cookie = "googtrans=/en/" + targetLang + "; path=/;";
-                    doc.cookie = "googtrans=/en/" + targetLang + "; path=/; domain=" + window.location.hostname;
-                    
-                    if (!window.parent.google || !window.parent.google.translate) {{
-                        var script = doc.createElement('script');
-                        script.type = 'text/javascript';
-                        script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInitParent';
-                        doc.head.appendChild(script);
-                        
-                        window.parent.googleTranslateElementInitParent = function() {{
-                            try {{
-                                new window.parent.google.translate.TranslateElement({{
-                                    pageLanguage: 'en',
-                                    includedLanguages: 'hi,gu,mr,bn,ta,te,kn,ml,pa,or,ur,en',
-                                    autoDisplay: false
-                                }}, 'google_translate_element');
-                            }} catch(e) {{}}
-                        }};
-                    }} else if (window.parent.google.translate.TranslateElement) {{
-                        var select = doc.querySelector('.goog-te-combo');
-                        if (select) {{
-                            select.value = targetLang;
-                            select.dispatchEvent(new Event('change'));
-                        }}
-                    }}
-                }} catch(err) {{
-                    console.log('Google Translate Engine Notice:', err);
-                }}
-            }}
-            applyGoogleTranslate();
-            setTimeout(applyGoogleTranslate, 400);
-            setTimeout(applyGoogleTranslate, 1000);
-        }})();
-        </script>
-        """
-    components.html(js_code, height=0, width=0)
+    DocMindX Translation Engine.
 
-# Execute Dynamic Browser Translator Engine
+    Uses Python-side static JSON translations (T dict) exclusively.
+    Google Translate Widget is intentionally disabled — it caused mixed-language
+    output by re-translating already-localized text (treating Gujarati/Hindi as English).
+
+    All 12 Indian languages are fully supported via translations/*.json files.
+    The T dict is loaded once per page render based on lang_code, ensuring
+    100% consistent, script-correct translations without any mixing.
+    """
+    # No Google Translate widget injection.
+    # Static T dict (loaded above) is the single source of truth.
+    pass
+
+# Execute Dynamic Browser Translator Engine (no-op; T dict is active)
 render_dynamic_browser_translator(lang_code)
+
+# ── One-time cleanup: remove any stale Google Translate cookies from previous sessions ──
+# GT cookies cause the GT banner/toolbar to re-activate on page load, interfering
+# with our static T dict translations. This script clears them exactly once per session.
+if not st.session_state.get("_gt_cookies_cleared"):
+    import streamlit.components.v1 as _st_comps
+    _st_comps.html("""
+    <script>
+    (function() {
+        try {
+            var doc = window.parent.document;
+            doc.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            doc.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
+            var banner = doc.querySelector('iframe.goog-te-banner-frame');
+            if (banner) banner.style.display = 'none';
+            var body = doc.querySelector('body');
+            if (body) body.style.top = '0px';
+        } catch(e) {}
+    })();
+    </script>
+    """, height=0, width=0)
+    st.session_state["_gt_cookies_cleared"] = True
+
+
 
 def render_footer_trust_bar(t_dict=None):
     return """
@@ -863,29 +853,20 @@ with st.sidebar:
         </div>
         """, unsafe_allow_html=True)
         if is_sb_admin:
-            sb_c1, sb_c2, sb_c3 = st.columns([1.1, 1.1, 0.9])
+            sb_c1, sb_c2 = st.columns([1, 1])
             with sb_c1:
                 if st.button("Admin", key="sb_btn_admin", use_container_width=True):
                     st.session_state["active_panel"] = "Admin Panel"
                     st.rerun()
             with sb_c2:
-                if st.button("Family", key="sb_btn_family", use_container_width=True):
-                    st.session_state["active_panel"] = "Family Management"
-                    st.rerun()
-            with sb_c3:
                 if st.button("Logout", key="sb_btn_signout", use_container_width=True):
                     auth_ui.logout_user()
                     st.rerun()
         else:
-            sb_c1, sb_c2 = st.columns(2)
-            with sb_c1:
-                if st.button("Family Profiles", key="sb_btn_family", use_container_width=True):
-                    st.session_state["active_panel"] = "Family Management"
-                    st.rerun()
-            with sb_c2:
-                if st.button("Sign Out", key="sb_btn_signout", use_container_width=True):
-                    auth_ui.logout_user()
-                    st.rerun()
+            # Normal user ke liye sirf Logout / Sign Out button
+            if st.button("Sign Out", key="sb_btn_signout", use_container_width=True):
+                auth_ui.logout_user()
+                st.rerun()
     else:
         st.markdown(f"""
         <div class="mm-sidebar-guest" style="background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 12px; margin-top: 14px;">
@@ -1205,287 +1186,287 @@ if st.session_state["active_panel"] == "Health Assessment":
                 )
                 st.session_state["user_context"]["blood_group"] = blood_group
 
-        # Symptoms Search Header
-        safe_markdown(f"""
-        <div class="mm-step-card-header" style="margin-top: 16px;">
-            <div class="mm-step-header-left">
-                <div class="mm-step-header-icon">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="4" y="2" width="16" height="20" rx="3" ry="3"></rect>
-                        <line x1="8" y1="8" x2="16" y2="8"></line>
-                        <line x1="8" y1="12" x2="16" y2="12"></line>
-                        <line x1="8" y1="16" x2="12" y2="16"></line>
-                    </svg>
-                </div>
-                <div>
-                    <div class="mm-step-header-title">{T.get("card_symptoms_title", "Clinical Symptoms")} <span style="color: #EF4444;">*</span></div>
-                    <div class="mm-step-header-sub">{T.get("symptom_search_placeholder", "Search and add symptoms (e.g. fever, headache, cough)...")}</div>
+        # Symptoms Search & Clinical Triage Card
+        with st.container(key="symptoms_search_card", border=True):
+            safe_markdown(f"""
+            <div class="mm-symptoms-card-header">
+                <div class="mm-symptoms-header-left">
+                    <div class="mm-symptoms-header-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" fill="#2563EB"/>
+                            <path d="M14 2V8H20" fill="#93C5FD"/>
+                            <path d="M8 12H16M8 15H16M8 18H13" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="mm-symptoms-header-title">{T.get("card_symptoms_title", "Clinical Symptoms")} <span style="color: #EF4444;">*</span></div>
+                        <div class="mm-symptoms-header-sub">{T.get("symptom_search_placeholder", "Search and add symptoms (e.g. fever, headache, cough)...")}</div>
+                    </div>
                 </div>
             </div>
-        </div>
-        """)
+            """)
 
-        symptoms_df = triage_engine.df_symptoms
-        sym_map_gu = {}
-        sym_map_hi = {}
-        if not symptoms_df.empty:
-            for _, row in symptoms_df.iterrows():
-                eng_sym = str(row.get("symptom_name", "")).strip()
-                if "symptom_name_gu" in row and pd.notna(row["symptom_name_gu"]):
-                    sym_map_gu[eng_sym] = str(row["symptom_name_gu"]).strip()
-                if "symptom_name_hi" in row and pd.notna(row["symptom_name_hi"]):
-                    sym_map_hi[eng_sym] = str(row["symptom_name_hi"]).strip()
+            symptoms_df = triage_engine.df_symptoms
+            sym_map_gu = {}
+            sym_map_hi = {}
+            if not symptoms_df.empty:
+                for _, row in symptoms_df.iterrows():
+                    eng_sym = str(row.get("symptom_name", "")).strip()
+                    if "symptom_name_gu" in row and pd.notna(row["symptom_name_gu"]):
+                        sym_map_gu[eng_sym] = str(row["symptom_name_gu"]).strip()
+                    if "symptom_name_hi" in row and pd.notna(row["symptom_name_hi"]):
+                        sym_map_hi[eng_sym] = str(row["symptom_name_hi"]).strip()
 
-        major_diseases_df = getattr(triage_engine, "df_major_diseases", pd.DataFrame())
-        dis_map_hi = {}
-        dis_map_gu = {}
-        if not major_diseases_df.empty:
-            for _, d_row in major_diseases_df.iterrows():
-                d_eng = str(d_row.get("disease_name", "")).strip()
-                if "disease_name_hi" in d_row and pd.notna(d_row["disease_name_hi"]):
-                    dis_map_hi[d_eng] = str(d_row["disease_name_hi"]).strip()
-                if "disease_name_gu" in d_row and pd.notna(d_row["disease_name_gu"]):
-                    dis_map_gu[d_eng] = str(d_row["disease_name_gu"]).strip()
+            major_diseases_df = getattr(triage_engine, "df_major_diseases", pd.DataFrame())
+            dis_map_hi = {}
+            dis_map_gu = {}
+            if not major_diseases_df.empty:
+                for _, d_row in major_diseases_df.iterrows():
+                    d_eng = str(d_row.get("disease_name", "")).strip()
+                    if "disease_name_hi" in d_row and pd.notna(d_row["disease_name_hi"]):
+                        dis_map_hi[d_eng] = str(d_row["disease_name_hi"]).strip()
+                    if "disease_name_gu" in d_row and pd.notna(d_row["disease_name_gu"]):
+                        dis_map_gu[d_eng] = str(d_row["disease_name_gu"]).strip()
 
-        def format_symptom_display(s_name):
-            if lang_code == "gu":
-                if s_name in dis_map_gu:
-                    return f"{dis_map_gu[s_name]} ({s_name})"
-                gu_val = sym_map_gu.get(s_name)
-                return f"{gu_val} ({s_name})" if gu_val and gu_val != s_name else s_name
-            elif lang_code == "hi":
-                if s_name in dis_map_hi:
-                    return f"{dis_map_hi[s_name]} ({s_name})"
-                hi_val = sym_map_hi.get(s_name)
-                return f"{hi_val} ({s_name})" if hi_val and hi_val != s_name else s_name
-            elif not major_diseases_df.empty and s_name in major_diseases_df["disease_name"].values:
-                return f"{s_name} (Major Condition)"
-            return s_name
+            def format_symptom_display(s_name):
+                if lang_code == "gu":
+                    if s_name in dis_map_gu:
+                        return f"{dis_map_gu[s_name]} ({s_name})"
+                    gu_val = sym_map_gu.get(s_name)
+                    return f"{gu_val} ({s_name})" if gu_val and gu_val != s_name else s_name
+                elif lang_code == "hi":
+                    if s_name in dis_map_hi:
+                        return f"{dis_map_hi[s_name]} ({s_name})"
+                    hi_val = sym_map_hi.get(s_name)
+                    return f"{hi_val} ({s_name})" if hi_val and hi_val != s_name else s_name
+                elif not major_diseases_df.empty and s_name in major_diseases_df["disease_name"].values:
+                    return f"{s_name} (Major Condition)"
+                return s_name
 
-        # Build search options combining symptoms and 100+ major Indian diseases
-        all_symptom_names = []
-        if not symptoms_df.empty:
-            all_symptom_names = symptoms_df["symptom_name"].tolist()
-        
-        major_disease_names = []
-        if not major_diseases_df.empty:
-            major_disease_names = major_diseases_df["disease_name"].tolist()
-
-        combined_search_options = major_disease_names + all_symptom_names
-
-        s_col1, s_col2 = st.columns([2.8, 1.2], vertical_alignment="center")
-        with s_col1:
-            search_sym = st.multiselect(
-                "Search symptoms or major diseases...",
-                options=combined_search_options,
-                default=[s for s in st.session_state["selected_symptoms_list"] if s in combined_search_options],
-                format_func=format_symptom_display,
-                label_visibility="collapsed",
-                placeholder=T.get("symptom_search_placeholder", "Search and add symptoms (e.g. fever, headache, cough)...")
-            )
-            for s in search_sym:
-                if s not in st.session_state["selected_symptoms_list"]:
-                    st.session_state["selected_symptoms_list"].append(s)
-                if not major_diseases_df.empty and s in major_diseases_df["disease_name"].values:
-                    clean_dname = s.strip()
-                    d_match = major_diseases_df[major_diseases_df["disease_name"] == clean_dname]
-                    if not d_match.empty:
-                        raw_syms = d_match.iloc[0].get("symptoms", [])
-                        if isinstance(raw_syms, str):
-                            try:
-                                d_syms = eval(raw_syms) if raw_syms.startswith("[") else [x.strip() for x in raw_syms.split(",")]
-                            except Exception:
-                                d_syms = [x.strip() for x in raw_syms.split(",")]
-                        else:
-                            d_syms = list(raw_syms) if isinstance(raw_syms, (list, tuple)) else []
-                        for ds in d_syms:
-                            if ds not in st.session_state["selected_symptoms_list"]:
-                                st.session_state["selected_symptoms_list"].append(ds)
-                        st.session_state["detected_chief_condition"] = d_match.iloc[0].to_dict()
-            st.session_state["user_context"]["symptoms"] = list(st.session_state["selected_symptoms_list"])
-
-        with s_col2:
-            describe_words = st.button(T.get("btn_describe_words", "Describe in Your Own Words"), key="btn_describe_words", use_container_width=True)
-
-        if describe_words or st.session_state.get("show_free_text_nlp"):
-            st.session_state["show_free_text_nlp"] = True
-            st.markdown("""
-            <div style="background: rgba(37, 99, 235, 0.06); border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 12px 14px; margin: 8px 0 12px 0;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
-                    </svg>
-                    <b style="font-size: 0.86rem; color: #DC2626;">DocMindX AI Multilingual Clinical Extractor (English / हिन्दी / ગુજરાતી)</b>
-                </div>
-                <p style="font-size: 0.78rem; color: var(--mm-text-secondary); margin: 2px 0 8px 26px;">
-                    Type any condition, disease (e.g. <i>"blood cancer"</i>, <i>"हार्ट अटैक"</i>, <i>"ડાયાબિટીસ"</i>), or symptoms in your own words.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
+            # Build search options combining symptoms and 100+ major Indian diseases
+            all_symptom_names = []
+            if not symptoms_df.empty:
+                all_symptom_names = symptoms_df["symptom_name"].tolist()
             
-            with st.form("p1_free_text_form", clear_on_submit=False, border=False):
-                ft_c1, ft_c2 = st.columns([3, 1.2])
-                with ft_c1:
-                    free_sym_input = st.text_input(
-                        "Describe in Your Own Words",
-                        placeholder='e.g. "blood cancer", "Severe chest pain and sweating", "મને 3 દિવસથી ખૂબ તાવ અને ઉધરસ છે"...',
-                        key="p1_free_text_input",
-                        label_visibility="collapsed"
-                    )
-                with ft_c2:
-                    extract_nlp_btn = st.form_submit_button("Extract with DocMindX AI", type="primary", use_container_width=True)
+            major_disease_names = []
+            if not major_diseases_df.empty:
+                major_disease_names = major_diseases_df["disease_name"].tolist()
 
-            if extract_nlp_btn and free_sym_input and free_sym_input.strip():
-                query_text = free_sym_input.strip()
-                with st.spinner("DocMindX AI analyzing keywords and extracting clinical symptoms..."):
-                    extracted_nlp = symptom_extractor.extract_symptoms_and_medicines(query_text, user_lang=lang_code)
-                    new_added = 0
-                    for sname in extracted_nlp.get("symptom_labels", []):
-                        if sname not in st.session_state["selected_symptoms_list"]:
-                            st.session_state["selected_symptoms_list"].append(sname)
-                            new_added += 1
-                    
-                    if extracted_nlp.get("detected_disease"):
-                        st.session_state["detected_chief_condition"] = extracted_nlp["detected_disease"]
-                    
-                    st.session_state["nlp_medicines"] = extracted_nlp.get("recommended_medicines", [])
-                    
-                    if extracted_nlp.get("detected_disease"):
-                        d_info = extracted_nlp["detected_disease"]
-                        d_disp_name = d_info.get("name_hi") if lang_code == "hi" else (d_info.get("name_gu") if lang_code == "gu" else d_info.get("name"))
-                        st.session_state["p1_nlp_msg"] = f"DocMindX AI Detected: **{d_disp_name}** ({d_info.get('category')}) — {len(extracted_nlp.get('symptom_labels', []))} clinical symptoms mapped!"
-                    elif new_added > 0:
-                        st.session_state["p1_nlp_msg"] = f"DocMindX AI Extracted {new_added} clinical symptoms from your description!"
-                    else:
-                        st.session_state["p1_nlp_msg"] = "DocMindX AI: No matching symptoms found. Try describing symptoms like fever, headache, etc."
-                    st.rerun()
+            combined_search_options = major_disease_names + all_symptom_names
 
-            st.markdown(f"""
-            <div style='display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: var(--mm-text-primary); margin: 12px 0 6px 0;'>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                    <line x1="12" y1="19" x2="12" y2="23"/>
-                    <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-                <span>{T.get('voice_input_prompt', 'Or Speak Your Symptoms:')}</span>
-            </div>
-            """, unsafe_allow_html=True)
-            voice_symptom_audio = st.audio_input("Speak Symptoms", key="p1_voice_symptom_mic", label_visibility="collapsed")
-            if voice_symptom_audio:
-                import hashlib
-                audio_bytes = voice_symptom_audio.getvalue() if hasattr(voice_symptom_audio, "getvalue") else b""
-                audio_hash = hashlib.md5(audio_bytes).hexdigest() if audio_bytes else ""
-                if audio_hash and st.session_state.get("last_processed_audio_hash") != audio_hash:
-                    st.session_state["last_processed_audio_hash"] = audio_hash
-                    with st.spinner("Transcribing speech with DocMindX AI Speech-to-Text..."):
-                        transcribed_text = transcribe_audio(voice_symptom_audio, language_code=lang_code)
-                    if transcribed_text:
-                        with st.spinner("Extracting clinical symptoms from voice input..."):
-                            extracted_voice = symptom_extractor.extract_symptoms_and_medicines(transcribed_text, user_lang=lang_code)
-                            v_added = 0
-                            for sname in extracted_voice.get("symptom_labels", []):
-                                if sname not in st.session_state["selected_symptoms_list"]:
-                                    st.session_state["selected_symptoms_list"].append(sname)
-                                    v_added += 1
-                            if extracted_voice.get("detected_disease"):
-                                st.session_state["detected_chief_condition"] = extracted_voice["detected_disease"]
-                            st.session_state["p1_nlp_msg"] = f"Voice Transcribed: \"{transcribed_text}\" — Mapped {v_added} clinical symptoms!"
-                            conf_speech = synthesize_speech(f"Recorded symptoms: {transcribed_text}", lang=lang_code)
-                            if conf_speech:
-                                st.session_state["p1_voice_conf_audio"] = conf_speech
+            s_col1, s_col2 = st.columns([2.8, 1.2], vertical_alignment="center")
+            with s_col1:
+                search_sym = st.multiselect(
+                    "Search symptoms or major diseases...",
+                    options=combined_search_options,
+                    default=[s for s in st.session_state["selected_symptoms_list"] if s in combined_search_options],
+                    format_func=format_symptom_display,
+                    label_visibility="collapsed",
+                    placeholder=T.get("symptom_search_placeholder", "Search and add symptoms (e.g. fever, headache, cough)...")
+                )
+                for s in search_sym:
+                    if s not in st.session_state["selected_symptoms_list"]:
+                        st.session_state["selected_symptoms_list"].append(s)
+                    if not major_diseases_df.empty and s in major_diseases_df["disease_name"].values:
+                        clean_dname = s.strip()
+                        d_match = major_diseases_df[major_diseases_df["disease_name"] == clean_dname]
+                        if not d_match.empty:
+                            raw_syms = d_match.iloc[0].get("symptoms", [])
+                            if isinstance(raw_syms, str):
+                                try:
+                                    d_syms = eval(raw_syms) if raw_syms.startswith("[") else [x.strip() for x in raw_syms.split(",")]
+                                except Exception:
+                                    d_syms = [x.strip() for x in raw_syms.split(",")]
+                            else:
+                                d_syms = list(raw_syms) if isinstance(raw_syms, (list, tuple)) else []
+                            for ds in d_syms:
+                                if ds not in st.session_state["selected_symptoms_list"]:
+                                    st.session_state["selected_symptoms_list"].append(ds)
+                            st.session_state["detected_chief_condition"] = d_match.iloc[0].to_dict()
+                st.session_state["user_context"]["symptoms"] = list(st.session_state["selected_symptoms_list"])
+
+            with s_col2:
+                describe_words = st.button(T.get("btn_describe_words", "Describe in Your Own Words"), key="btn_describe_words", use_container_width=True)
+
+            if describe_words or st.session_state.get("show_free_text_nlp"):
+                st.session_state["show_free_text_nlp"] = True
+                st.markdown("""
+                <div class="mm-extractor-box" style="background: rgba(37, 99, 235, 0.04); border: 1.2px solid rgba(37, 99, 235, 0.22); border-radius: 12px; padding: 12px 16px; margin: 8px 0 12px 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                        <b style="font-size: 0.86rem; color: #DC2626;">DocMindX AI Multilingual Clinical Extractor (English / हिन्दी / ગુજરાતી)</b>
+                    </div>
+                    <p style="font-size: 0.78rem; color: var(--mm-text-secondary); margin: 2px 0 4px 26px;">
+                        Type any condition, disease (e.g. <i>"blood cancer"</i>, <i>"हार्ट अटैक"</i>, <i>"ડાયાબિટીસ"</i>), or symptoms in your own words.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                with st.form("p1_free_text_form", clear_on_submit=False, border=False):
+                    ft_c1, ft_c2 = st.columns([3, 1.2])
+                    with ft_c1:
+                        free_sym_input = st.text_input(
+                            "Describe in Your Own Words",
+                            placeholder='e.g. "blood cancer", "Severe chest pain and sweating", "મને 3 દિવસથી ખૂબ તાવ અને ઉધરસ છે"...',
+                            key="p1_free_text_input",
+                            label_visibility="collapsed"
+                        )
+                    with ft_c2:
+                        extract_nlp_btn = st.form_submit_button("Extract with DocMindX AI", type="primary", use_container_width=True)
+
+                if extract_nlp_btn and free_sym_input and free_sym_input.strip():
+                    query_text = free_sym_input.strip()
+                    with st.spinner("DocMindX AI analyzing keywords and extracting clinical symptoms..."):
+                        extracted_nlp = symptom_extractor.extract_symptoms_and_medicines(query_text, user_lang=lang_code)
+                        new_added = 0
+                        for sname in extracted_nlp.get("symptom_labels", []):
+                            if sname not in st.session_state["selected_symptoms_list"]:
+                                st.session_state["selected_symptoms_list"].append(sname)
+                                new_added += 1
+                        
+                        if extracted_nlp.get("detected_disease"):
+                            st.session_state["detected_chief_condition"] = extracted_nlp["detected_disease"]
+                        
+                        st.session_state["nlp_medicines"] = extracted_nlp.get("recommended_medicines", [])
+                        
+                        if extracted_nlp.get("detected_disease"):
+                            d_info = extracted_nlp["detected_disease"]
+                            d_disp_name = d_info.get("name_hi") if lang_code == "hi" else (d_info.get("name_gu") if lang_code == "gu" else d_info.get("name"))
+                            st.session_state["p1_nlp_msg"] = f"DocMindX AI Detected: **{d_disp_name}** ({d_info.get('category')}) — {len(extracted_nlp.get('symptom_labels', []))} clinical symptoms mapped!"
+                        elif new_added > 0:
+                            st.session_state["p1_nlp_msg"] = f"DocMindX AI Extracted {new_added} clinical symptoms from your description!"
+                        else:
+                            st.session_state["p1_nlp_msg"] = "DocMindX AI: No matching symptoms found. Try describing symptoms like fever, headache, etc."
                         st.rerun()
 
-            if st.session_state.get("p1_voice_conf_audio"):
-                st.audio(st.session_state["p1_voice_conf_audio"])
+                st.markdown(f"""
+                <div style='display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: var(--mm-text-primary); margin: 12px 0 6px 0;'>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                    <span>{T.get('voice_input_prompt', 'Or Speak Your Symptoms (Google Cloud Speech-to-Text):')}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                voice_symptom_audio = st.audio_input("Speak Symptoms", key="p1_voice_symptom_mic", label_visibility="collapsed")
+                if voice_symptom_audio:
+                    import hashlib
+                    audio_bytes = voice_symptom_audio.getvalue() if hasattr(voice_symptom_audio, "getvalue") else b""
+                    audio_hash = hashlib.md5(audio_bytes).hexdigest() if audio_bytes else ""
+                    if audio_hash and st.session_state.get("last_processed_audio_hash") != audio_hash:
+                        st.session_state["last_processed_audio_hash"] = audio_hash
+                        with st.spinner("Transcribing speech with DocMindX AI Speech-to-Text..."):
+                            transcribed_text = transcribe_audio(voice_symptom_audio, language_code=lang_code)
+                        if transcribed_text:
+                            with st.spinner("Extracting clinical symptoms from voice input..."):
+                                extracted_voice = symptom_extractor.extract_symptoms_and_medicines(transcribed_text, user_lang=lang_code)
+                                v_added = 0
+                                for sname in extracted_voice.get("symptom_labels", []):
+                                    if sname not in st.session_state["selected_symptoms_list"]:
+                                        st.session_state["selected_symptoms_list"].append(sname)
+                                        v_added += 1
+                                if extracted_voice.get("detected_disease"):
+                                    st.session_state["detected_chief_condition"] = extracted_voice["detected_disease"]
+                                st.session_state["p1_nlp_msg"] = f"Voice Transcribed: \"{transcribed_text}\" — Mapped {v_added} clinical symptoms!"
+                                conf_speech = synthesize_speech(f"Recorded symptoms: {transcribed_text}", lang=lang_code)
+                                if conf_speech:
+                                    st.session_state["p1_voice_conf_audio"] = conf_speech
+                            st.rerun()
 
-            if st.session_state.get("p1_nlp_msg"):
-                st.success(st.session_state["p1_nlp_msg"])
+                if st.session_state.get("p1_voice_conf_audio"):
+                    st.audio(st.session_state["p1_voice_conf_audio"])
 
-        st.markdown(f"""
-        <div style='display: flex; align-items: center; gap: 8px; font-size: 0.84rem; font-weight: 800; color: var(--mm-text-primary); margin: 14px 0 8px 0;'>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="#2563EB">
-                <rect x="3" y="3" width="4" height="4" rx="1"/>
-                <rect x="10" y="3" width="4" height="4" rx="1"/>
-                <rect x="17" y="3" width="4" height="4" rx="1"/>
-                <rect x="3" y="10" width="4" height="4" rx="1"/>
-                <rect x="10" y="10" width="4" height="4" rx="1"/>
-                <rect x="17" y="10" width="4" height="4" rx="1"/>
-                <rect x="3" y="17" width="4" height="4" rx="1"/>
-                <rect x="10" y="17" width="4" height="4" rx="1"/>
-                <rect x="17" y="17" width="4" height="4" rx="1"/>
-            </svg>
-            <span>{T.get('popular_symptoms', 'Common Symptoms:')}</span>
-        </div>
-        """, unsafe_allow_html=True)
-        pop_symptoms_data = [
-            {"key": "Fever", "en": "Fever", "hi": "बुखार", "gu": "તાવ"},
-            {"key": "Headache", "en": "Headache", "hi": "सिरदर्द", "gu": "માથાનો દુખાવો"},
-            {"key": "Cough", "en": "Cough", "hi": "खांसी", "gu": "ખાંસી"},
-            {"key": "Nausea", "en": "Nausea", "hi": "जी मिचलाना", "gu": "ઉબકા"},
-            {"key": "Fatigue", "en": "Fatigue", "hi": "थकान", "gu": "થાક"},
-            {"key": "Sore Throat", "en": "Sore Throat", "hi": "गले में खराश", "gu": "ગળામાં દુખાવો"},
-            {"key": "Body Pain", "en": "Body Pain", "hi": "बदन दर्द", "gu": "શરીરનો દુખાવો"}
-        ]
-        pop_cols = st.columns(len(pop_symptoms_data))
-        for p_idx, p_item in enumerate(pop_symptoms_data):
-            p_key = p_item["key"]
-            p_label = p_item.get(lang_code, p_item["en"])
-            with pop_cols[p_idx]:
-                if st.button(p_label, key=f"pop_sym_chip_{p_idx}", type="primary", use_container_width=True):
-                    if p_key not in st.session_state["selected_symptoms_list"]:
-                        st.session_state["selected_symptoms_list"].append(p_key)
-                    else:
-                        st.session_state["selected_symptoms_list"].remove(p_key)
-                    st.rerun()
+                if st.session_state.get("p1_nlp_msg"):
+                    st.success(st.session_state["p1_nlp_msg"])
 
-        st.markdown(f"""
-        <div style='display: flex; align-items: center; gap: 8px; font-size: 0.84rem; font-weight: 800; color: var(--mm-text-primary); margin: 14px 0 6px 0;'>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="8" y1="6" x2="21" y2="6"/>
-                <line x1="8" y1="12" x2="21" y2="12"/>
-                <line x1="8" y1="18" x2="21" y2="18"/>
-                <circle cx="4" cy="6" r="1.5" fill="#2563EB"/>
-                <circle cx="4" cy="12" r="1.5" fill="#2563EB"/>
-                <circle cx="4" cy="18" r="1.5" fill="#2563EB"/>
-            </svg>
-            <span>{T.get('selected_symptoms', 'Selected Symptoms:')}</span>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.session_state["selected_symptoms_list"]:
-            sel_chips_html = "".join([f'<span style="background: rgba(37, 99, 235, 0.10); color: #2563EB; border: 1.2px solid rgba(37, 99, 235, 0.3); border-radius: 8px; padding: 5px 10px; font-size: 0.80rem; font-weight: 700; margin-right: 6px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px;">{format_symptom_display(s)}</span>' for s in st.session_state["selected_symptoms_list"]])
-            sel_col1, sel_col2 = st.columns([4, 1])
-            with sel_col1:
-                st.markdown(f'<div style="display: flex; align-items: center; flex-wrap: wrap;">{sel_chips_html}</div>', unsafe_allow_html=True)
-            with sel_col2:
-                if st.button(T.get("clear_all", "Clear All"), key="clear_all_sym_btn", use_container_width=True):
-                    st.session_state["selected_symptoms_list"] = []
-                    st.session_state["detected_chief_condition"] = None
-                    st.session_state["p1_nlp_msg"] = None
-                    st.rerun()
-        else:
-            st.markdown(f"<div style='font-size: 0.82rem; color: var(--mm-text-secondary); margin-top: 4px;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Type to search or select common symptoms above.')}</div>", unsafe_allow_html=True)
+            st.markdown(f"""
+            <div style='display: flex; align-items: center; gap: 8px; font-size: 0.84rem; font-weight: 800; color: var(--mm-text-primary); margin: 14px 0 8px 0;'>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="#2563EB">
+                    <rect x="3" y="3" width="4" height="4" rx="1"/>
+                    <rect x="10" y="3" width="4" height="4" rx="1"/>
+                    <rect x="17" y="3" width="4" height="4" rx="1"/>
+                    <rect x="3" y="10" width="4" height="4" rx="1"/>
+                    <rect x="10" y="10" width="4" height="4" rx="1"/>
+                    <rect x="17" y="10" width="4" height="4" rx="1"/>
+                    <rect x="3" y="17" width="4" height="4" rx="1"/>
+                    <rect x="10" y="17" width="4" height="4" rx="1"/>
+                    <rect x="17" y="17" width="4" height="4" rx="1"/>
+                </svg>
+                <span>{T.get('popular_symptoms', 'Common Symptoms:')}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            pop_symptoms_data = [
+                {"key": "Fever", "en": "Fever", "hi": "बुखार", "gu": "તાવ"},
+                {"key": "Headache", "en": "Headache", "hi": "सिरदर्द", "gu": "માથાનો દુખાવો"},
+                {"key": "Cough", "en": "Cough", "hi": "खांसी", "gu": "ખાંસી"},
+                {"key": "Nausea", "en": "Nausea", "hi": "जी मिचलाना", "gu": "ઉબકા"},
+                {"key": "Fatigue", "en": "Fatigue", "hi": "थकान", "gu": "થાક"},
+                {"key": "Sore Throat", "en": "Sore Throat", "hi": "गले में खराश", "gu": "ગળામાં દુખાવો"},
+                {"key": "Body Pain", "en": "Body Pain", "hi": "बदन दर्द", "gu": "શરીરનો દુખાવો"}
+            ]
+            pop_cols = st.columns(len(pop_symptoms_data))
+            for p_idx, p_item in enumerate(pop_symptoms_data):
+                p_key = p_item["key"]
+                p_label = p_item.get(lang_code, p_item["en"])
+                with pop_cols[p_idx]:
+                    if st.button(p_label, key=f"pop_sym_chip_{p_idx}", type="primary", use_container_width=True):
+                        if p_key not in st.session_state["selected_symptoms_list"]:
+                            st.session_state["selected_symptoms_list"].append(p_key)
+                        else:
+                            st.session_state["selected_symptoms_list"].remove(p_key)
+                        st.rerun()
 
-        if st.button(f"{T.get('btn_next_symptoms', 'Next: Select Symptoms')} →", key="btn_goto_step2", type="primary", use_container_width=True):
-            missing_fields = []
-            if not sel_state or sel_state == "-- Select State --":
-                missing_fields.append(T.get("label_state", "State / Location"))
-            if not sel_age_key or sel_age_key == "select":
-                missing_fields.append(T.get("label_age_group", "Age Group"))
-            if not sel_gen_key or sel_gen_key == "select":
-                missing_fields.append(T.get("label_gender", "Biological Gender"))
-            if not st.session_state["selected_symptoms_list"]:
-                missing_fields.append(T.get("card_symptoms_title", "Clinical Symptoms"))
-            
-            if missing_fields:
-                fields_str = ", ".join(missing_fields)
-                st.error(f"{T.get('err_required_prefix', 'Please provide required details to proceed:')} **{fields_str}**")
+            st.markdown(f"""
+            <div style='display: flex; align-items: center; gap: 8px; font-size: 0.84rem; font-weight: 800; color: var(--mm-text-primary); margin: 14px 0 6px 0;'>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <circle cx="4" cy="6" r="1.5" fill="#2563EB"/>
+                    <circle cx="4" cy="12" r="1.5" fill="#2563EB"/>
+                    <circle cx="4" cy="18" r="1.5" fill="#2563EB"/>
+                </svg>
+                <span>{T.get('selected_symptoms', 'Selected Symptoms:')}</span>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.session_state["selected_symptoms_list"]:
+                sel_chips_html = "".join([f'<span style="background: rgba(37, 99, 235, 0.10); color: #2563EB; border: 1.2px solid rgba(37, 99, 235, 0.3); border-radius: 8px; padding: 5px 10px; font-size: 0.80rem; font-weight: 700; margin-right: 6px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px;">{format_symptom_display(s)}</span>' for s in st.session_state["selected_symptoms_list"]])
+                sel_col1, sel_col2 = st.columns([4, 1])
+                with sel_col1:
+                    st.markdown(f'<div style="display: flex; align-items: center; flex-wrap: wrap;">{sel_chips_html}</div>', unsafe_allow_html=True)
+                with sel_col2:
+                    if st.button(T.get("clear_all", "Clear All"), key="clear_all_sym_btn", use_container_width=True):
+                        st.session_state["selected_symptoms_list"] = []
+                        st.session_state["detected_chief_condition"] = None
+                        st.session_state["p1_nlp_msg"] = None
+                        st.rerun()
             else:
-                st.session_state["user_context"]["symptoms"] = list(st.session_state.get("selected_symptoms_list") or [])
-                st.session_state["assessment_step"] = 2
-                st.rerun()
+                st.markdown(f"<div style='font-size: 0.82rem; color: var(--mm-text-secondary); margin-top: 4px; margin-bottom: 14px;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Type to search or select common symptoms above.')}</div>", unsafe_allow_html=True)
+
+            if st.button(f"{T.get('btn_next_symptoms', 'Next: Select Symptoms')} →", key="btn_goto_step2", type="primary", use_container_width=True):
+                missing_fields = []
+                if not sel_state or sel_state == "-- Select State --":
+                    missing_fields.append(T.get("label_state", "State / Location"))
+                if not sel_age_key or sel_age_key == "select":
+                    missing_fields.append(T.get("label_age_group", "Age Group"))
+                if not sel_gen_key or sel_gen_key == "select":
+                    missing_fields.append(T.get("label_gender", "Biological Gender"))
+                if not st.session_state["selected_symptoms_list"]:
+                    missing_fields.append(T.get("card_symptoms_title", "Clinical Symptoms"))
+                
+                if missing_fields:
+                    fields_str = ", ".join(missing_fields)
+                    st.error(f"{T.get('err_required_prefix', 'Please provide required details to proceed:')} **{fields_str}**")
+                else:
+                    st.session_state["user_context"]["symptoms"] = list(st.session_state.get("selected_symptoms_list") or [])
+                    st.session_state["assessment_step"] = 2
+                    st.rerun()
 
     # ----------------- STEP 2: SYMPTOMS & SEVERITY -----------------
     elif current_step == 2:
@@ -1793,7 +1774,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 {T.get("card_about_you", "Patient Demographics")}
                             </b>
                             <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">
-                                Basic information about the patient
+                                {T.get("card_about_you_sub", "Basic information about the patient")}
                             </div>
                         </div>
                     </div>
@@ -1803,14 +1784,14 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                 <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_age_group", "Age Group")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('age', '21-30')}</span>
+                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('age', u_ctx.get('age', '21-30'), T, lang_code)}</span>
                         </div>
                         <div class="mm-review-row-blue">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="10" cy="14" r="5"/><line x1="19" y1="5" x2="13.5" y2="10.5"/><polyline points="15 5 19 5 19 9"/></svg>
                                 <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_gender", "Biological Gender")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('gender', 'Male')}</span>
+                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('gender', u_ctx.get('gender', 'Male'), T, lang_code)}</span>
                         </div>
                         <div class="mm-review-row-blue">
                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -1838,7 +1819,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
                                 <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_blood_group", "Blood Group")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('blood_group', 'None')}</span>
+                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('other', u_ctx.get('blood_group'), T, lang_code)}</span>
                         </div>
                     </div>
                 </div>
@@ -1869,7 +1850,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 {T.get("card_symptoms_title", "Clinical Symptoms")}
                             </b>
                             <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">
-                                Current symptoms and severity
+                                {T.get("card_symptoms_sub", "Current symptoms and severity")}
                             </div>
                         </div>
                     </div>
@@ -1886,14 +1867,14 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                                 <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{sev_lbl}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('severity', 'Moderate')}</span>
+                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('severity', u_ctx.get('severity', 'Moderate'), T, lang_code)}</span>
                         </div>
                         <div class="mm-review-row-purple" style="margin-bottom: 0;">
                             <div style="display: flex; align-items: center; gap: 8px;">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                                 <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{dur_lbl}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('duration', '1 - 3 Days')}</span>
+                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('duration', u_ctx.get('duration', '1 - 3 Days'), T, lang_code)}</span>
                         </div>
                     </div>
                 </div>
@@ -1913,7 +1894,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 {T.get("step3_title", "Medical History")}
                             </b>
                             <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">
-                                Past medical conditions and relevant history
+                                {T.get("card_history_sub", "Past medical conditions and relevant history")}
                             </div>
                         </div>
                     </div>
@@ -1956,7 +1937,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                     st.session_state["assessment_step"] = 3
                     st.rerun()
             with nav_c2:
-                analyze_p1_btn = st.button(f"⚡ {T.get('btn_analyze', 'Run AI Health Analysis')} →", key="btn_run_analysis_final", type="primary", use_container_width=True)
+                analyze_p1_btn = st.button(f"{T.get('btn_analyze', 'Run AI Health Analysis')} →", key="btn_run_analysis_final", type="primary", use_container_width=True)
 
         if analyze_p1_btn:
             user_st = st.session_state["user_context"].get("state", "").strip()
@@ -2054,6 +2035,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                     )
                 
                 st.session_state["p1_triage_results"] = triage_res
+                st.session_state["care_recommendations"] = None
                 st.session_state["assessment_completed"] = True
                 status.update(label="Clinical Assessment & Triage Complete", state="complete", expanded=False)
                 st.rerun()
@@ -2066,15 +2048,30 @@ if st.session_state["active_panel"] == "Health Assessment":
         ranked_conds = t_res.get("ranked_conditions", [])
         top_disease_name = ranked_conds[0].get("name", "Acute Infection") if ranked_conds else "Acute Illness"
 
-        # Fetch / compute dynamic care recommendations
+        # Fetch / compute dynamic care recommendations (Cached for session to keep medicines & yoga consistent across language changes)
+        current_sym_key = str(sorted(st.session_state.get("selected_symptoms_list", [])))
         care_res = st.session_state.get("care_recommendations")
-        if not care_res or care_res.get("top_condition") != top_disease_name or care_res.get("lang_code") != lang_code:
+        if (
+            not care_res
+            or care_res.get("top_condition") != top_disease_name
+            or care_res.get("symptoms_key") != current_sym_key
+        ):
             care_res = get_dynamic_clinical_recommendations(
                 symptoms=st.session_state.get("selected_symptoms_list", []),
                 user_context=u_ctx,
                 top_condition=top_disease_name,
                 lang_code=lang_code
             )
+            if care_res and isinstance(care_res, dict):
+                care_res["top_condition"] = top_disease_name
+                care_res["symptoms_key"] = current_sym_key
+            st.session_state["care_recommendations"] = care_res
+        elif care_res.get("lang_code") != lang_code:
+            # Language changed on existing assessment: localize text while locking medicines & yoga
+            care_res = localize_care_recommendations(care_res, lang_code)
+            if care_res and isinstance(care_res, dict):
+                care_res["top_condition"] = top_disease_name
+                care_res["symptoms_key"] = current_sym_key
             st.session_state["care_recommendations"] = care_res
 
         # Auto-persist complete clinical assessment record
@@ -2158,704 +2155,506 @@ if st.session_state["active_panel"] == "Health Assessment":
         def show_medicine_modal(med):
             med_detail = get_medicine_details(med['name'])
             modal_key_id = re.sub(r'[^a-zA-Z0-9]', '_', med['name'])[:15]
-            
-            # Modal specific styling with full Light & Dark mode support + Mobile Responsiveness
-            st.markdown(f"""
-            <style>
-            /* Make Streamlit Dialog Landscape / Horizontal ("Aada") instead of Vertical ("Ubha") */
-            div[data-testid="stDialog"] div[role="dialog"],
-            div[data-testid="stDialog"] > div,
-            div[role="dialog"],
-            section[role="dialog"],
-            div[data-modal-container="true"] > div,
-            .stDialog > div > div {{
-                max-width: 1220px !important;
-                width: min(1220px, 94vw) !important;
-                min-width: min(1080px, 90vw) !important;
-                border-radius: 20px !important;
-                padding: 24px 28px !important;
-                box-sizing: border-box !important;
-            }}
 
-            .st-key-mm_medicine_modal_body {{
-                width: 100% !important;
-            }}
+            img_url = med.get("image", "")
+            med_type_str = (med.get('type') or 'Prescription').upper()
+            generic_val = med_detail.get('generic_name') or med['name']
+            course_val = med.get('course_duration') or '3 - 5 Days'
+            dosage_val = med.get('dosage') or 'As prescribed by physician'
+            timing_val = med.get('food_timing') or 'After Food'
+            brand_list = med_detail.get('brand_names', [])
+            brands_str = ', '.join(brand_list) if brand_list else (med.get('name') or 'Available across licensed pharmacies')
+            ind_text = med.get('indication') or ', '.join(med_detail.get('primary_indications', [])) or "Forms a targeted therapeutic effect to stabilize symptoms and promote recovery."
+            warn_text = med.get('warnings') or ', '.join(med_detail.get('contraindications', [])) or 'Consult a certified physician before initiating or modifying dosage.'
 
-            /* Desktop: Side-by-side Horizontal / Wide Layout */
-            @media (min-width: 769px) {{
-                .st-key-mm_medicine_modal_body [data-testid="stHorizontalBlock"],
-                div[data-testid="stDialog"] [data-testid="stHorizontalBlock"] {{
-                    display: flex !important;
-                    flex-direction: row !important;
-                    align-items: stretch !important;
-                    gap: 28px !important;
-                    width: 100% !important;
-                }}
-                .st-key-mm_medicine_modal_body [data-testid="stColumn"]:first-child,
-                div[data-testid="stDialog"] [data-testid="stColumn"]:first-child {{
-                    flex: 1 1 48% !important;
-                    max-width: 48% !important;
-                    width: 48% !important;
-                }}
-                .st-key-mm_medicine_modal_body [data-testid="stColumn"]:last-child,
-                div[data-testid="stDialog"] [data-testid="stColumn"]:last-child {{
-                    flex: 1 1 52% !important;
-                    max-width: 52% !important;
-                    width: 52% !important;
-                }}
-            }}
+            compounds = med_detail.get("active_compounds", [])
+            compounds_items = []
+            if compounds:
+                for cmpd in compounds:
+                    c_name = cmpd.get('compound_name', '')
+                    c_formula = cmpd.get('molecular_formula', '')
+                    formula_str = f"({c_formula})" if c_formula else ""
+                    c_strength = cmpd.get('strength', 'Standard Clinical Strength')
+                    c_role = cmpd.get('role', 'Active Therapeutic Agent')
+                    compounds_items.append(
+                        f'<div class="mmp-compound-item">'
+                        f'<span class="mmp-bullet">&bull;</span> '
+                        f'<span class="mmp-cmpd-name">{c_name}</span> '
+                        f'<span class="mmp-cmpd-formula">{formula_str}</span>: '
+                        f'<span class="mmp-strength-pill">{c_strength}</span> '
+                        f'<span class="mmp-cmpd-role">&mdash; {c_role}</span>'
+                        f'</div>'
+                    )
+            else:
+                compounds_items.append(
+                    f'<div class="mmp-compound-item">'
+                    f'<span class="mmp-bullet">&bull;</span> '
+                    f'<span class="mmp-cmpd-name">{med["name"]}</span>: '
+                    f'<span class="mmp-strength-pill">Standard Clinical Strength</span> '
+                    f'<span class="mmp-cmpd-role">&mdash; Active Therapeutic Formulation</span>'
+                    f'</div>'
+                )
+            compounds_html = "".join(compounds_items)
 
-            /* Image Container: Larger size and high clarity */
-            .med-modal-img-box {{
-                background: var(--mm-bg-surface, #FFFFFF);
-                border: 1.5px solid var(--mm-border-color, #E2E8F0);
-                border-radius: 18px;
-                padding: 18px 16px;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                box-sizing: border-box;
-                min-height: 380px;
-                height: 100%;
-                width: 100%;
-                transition: all 0.2s ease;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-            }}
-            .med-modal-img-box:hover {{
-                border-color: #2563EB;
-                box-shadow: 0 6px 20px rgba(37, 99, 235, 0.14);
-            }}
-            .med-modal-img {{
-                width: 100% !important;
-                max-width: 100% !important;
-                height: auto !important;
-                max-height: 340px !important;
-                object-fit: contain !important;
-                border-radius: 12px;
-                display: block;
-                margin: 0 auto;
-            }}
-            .med-modal-img-link {{
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                margin-top: 14px;
-                font-size: 0.82rem;
-                color: #2563EB;
-                font-weight: 600;
-            }}
-            .med-modal-img-disclaimer {{
-                margin-top: 6px;
-                font-size: 0.72rem;
-                color: var(--mm-text-secondary, #64748B);
-                text-align: center;
-                font-weight: 500;
-            }}
+            if img_url:
+                img_block = (
+                    f'<a href="{img_url}" target="_blank" style="text-decoration:none;display:block;width:100%;text-align:center;">'
+                    f'<img src="{img_url}" class="mmp-img" alt="{med["name"]}" />'
+                    f'</a>'
+                    f'<div class="mmp-img-link">'
+                    f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">'
+                    f'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+                    f'</svg>'
+                    f'<a href="{img_url}" target="_blank" style="color:#2563EB;text-decoration:none;font-weight:600;">Click image to open in new tab &nearr;</a>'
+                    f'</div>'
+                    f'<div class="mmp-img-disclaimer">* Representative / Similar Image (&#2360;&#2366;&#2306;&#2325;&#2375;&#2340;&#2367;&#2325; / &#2360;&#2350;&#2352;&#2370;&#2346; &#2330;&#2367;&#2340;&#2381;&#2352;)</div>'
+                )
+            else:
+                img_block = (
+                    f'<div style="font-size:0.95rem;font-weight:700;color:var(--mm-text-primary,#0F172A);text-align:center;padding:70px 10px;">{med["name"]}</div>'
+                    f'<div class="mmp-img-disclaimer">* Representative / Similar Image (&#2360;&#2366;&#2306;&#2325;&#2375;&#2340;&#2367;&#2325; / &#2360;&#2350;&#2352;&#2370;&#2346; &#2330;&#2367;&#2340;&#2381;&#2352;)</div>'
+                )
 
-            /* Badges strictly horizontal in one row */
-            .med-modal-badges-row {{
-                margin-top: 14px;
-                display: flex !important;
-                flex-direction: row !important;
-                flex-wrap: nowrap !important;
-                gap: 12px !important;
-                align-items: center !important;
-                justify-content: space-between !important;
-                width: 100% !important;
-                box-sizing: border-box !important;
-            }}
-            .med-badge-prescription,
-            .med-badge-verified {{
-                flex: 1 1 0px !important;
-                display: inline-flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                gap: 8px !important;
-                white-space: nowrap !important;
-                padding: 9px 12px !important;
-                font-size: 0.76rem !important;
-                font-weight: 800 !important;
-                letter-spacing: 0.03em !important;
-                text-transform: uppercase !important;
-                border-radius: 9999px !important;
-                box-sizing: border-box !important;
-            }}
-            .med-badge-prescription {{
-                background: #E0F2FE !important;
-                border: 1.2px solid #BAE6FD !important;
-                color: #0284C7 !important;
-            }}
-            .med-badge-verified {{
-                background: #DCFCE7 !important;
-                border: 1.2px solid #BBF7D0 !important;
-                color: #16A34A !important;
-            }}
+            raw_html_lines = [
+                '<style>',
+                'div[data-testid="stDialog"],',
+                'div[data-modal-container="true"],',
+                'div[data-baseweb="modal"],',
+                'div[data-baseweb="backdrop"] {',
+                '    background: rgba(15, 23, 42, 0.18) !important;',
+                '    backdrop-filter: blur(4px) !important;',
+                '    -webkit-backdrop-filter: blur(4px) !important;',
+                '}',
+                'div[data-testid="stDialog"] > div {',
+                '    background: transparent !important;',
+                '    border: none !important;',
+                '    box-shadow: none !important;',
+                '    padding: 0 !important;',
+                '    margin: 0 !important;',
+                '}',
+                'div[data-testid="stDialog"] div[role="dialog"],',
+                'div[role="dialog"],',
+                'section[role="dialog"] {',
+                '    max-width: 1060px !important;',
+                '    width: min(1060px, 94vw) !important;',
+                '    min-width: min(840px, 90vw) !important;',
+                '    border-radius: 20px !important;',
+                '    padding: 22px 24px !important;',
+                '    box-sizing: border-box !important;',
+                '    background: var(--mm-bg-surface, #FFFFFF) !important;',
+                '    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0,0,0,0.06) !important;',
+                '}',
+                '.mmp-layout {',
+                '    display: flex;',
+                '    flex-direction: row;',
+                '    gap: 26px;',
+                '    width: 100%;',
+                '    align-items: flex-start;',
+                '    box-sizing: border-box;',
+                '    margin-top: 4px;',
+                '}',
+                '.mmp-col-img {',
+                '    flex: 0 0 380px;',
+                '    max-width: 380px;',
+                '    min-width: 0;',
+                '    display: flex;',
+                '    flex-direction: column;',
+                '}',
+                '.mmp-img-box {',
+                '    background: var(--mm-bg-surface, #FFFFFF);',
+                '    border: 1.5px solid var(--mm-border-color, #E2E8F0);',
+                '    border-radius: 16px;',
+                '    padding: 16px;',
+                '    display: flex;',
+                '    flex-direction: column;',
+                '    align-items: center;',
+                '    justify-content: flex-start;',
+                '    box-sizing: border-box;',
+                '    min-height: 330px;',
+                '    box-shadow: 0 2px 10px rgba(0,0,0,0.03);',
+                '}',
+                '.mmp-img {',
+                '    width: 100%;',
+                '    max-height: 250px;',
+                '    object-fit: contain;',
+                '    border-radius: 10px;',
+                '    display: block;',
+                '}',
+                '.mmp-img-link {',
+                '    display: flex;',
+                '    align-items: center;',
+                '    gap: 6px;',
+                '    margin-top: 14px;',
+                '    font-size: 0.82rem;',
+                '    font-weight: 600;',
+                '    color: #2563EB;',
+                '    justify-content: center;',
+                '}',
+                '.mmp-img-disclaimer {',
+                '    margin-top: 6px;',
+                '    font-size: 0.72rem;',
+                '    color: var(--mm-text-secondary, #64748B);',
+                '    text-align: center;',
+                '    font-weight: 500;',
+                '}',
+                '.mmp-badges-row {',
+                '    margin-top: 14px;',
+                '    display: flex;',
+                '    flex-direction: row;',
+                '    gap: 10px;',
+                '    width: 100%;',
+                '}',
+                '.mmp-badge {',
+                '    flex: 1;',
+                '    display: inline-flex;',
+                '    align-items: center;',
+                '    justify-content: center;',
+                '    gap: 7px;',
+                '    padding: 9px 10px;',
+                '    font-size: 0.74rem;',
+                '    font-weight: 800;',
+                '    letter-spacing: 0.03em;',
+                '    text-transform: uppercase;',
+                '    border-radius: 9999px;',
+                '    white-space: nowrap;',
+                '    box-sizing: border-box;',
+                '}',
+                '.mmp-badge-rx {',
+                '    background: #E0F2FE;',
+                '    border: 1.2px solid #BAE6FD;',
+                '    color: #0284C7;',
+                '}',
+                '.mmp-badge-ok {',
+                '    background: #DCFCE7;',
+                '    border: 1.2px solid #BBF7D0;',
+                '    color: #16A34A;',
+                '}',
+                '.mmp-col-info {',
+                '    flex: 1 1 0;',
+                '    min-width: 0;',
+                '    display: flex;',
+                '    flex-direction: column;',
+                '}',
+                '.mmp-title {',
+                '    font-size: 1.45rem;',
+                '    font-weight: 800;',
+                '    color: var(--mm-text-primary, #0F172A);',
+                '    margin: 0 0 14px 0;',
+                '    line-height: 1.25;',
+                '    letter-spacing: -0.01em;',
+                '}',
+                '.mmp-grid-card {',
+                '    background: var(--mm-bg-surface, #FFFFFF);',
+                '    border: 1.2px solid var(--mm-border-color, #E2E8F0);',
+                '    border-radius: 14px;',
+                '    padding: 16px 18px;',
+                '    margin-bottom: 14px;',
+                '    box-shadow: 0 2px 10px rgba(0,0,0,0.03);',
+                '}',
+                '.mmp-grid-2x2 {',
+                '    display: grid;',
+                '    grid-template-columns: 1fr 1fr;',
+                '    gap: 14px 20px;',
+                '}',
+                '.mmp-cell {',
+                '    display: flex;',
+                '    align-items: flex-start;',
+                '    gap: 10px;',
+                '}',
+                '.mmp-icon-circle {',
+                '    width: 40px;',
+                '    height: 40px;',
+                '    min-width: 40px;',
+                '    border-radius: 50%;',
+                '    display: flex;',
+                '    align-items: center;',
+                '    justify-content: center;',
+                '    flex-shrink: 0;',
+                '}',
+                '.mmp-ic-blue   { background:#EFF6FF; border:1px solid #DBEAFE; }',
+                '.mmp-ic-teal   { background:#ECFEFF; border:1px solid #CFFAFE; }',
+                '.mmp-ic-red    { background:#FFF1F2; border:1px solid #FFE4E6; }',
+                '.mmp-ic-orange { background:#FEF2F2; border:1px solid #FEE2E2; }',
+                '.mmp-ic-tag    { background:#EFF6FF; border:1px solid #DBEAFE; border-radius:10px; }',
+                '.mmp-cell-label {',
+                '    font-size: 0.74rem;',
+                '    font-weight: 600;',
+                '    color: var(--mm-text-secondary, #64748B);',
+                '    line-height: 1.2;',
+                '}',
+                '.mmp-val-generic { font-size:0.87rem; font-weight:700; color:#2563EB; margin-top:2px; line-height:1.3; }',
+                '.mmp-val-course  { font-size:0.89rem; font-weight:800; color:#16A34A; margin-top:2px; line-height:1.3; }',
+                '.mmp-val-dosage  { font-size:0.87rem; font-weight:700; color:var(--mm-text-primary,#0F172A); margin-top:2px; line-height:1.3; }',
+                '.mmp-val-timing  { font-size:0.87rem; font-weight:800; color:#EA580C; margin-top:2px; line-height:1.3; }',
+                '.mmp-brands-row {',
+                '    margin-top: 12px;',
+                '    padding-top: 12px;',
+                '    border-top: 1px solid var(--mm-border-color, #F1F5F9);',
+                '    display: flex;',
+                '    align-items: center;',
+                '    gap: 10px;',
+                '}',
+                '.mmp-brands-text {',
+                '    font-size: 0.83rem;',
+                '    color: var(--mm-text-primary, #1E293B);',
+                '    line-height: 1.45;',
+                '}',
+                '.mmp-section-hdr {',
+                '    display: flex;',
+                '    align-items: center;',
+                '    gap: 8px;',
+                '    margin-top: 14px;',
+                '    margin-bottom: 6px;',
+                '}',
+                '.mmp-section-hdr-title {',
+                '    font-size: 0.92rem;',
+                '    font-weight: 800;',
+                '    color: var(--mm-text-primary, #0F172A);',
+                '}',
+                '.mmp-compound-item {',
+                '    font-size: 0.82rem;',
+                '    color: var(--mm-text-secondary, #64748B);',
+                '    margin: 4px 0 4px 12px;',
+                '    line-height: 1.5;',
+                '}',
+                '.mmp-bullet { margin-right: 4px; font-weight: bold; }',
+                '.mmp-cmpd-name { color: var(--mm-text-primary, #1E293B); font-weight: 700; }',
+                '.mmp-cmpd-formula { color: var(--mm-text-secondary, #64748B); }',
+                '.mmp-strength-pill {',
+                '    background: rgba(37,99,235,0.08);',
+                '    color: #2563EB;',
+                '    border: 1px solid rgba(37,99,235,0.25);',
+                '    border-radius: 6px;',
+                '    padding: 2px 7px;',
+                '    font-family: monospace;',
+                '    font-size: 0.75rem;',
+                '    font-weight: 700;',
+                '    margin: 0 4px;',
+                '}',
+                '.mmp-cmpd-role { font-style: italic; color: var(--mm-text-secondary, #64748B); }',
+                '.mmp-purpose-text {',
+                '    font-size: 0.84rem;',
+                '    color: var(--mm-text-secondary, #475569);',
+                '    margin: 3px 0 0 26px;',
+                '    line-height: 1.5;',
+                '}',
+                '.mmp-alert-box {',
+                '    background: rgba(254,243,199,0.35);',
+                '    border: 1px solid rgba(249,115,22,0.35);',
+                '    border-left: 4.5px solid #F97316;',
+                '    border-radius: 10px;',
+                '    padding: 11px 15px;',
+                '    margin-top: 14px;',
+                '    display: flex;',
+                '    align-items: flex-start;',
+                '    gap: 10px;',
+                '}',
+                '.mmp-alert-content {',
+                '    font-size: 0.83rem;',
+                '    line-height: 1.45;',
+                '    color: var(--mm-text-primary, #1E293B);',
+                '}',
+                '.mmp-alert-title { color:#EA580C; font-weight:800; margin-right:4px; }',
+                '.mmp-alert-text { color: var(--mm-text-secondary, #475569); }',
+                '[data-theme="dark"] .mmp-img-box {',
+                '    background: rgba(255,255,255,0.03) !important;',
+                '    border-color: rgba(255,255,255,0.1) !important;',
+                '}',
+                '[data-theme="dark"] .mmp-badge-rx {',
+                '    background: rgba(14,165,233,0.15) !important;',
+                '    border-color: rgba(14,165,233,0.35) !important;',
+                '    color: #38BDF8 !important;',
+                '}',
+                '[data-theme="dark"] .mmp-badge-ok {',
+                '    background: rgba(34,197,94,0.15) !important;',
+                '    border-color: rgba(34,197,94,0.35) !important;',
+                '    color: #4ADE80 !important;',
+                '}',
+                '[data-theme="dark"] .mmp-grid-card {',
+                '    background: rgba(255,255,255,0.025) !important;',
+                '    border-color: rgba(255,255,255,0.08) !important;',
+                '}',
+                '[data-theme="dark"] .mmp-ic-blue   { background:rgba(37,99,235,0.18)!important; border-color:rgba(37,99,235,0.35)!important; }',
+                '[data-theme="dark"] .mmp-ic-teal   { background:rgba(6,182,212,0.18)!important; border-color:rgba(6,182,212,0.35)!important; }',
+                '[data-theme="dark"] .mmp-ic-red    { background:rgba(225,29,72,0.18)!important; border-color:rgba(225,29,72,0.35)!important; }',
+                '[data-theme="dark"] .mmp-ic-orange { background:rgba(234,88,12,0.18)!important; border-color:rgba(234,88,12,0.35)!important; }',
+                '[data-theme="dark"] .mmp-ic-tag    { background:rgba(37,99,235,0.18)!important; border-color:rgba(37,99,235,0.35)!important; }',
+                '[data-theme="dark"] .mmp-val-dosage { color:#F8FAFC !important; }',
+                '[data-theme="dark"] .mmp-cmpd-name  { color:#F8FAFC !important; }',
+                '[data-theme="dark"] .mmp-strength-pill {',
+                '    background:rgba(37,99,235,0.20)!important;',
+                '    border-color:rgba(37,99,235,0.45)!important;',
+                '    color:#60A5FA !important;',
+                '}',
+                '[data-theme="dark"] .mmp-alert-box {',
+                '    background:rgba(234,88,12,0.10)!important;',
+                '    border-color:rgba(234,88,12,0.35)!important;',
+                '}',
+                '[data-theme="dark"] .mmp-alert-text    { color:#CBD5E1 !important; }',
+                '[data-theme="dark"] .mmp-purpose-text  { color:#CBD5E1 !important; }',
+                '[data-theme="dark"] .mmp-brands-row    { border-top-color:rgba(255,255,255,0.08)!important; }',
+                '[data-theme="dark"] .mmp-section-hdr-title { color:#F8FAFC !important; }',
+                '@media (max-width: 720px) {',
+                '    .mmp-layout { flex-direction: column !important; gap: 16px !important; }',
+                '    .mmp-col-img { flex: unset !important; max-width: 100% !important; width: 100% !important; }',
+                '    .mmp-title { font-size: 1.20rem !important; }',
+                '    .mmp-grid-2x2 { grid-template-columns: 1fr 1fr !important; }',
+                '}',
+                '@media (max-width: 480px) {',
+                '    .mmp-grid-2x2 { grid-template-columns: 1fr !important; }',
+                '}',
+                f'.st-key-btn_deep_chat_{modal_key_id} button {{',
+                '    height: 46px !important;',
+                '    min-height: 46px !important;',
+                '    font-size: 0.90rem !important;',
+                '    font-weight: 700 !important;',
+                '    background: linear-gradient(135deg, #2563EB, #1D4ED8) !important;',
+                '    border: none !important;',
+                '    border-radius: 12px !important;',
+                '    color: #FFFFFF !important;',
+                '    box-shadow: 0 4px 14px rgba(37,99,235,0.35) !important;',
+                '    transition: all 0.18s ease !important;',
+                '}',
+                f'.st-key-btn_deep_chat_{modal_key_id} button:hover {{',
+                '    box-shadow: 0 6px 20px rgba(37,99,235,0.50) !important;',
+                '    transform: translateY(-1px) !important;',
+                '}',
+                '</style>',
+                '<div class="mmp-layout">',
+                '    <div class="mmp-col-img">',
+                '        <div class="mmp-img-box">',
+                f'            {img_block}',
+                '        </div>',
+                '        <div class="mmp-badges-row">',
+                '            <div class="mmp-badge mmp-badge-rx">',
+                '                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                    <rect x="4" y="2" width="16" height="20" rx="3"/>',
+                '                    <line x1="9" y1="7" x2="15" y2="7"/>',
+                '                    <line x1="9" y1="12" x2="15" y2="12"/>',
+                '                    <line x1="9" y1="17" x2="13" y2="17"/>',
+                '                </svg>',
+                f'                {med_type_str}',
+                '            </div>',
+                '            <div class="mmp-badge mmp-badge-ok">',
+                '                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">',
+                '                    <circle cx="12" cy="12" r="11" fill="#16A34A"/>',
+                '                    <polyline points="7.5 12 10.5 15 16.5 9" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+                '                </svg>',
+                '                DOCMINDX VERIFIED',
+                '            </div>',
+                '        </div>',
+                '    </div>',
+                '    <div class="mmp-col-info">',
+                f'        <h2 class="mmp-title">{med["name"]}</h2>',
+                '        <div class="mmp-grid-card">',
+                '            <div class="mmp-grid-2x2">',
+                '                <div class="mmp-cell">',
+                '                    <div class="mmp-icon-circle mmp-ic-blue">',
+                '                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                            <line x1="16.5" y1="7.5" x2="7.5" y2="16.5"/>',
+                '                            <path d="M14 5l3 3a4.24 4.24 0 0 1 0 6l-5 5a4.24 4.24 0 0 1-6 0l-1-1a4.24 4.24 0 0 1 0-6l5-5a4.24 4.24 0 0 1 6 0z"/>',
+                '                        </svg>',
+                '                    </div>',
+                '                    <div>',
+                '                        <div class="mmp-cell-label">Generic:</div>',
+                f'                        <div class="mmp-val-generic">{generic_val}</div>',
+                '                    </div>',
+                '                </div>',
+                '                <div class="mmp-cell">',
+                '                    <div class="mmp-icon-circle mmp-ic-teal">',
+                '                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0891B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>',
+                '                            <path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+                '                        </svg>',
+                '                    </div>',
+                '                    <div>',
+                '                        <div class="mmp-cell-label">Course:</div>',
+                f'                        <div class="mmp-val-course">{course_val}</div>',
+                '                    </div>',
+                '                </div>',
+                '                <div class="mmp-cell">',
+                '                    <div class="mmp-icon-circle mmp-ic-red">',
+                '                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                            <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/>',
+                '                            <path d="m8.5 8.5 7 7"/>',
+                '                        </svg>',
+                '                    </div>',
+                '                    <div>',
+                '                        <div class="mmp-cell-label">Dosage:</div>',
+                f'                        <div class="mmp-val-dosage">{dosage_val}</div>',
+                '                    </div>',
+                '                </div>',
+                '                <div class="mmp-cell">',
+                '                    <div class="mmp-icon-circle mmp-ic-orange">',
+                '                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                            <circle cx="12" cy="12" r="10"/>',
+                '                            <polyline points="12 6 12 12 16 14"/>',
+                '                        </svg>',
+                '                    </div>',
+                '                    <div>',
+                '                        <div class="mmp-cell-label">Timing:</div>',
+                f'                        <div class="mmp-val-timing">{timing_val}</div>',
+                '                    </div>',
+                '                </div>',
+                '            </div>',
+                '            <div class="mmp-brands-row">',
+                '                <div class="mmp-icon-circle mmp-ic-tag" style="width:36px;height:36px;min-width:36px;">',
+                '                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>',
+                '                        <line x1="7" y1="7" x2="7.01" y2="7"/>',
+                '                    </svg>',
+                '                </div>',
+                '                <div class="mmp-brands-text">',
+                f'                    <b style="color:var(--mm-text-secondary,#64748B);">Popular Brands:</b> <span style="font-weight:600;">{brands_str}</span>',
+                '                </div>',
+                '            </div>',
+                '        </div>',
+                '        <div class="mmp-section-hdr">',
+                '            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                <path d="M10 2v7.31"/><path d="M14 2v7.31"/>',
+                '                <path d="M8.5 2h7"/>',
+                '                <path d="M14 9.3 18.8 17A3 3 0 0 1 16.2 21H7.8a3 3 0 0 1-2.6-4L10 9.3"/>',
+                '                <path d="M7 16h10"/>',
+                '            </svg>',
+                '            <span class="mmp-section-hdr-title">Active Chemical Compounds &amp; Formula:</span>',
+                '        </div>',
+                f'        {compounds_html}',
+                '        <div class="mmp-section-hdr">',
+                '            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">',
+                '                <circle cx="12" cy="12" r="10"/>',
+                '                <circle cx="12" cy="12" r="6"/>',
+                '                <circle cx="12" cy="12" r="2"/>',
+                '            </svg>',
+                '            <span class="mmp-section-hdr-title">Purpose &amp; Why Take This Medicine:</span>',
+                '        </div>',
+                f'        <div class="mmp-purpose-text">{ind_text}</div>',
+                '        <div class="mmp-alert-box">',
+                '            <div style="flex-shrink:0;margin-top:1px;">',
+                '                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">',
+                '                    <circle cx="12" cy="12" r="11" fill="#EA580C"/>',
+                '                    <line x1="12" y1="7" x2="12" y2="13" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>',
+                '                    <circle cx="12" cy="17" r="1.3" fill="#FFFFFF"/>',
+                '                </svg>',
+                '            </div>',
+                '            <div class="mmp-alert-content">',
+                '                <span class="mmp-alert-title">Safety &amp; Precautions:</span>',
+                f'                <span class="mmp-alert-text">{warn_text}</span>',
+                '            </div>',
+                '        </div>',
+                '    </div>',
+                '</div>'
+            ]
+            clean_html = "\n".join([line.strip() for line in raw_html_lines if line.strip()])
+            st.markdown(clean_html, unsafe_allow_html=True)
 
-            .med-modal-title {{
-                margin: 0 0 12px 0;
-                color: var(--mm-text-primary, #0F172A);
-                font-size: 1.5rem;
-                font-weight: 800;
-                letter-spacing: -0.01em;
-                line-height: 1.25;
-            }}
-            .med-modal-grid-card {{
-                background: var(--mm-bg-surface, #FFFFFF);
-                border: 1.2px solid var(--mm-border-color, #E2E8F0);
-                border-radius: 16px;
-                padding: 16px 18px;
-                margin-bottom: 12px;
-                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-            }}
-            .med-modal-grid-2x2 {{
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 14px 18px;
-            }}
-            .med-modal-cell {{
-                display: flex;
-                align-items: flex-start;
-                gap: 12px;
-            }}
-            .med-modal-icon-circle {{
-                width: 42px;
-                height: 42px;
-                min-width: 42px;
-                border-radius: 50%;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }}
-            .med-icon-generic {{
-                background: #EFF6FF;
-                border: 1px solid #DBEAFE;
-            }}
-            .med-icon-course {{
-                background: #ECFEFF;
-                border: 1px solid #CFFAFE;
-            }}
-            .med-icon-dosage {{
-                background: #FFF1F2;
-                border: 1px solid #FFE4E6;
-            }}
-            .med-icon-timing {{
-                background: #FEF2F2;
-                border: 1px solid #FEE2E2;
-            }}
-            .med-icon-brand {{
-                background: #EFF6FF;
-                border: 1px solid #DBEAFE;
-                border-radius: 10px;
-            }}
-            .med-cell-label {{
-                font-size: 0.76rem;
-                font-weight: 600;
-                color: var(--mm-text-secondary, #64748B);
-                line-height: 1.2;
-            }}
-            .med-cell-val-generic {{
-                font-size: 0.88rem;
-                font-weight: 700;
-                color: #2563EB;
-                line-height: 1.3;
-                margin-top: 2px;
-            }}
-            .med-cell-val-course {{
-                font-size: 0.90rem;
-                font-weight: 800;
-                color: #16A34A;
-                line-height: 1.3;
-                margin-top: 2px;
-            }}
-            .med-cell-val-dosage {{
-                font-size: 0.88rem;
-                font-weight: 700;
-                color: var(--mm-text-primary, #0F172A);
-                line-height: 1.3;
-                margin-top: 2px;
-            }}
-            .med-cell-val-timing {{
-                font-size: 0.88rem;
-                font-weight: 800;
-                color: #EA580C;
-                line-height: 1.3;
-                margin-top: 2px;
-            }}
-            .med-modal-brands-row {{
-                margin-top: 12px;
-                padding-top: 12px;
-                border-top: 1px solid var(--mm-border-color, #F1F5F9);
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }}
-            .med-brands-text {{
-                font-size: 0.84rem;
-                line-height: 1.45;
-            }}
-            .med-section-header {{
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-top: 12px;
-                margin-bottom: 5px;
-            }}
-            .med-section-header-title {{
-                font-size: 0.92rem;
-                font-weight: 800;
-                color: var(--mm-text-primary, #0F172A);
-            }}
-            .med-modal-compound-item {{
-                font-size: 0.82rem;
-                color: var(--mm-text-secondary, #64748B);
-                margin-left: 10px;
-                margin-bottom: 4px;
-                line-height: 1.5;
-            }}
-            .med-modal-cmpd-name {{
-                color: var(--mm-text-primary, #1E293B);
-                font-weight: 700;
-            }}
-            .med-modal-strength-pill {{
-                background: rgba(37, 99, 235, 0.08);
-                color: #2563EB;
-                border: 1px solid rgba(37, 99, 235, 0.25);
-                border-radius: 6px;
-                padding: 2px 7px;
-                font-family: 'SFMono-Regular', Consolas, Menlo, monospace;
-                font-size: 0.76rem;
-                font-weight: 700;
-                margin: 0 4px;
-            }}
-            .med-modal-cmpd-role {{
-                font-style: italic;
-                color: var(--mm-text-secondary, #64748B);
-            }}
-            .med-purpose-text {{
-                font-size: 0.84rem;
-                color: var(--mm-text-secondary, #475569);
-                margin: 2px 0 0 26px;
-                line-height: 1.45;
-            }}
-            .med-modal-alert-box {{
-                background: rgba(254, 243, 199, 0.35);
-                border: 1px solid rgba(249, 115, 22, 0.35);
-                border-left: 4.5px solid #F97316;
-                border-radius: 10px;
-                padding: 11px 15px;
-                margin-top: 12px;
-                display: flex;
-                align-items: flex-start;
-                gap: 10px;
-            }}
-            .med-modal-alert-icon {{
-                flex-shrink: 0;
-                margin-top: 1px;
-            }}
-            .med-modal-alert-content {{
-                font-size: 0.84rem;
-                line-height: 1.45;
-                color: var(--mm-text-primary, #1E293B);
-            }}
-            .med-modal-alert-title {{
-                color: #EA580C;
-                font-weight: 800;
-                margin-right: 4px;
-            }}
-            .med-modal-alert-text {{
-                color: var(--mm-text-secondary, #475569);
-            }}
-            .st-key-btn_deep_chat_{modal_key_id} button {{
-                height: 46px !important;
-                min-height: 46px !important;
-                font-size: 0.90rem !important;
-                font-weight: 700 !important;
-                background-color: #2563EB !important;
-                border: 1px solid #2563EB !important;
-                border-radius: 12px !important;
-                color: #FFFFFF !important;
-                box-shadow: 0 4px 14px rgba(37, 99, 235, 0.32) !important;
-                transition: all 0.18s ease !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                gap: 8px !important;
-            }}
-            .st-key-btn_deep_chat_{modal_key_id} button:hover {{
-                background-color: #1D4ED8 !important;
-                border-color: #1D4ED8 !important;
-                box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45) !important;
-                transform: translateY(-1px) !important;
-            }}
-            .st-key-btn_deep_chat_{modal_key_id} button:active {{
-                transform: translateY(0) scale(0.99) !important;
-            }}
-
-            /* Dark Mode Overrides */
-            [data-theme="dark"] .med-modal-img-box {{
-                background: rgba(255, 255, 255, 0.03) !important;
-                border-color: rgba(255, 255, 255, 0.1) !important;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
-            }}
-            [data-theme="dark"] .med-badge-prescription {{
-                background: rgba(14, 165, 233, 0.15) !important;
-                border-color: rgba(14, 165, 233, 0.35) !important;
-                color: #38BDF8 !important;
-            }}
-            [data-theme="dark"] .med-badge-verified {{
-                background: rgba(34, 197, 94, 0.15) !important;
-                border-color: rgba(34, 197, 94, 0.35) !important;
-                color: #4ADE80 !important;
-            }}
-            [data-theme="dark"] .med-modal-grid-card {{
-                background: rgba(255, 255, 255, 0.025) !important;
-                border-color: rgba(255, 255, 255, 0.08) !important;
-            }}
-            [data-theme="dark"] .med-icon-generic {{
-                background: rgba(37, 99, 235, 0.18) !important;
-                border-color: rgba(37, 99, 235, 0.35) !important;
-            }}
-            [data-theme="dark"] .med-icon-course {{
-                background: rgba(6, 182, 212, 0.18) !important;
-                border-color: rgba(6, 182, 212, 0.35) !important;
-            }}
-            [data-theme="dark"] .med-icon-dosage {{
-                background: rgba(225, 29, 72, 0.18) !important;
-                border-color: rgba(225, 29, 72, 0.35) !important;
-            }}
-            [data-theme="dark"] .med-icon-timing {{
-                background: rgba(234, 88, 12, 0.18) !important;
-                border-color: rgba(234, 88, 12, 0.35) !important;
-            }}
-            [data-theme="dark"] .med-icon-brand {{
-                background: rgba(37, 99, 235, 0.18) !important;
-                border-color: rgba(37, 99, 235, 0.35) !important;
-            }}
-            [data-theme="dark"] .med-modal-brands-row {{
-                border-top-color: rgba(255, 255, 255, 0.08) !important;
-            }}
-            [data-theme="dark"] .med-modal-alert-box {{
-                background: rgba(234, 88, 12, 0.10) !important;
-                border-color: rgba(234, 88, 12, 0.35) !important;
-            }}
-            [data-theme="dark"] .med-modal-strength-pill {{
-                background: rgba(37, 99, 235, 0.20) !important;
-                border-color: rgba(37, 99, 235, 0.45) !important;
-                color: #60A5FA !important;
-            }}
-            [data-theme="dark"] .med-modal-cmpd-name {{
-                color: #F8FAFC !important;
-            }}
-            [data-theme="dark"] .med-cell-val-dosage {{
-                color: #F8FAFC !important;
-            }}
-            [data-theme="dark"] .med-modal-alert-text {{
-                color: #CBD5E1 !important;
-            }}
-            [data-theme="dark"] .med-purpose-text {{
-                color: #CBD5E1 !important;
-            }}
-
-            /* Mobile / Phone Responsive Flexibility ("phone ke layout ke fexibal kar do") */
-            @media (max-width: 768px) {{
-                div[data-testid="stDialog"] div[role="dialog"],
-                div[data-testid="stDialog"] > div,
-                div[role="dialog"],
-                section[role="dialog"],
-                div[data-modal-container="true"] > div,
-                .stDialog > div > div {{
-                    max-width: 96vw !important;
-                    width: 96vw !important;
-                    min-width: unset !important;
-                    padding: 16px 12px !important;
-                    margin: 4px auto !important;
-                    border-radius: 16px !important;
-                }}
-                .st-key-mm_medicine_modal_body [data-testid="stHorizontalBlock"],
-                div[data-testid="stDialog"] [data-testid="stHorizontalBlock"] {{
-                    display: flex !important;
-                    flex-direction: column !important;
-                    gap: 16px !important;
-                }}
-                .st-key-mm_medicine_modal_body [data-testid="stColumn"],
-                div[data-testid="stDialog"] [data-testid="stColumn"] {{
-                    width: 100% !important;
-                    max-width: 100% !important;
-                    min-width: 100% !important;
-                    flex: 1 1 100% !important;
-                }}
-                .med-modal-img-box {{
-                    min-height: 200px !important;
-                    max-height: 300px !important;
-                    padding: 12px !important;
-                }}
-                .med-modal-img {{
-                    max-height: 220px !important;
-                }}
-                .med-modal-title {{
-                    font-size: 1.25rem !important;
-                    margin-top: 6px !important;
-                    margin-bottom: 10px !important;
-                }}
-                .med-modal-badges-row {{
-                    gap: 6px !important;
-                }}
-                .med-badge-prescription,
-                .med-badge-verified {{
-                    padding: 6px 8px !important;
-                    font-size: 0.68rem !important;
-                }}
-                .med-badge-prescription svg,
-                .med-badge-verified svg {{
-                    width: 13px !important;
-                    height: 13px !important;
-                }}
-                .med-section-header-title {{
-                    font-size: 0.86rem !important;
-                }}
-                .med-modal-alert-box {{
-                    padding: 10px 12px !important;
-                }}
-            }}
-
-            @media (max-width: 480px) {{
-                .med-modal-grid-2x2 {{
-                    grid-template-columns: 1fr !important;
-                    gap: 10px !important;
-                }}
-                .med-modal-grid-card {{
-                    padding: 12px 14px !important;
-                }}
-                .med-modal-title {{
-                    font-size: 1.15rem !important;
-                }}
-                .med-badge-prescription,
-                .med-badge-verified {{
-                    font-size: 0.64rem !important;
-                    padding: 5px 6px !important;
-                }}
-            }}
-            </style>
-            """, unsafe_allow_html=True)
-            
-            with st.container(key="mm_medicine_modal_body"):
-                col_img, col_info = st.columns([1.1, 1.25], gap="large")
-                
-                with col_img:
-                    img_url = med.get("image")
-                    if img_url:
-                        img_html = f"""
-                        <a href="{img_url}" target="_blank" title="Click to view full image in new tab ↗" style="text-decoration: none; cursor: pointer; display: block;">
-                            <div class="med-modal-img-box">
-                                <img src="{img_url}" class="med-modal-img" alt="{med['name']}" />
-                                <div class="med-modal-img-link">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="11" cy="11" r="8"></circle>
-                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                    </svg>
-                                    <span>Click image to open in new tab ↗</span>
-                                </div>
-                                <div class="med-modal-img-disclaimer">
-                                    * Representative / Similar Image (सांकेतिक / समरूप चित्र)
-                                </div>
-                            </div>
-                        </a>
-                        """
-                    else:
-                        img_html = f"""
-                        <div class="med-modal-img-box">
-                            <div style="font-size: 0.90rem; font-weight: 700; color: var(--mm-text-primary); text-align: center;">{med['name']}</div>
-                            <div class="med-modal-img-disclaimer" style="margin-top: 8px;">* Representative / Similar Image (सांकेतिक / समरूप चित्र)</div>
-                        </div>
-                        """
-                    st.markdown(img_html, unsafe_allow_html=True)
-
-                    med_type_str = (med.get('type') or 'Prescription').upper()
-                    st.markdown(f"""
-                    <div class="med-modal-badges-row">
-                        <div class="med-badge-prescription">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="4" y="2" width="16" height="20" rx="3" ry="3"></rect>
-                                <line x1="9" y1="7" x2="15" y2="7"></line>
-                                <line x1="9" y1="12" x2="15" y2="12"></line>
-                                <line x1="9" y1="17" x2="13" y2="17"></line>
-                            </svg>
-                            <span>{med_type_str}</span>
-                        </div>
-                        <div class="med-badge-verified">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#16A34A" stroke="none">
-                                <circle cx="12" cy="12" r="11" fill="#16A34A"/>
-                                <polyline points="7.5 12 10.5 15 16.5 9" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <span>DOCMINDX VERIFIED</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                with col_info:
-                    st.markdown(f"<h2 class='med-modal-title'>{med['name']}</h2>", unsafe_allow_html=True)
-                    
-                    # Dynamic values from med and med_detail
-                    generic_val = med_detail.get('generic_name') or med['name']
-                    course_val = med.get('course_duration') or '3 – 5 Days'
-                    dosage_val = med.get('dosage') or 'As prescribed by physician'
-                    timing_val = med.get('food_timing') or 'After Food'
-                    
-                    brand_list = med_detail.get('brand_names', [])
-                    brands_str = ', '.join(brand_list) if brand_list else (med.get('name') or 'Available across licensed pharmacies')
-
-                    # Grid of Core Details (2x2 + bottom row with modern SVG icons)
-                    st.markdown(f"""
-                    <div class="med-modal-grid-card">
-                        <div class="med-modal-grid-2x2">
-                            <!-- Cell 1: Generic -->
-                            <div class="med-modal-cell">
-                                <div class="med-modal-icon-circle med-icon-generic">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <line x1="16.5" y1="7.5" x2="7.5" y2="16.5"></line>
-                                        <path d="M14 5l3 3a4.24 4.24 0 0 1 0 6l-5 5a4.24 4.24 0 0 1-6 0l-1-1a4.24 4.24 0 0 1 0-6l5-5a4.24 4.24 0 0 1 6 0z"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <div class="med-cell-label">Generic:</div>
-                                    <div class="med-cell-val-generic">{generic_val}</div>
-                                </div>
-                            </div>
-                            <!-- Cell 2: Course -->
-                            <div class="med-modal-cell">
-                                <div class="med-modal-icon-circle med-icon-course">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0891B2" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                                        <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <div class="med-cell-label">Course:</div>
-                                    <div class="med-cell-val-course">{course_val}</div>
-                                </div>
-                            </div>
-                            <!-- Cell 3: Dosage -->
-                            <div class="med-modal-cell">
-                                <div class="med-modal-icon-circle med-icon-dosage">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path>
-                                        <path d="m8.5 8.5 7 7"></path>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <div class="med-cell-label">Dosage:</div>
-                                    <div class="med-cell-val-dosage">{dosage_val}</div>
-                                </div>
-                            </div>
-                            <!-- Cell 4: Timing -->
-                            <div class="med-modal-cell">
-                                <div class="med-modal-icon-circle med-icon-timing">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                        <circle cx="12" cy="12" r="10"></circle>
-                                        <polyline points="12 6 12 12 16 14"></polyline>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <div class="med-cell-label">Timing:</div>
-                                    <div class="med-cell-val-timing">{timing_val}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Full-width Row: Popular Brands -->
-                        <div class="med-modal-brands-row">
-                            <div class="med-modal-icon-circle med-icon-brand" style="width: 38px; height: 38px; min-width: 38px;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
-                                    <line x1="7" y1="7" x2="7.01" y2="7"></line>
-                                </svg>
-                            </div>
-                            <div class="med-brands-text">
-                                <b style="color: var(--mm-text-secondary, #64748B);">Popular Brands:</b> <span style="color: var(--mm-text-primary, #1E293B); font-weight: 600;">{brands_str}</span>
-                            </div>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    # Section 1: Active Chemical Compounds & Formula (with SVG Beaker)
-                    st.markdown(f"""
-                    <div class="med-section-header">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M10 2v7.31"></path>
-                            <path d="M14 2v7.31"></path>
-                            <path d="M8.5 2h7"></path>
-                            <path d="M14 9.3 18.8 17A3 3 0 0 1 16.2 21H7.8a3 3 0 0 1-2.6-4L10 9.3"></path>
-                            <path d="M7 16h10"></path>
-                        </svg>
-                        <span class="med-section-header-title">Active Chemical Compounds & Formula:</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    compounds = med_detail.get("active_compounds", [])
-                    if compounds:
-                        for cmpd in compounds:
-                            c_name = cmpd.get('compound_name', '')
-                            c_formula = cmpd.get('molecular_formula', '')
-                            formula_str = f"({c_formula})" if c_formula else ""
-                            c_strength = cmpd.get('strength', 'Standard Clinical Strength')
-                            c_role = cmpd.get('role', 'Active Therapeutic Agent')
-                            st.markdown(f"""
-                            <div class="med-modal-compound-item">
-                                • <span class="med-modal-cmpd-name">{c_name}</span> <span style="color: var(--mm-text-secondary);">{formula_str}</span>:
-                                <span class="med-modal-strength-pill">{c_strength}</span>
-                                <span class="med-modal-cmpd-role">— {c_role}</span>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        st.markdown(f"""
-                        <div class="med-modal-compound-item">
-                            • <span class="med-modal-cmpd-name">{med['name']}</span>:
-                            <span class="med-modal-strength-pill">Standard Clinical Strength</span>
-                            <span class="med-modal-cmpd-role">— Active Therapeutic Formulation</span>
-                        </div>
-                        """, unsafe_allow_html=True)
-
-                    # Section 2: Purpose & Why Take This Medicine (with SVG Target)
-                    ind_text = med.get('indication') or ', '.join(med_detail.get('primary_indications', [])) or "Forms a targeted therapeutic effect to stabilize symptoms and promote recovery."
-                    st.markdown(f"""
-                    <div class="med-section-header">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <circle cx="12" cy="12" r="6"></circle>
-                            <circle cx="12" cy="12" r="2"></circle>
-                        </svg>
-                        <span class="med-section-header-title">Purpose & Why Take This Medicine:</span>
-                    </div>
-                    <div class="med-purpose-text">{ind_text}</div>
-                    """, unsafe_allow_html=True)
-
-                    # Section 3: Safety & Precautions Alert Box (with SVG Alert)
-                    warn_text = med.get('warnings') or ', '.join(med_detail.get('contraindications', [])) or 'Consult a certified physician before initiating or modifying dosage.'
-                    st.markdown(f"""
-                    <div class="med-modal-alert-box">
-                        <div class="med-modal-alert-icon">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="#EA580C" stroke="none">
-                                <circle cx="12" cy="12" r="11" fill="#EA580C"/>
-                                <line x1="12" y1="7" x2="12" y2="13" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round"/>
-                                <circle cx="12" cy="17" r="1.3" fill="#FFFFFF"/>
-                            </svg>
-                        </div>
-                        <div class="med-modal-alert-content">
-                            <span class="med-modal-alert-title">Safety & Precautions:</span>
-                            <span class="med-modal-alert-text">{warn_text}</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-            # Bottom CTA Button with Sparkle Icon
-            st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+            # Bottom CTA Button
+            st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
             chat_btn_label = {
-                "en": "✦  Deep Clinical Analysis & More Info in AI Chat",
-                "hi": "✦  AI Chat me दवाई का संपूर्ण विवरण और विश्लेषण",
-                "gu": "✦  AI Chat માં દવાનું સંપૂર્ણ વિશ્લેષણ અને માહિતી"
-            }.get(lang_code, "✦  Deep Clinical Analysis & More Info in AI Chat")
-            
+                "en": "\u2726  Deep Clinical Analysis & More Info in AI Chat",
+                "hi": "\u2726  AI Chat me \u0926\u0935\u093e\u0908 \u0915\u093e \u0938\u0902\u092a\u0942\u0930\u094d\u0923 \u0935\u093f\u0935\u0932\u0947\u0937\u0923 \u0914\u0930 \u0935\u093f\u0936\u094d\u0932\u0947\u0937\u0923",
+                "gu": "\u2726  AI Chat \u0aae\u0abe\u0a82 \u0aa6\u0ab5\u0abe\u0aa8\u0ac1\u0a82 \u0ab8\u0a82\u0aaa\u0ac2\u0ab0\u0acd\u0aa3 \u0ab5\u0abf\u0ab6\u0acd\u0ab2\u0ac7\u0ab7\u0aa3 \u0a85\u0aa8\u0ac7 \u0aae\u0abe\u0ab9\u0abf\u0aa4\u0ac0"
+            }.get(lang_code, "\u2726  Deep Clinical Analysis & More Info in AI Chat")
+
             if st.button(chat_btn_label, key=f"btn_deep_chat_{modal_key_id}", type="primary", use_container_width=True):
                 st.session_state["floating_chat_open"] = True
                 user_disp_q = f"Deep analyze and clinical breakdown for {med['name']}"
@@ -2875,6 +2674,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 st.session_state["pending_chat_query"] = system_exec_q
                 st.rerun()
 
+        
         st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
         st.markdown(f"""
         <div class="mm-triage-header-card">
@@ -3276,43 +3076,43 @@ if st.session_state["active_panel"] == "Health Assessment":
                             # Dynamic 3 Benefits extraction
                             # 1. Improves
                             if any(k in ben_text for k in ["digest", "stomach", "pet", "gastric", "acidity", "kabz", "ulcer", "paachan"]):
-                                imp_val = "Digestion"
+                                imp_val = T.get("yoga_imp_digestion", "Digestion")
                             elif any(k in ben_text for k in ["breath", "lung", "oxygen", "pranayama", "shwas", "respirat", "asthma"]):
-                                imp_val = "Respiratory Vitality"
+                                imp_val = T.get("yoga_imp_resp", "Respiratory Vitality")
                             elif any(k in ben_text for k in ["circulat", "blood", "heart", "rakt"]):
-                                imp_val = "Blood Circulation"
+                                imp_val = T.get("yoga_imp_circ", "Blood Circulation")
                             elif any(k in ben_text for k in ["postur", "align", "balance", "santulan"]):
-                                imp_val = "Body Posture"
+                                imp_val = T.get("yoga_imp_posture", "Body Posture")
                             elif any(k in ben_text for k in ["flexib", "stretch", "lacheelapan"]):
-                                imp_val = "Flexibility"
+                                imp_val = T.get("yoga_imp_flex", "Flexibility")
                             else:
-                                imp_val = "Vitality & Recovery"
+                                imp_val = T.get("yoga_imp_vitality", "Vitality & Recovery")
 
                             # 2. Strengthens
                             if any(k in ben_text for k in ["abdomin", "belly", "core", "abs"]):
-                                str_val = "Abdominal Muscles"
+                                str_val = T.get("yoga_str_abs", "Abdominal Muscles")
                             elif any(k in ben_text for k in ["spine", "back", "reedh", "peeth"]):
-                                str_val = "Spine & Back"
+                                str_val = T.get("yoga_str_spine", "Spine & Back")
                             elif any(k in ben_text for k in ["chest", "shoulder", "chaati", "kandha"]):
-                                str_val = "Chest & Shoulders"
+                                str_val = T.get("yoga_str_chest", "Chest & Shoulders")
                             elif any(k in ben_text for k in ["leg", "hamstring", "knee", "taang", "ghutna", "joint"]):
-                                str_val = "Legs & Joints"
+                                str_val = T.get("yoga_str_legs", "Legs & Joints")
                             elif any(k in ben_text for k in ["neck", "gardan", "cervical"]):
-                                str_val = "Neck & Shoulders"
+                                str_val = T.get("yoga_str_neck", "Neck & Shoulders")
                             else:
-                                str_val = "Core & Spine"
+                                str_val = T.get("yoga_str_core", "Core & Spine")
 
                             # 3. Relieves
                             if any(k in ben_text for k in ["stress", "fatigue", "tension", "calm", "thaan", "tanaav", "mental"]):
-                                rel_val = "Stress & Fatigue"
+                                rel_val = T.get("yoga_rel_stress", "Stress & Fatigue")
                             elif any(k in ben_text for k in ["pain", "ache", "dard"]):
-                                rel_val = "Body & Joint Pain"
+                                rel_val = T.get("yoga_rel_pain", "Body & Joint Pain")
                             elif any(k in ben_text for k in ["stiff", "tight"]):
-                                rel_val = "Muscle Stiffness"
+                                rel_val = T.get("yoga_rel_stiff", "Muscle Stiffness")
                             elif any(k in ben_text for k in ["anxiety", "nervous", "chinta", "headache", "sir dard"]):
-                                rel_val = "Mental Tension"
+                                rel_val = T.get("yoga_rel_anxiety", "Mental Tension")
                             else:
-                                rel_val = "Stress & Fatigue"
+                                rel_val = T.get("yoga_rel_stress", "Stress & Fatigue")
 
                             # Dynamic Theme Colors
                             card_bg = "#111827" if is_dark else "#FFFFFF"
@@ -3343,7 +3143,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     <div style="width: 100%; height: 185px; min-height: 185px; max-height: 185px; border-radius: 14px; overflow: hidden; background: {box_bg}; margin-bottom: 12px; position: relative; display: flex; align-items: center; justify-content: center;">
     <img src="{y_img}" referrerpolicy="no-referrer" onerror="this.onerror=null; this.src='{fallback_yoga_img}';" style="max-width: 100%; max-height: 100%; width: 100%; height: 100%; object-fit: contain; border-radius: 14px; display: block;" alt="{main_name}" />
     <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(15, 23, 42, 0.78); backdrop-filter: blur(4px); color: #F8FAFC; font-size: 0.60rem; font-weight: 700; padding: 2px 7px; border-radius: 6px; letter-spacing: 0.02em; display: inline-flex; align-items: center; gap: 3px; box-shadow: 0 2px 6px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.15); pointer-events: none;">
-    <span style="color: #60A5FA; font-weight: 900;">*</span> Similar Image
+    <span style="color: #60A5FA; font-weight: 900;">*</span> {T.get("similar_image_badge", "Similar Image")}
     </div>
     </div>
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 4px;">
@@ -3353,7 +3153,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     </div>
     <div style="background: {pill_bg}; color: {pill_color}; border: 1.2px solid {pill_border}; border-radius: 999px; padding: 4px 12px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; flex-shrink: 0;">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-1.5 5c-.83 0-1.5.67-1.5 1.5v3.25l-2.42.8c-.46.15-.75.61-.69 1.09.07.56.59.95 1.15.82l2.96-.99V16h2v-2.53l2.96.99c.56.13 1.08-.26 1.15-.82.06-.48-.23-.94-.69-1.09l-2.42-.8V8.5c0-.83-.67-1.5-1.5-1.5h-1zm-4.73 10.02c-.37-.02-.73.16-.9.5-.2.4-.04.88.36 1.08l3.27 1.63V22h2v-2.38l-4.14-2.07c-.19-.1-.39-.15-.59-.15zm12.46 0c-.2 0-.4.05-.59.15L12.5 19.62V22h2v-1.77l3.27-1.63c.4-.2.56-.68.36-1.08-.17-.34-.53-.52-.9-.5z"/></svg>
-    <span>Yoga Pose</span>
+    <span>{T.get("yoga_pose_tag", "Yoga Pose")}</span>
     </div>
     </div>
     <div class="mm-yoga-desc" style="font-size: 0.82rem; color: {desc_color}; line-height: 1.4; margin: 8px 0 12px 0; height: 38px; min-height: 38px; max-height: 38px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{y_ben}</div>
@@ -3363,7 +3163,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3C5 5 4 8 4 12c0 5 4 9 9 9 3.5 0 6-2 7-5 1-3 0-6-1-8-1-2-3-5-6-5H7z"/><path d="M10 3v4"/></svg>
     </div>
     <div style="min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center;">
-    <div style="font-size: 0.62rem; color: {title_color}; font-weight: 700; line-height: 1.15; white-space: nowrap; margin-bottom: 1px;">Improves</div>
+    <div style="font-size: 0.62rem; color: {title_color}; font-weight: 700; line-height: 1.15; white-space: nowrap; margin-bottom: 1px;">{T.get("yoga_stat_improves", "Improves")}</div>
     <div style="font-size: 0.62rem; font-weight: 600; color: {desc_color}; line-height: 1.2; word-break: break-word; white-space: normal;" title="{imp_val}">{imp_val}</div>
     </div>
     </div>
@@ -3373,7 +3173,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M20.57 14.86L22 13.43 20.57 12 17 15.57 8.43 7 12 3.43 10.57 2 9.14 3.43 7.71 2 5.57 4.14 4.14 2.71 2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57 3.43 12 7 8.43 15.57 17 12 20.57 13.43 22l1.43-1.43 1.43 1.43 2.14-2.14 1.43 1.43 1.43-1.43-1.43-1.43 1.43-1.43zM5.57 7l1.43-1.43 1.43 1.43L7 8.43 5.57 7zm10 10l1.43-1.43 1.43 1.43L17 18.43 15.57 17z"/></svg>
     </div>
     <div style="min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center;">
-    <div style="font-size: 0.62rem; color: {title_color}; font-weight: 700; line-height: 1.15; white-space: nowrap; margin-bottom: 1px;">Strengthens</div>
+    <div style="font-size: 0.62rem; color: {title_color}; font-weight: 700; line-height: 1.15; white-space: nowrap; margin-bottom: 1px;">{T.get("yoga_stat_strengthens", "Strengthens")}</div>
     <div style="font-size: 0.62rem; font-weight: 600; color: {desc_color}; line-height: 1.2; word-break: break-word; white-space: normal;" title="{str_val}">{str_val}</div>
     </div>
     </div>
@@ -3383,7 +3183,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm-1 7c-1.66 0-3 1.34-3 3v2.5c0 .55.45 1 1 1s1-.45 1-1V12h4v2.5c0 .55.45 1 1 1s1-.45 1-1V12c0-1.66-1.34-3-3-3h-2zm-5.5 8c-.83 0-1.5.67-1.5 1.5S4.67 20 5.5 20h13c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5h-13z"/></svg>
     </div>
     <div style="min-width: 0; flex: 1; display: flex; flex-direction: column; justify-content: center;">
-    <div style="font-size: 0.62rem; color: {title_color}; font-weight: 700; line-height: 1.15; white-space: nowrap; margin-bottom: 1px;">Relieves</div>
+    <div style="font-size: 0.62rem; color: {title_color}; font-weight: 700; line-height: 1.15; white-space: nowrap; margin-bottom: 1px;">{T.get("yoga_stat_relieves", "Relieves")}</div>
     <div style="font-size: 0.62rem; font-weight: 600; color: {desc_color}; line-height: 1.2; word-break: break-word; white-space: normal;" title="{rel_val}">{rel_val}</div>
     </div>
     </div>
@@ -3391,7 +3191,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     <a href="{yt_link}" target="_blank" style="text-decoration: none; display: block; width: 100%; margin-top: auto; margin-bottom: 6px;">
     <div style="width: 100%; height: 44px; min-height: 44px; background: #2563EB; color: #FFFFFF; border-radius: 12px; font-size: 0.88rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); transition: all 0.2s ease; cursor: pointer; box-sizing: border-box;">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
-    <span>Watch Video Tutorial →</span>
+    <span>{T.get("watch_youtube_video", "Watch Video Tutorial")} →</span>
     </div>
     </a>
     </div>"""
@@ -3403,21 +3203,21 @@ if st.session_state["active_panel"] == "Health Assessment":
             c_mode = compress_rec.get("mode")
             if c_mode == "ice":
                 c_border = "#3B82F6"
-                c_badge = "Cold / Cryotherapy"
+                c_badge = T.get("compress_mode_ice", "Cold / Cryotherapy")
                 c_badge_style = "background: rgba(59, 130, 246, 0.12); color: #2563EB; border: 1.2px solid rgba(59, 130, 246, 0.4);"
                 c_icon_bg = "#DBEAFE"
                 c_icon_border = "#93C5FD"
                 c_icon_color = "#2563EB"
             elif c_mode == "cold_sponging":
                 c_border = "#06B6D4"
-                c_badge = "Tepid Sponge / Cold Sponging (माथे पर ठंडी पट्टी)"
+                c_badge = T.get("compress_mode_sponge", "Tepid Sponge / Cold Sponging")
                 c_badge_style = "background: rgba(6, 182, 212, 0.12); color: #0891B2; border: 1.2px solid rgba(6, 182, 212, 0.4);"
                 c_icon_bg = "#CFFAFE"
                 c_icon_border = "#67E8F9"
                 c_icon_color = "#0891B2"
             else:
                 c_border = "#F97316"
-                c_badge = "Warm / Hot Fomentation (गर्म सेक)"
+                c_badge = T.get("compress_mode_hot", "Warm / Hot Fomentation")
                 c_badge_style = "background: rgba(249, 115, 22, 0.12); color: #EA580C; border: 1.2px solid rgba(249, 115, 22, 0.4);"
                 c_icon_bg = "#FFEDD5"
                 c_icon_border = "#FDBA74"
@@ -3432,7 +3232,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             <div class="mm-subbox-blue" style="flex: 1; min-width: 250px; display: flex; align-items: center; gap: 12px; padding: 12px 16px;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                 <div>
-                    <b class="mm-text-blue" style="color: #1D4ED8; font-size: 0.84rem; font-weight: 700; display: block;">Recommended Duration</b>
+                    <b class="mm-text-blue" style="color: #1D4ED8; font-size: 0.84rem; font-weight: 700; display: block;">{T.get("recommended_duration", "Recommended Duration")}</b>
                     <span style="color: var(--mm-text-primary); font-size: 0.82rem; margin-top: 2px; display: block;">{c_dur}</span>
                 </div>
             </div>
@@ -3442,7 +3242,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             <div class="mm-subbox-red" style="flex: 1; min-width: 250px; display: flex; align-items: center; gap: 12px; padding: 12px 16px;">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                 <div>
-                    <b class="mm-text-red" style="color: #DC2626; font-size: 0.84rem; font-weight: 700; display: block;">Clinical Caution</b>
+                    <b class="mm-text-red" style="color: #DC2626; font-size: 0.84rem; font-weight: 700; display: block;">{T.get("clinical_caution", "Clinical Caution")}</b>
                     <span style="color: var(--mm-text-primary); font-size: 0.82rem; margin-top: 2px; display: block;">{c_caut}</span>
                 </div>
             </div>
@@ -3495,9 +3295,9 @@ if st.session_state["active_panel"] == "Health Assessment":
                             {T.get('physiotherapy_sub', 'Condition-specific mobility routines and strengthening exercises.')}
                         </div>
                     </div>
-                    <span class="mm-badge" style="background: rgba(139, 92, 246, 0.15); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.4); font-weight: 700;">Physical Therapy</span>
+                    <span class="mm-badge" style="background: rgba(139, 92, 246, 0.15); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.4); font-weight: 700;">{T.get("physical_therapy_tag", "Physical Therapy")}</span>
                 </div>
-                {f'<p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.5; margin: 4px 0 12px 0;"><b>Clinical Rationale:</b> {p_rationale}</p>' if p_rationale else ''}
+                {f'<p style="font-size: 0.82rem; color: var(--mm-text-secondary); line-height: 1.5; margin: 4px 0 12px 0;"><b>{T.get("clinical_rationale", "Clinical Rationale")}:</b> {p_rationale}</p>' if p_rationale else ''}
             """, unsafe_allow_html=True)
             
             p_cols = st.columns(min(3, len(exercises_list)))
@@ -3514,7 +3314,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                         <div>
                             <a href="{yt_ex_url}" target="_blank" style="text-decoration: none; display: block;">
                                 <button style="width: 100%; height: 32px; min-height: 32px; background: rgba(225, 29, 72, 0.12); color: #FF2E5B; border: 1.2px solid rgba(225, 29, 72, 0.4); border-radius: 6px; font-size: 0.74rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-                                    Watch Video Tutorial
+                                    {T.get("watch_youtube_video", "Watch Video Tutorial")}
                                 </button>
                             </a>
                         </div>
@@ -3699,7 +3499,6 @@ if st.session_state["active_panel"] == "Health Assessment":
                         <div>
                             <div style="display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px;">
                                 <b class="mm-text-purple" style="font-size: 1.15rem; font-weight: 800; color: #5B21B6;">{T.get('diagnostic_tests_title', 'Recommended Clinical Diagnostic Tests')}</b>
-                                <span style="font-size: 0.92rem; font-weight: 600; color: #7C3AED;">(To Discuss with Physician)</span>
                             </div>
                             <div style="font-size: 0.80rem; color: var(--mm-text-secondary); margin-top: 3px;">
                                 {T.get('diagnostic_tests_sub', 'Share these standard laboratory and diagnostic workup recommendations with your consulting physician.')}
@@ -3783,7 +3582,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 {T.get('dietary_nutrition_title', 'Dietary Nutrition Guide')}
                             </b>
                             <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px; font-weight: 500;">
-                                Eat Right • Stay Healthy • Feel Better
+                                {T.get("diet_subtitle", "Eat Right • Stay Healthy • Feel Better")}
                             </div>
                         </div>
                     </div>
@@ -3797,7 +3596,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                     {T.get('foods_to_eat_title', 'Recommended Foods')}
                                 </b>
                                 <div style="font-size: 0.74rem; color: #059669; margin-top: 1px;">
-                                    Nutritious choices for better digestion and overall health
+                                    {T.get("foods_to_eat_sub", "Nutritious choices for better digestion and overall health")}
                                 </div>
                             </div>
                         </div>
@@ -3815,7 +3614,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                     {T.get('foods_to_avoid_title', 'Foods to Avoid / Limit')}
                                 </b>
                                 <div style="font-size: 0.74rem; color: #C2410C; margin-top: 1px;">
-                                    These can irritate the digestive system
+                                    {T.get("foods_to_avoid_sub", "These can irritate the digestive system")}
                                 </div>
                             </div>
                         </div>
@@ -3864,7 +3663,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                             {T.get('warning_signs_title', 'Key Warning Signs')}
                         </b>
                         <div style="font-size: 0.74rem; color: #7C3AED; margin-top: 1px;">
-                            Seek medical attention if you notice any of these symptoms
+                            {T.get("warning_signs_sub", "Seek medical attention if you notice any of these symptoms")}
                         </div>
                     </div>
                 </div>
@@ -3886,7 +3685,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 {T.get('care_safety_title', "Clinical Care Dos & Don'ts")}
                             </b>
                             <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px; font-weight: 500;">
-                                Small Steps • Safer Days • Better Living
+                                {T.get("clinical_care_sub", "Small Steps • Safer Days • Better Living")}
                             </div>
                         </div>
                     </div>
@@ -3900,7 +3699,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                     {T.get('clinical_dos_title', 'Essential Dos')}
                                 </b>
                                 <div style="font-size: 0.74rem; color: #1D4ED8; margin-top: 1px;">
-                                    Follow these habits for better care and recovery
+                                    {T.get("clinical_dos_sub", "Follow these habits for better care and recovery")}
                                 </div>
                             </div>
                         </div>
@@ -3918,7 +3717,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                     {T.get('clinical_donts_title', "Critical Don'ts")}
                                 </b>
                                 <div style="font-size: 0.74rem; color: #DC2626; margin-top: 1px;">
-                                    Avoid these habits to prevent irritation and complications
+                                    {T.get("clinical_donts_sub", "Avoid these habits to prevent irritation and complications")}
                                 </div>
                             </div>
                         </div>
@@ -3942,7 +3741,12 @@ if st.session_state["active_panel"] == "Health Assessment":
             s_adv = seasonal_alert.get("advisory", "")
             risk_badge_cls = "mm-badge-critical" if s_risk in ["HIGH", "SEVERE"] else "mm-badge-warning"
             
-            risk_badge_html = f"""<span class="mm-badge" style="background: rgba(239, 68, 68, 0.12); color: #DC2626; border: 1.2px solid rgba(239, 68, 68, 0.35); border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;">{s_risk.upper()} OUTBREAK RISK</span>""" if s_risk in ["HIGH", "SEVERE"] else f"""<span class="mm-badge" style="background: rgba(245, 158, 11, 0.12); color: #D97706; border: 1.2px solid rgba(245, 158, 11, 0.35); border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;">{s_risk.upper()} OUTBREAK RISK</span>"""
+            s_risk_translated = T.get(f"risk_{s_risk.lower()}", s_risk.upper())
+            outbreak_risk_label = T.get("seasonal_outbreak_risk", "OUTBREAK RISK")
+            risk_badge_html = f"""<span class="mm-badge" style="background: rgba(239, 68, 68, 0.12); color: #DC2626; border: 1.2px solid rgba(239, 68, 68, 0.35); border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;">{s_risk_translated} {outbreak_risk_label}</span>""" if s_risk in ["HIGH", "SEVERE"] else f"""<span class="mm-badge" style="background: rgba(245, 158, 11, 0.12); color: #D97706; border: 1.2px solid rgba(245, 158, 11, 0.35); border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;">{s_risk_translated} {outbreak_risk_label}</span>"""
+            
+            pub_adv_label = T.get("public_health_advisory", "Public Health Advisory")
+            season_sub_msg = T.get("seasonal_stay_informed", f"Stay informed. Stay safe during the {s_season.lower()} season.")
             
             st.markdown(f"""
             <div class="mm-seasonal-card">
@@ -3956,7 +3760,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 {s_headline}
                             </b>
                             <div style="font-size: 0.80rem; color: var(--mm-text-secondary); margin-top: 3px;">
-                                Stay informed. Stay safe during the {s_season.lower()} season.
+                                {season_sub_msg}
                             </div>
                         </div>
                     </div>
@@ -3970,7 +3774,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <p style="color: var(--mm-text-primary); font-size: 0.86rem; line-height: 1.6; margin: 14px 0 0 0; padding-left: 2px;">
                     {s_msg}
                 </p>
-                {f'<div style="font-size: 0.80rem; color: var(--mm-text-secondary); background: rgba(0,0,0,0.05); border-radius: 8px; padding: 8px 12px; margin-top: 10px;"><b>Public Health Advisory:</b> {s_adv}</div>' if s_adv else ''}
+                {f'<div style="font-size: 0.80rem; color: var(--mm-text-secondary); background: rgba(0,0,0,0.05); border-radius: 8px; padding: 8px 12px; margin-top: 10px;"><b>{pub_adv_label}:</b> {s_adv}</div>' if s_adv else ''}
             </div>
             """, unsafe_allow_html=True)
 

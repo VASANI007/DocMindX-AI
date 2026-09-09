@@ -1627,9 +1627,11 @@ div[class*="st-key-hdr_lang_"] .stSelectbox {
     padding: 0 !important;
 }
 
-/* Modal Dialog: Backdrop — full-screen centered overlay */
+/* Modal Dialog: Backdrop — soft translucent blur overlay instead of harsh black screen */
 div[data-testid="stDialog"],
-div[data-modal-container="true"] {
+div[data-modal-container="true"],
+div[data-baseweb="modal"],
+div[data-baseweb="backdrop"] {
     position: fixed !important;
     inset: 0 !important;
     width: 100vw !important;
@@ -1644,12 +1646,17 @@ div[data-modal-container="true"] {
     align-items: center !important;
     justify-content: center !important;
     z-index: 9999 !important;
+    background: rgba(15, 23, 42, 0.20) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
 }
 
 /* Ghost card killer: Streamlit's internal border wrappers inside dialogs */
+div[data-testid="stDialog"] > div,
 div[data-testid="stDialog"] > div[data-testid="stVerticalBlockBorderWrapper"],
 div[data-testid="stDialog"] > div[data-testid="stVerticalBlock"],
 div[data-testid="stDialog"] > [data-testid],
+div[data-modal-container="true"] > div,
 div[data-modal-container="true"] > div[data-testid="stVerticalBlockBorderWrapper"],
 div[data-modal-container="true"] > div[data-testid="stVerticalBlock"] {
     background: transparent !important;
@@ -1696,11 +1703,9 @@ div[data-testid="stDialog"][data-size="small"] div[role="dialog"] {
 
 @media (max-width: 768px) {
     div[data-testid="stDialog"] div[role="dialog"],
-    div[data-testid="stDialog"] > div,
     div[role="dialog"],
     section[role="dialog"],
-    div[data-modal-container="true"] > div,
-    .stDialog > div > div {
+    .stDialog div[role="dialog"] {
         max-width: 96vw !important;
         width: 96vw !important;
         min-width: unset !important;
@@ -5890,6 +5895,241 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-about_supp_card_help
     box-sizing: border-box !important;
     border-radius: 12px !important;
 }
+
+/* ==========================================================================
+   SYMPTOMS SEARCH & CLINICAL EXTRACTOR CARD (IMAGE 2 DESIGN SYSTEM)
+   ========================================================================== */
+.st-key-symptoms_search_card,
+div[data-testid="stVerticalBlockBorderWrapper"].st-key-symptoms_search_card,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-symptoms_search_card),
+.st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
+    background: var(--mm-card-bg, #FFFFFF) !important;
+    border: 1.5px solid #BFDBFE !important;
+    border-radius: 18px !important;
+    box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.08) !important;
+    overflow: hidden !important;
+    margin-top: 20px !important;
+    margin-bottom: 20px !important;
+}
+
+.st-key-symptoms_search_card > div[data-testid="stVerticalBlock"],
+div[data-testid="stVerticalBlockBorderWrapper"].st-key-symptoms_search_card > div[data-testid="stVerticalBlock"],
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-symptoms_search_card) > div[data-testid="stVerticalBlock"] {
+    padding: 20px 24px !important;
+    gap: 14px !important;
+}
+
+/* Symptoms Header */
+.mm-symptoms-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+.mm-symptoms-header-left {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.mm-symptoms-header-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 14px;
+    background: #DBEAFE;
+    border: 1px solid #BFDBFE;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.08);
+}
+.mm-symptoms-header-title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--mm-text-primary, #0F172A);
+    line-height: 1.25;
+    margin: 0;
+}
+.mm-symptoms-header-sub {
+    font-size: 0.83rem;
+    color: var(--mm-text-secondary, #64748B);
+    margin: 3px 0 0 0;
+    line-height: 1.35;
+    font-weight: 500;
+}
+
+/* Describe in Your Own Words Button (Outline Button) */
+.st-key-btn_describe_words button {
+    background: var(--mm-card-bg, #FFFFFF) !important;
+    border: 1.5px solid #3B82F6 !important;
+    color: #1D4ED8 !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+    border-radius: 10px !important;
+    min-height: 46px !important;
+    height: 100% !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-btn_describe_words button:hover {
+    background: #EFF6FF !important;
+    border-color: #1D4ED8 !important;
+    color: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+}
+.st-key-btn_describe_words button p {
+    color: #1D4ED8 !important;
+    font-weight: 700 !important;
+}
+
+/* Multilingual Extractor Box */
+.mm-extractor-box {
+    background: rgba(37, 99, 235, 0.04) !important;
+    border: 1.2px solid rgba(37, 99, 235, 0.22) !important;
+    border-radius: 12px !important;
+    padding: 14px 18px !important;
+    margin: 10px 0 12px 0 !important;
+}
+
+.st-key-symptoms_search_card form[data-testid="stForm"] button[kind="primary"] {
+    background: #2563EB !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.90rem !important;
+    border-radius: 10px !important;
+    min-height: 46px !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.st-key-symptoms_search_card form[data-testid="stForm"] button[kind="primary"]:hover {
+    background: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35) !important;
+}
+.st-key-symptoms_search_card form[data-testid="stForm"] button[kind="primary"] p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Audio Input Container (Speech to Text) */
+.st-key-symptoms_search_card div[data-testid="stAudioInput"] {
+    background: var(--mm-card-bg, #FFFFFF) !important;
+    border: 1.2px solid #BFDBFE !important;
+    border-radius: 12px !important;
+    padding: 6px 14px !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Common Symptoms Chips (Horizontal 7-Pill Layout) */
+.st-key-symptoms_search_card div[class*="st-key-pop_sym_chip_"] button {
+    background: #2563EB !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.84rem !important;
+    border-radius: 10px !important;
+    min-height: 42px !important;
+    padding: 6px 12px !important;
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.20) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+}
+.st-key-symptoms_search_card div[class*="st-key-pop_sym_chip_"] button:hover {
+    background: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
+}
+.st-key-symptoms_search_card div[class*="st-key-pop_sym_chip_"] button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Next Step Button */
+.st-key-btn_goto_step2 button {
+    background: #2563EB !important;
+    border: none !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    border-radius: 10px !important;
+    min-height: 46px !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+.st-key-btn_goto_step2 button:hover {
+    background: #1D4ED8 !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35) !important;
+}
+.st-key-btn_goto_step2 button p {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+/* Responsive & Mobile Layout */
+@media (max-width: 768px) {
+    .st-key-symptoms_search_card,
+    div[data-testid="stVerticalBlockBorderWrapper"].st-key-symptoms_search_card,
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-symptoms_search_card),
+    .st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
+        border-radius: 14px !important;
+    }
+    .st-key-symptoms_search_card > div[data-testid="stVerticalBlock"],
+    div[data-testid="stVerticalBlockBorderWrapper"].st-key-symptoms_search_card > div[data-testid="stVerticalBlock"],
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-symptoms_search_card) > div[data-testid="stVerticalBlock"] {
+        padding: 14px !important;
+        gap: 12px !important;
+    }
+    .st-key-symptoms_search_card div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-pop_sym_chip_"]) {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+    .st-key-symptoms_search_card div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-pop_sym_chip_"]) > div[data-testid="stColumn"] {
+        flex: 1 1 calc(33.333% - 6px) !important;
+        min-width: 85px !important;
+        width: auto !important;
+    }
+    .st-key-symptoms_search_card div[class*="st-key-pop_sym_chip_"] button {
+        font-size: 0.78rem !important;
+        padding: 6px 8px !important;
+        min-height: 38px !important;
+    }
+}
+@media (max-width: 640px) {
+    .st-key-symptoms_search_card div[data-testid="stHorizontalBlock"]:has(.st-key-btn_describe_words) {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    .st-key-symptoms_search_card div[data-testid="stHorizontalBlock"]:has(.st-key-btn_describe_words) > div[data-testid="stColumn"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+    .st-key-symptoms_search_card form[data-testid="stForm"] div[data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+    .st-key-symptoms_search_card form[data-testid="stForm"] div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+}
+@media (max-width: 480px) {
+    .st-key-symptoms_search_card div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-pop_sym_chip_"]) > div[data-testid="stColumn"] {
+        flex: 1 1 calc(50% - 6px) !important;
+    }
+}
 </style>
 """
 DARK_CSS_OVERRIDE = """
@@ -6440,7 +6680,7 @@ div[class*="st-key-drawer_close_x_btn"] button:hover,
 
 /* -- 14. Dialogs, Modals & Quick Question Buttons -- */
 [data-testid="stModal"],
-div[data-testid="stDialog"] > div,
+div[data-testid="stDialog"] div[role="dialog"],
 div[role="dialog"] {
     background-color: #0B1220 !important;
     background: #0B1220 !important;
@@ -8744,133 +8984,87 @@ button[kind="secondary"][aria-label*="View Architecture"]:hover {
 }
 
 /* ==========================================================================
-   SYMPTOMS SEARCH & CLINICAL EXTRACTOR CARD (IMAGE 2 DESIGN)
+   SYMPTOMS SEARCH & CLINICAL EXTRACTOR CARD (DARK MODE OVERRIDE)
    ========================================================================== */
+.st-key-symptoms_search_card,
+div[data-testid="stVerticalBlockBorderWrapper"].st-key-symptoms_search_card,
+div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-symptoms_search_card),
 .st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: var(--mm-card-bg, #FFFFFF) !important;
-    border: 1.5px solid #BFDBFE !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 20px -2px rgba(37, 99, 235, 0.08) !important;
-    overflow: hidden !important;
-    margin-top: 24px !important;
-}
-[data-theme="dark"] .st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
-    background: #1E293B !important;
-    border-color: #334155 !important;
-    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.3) !important;
+    background: #111827 !important;
+    border: 1.5px solid #1F2937 !important;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Describe in Your Own Words Button (Outline Button) */
-.st-key-btn_describe_words button {
-    background: var(--mm-card-bg, #FFFFFF) !important;
-    border: 1.5px solid #3B82F6 !important;
-    color: #1D4ED8 !important;
-    font-weight: 700 !important;
-    font-size: 0.88rem !important;
-    border-radius: 10px !important;
-    min-height: 48px !important;
-    height: 100% !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+.mm-symptoms-header-icon {
+    background: rgba(37, 99, 235, 0.2) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
 }
-.st-key-btn_describe_words button:hover {
-    background: #EFF6FF !important;
-    border-color: #1D4ED8 !important;
-    color: #1D4ED8 !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+.mm-symptoms-header-title {
+    color: #F8FAFC !important;
+}
+.mm-symptoms-header-sub {
+    color: #94A3B8 !important;
+}
+
+/* Describe in Your Own Words Button (Dark Mode) */
+.st-key-btn_describe_words button {
+    background: #1E293B !important;
+    border: 1.5px solid #3B82F6 !important;
+    color: #60A5FA !important;
 }
 .st-key-btn_describe_words button p {
-    color: #1D4ED8 !important;
-    font-weight: 700 !important;
-}
-[data-theme="dark"] .st-key-btn_describe_words button {
-    background: #1E293B !important;
-    border-color: #3B82F6 !important;
     color: #60A5FA !important;
 }
-[data-theme="dark"] .st-key-btn_describe_words button p {
-    color: #60A5FA !important;
-}
-[data-theme="dark"] .st-key-btn_describe_words button:hover {
+.st-key-btn_describe_words button:hover {
     background: rgba(59, 130, 246, 0.15) !important;
     border-color: #60A5FA !important;
 }
 
-/* Multilingual Extractor Form Button */
-form[data-testid="stForm"] button[kind="primary"] {
+/* Multilingual Extractor Box (Dark Mode) */
+.mm-extractor-box {
+    background: rgba(30, 41, 59, 0.55) !important;
+    border: 1.2px solid rgba(59, 130, 246, 0.25) !important;
+}
+.st-key-symptoms_search_card form[data-testid="stForm"] button[kind="primary"] {
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+}
+.st-key-symptoms_search_card form[data-testid="stForm"] button[kind="primary"]:hover {
     background: #1D4ED8 !important;
-    border: none !important;
-    color: #FFFFFF !important;
-    font-weight: 700 !important;
-    font-size: 0.90rem !important;
-    border-radius: 10px !important;
-    min-height: 46px !important;
-    box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25) !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
-form[data-testid="stForm"] button[kind="primary"]:hover {
-    background: #1E40AF !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35) !important;
-}
-form[data-testid="stForm"] button[kind="primary"] p {
+.st-key-symptoms_search_card form[data-testid="stForm"] button[kind="primary"] p {
     color: #FFFFFF !important;
-    font-weight: 700 !important;
 }
 
-/* Audio Input Container (Speech to Text) */
-div[data-testid="stAudioInput"] {
-    background: var(--mm-card-bg, #FFFFFF) !important;
-    border: 1.2px solid #BFDBFE !important;
-    border-radius: 12px !important;
-    padding: 6px 14px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
-}
-[data-theme="dark"] div[data-testid="stAudioInput"] {
+/* Audio Input Container (Dark Mode) */
+.st-key-symptoms_search_card div[data-testid="stAudioInput"] {
     background: #1E293B !important;
     border-color: #334155 !important;
 }
 
-/* Common Symptoms Chips (Horizontal 7-Pill Layout) */
-div[class*="st-key-pop_sym_chip_"] button {
+/* Common Symptoms Chips (Dark Mode) */
+.st-key-symptoms_search_card div[class*="st-key-pop_sym_chip_"] button {
     background: #2563EB !important;
     border: none !important;
     color: #FFFFFF !important;
-    font-weight: 700 !important;
-    font-size: 0.84rem !important;
-    border-radius: 10px !important;
-    min-height: 42px !important;
-    padding: 6px 12px !important;
-    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.20) !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    white-space: nowrap !important;
 }
-div[class*="st-key-pop_sym_chip_"] button:hover {
+.st-key-symptoms_search_card div[class*="st-key-pop_sym_chip_"] button:hover {
     background: #1D4ED8 !important;
-    transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35) !important;
 }
-div[class*="st-key-pop_sym_chip_"] button p {
+.st-key-symptoms_search_card div[class*="st-key-pop_sym_chip_"] button p {
     color: #FFFFFF !important;
-    font-weight: 700 !important;
 }
 
-@media (max-width: 768px) {
-    .st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
-        border-radius: 12px !important;
-    }
-    div[class*="st-key-pop_sym_chip_"] button {
-        font-size: 0.76rem !important;
-        padding: 4px 8px !important;
-        min-height: 38px !important;
-    }
+/* Next Step Button (Dark Mode) */
+.st-key-btn_goto_step2 button {
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+}
+.st-key-btn_goto_step2 button:hover {
+    background: #1D4ED8 !important;
+}
+.st-key-btn_goto_step2 button p {
+    color: #FFFFFF !important;
 }
 /* ============================================================
    CLINICAL AUTHENTICATION PORTAL -- DARK MODE OVERRIDE
