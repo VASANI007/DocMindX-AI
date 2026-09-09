@@ -27,7 +27,6 @@ import re
 import uuid
 from datetime import datetime
 import services.email_service as email_service
-
 from config.settings import APP_NAME, APP_VERSION, SUPPORTED_LANGUAGES
 from config.language import load_translations, get_text
 from config.theme import apply_theme
