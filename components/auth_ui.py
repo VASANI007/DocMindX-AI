@@ -1346,10 +1346,6 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 </div>
                 """, unsafe_allow_html=True)
 
-                dev_otp = auth_svc.get_dev_otp_fallback(email, "ADMIN_LOGIN")
-                if dev_otp:
-                    st.caption(f"Testing Fallback Notice: Admin Key is: `{dev_otp}`")
-
                 adm_otp_val = st.text_input("6-Digit Admin Key", max_chars=6, key="panel_adm_otp_val", placeholder="123456")
 
                 c_ao1, c_ao2 = st.columns([1, 1])
