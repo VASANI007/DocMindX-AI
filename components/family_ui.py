@@ -4,6 +4,7 @@ Enables management of family members, extensible structured medical conditions,
 medication logs, profile management, and dynamic scan context selection.
 """
 import streamlit as st
+
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
 from config.language import get_text
@@ -410,31 +411,6 @@ def render_family_management_view(user: dict):
     user_email = db_user.get("email", "")
 
     # 1. Top Branding Header Bar (DocMindX AI + Trust Badge)
-    st.markdown("""
-    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 2px 4px;">
-        <div style="display: flex; align-items: center; gap: 10px;">
-            <div style="width: 38px; height: 38px; border-radius: 10px; background: #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(37,99,235,0.3); flex-shrink: 0;">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
-                    <path d="M3.22 12H9.5l1.5-3 2 6 1.5-3h4.78"/>
-                </svg>
-            </div>
-            <div>
-                <div style="font-size: 1.18rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.1; letter-spacing: -0.2px;">DocMindX <span style="color: #2563EB;">AI</span></div>
-                <div style="font-size: 0.72rem; color: var(--mm-text-secondary, #64748B); font-weight: 600; margin-top: 2px;">Secure Health &bull; Smarter Tomorrow</div>
-            </div>
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
-            </div>
-            <div>
-                <div style="font-size: 0.80rem; font-weight: 700; color: var(--mm-text-primary, #1E293B); line-height: 1.2;">Your Data is Safe</div>
-                <div style="font-size: 0.68rem; color: var(--mm-text-secondary, #64748B);">HIPAA &amp; WHO Compliant</div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
     # If administrator is viewing, provide quick switch back to Admin Console
     if auth_svc.is_admin_session(user):
@@ -453,6 +429,19 @@ def render_family_management_view(user: dict):
                 st.rerun()
 
     # 2. Patient Hero Card (Image 2 Design with Avatar Initial, Real Data, ECG line, and Verified Badge)
+    if st.session_state.get("family_settings_open", False):
+        with st.expander("Account Settings", expanded=True):
+            st.markdown("<div style='font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-bottom: 8px;'>Use the Account Profile and Change Password sections to update your identity and security details.</div>", unsafe_allow_html=True)
+            settings_cols = st.columns(2)
+            with settings_cols[0]:
+                if st.button("Open Account Profile", key="family_settings_profile_btn", use_container_width=True):
+                    st.session_state["family_settings_open"] = False
+                    st.rerun()
+            with settings_cols[1]:
+                if st.button("Open Change Password", key="family_settings_password_btn", use_container_width=True):
+                    st.session_state["family_settings_open"] = False
+                    st.rerun()
+
     st.markdown(f"""
     <div class="patient-hero-card" style="position: relative; overflow: hidden; background: linear-gradient(135deg, rgba(239, 246, 255, 0.85) 0%, rgba(255, 255, 255, 0.95) 60%, rgba(240, 249, 255, 0.9) 100%); border: 1.5px solid #DBEAFE; border-radius: 18px; padding: 22px 26px; margin-bottom: 22px; box-shadow: 0 4px 20px rgba(37, 99, 235, 0.06);">
         <!-- Subtle ECG Waveform Background -->
@@ -533,7 +522,20 @@ def render_family_management_view(user: dict):
                 st.rerun()
 
         if not family_members:
-            st.info("No family members added yet. Click 'Add New Family Member' above to create a profile for your parents, children, or spouse.")
+            st.markdown("""
+            <div class="dmx-empty-family-banner" style="background: rgba(37, 99, 235, 0.08); border: 1.5px dashed rgba(59, 130, 246, 0.35); border-radius: 12px; padding: 18px 20px; display: flex; align-items: center; gap: 14px; margin-top: 10px; margin-bottom: 16px;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                </div>
+                <div style="font-size: 0.88rem; color: var(--mm-text-primary, #1E293B); font-weight: 600; line-height: 1.4;">
+                    No family members added yet. Click <strong>'+ Add New Family Member'</strong> above to create a profile for your parents, children, or spouse.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         else:
             for m in family_members:
                 m_id = m["id"]
@@ -1064,12 +1066,12 @@ def render_family_management_view(user: dict):
             </div>""", unsafe_allow_html=True)
             status_val = db_user.get("account_status", "ACTIVE")
             st.markdown(f"""
-            <div style="background: rgba(240, 253, 244, 0.9); border: 1.5px solid #BBF7D0; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+            <div class="dmx-account-status-card" style="border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span style="width: 10px; height: 10px; border-radius: 50%; background: #16A34A; display: inline-block;"></span>
-                    <strong style="color: #15803D; font-size: 0.90rem; letter-spacing: 0.5px;">{status_val}</strong>
+                    <strong class="dmx-status-txt" style="font-size: 0.90rem; letter-spacing: 0.5px;">{status_val}</strong>
                 </div>
-                <span style="background: #DCFCE7; color: #15803D; border: 1px solid #86EFAC; border-radius: 20px; font-size: 0.72rem; font-weight: 800; padding: 2px 10px;">&#10004; Active Account</span>
+                <span class="dmx-status-pill" style="border-radius: 20px; font-size: 0.72rem; font-weight: 800; padding: 2px 10px;">&#10004; Active Account</span>
             </div>
             <div style='font-size: 0.72rem; color: #94A3B8; margin-top: 2px; margin-bottom: 12px;'>Status of your DocMindX AI clinical account.</div>
             """, unsafe_allow_html=True)
@@ -1184,31 +1186,31 @@ def render_family_management_view(user: dict):
             </div>""", unsafe_allow_html=True)
             conf_pass = st.text_input("Confirm New Password *", type="password", placeholder="Re-enter your new password", label_visibility="collapsed")
 
-            # Password Requirements Callout Box (Image 4 Design)
+            # Password Requirements Callout Box (Themed)
             st.markdown("""
-            <div style="background: rgba(239, 246, 255, 0.7); border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 14px 18px; margin-top: 16px; margin-bottom: 18px;">
+            <div class="dmx-pwd-req-card" style="border-radius: 12px; padding: 14px 18px; margin-top: 16px; margin-bottom: 18px;">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
                     <div style="width: 26px; height: 26px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
-                    <span style="font-size: 0.88rem; font-weight: 800; color: #1D4ED8;">Password Requirements</span>
+                    <span class="dmx-pwd-req-title" style="font-size: 0.88rem; font-weight: 800;">Password Requirements</span>
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 24px; padding-left: 4px;">
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #15803D; font-weight: 600;">
+                    <div class="dmx-pwd-req-item" style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; font-weight: 600;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16A34A"><circle cx="12" cy="12" r="10"/><path fill="#FFFFFF" d="m9 12 2 2 4-4"/></svg>
-                        At least 8 characters
+                        <span>At least 8 characters</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #15803D; font-weight: 600;">
+                    <div class="dmx-pwd-req-item" style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; font-weight: 600;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16A34A"><circle cx="12" cy="12" r="10"/><path fill="#FFFFFF" d="m9 12 2 2 4-4"/></svg>
-                        Include numbers (0-9)
+                        <span>Include numbers (0-9)</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #15803D; font-weight: 600;">
+                    <div class="dmx-pwd-req-item" style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; font-weight: 600;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16A34A"><circle cx="12" cy="12" r="10"/><path fill="#FFFFFF" d="m9 12 2 2 4-4"/></svg>
-                        Include letters (A-Z, a-z)
+                        <span>Include letters (A-Z, a-z)</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #15803D; font-weight: 600;">
+                    <div class="dmx-pwd-req-item" style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; font-weight: 600;">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="#16A34A"><circle cx="12" cy="12" r="10"/><path fill="#FFFFFF" d="m9 12 2 2 4-4"/></svg>
-                        Include a special character (e.g. ! @ # $)
+                        <span>Include a special character (e.g. ! @ # $)</span>
                     </div>
                 </div>
             </div>

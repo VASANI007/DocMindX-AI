@@ -102,8 +102,8 @@ def transcribe_audio(audio_data: Union[str, bytes, BinaryIO], language_code: str
                 "data": raw_bytes
             }
 
-            # Primary: gemini-3.5-transcribe, with automatic resilient fallbacks
-            transcription_models = ["gemini-3.5-transcribe", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+            # Primary: gemini-3.6-flash, with automatic resilient fallbacks
+            transcription_models = ["gemini-3.6-flash", "gemini-3.5-transcribe", "gemini-3.5-flash-lite"]
             for m_name in transcription_models:
                 try:
                     model = genai.GenerativeModel(m_name)

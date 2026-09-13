@@ -22,7 +22,7 @@ graph TD
         B2[OCR & Lab Report Parser]
     end
 
-    subgraph National Command Center Supply Chain
+    subgraph National Command Supply Chain
         C[PHC Data Engine - Canonical Ingestion]
         C1[Demand Forecaster - WAPE 6.53%]
         C2[Operational Risk & Stockout Detector]

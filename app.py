@@ -5,7 +5,7 @@ Features:
 2. Panel 2: Clinical Report & Prescription Analyzer (Lab Reference Ranges, OCR, Layman Explanations)
 3. Panel 3: Regional Healthcare & Emergency Finder (OpenStreetMap, Overpass API, Live Facilities)
 4. Panel 4: Health Records & Clinical History (SQLite Historical Vault & Analytics)
-5. Panel 5: About DocMindX AI (System Architecture, Datasets, AI Engines & Credits)
+5. Panel 5: About (System Architecture, Datasets, AI Engines & Credits)
 """
 import os
 import sys
@@ -16,71 +16,71 @@ if WORKSPACE_ROOT not in sys.path:
     sys.path.insert(0, WORKSPACE_ROOT)
 
 
-import markdown
-
-import streamlit as st
-import streamlit.components.v1 as components
-import pandas as pd
-import json
 import base64
+import html
+import json
 import re
 import uuid
 from datetime import datetime
-import services.email_service as email_service
-from config.settings import APP_NAME, APP_VERSION, SUPPORTED_LANGUAGES
-from config.language import load_translations, get_text
-from config.theme import apply_theme
-from components.theme_toggle import theme_toggle_switch
-import database.auth_db as auth_db
+
+import markdown
+import pandas as pd
+import streamlit as st
+import streamlit.components.v1 as components
+
+import components.admin_ui as admin_ui
 import components.auth_ui as auth_ui
 import components.family_ui as family_ui
-import components.admin_ui as admin_ui
+import database.auth_db as auth_db
 import services.auth_service as auth_svc
-from database.insert_data import (
-    log_triage_session,
-    log_report_analysis,
-    get_recent_triage_history,
-    get_recent_report_history,
-    seed_sample_records_if_empty
-)
+import services.email_service as email_service
+from ai.chatbot.chatbot import (ask_DocMindX_ai, detect_redirect_action,
+                                generate_dynamic_patient_questions)
+from ai.chatbot.deep_explainer import (
+    answer_assessment_question, generate_deep_explanation,
+    generate_medical_report_comprehensive_breakdown)
+from ai.chatbot.rag import generate_health_summary_ai
+from ai.disease_prediction.multilingual_symptom_extractor import \
+    symptom_extractor
 from ai.disease_prediction.predict import SymptomTriageEngine
-from ai.disease_prediction.multilingual_symptom_extractor import symptom_extractor
+from ai.medicine_ai.medicine_details import get_medicine_details
+from ai.ocr.text_extractor import extract_text_from_file
 from ai.report_ai.blood_report import LabReportAnalyzer
 from ai.report_ai.prescription import PrescriptionAnalyzer
 from ai.report_ai.radiology import RadiologyReportAnalyzer
-from ai.ocr.text_extractor import extract_text_from_file
-from ai.chatbot.rag import generate_health_summary_ai
-from ai.chatbot.chatbot import ask_DocMindX_ai, generate_dynamic_patient_questions, detect_redirect_action
-from ai.utils.report_generator import generate_pdf_report, generate_scan_record_pdf
 from ai.utils.care_recommendations import (
-    get_dynamic_clinical_recommendations,
-    localize_care_recommendations,
-    get_medicine_gallery,
-    get_youtube_search_url
-)
-from ai.utils.seasonal_context import INDIAN_STATES, get_seasonal_health_context
-from ai.medicine_ai.medicine_details import get_medicine_details
-from api.openfda import search_drug_openfda
-from ai.chatbot.deep_explainer import (
-    generate_deep_explanation,
-    answer_assessment_question,
-    generate_medical_report_comprehensive_breakdown
-)
-from api.dailymed import search_dailymed_spls, search_dailymed_drugnames
-from api.bioportal import search_bioportal_concept, annotate_clinical_text
-from api.nlm_clinical import search_nlm_conditions
-from api.who_icd import search_who_icd11
-from api.nominatim import geocode_city_district
-from api.geolocation import detect_auto_location, get_client_ip
-from api.overpass import query_nearby_healthcare
-from services.geocoding_service import geocode_address, reverse_geocode
-from services.places_service import search_nearby_healthcare, search_nearby_hospitals
-from services.routes_service import get_route
-from components.google_map import generate_google_map_html
-from components.command_center_view import render_command_center_dashboard
-from components.diagnostic_results_view import render_diagnostic_evaluation_view
+    get_dynamic_clinical_recommendations, get_medicine_gallery,
+    get_youtube_search_url, localize_care_recommendations)
+from ai.utils.report_generator import (generate_pdf_report,
+                                       generate_scan_record_pdf)
+from ai.utils.seasonal_context import (INDIAN_STATES,
+                                       get_seasonal_health_context)
 from ai.voice.speech_to_text import transcribe_audio
 from ai.voice.text_to_speech import synthesize_speech
+from api.bioportal import annotate_clinical_text, search_bioportal_concept
+from api.dailymed import search_dailymed_drugnames, search_dailymed_spls
+from api.geolocation import detect_auto_location, get_client_ip
+from api.nlm_clinical import search_nlm_conditions
+from api.nominatim import geocode_city_district
+from api.openfda import search_drug_openfda
+from api.overpass import query_nearby_healthcare
+from api.who_icd import search_who_icd11
+from components.command_center_view import render_command_center_dashboard
+from components.diagnostic_results_view import \
+    render_diagnostic_evaluation_view
+from components.google_map import generate_google_map_html
+from components.theme_toggle import theme_toggle_switch
+from config.language import get_text, load_translations, translate_dynamic_text
+from config.settings import APP_NAME, APP_VERSION, SUPPORTED_LANGUAGES
+from config.theme import apply_theme
+from database.insert_data import (get_recent_report_history,
+                                  get_recent_triage_history,
+                                  log_report_analysis, log_triage_session,
+                                  seed_sample_records_if_empty)
+from services.geocoding_service import geocode_address, reverse_geocode
+from services.places_service import (search_nearby_healthcare,
+                                     search_nearby_hospitals)
+from services.routes_service import get_route
 
 # Seed sample records if database table is initially empty
 seed_sample_records_if_empty()
@@ -106,6 +106,7 @@ def safe_markdown(content: str, **kwargs):
 
 LOGO_DARK_B64 = get_base64_image(os.path.join(os.path.dirname(__file__), "assets", "logo", "logo_dark.png"))
 LOGO_LIGHT_B64 = get_base64_image(os.path.join(os.path.dirname(__file__), "assets", "logo", "logo_light.png"))
+ICON_B64 = get_base64_image(os.path.join(os.path.dirname(__file__), "assets", "logo", "icon.png"))
 ROBOT_MASCOT_B64 = get_base64_image(os.path.join(os.path.dirname(__file__), "assets", "images", "assistant_bot.jpg"))
 FAVICON_PATH = os.path.join(os.path.dirname(__file__), "assets", "logo", "favicon.png")
 
@@ -116,6 +117,38 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# Hide Streamlit Cloud-only controls and owner badges from the app UI.
+hide_streamlit_cloud_ui = """
+<style>
+header[data-testid="stHeader"],
+[data-testid="stToolbarActions"],
+[data-testid="stToolbar"],
+footer,
+[data-testid="stStatusWidget"],
+[data-testid="stDecoration"],
+div[class*="viewerBadge"],
+#manage-app-button,
+iframe[title="manage-app"] {
+    display: none !important;
+    visibility: hidden !important;
+}
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+    display: none !important;
+}
+
+/* Replace the sidebar toolbox with the fixed application navigation bar. */
+[data-testid="stSidebar"],
+[data-testid="stSidebarCollapsedControl"] {
+    display: none !important;
+}
+.main .block-container {
+    padding-top: 4.75rem !important;
+}
+</style>
+"""
+st.markdown(hide_streamlit_cloud_ui, unsafe_allow_html=True)
 
 
 # Read query parameters to sync dark mode state if requested
@@ -403,15 +436,13 @@ def sync_language(source_key):
     if new_val in LANG_OPTIONS:
         st.session_state["app_language"] = new_val
         st.session_state["language"] = lang_code_map.get(new_val, "en")
-        for k in ["hdr_lang_p1", "hdr_lang_p2", "hdr_lang_p3", "hdr_lang_p4", "hdr_lang_p5"]:
+        for k in ["d_top_lang_select", "m_top_lang_select", "m_drawer_lang_select"]:
             if k != source_key:
                 st.session_state[k] = new_val
 
 def sync_theme_mode(source_key):
     new_mode = st.session_state.get(source_key, False)
     st.session_state["dark_mode"] = new_mode
-    for k in ["hdr_theme_p1", "hdr_theme_p2", "hdr_theme_p3", "hdr_theme_p4", "hdr_theme_p5"]:
-        st.session_state[k] = new_mode
 
 def toggle_floating_chat():
     st.session_state["floating_chat_open"] = not st.session_state.get("floating_chat_open", False)
@@ -513,12 +544,11 @@ render_dynamic_browser_translator(lang_code)
 # GT cookies cause the GT banner/toolbar to re-activate on page load, interfering
 # with our static T dict translations. This script clears them exactly once per session.
 if not st.session_state.get("_gt_cookies_cleared"):
-    import streamlit.components.v1 as _st_comps
-    _st_comps.html("""
+    st.markdown("""
     <script>
     (function() {
         try {
-            var doc = window.parent.document;
+            var doc = window.parent.document || document;
             doc.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
             doc.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
             var banner = doc.querySelector('iframe.goog-te-banner-frame');
@@ -528,19 +558,27 @@ if not st.session_state.get("_gt_cookies_cleared"):
         } catch(e) {}
     })();
     </script>
-    """, height=0, width=0)
+    """, unsafe_allow_html=True)
     st.session_state["_gt_cookies_cleared"] = True
 
 
 
 def render_footer_trust_bar(t_dict=None):
-    return """
+    t = t_dict or {}
+    suite_lbl = t.get("footer_suite", "Enterprise Multilingual Healthcare Suite")
+    secure_lbl = t.get("footer_secure", "Secure & Encrypted")
+    compliant_lbl = t.get("footer_compliant", "HIPAA & WHO Compliant")
+    trusted_lbl = t.get("footer_trusted", "Trusted Healthcare")
+    better_lbl = t.get("footer_better_health", "Better Health")
+    brighter_lbl = t.get("footer_brighter_tomorrow", "Brighter Tomorrow")
+
+    return f"""
     <div class="mm-footer-trust-bar" style="border-top: 1.5px solid rgba(148, 163, 184, 0.25); background: transparent; padding: 18px 24px; margin-top: 28px; margin-bottom: 8px;">
         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; width: 100%;">
             <!-- Brand Info -->
             <div style="display: flex; flex-direction: column;">
                 <span style="font-weight: 800; font-size: 0.95rem; color: #1E3A8A; line-height: 1.2;">DocMindX AI &copy; 2026</span>
-                <span style="font-size: 0.75rem; color: #64748B; margin-top: 2px;">Enterprise Multilingual Healthcare Suite</span>
+                <span style="font-size: 0.75rem; color: #64748B; margin-top: 2px;">{suite_lbl}</span>
             </div>
             <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
             <!-- Badge 1: Secure & Encrypted -->
@@ -549,7 +587,7 @@ def render_footer_trust_bar(t_dict=None):
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                     <polyline points="9 12 11 14 15 10"/>
                 </svg>
-                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">Secure &amp; Encrypted</span>
+                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">{secure_lbl}</span>
             </div>
             <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
             <!-- Badge 2: HIPAA & WHO Compliant -->
@@ -560,7 +598,7 @@ def render_footer_trust_bar(t_dict=None):
                     <line x1="16" y1="13" x2="8" y2="13"/>
                     <line x1="16" y1="17" x2="8" y2="17"/>
                 </svg>
-                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">HIPAA &amp; WHO Compliant</span>
+                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">{compliant_lbl}</span>
             </div>
             <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
             <!-- Badge 3: Trusted Healthcare -->
@@ -571,7 +609,7 @@ def render_footer_trust_bar(t_dict=None):
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                 </svg>
-                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">Trusted Healthcare</span>
+                <span style="font-size: 0.84rem; font-weight: 600; color: #1E293B;">{trusted_lbl}</span>
             </div>
             <div style="width: 1px; height: 30px; background: #CBD5E1;"></div>
             <!-- Slogan: Better Health Brighter Tomorrow -->
@@ -581,7 +619,7 @@ def render_footer_trust_bar(t_dict=None):
                     <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" stroke="#10B981" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
                 <span style="font-family: 'Segoe Script', 'Brush Script MT', 'Caveat', cursive; font-size: 1.25rem; color: #2563EB; font-weight: 700; line-height: 1.05; font-style: italic; letter-spacing: -0.2px;">
-                    Better Health<br/><span style="font-size: 1.10rem; padding-left: 4px;">Brighter Tomorrow</span>
+                    {better_lbl}<br/><span style="font-size: 1.10rem; padding-left: 4px;">{brighter_lbl}</span>
                 </span>
             </div>
         </div>
@@ -799,8 +837,8 @@ with st.sidebar:
         "Medical Report": T.get("nav_medical_report", "Medical Report"),
         "Nearby Healthcare": T.get("nav_nearby_healthcare", "Nearby Healthcare"),
         "Health Records": T.get("nav_health_records", "Health Records"),
-        "National Command Center": T.get("nav_command_center", "National Command Center"),
-        "About DocMindX AI": T.get("nav_about", "About DocMindX AI")
+        "National Command": T.get("nav_command_center", "National Command"),
+        "About": T.get("nav_about", "About")
         }
     panel_keys = list(panel_map.keys())
 
@@ -819,7 +857,7 @@ with st.sidebar:
         st.session_state["clinical_module_nav_radio"] = None
 
     st.radio(
-        "Clinical Module Navigation",
+        T.get("clinical_navigation", "Clinical Module Navigation"),
         options=panel_keys,
         format_func=lambda k: panel_map[k],
         key="clinical_module_nav_radio",
@@ -831,7 +869,7 @@ with st.sidebar:
     curr_sb_user = auth_ui.get_current_user()
     if curr_sb_user and auth_ui.is_authenticated():
         is_sb_admin = auth_svc.is_admin_session(curr_sb_user)
-        badge_text = "ADMINISTRATOR" if is_sb_admin else "PATIENT"
+        badge_text = T.get("badge_administrator", "ADMINISTRATOR") if is_sb_admin else T.get("badge_patient", "PATIENT")
         badge_bg = "rgba(239, 68, 68, 0.18)" if is_sb_admin else "rgba(37, 99, 235, 0.15)"
         badge_color = "#F87171" if is_sb_admin else "#60A5FA"
         avatar_bg = "#DC2626" if is_sb_admin else "#2563EB"
@@ -854,26 +892,26 @@ with st.sidebar:
         if is_sb_admin:
             sb_c1, sb_c2 = st.columns([1, 1])
             with sb_c1:
-                if st.button("Admin", key="sb_btn_admin", use_container_width=True):
+                if st.button(T.get("nav_admin", "Admin"), key="sb_btn_admin", use_container_width=True):
                     st.session_state["active_panel"] = "Admin Panel"
                     st.rerun()
             with sb_c2:
-                if st.button("Logout", key="sb_btn_signout", use_container_width=True):
+                if st.button(T.get("btn_logout", "Sign Out"), key="sb_btn_signout", use_container_width=True):
                     auth_ui.logout_user()
                     st.rerun()
         else:
             # Normal user ke liye sirf Logout / Sign Out button
-            if st.button("Sign Out", key="sb_btn_signout", use_container_width=True):
+            if st.button(T.get("btn_logout", "Sign Out"), key="sb_btn_signout", use_container_width=True):
                 auth_ui.logout_user()
                 st.rerun()
     else:
         st.markdown(f"""
         <div class="mm-sidebar-guest" style="background: rgba(37, 99, 235, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 12px; padding: 12px; margin-top: 14px;">
-            <div style="font-size: 0.75rem; font-weight: 700; color: #93C5FD; margin-bottom: 3px;">CLINICAL IDENTITY</div>
-            <div style="font-size: 0.71rem; color: #94A3B8; line-height: 1.35; margin-bottom: 8px;">Sign in to access your permanent health vault & family profiles.</div>
+            <div style="font-size: 0.75rem; font-weight: 700; color: #93C5FD; margin-bottom: 3px;">{T.get("clinical_identity", "CLINICAL IDENTITY")}</div>
+            <div style="font-size: 0.71rem; color: #94A3B8; line-height: 1.35; margin-bottom: 8px;">{T.get("auth_sub", "Sign in to access your permanent health vault & family profiles.")}</div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("Sign In / Register", key="sb_btn_signin", type="primary", use_container_width=True):
+        if st.button(T.get("btn_signin_register", "Sign In / Register"), key="sb_btn_signin", type="primary", use_container_width=True):
             st.session_state["active_panel"] = "Account / Authentication"
             st.rerun()
 
@@ -903,6 +941,1336 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 
+# ==============================================================================
+# DOCMINDX AI - MASTER RESPONSIVE NAVIGATION HEADER (DESKTOP & MOBILE)
+# ==============================================================================
+
+if "mobile_nav_open" not in st.session_state:
+    st.session_state["mobile_nav_open"] = False
+if "top_profile_open" not in st.session_state:
+    st.session_state["top_profile_open"] = False
+
+is_dark = bool(st.session_state.get("dark_mode", False))
+current_lang_str = st.session_state.get("app_language", "English")
+curr_lang_idx = LANG_OPTIONS.index(current_lang_str) if current_lang_str in LANG_OPTIONS else 0
+top_auth_user = auth_ui.get_current_user()
+is_logged_in = bool(top_auth_user and auth_ui.is_authenticated())
+
+panel_keys = [
+    "Health Assessment",
+    "Medical Report",
+    "Nearby Healthcare",
+    "Health Records",
+    "National Command",
+    "About"
+]
+
+panel_map = {
+    "Health Assessment": T.get("nav_health_assessment", "Health Assessment"),
+    "Medical Report": T.get("nav_medical_report", "Medical Report"),
+    "Nearby Healthcare": T.get("nav_nearby_healthcare", "Nearby Healthcare"),
+    "Health Records": T.get("nav_health_records", "Health Records"),
+    "National Command": T.get("nav_command_center", "National Command"),
+    "About": T.get("nav_about", "About")
+}
+
+active_p = st.session_state.get("active_panel", "Health Assessment")
+
+# Ensure DOM data-theme attribute is reliably synced for dark/light mode
+st.markdown(
+    f"""
+    <script>
+    (function() {{
+        try {{
+            var isDark = {'true' if is_dark else 'false'};
+            var doc = window.parent.document || document;
+            if (doc) {{
+                [doc.documentElement, doc.body, doc.querySelector('.stApp')].forEach(function(el) {{
+                    if (el) {{
+                        el.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                        el.setAttribute('data-dark-mode', isDark ? 'true' : 'false');
+                    }}
+                }});
+            }}
+        }} catch(e) {{}}
+    }})();
+    </script>
+    """,
+    unsafe_allow_html=True
+)
+
+# Direct Dark Mode CSS Overrides - Guarantees High-Contrast Text & Background across all UI
+if is_dark:
+    st.markdown("""
+    <style>
+    /* ── High Contrast Dark Mode Foundation ── */
+    :root, [data-theme="dark"], .stApp[data-theme="dark"] {
+        --mm-card-bg: #111827;
+        --mm-border-color: #1E2E4E;
+        --mm-subbox-bg: #1E293B;
+        --mm-text-primary: #F8FAFC;
+        --mm-text-secondary: #94A3B8;
+        --mm-ocr-badge-bg: rgba(2, 132, 199, 0.15);
+        --mm-ocr-badge-border: rgba(56, 189, 248, 0.4);
+        --mm-ocr-badge-color: #38BDF8;
+        --mm-info-banner-bg: rgba(37, 99, 235, 0.12);
+        --mm-info-banner-border: rgba(59, 130, 246, 0.35);
+        --mm-info-banner-color: #93C5FD;
+        --mm-creator-avatar-bg: rgba(37, 99, 235, 0.18);
+        --mm-creator-avatar-border: rgba(59, 130, 246, 0.4);
+    }
+    html, body, .stApp {
+        background-color: #0B1220 !important;
+        color: #F8FAFC !important;
+    }
+    .stApp p,
+    .stApp label,
+    .stApp [data-testid="stMarkdownContainer"] p,
+    .stApp [data-testid="stMarkdownContainer"] span:not([data-testid="stIconMaterial"]):not(.mm-badge),
+    .stApp [data-testid="stMarkdownContainer"] li {
+        color: #F8FAFC !important;
+    }
+    .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp h5, .stApp h6 {
+        color: #FFFFFF !important;
+    }
+    .stApp .mm-text-secondary,
+    .stApp small,
+    .stApp .text-muted {
+        color: #94A3B8 !important;
+    }
+    .stApp input,
+    .stApp textarea,
+    .stApp [data-baseweb="input"],
+    .stApp [data-baseweb="base-input"],
+    .stApp [data-baseweb="select"] > div {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        border-color: #334155 !important;
+    }
+    .stApp [data-baseweb="select"] input,
+    [data-testid="stSelectbox"] input,
+    div[data-baseweb="select"] input {
+        border: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-top: none !important;
+        border-bottom: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        caret-color: transparent !important;
+        width: 0 !important;
+        min-width: 0 !important;
+        padding: 0 !important;
+    }
+    .stApp input::placeholder,
+    .stApp textarea::placeholder {
+        color: #64748B !important;
+    }
+    .stApp [data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #111827 !important;
+        border-color: #1E2E4E !important;
+    }
+    /* Master Header Dark Mode */
+    .st-key-dmx_master_header_card {
+        background: #0F172A !important;
+        border: 1px solid #1E2E4E !important;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.55) !important;
+    }
+    .st-key-dmx_master_header_card .dmx-brand-title {
+        color: #FFFFFF !important;
+    }
+    .st-key-dmx_master_header_card .dmx-brand-subtitle {
+        color: #94A3B8 !important;
+    }
+    .st-key-dmx_master_header_card button {
+        background: #1E293B !important;
+        border-color: #334155 !important;
+        color: #E2E8F0 !important;
+    }
+    .st-key-dmx_master_header_card button p,
+    .st-key-dmx_master_header_card button span {
+        color: #E2E8F0 !important;
+    }
+    .st-key-dmx_master_header_card button:hover {
+        background: #25334E !important;
+        border-color: #60A5FA !important;
+        color: #93C5FD !important;
+    }
+    .st-key-dmx_master_header_card button[kind="primary"],
+    .st-key-dmx_master_header_card button[data-testid="stBaseButton-primary"] {
+        background: rgba(37, 99, 235, 0.25) !important;
+        border: 1.5px solid #60A5FA !important;
+        color: #93C5FD !important;
+        box-shadow: 0 0 12px rgba(59, 130, 246, 0.3) !important;
+    }
+    .st-key-dmx_master_header_card button[kind="primary"] p,
+    .st-key-dmx_master_header_card button[kind="primary"] span {
+        color: #93C5FD !important;
+    }
+    .st-key-d_lang_wrap [data-testid="stSelectbox"] > div > div,
+    .st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
+        background: #1E293B !important;
+        border-color: #334155 !important;
+        color: #F8FAFC !important;
+    }
+    .st-key-d_lang_wrap [data-testid="stSelectbox"] span,
+    .st-key-m_lang_wrap [data-testid="stSelectbox"] span {
+        color: #F8FAFC !important;
+    }
+    .st-key-d_lang_wrap [data-testid="stSelectbox"] svg,
+    .st-key-m_lang_wrap [data-testid="stSelectbox"] svg {
+        fill: #94A3B8 !important;
+        color: #94A3B8 !important;
+    }
+    .st-key-d_theme_toggle_btn button,
+    .st-key-m_theme_toggle_btn button {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+    .st-key-d_theme_toggle_btn button:hover,
+    .st-key-m_theme_toggle_btn button:hover {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        transform: scale(1.22) !important;
+    }
+    .st-key-d_theme_toggle_btn button::before,
+    .st-key-m_theme_toggle_btn button::before {
+        content: '' !important;
+        display: block !important;
+        width: 32px !important;
+        height: 32px !important;
+        background-size: contain !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23F59E0B' stroke='%23F59E0B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Cpath d='M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42'/%3E%3C/svg%3E") !important;
+    }
+    .st-key-dmx_mobile_drawer_card {
+        background: #0F172A !important;
+        border-color: #1E2E4E !important;
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5) !important;
+    }
+    .dmx-drawer-header {
+        color: #F8FAFC !important;
+    }
+    .st-key-top_profile_dropdown_box {
+        background: #0F172A !important;
+        border-color: #1E2E4E !important;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) !important;
+    }
+    /* Link Buttons (e.g. View on Map) Dark Mode */
+    .stLinkButton > a,
+    [data-testid="stLinkButton"] > a {
+        background-color: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #F8FAFC !important;
+    }
+    .stLinkButton > a:hover,
+    [data-testid="stLinkButton"] > a:hover {
+        background-color: #2563EB !important;
+        border-color: #3B82F6 !important;
+        color: #FFFFFF !important;
+    }
+    /* Step Indicators & Badges */
+    .mm-step-progress-indicator {
+        background: #111827 !important;
+        border-color: #1E2E4E !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
+    }
+    .mm-step-progress-indicator .mm-step-progress-step {
+        color: #60A5FA !important;
+    }
+    .mm-step-progress-indicator .mm-step-progress-sub {
+        color: #94A3B8 !important;
+    }
+    .mm-step-header-icon,
+    .mm-symptoms-header-icon,
+    .auth-icon-badge {
+        background: rgba(37, 99, 235, 0.18) !important;
+        border: 1px solid rgba(59, 130, 246, 0.4) !important;
+        color: #60A5FA !important;
+    }
+    .mm-step-header-icon svg,
+    .mm-symptoms-header-icon svg,
+    .auth-icon-badge svg {
+        stroke: #60A5FA !important;
+        color: #60A5FA !important;
+    }
+    .mm-field-icon-badge {
+        background: rgba(37, 99, 235, 0.15) !important;
+        border: 1px solid rgba(59, 130, 246, 0.35) !important;
+        color: #60A5FA !important;
+    }
+    .st-key-assessment_step_card,
+    div[data-testid="stVerticalBlockBorderWrapper"].st-key-assessment_step_card,
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-assessment_step_card),
+    .st-key-assessment_step_card div[data-testid="stVerticalBlockBorderWrapper"],
+    .st-key-symptoms_search_card,
+    div[data-testid="stVerticalBlockBorderWrapper"].st-key-symptoms_search_card,
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-symptoms_search_card),
+    .st-key-symptoms_search_card div[data-testid="stVerticalBlockBorderWrapper"] {
+        background: #111827 !important;
+        border: 1.5px solid #1F2937 !important;
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5) !important;
+    }
+    .mm-step-card-header,
+    .mm-symptoms-card-header {
+        background: transparent !important;
+        border-bottom: none !important;
+    }
+    .mm-step-progress-indicator {
+        background: #1E293B !important;
+        border: 1px solid #334155 !important;
+        box-shadow: none !important;
+    }
+    .mm-step-progress-sub {
+        color: #94A3B8 !important;
+    }
+    .mm-creator-avatar {
+        background: rgba(37, 99, 235, 0.18) !important;
+        border-color: rgba(59, 130, 246, 0.4) !important;
+        color: #60A5FA !important;
+    }
+
+    /* ── Chatbot Dark Mode Styles ── */
+    .st-key-slide_chat_drawer,
+    div.st-key-slide_chat_drawer,
+    div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {
+        background: #0B132B !important;
+        background-color: #0B132B !important;
+        border: 1.5px solid #1E293B !important;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.75), 0 0 1px rgba(255, 255, 255, 0.1) !important;
+    }
+    .st-key-popup_unified_header {
+        background: linear-gradient(135deg, #071E3D 0%, #0F3460 50%, #1A56DB 100%) !important;
+    }
+    .st-key-drawer_close_x_btn button,
+    .st-key-drawer_clear_chat_btn button,
+    div[class*="st-key-drawer_close_x_btn"] button,
+    div[class*="st-key-drawer_clear_chat_btn"] button {
+        background: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #F8FAFC !important;
+    }
+    .st-key-drawer_close_x_btn button [data-testid="stIconMaterial"],
+    .st-key-drawer_clear_chat_btn button [data-testid="stIconMaterial"] {
+        color: #F8FAFC !important;
+    }
+    .mm-chat-context-card {
+        background: rgba(14, 165, 233, 0.12) !important;
+        border-bottom: 1px solid rgba(14, 165, 233, 0.25) !important;
+    }
+    .mm-chat-context-icon {
+        background: rgba(14, 165, 233, 0.22) !important;
+    }
+    .mm-chat-context-title {
+        color: #38BDF8 !important;
+    }
+    .mm-chat-context-val {
+        color: #7DD3FC !important;
+    }
+    .mm-chat-greeting-card {
+        background: #141D2E !important;
+        border: 1.2px solid #1E293B !important;
+    }
+    .mm-chat-greeting-title {
+        color: #F8FAFC !important;
+    }
+    .mm-chat-greeting-sub {
+        color: #94A3B8 !important;
+    }
+    .mm-chat-section-title {
+        color: #F8FAFC !important;
+    }
+    .mm-chat-section-badge {
+        background: rgba(37, 99, 235, 0.20) !important;
+        border: 1px solid rgba(37, 99, 235, 0.45) !important;
+        color: #60A5FA !important;
+    }
+    .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button {
+        background: #141D2E !important;
+        border: 1.2px solid #1E293B !important;
+        color: #F8FAFC !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+    }
+    .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button:hover {
+        background: #1E293B !important;
+        border-color: #38BDF8 !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25) !important;
+    }
+    .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p strong {
+        color: #F8FAFC !important;
+    }
+    .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p {
+        color: #94A3B8 !important;
+    }
+    .st-key-slide_chat_form,
+    .st-key-slide_chat_form [data-testid="stForm"] {
+        background: transparent !important;
+        border: none !important;
+    }
+    .st-key-slide_chat_form input {
+        color: #F8FAFC !important;
+        background: #141D2E !important;
+        border: 1.2px solid #1E293B !important;
+    }
+    .st-key-slide_chat_form input::placeholder {
+        color: #64748B !important;
+    }
+    .st-key-slide_chat_form button[kind="secondaryFormSubmit"],
+    .st-key-slide_chat_form button {
+        background: #2563EB !important;
+        border: none !important;
+        color: #FFFFFF !important;
+    }
+    .st-key-slide_chat_form button [data-testid="stIconMaterial"] {
+        color: #FFFFFF !important;
+    }
+    .mm-chat-disclaimer {
+        color: #94A3B8 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Master Header Styles (Desktop & Mobile matching Image 2 & Image 3)
+st.markdown("""
+<style>
+/* ── Main Fixed Header Container ── */
+.st-key-dmx_master_header_card {
+    position: fixed !important;
+    top: 8px !important;
+    left: 14px !important;
+    right: 14px !important;
+    width: auto !important;
+    max-width: calc(100vw - 28px) !important;
+    box-sizing: border-box !important;
+    z-index: 999990 !important;
+    background: #FFFFFF !important;
+    border: 1px solid #DCE6F3 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08) !important;
+    padding: 6px 12px !important;
+    backdrop-filter: blur(12px) !important;
+}
+.st-key-dmx_master_header_card [data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.st-key-dmx_master_header_card [data-testid="stColumn"] {
+    min-width: 0 !important;
+}
+
+/* ── Brand Styling ── */
+.dmx-brand-block {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    user-select: none;
+    text-decoration: none;
+}
+.dmx-brand-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+.dmx-brand-text {
+    line-height: 1.15;
+    min-width: 0;
+}
+.dmx-brand-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0F172A;
+    white-space: nowrap;
+    letter-spacing: -0.2px;
+}
+.dmx-brand-subtitle {
+    font-size: 0.55rem;
+    color: #64748B;
+    font-weight: 500;
+    white-space: nowrap;
+    margin-top: 1px;
+}
+
+/* ── Universal Header Button Styles ── */
+.st-key-dmx_master_header_card button {
+    height: 38px !important;
+    min-height: 38px !important;
+    border-radius: 8px !important;
+    font-size: 0.76rem !important;
+    font-weight: 600 !important;
+    padding: 0 8px !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+    border: 1px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
+    background: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
+    color: """ + ('#E2E8F0' if is_dark else '#334155') + """ !important;
+    transition: all 0.15s ease !important;
+}
+.st-key-dmx_master_header_card button:hover {
+    border-color: #2563EB !important;
+    color: """ + ('#93C5FD' if is_dark else '#1D4ED8') + """ !important;
+    background: """ + ('#25334E' if is_dark else '#F0F7FF') + """ !important;
+}
+.st-key-dmx_master_header_card button[kind="primary"],
+.st-key-dmx_master_header_card button[data-testid="stBaseButton-primary"] {
+    background: """ + ('rgba(37, 99, 235, 0.25)' if is_dark else '#EFF6FF') + """ !important;
+    border: 1.5px solid """ + ('#60A5FA' if is_dark else '#3B82F6') + """ !important;
+    color: """ + ('#93C5FD' if is_dark else '#1D4ED8') + """ !important;
+    font-weight: 700 !important;
+    box-shadow: """ + ('0 0 12px rgba(59, 130, 246, 0.3)' if is_dark else '0 2px 8px rgba(37, 99, 235, 0.12)') + """ !important;
+}
+.st-key-dmx_master_header_card button[kind="primary"] p,
+.st-key-dmx_master_header_card button[kind="primary"] span {
+    color: """ + ('#93C5FD' if is_dark else '#1D4ED8') + """ !important;
+}
+
+/* ── Single Colored Material Icons per nav button (Zero Duplicate SVGs) ── */
+.st-key-d_nav_1 button [data-testid="stIconMaterial"],
+.st-key-m_nav_1 button [data-testid="stIconMaterial"] { color: #2563EB !important; font-size: 16px !important; }
+.st-key-d_nav_2 button [data-testid="stIconMaterial"],
+.st-key-m_nav_2 button [data-testid="stIconMaterial"] { color: #059669 !important; font-size: 16px !important; }
+.st-key-d_nav_3 button [data-testid="stIconMaterial"],
+.st-key-m_nav_3 button [data-testid="stIconMaterial"] { color: #7C3AED !important; font-size: 16px !important; }
+.st-key-d_nav_4 button [data-testid="stIconMaterial"],
+.st-key-m_nav_4 button [data-testid="stIconMaterial"] { color: #D97706 !important; font-size: 16px !important; }
+.st-key-d_nav_5 button [data-testid="stIconMaterial"],
+.st-key-m_nav_5 button [data-testid="stIconMaterial"] { color: #DC2626 !important; font-size: 16px !important; }
+.st-key-d_nav_6 button [data-testid="stIconMaterial"],
+.st-key-m_nav_6 button [data-testid="stIconMaterial"] { color: #2563EB !important; font-size: 16px !important; }
+
+/* ── Language Selectbox with SVG Globe Icon & Divider (Image 2) ── */
+.st-key-d_lang_wrap {
+    position: relative !important;
+    border-left: 1.5px solid """ + ('#334155' if is_dark else '#E2E8F0') + """ !important;
+    padding-left: 8px !important;
+}
+[data-theme="dark"] .st-key-d_lang_wrap {
+    border-left-color: #334155 !important;
+}
+.st-key-m_lang_wrap {
+    position: relative !important;
+}
+.st-key-d_lang_wrap [data-testid="stSelectbox"] > div > div,
+.st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
+    height: 38px !important;
+    min-height: 38px !important;
+    border-radius: 8px !important;
+    border: 1px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
+    background: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
+    font-size: 0.74rem !important;
+    font-weight: 600 !important;
+    padding-left: 28px !important;
+    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+}
+.st-key-d_lang_wrap [data-testid="stSelectbox"] span,
+.st-key-m_lang_wrap [data-testid="stSelectbox"] span {
+    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+}
+.st-key-d_lang_wrap::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    z-index: 10;
+    pointer-events: none;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E");
+}
+.st-key-m_lang_wrap::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 14px;
+    z-index: 10;
+    pointer-events: none;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E");
+}
+
+/* ── Desktop & Mobile Theme Toggle: Pure Sun/Moon Icon (No Button Box, No Border, No Background) ── */
+.st-key-dmx_master_header_card .st-key-d_theme_toggle_btn,
+.st-key-dmx_master_header_card .st-key-m_theme_toggle_btn,
+.st-key-d_theme_toggle_btn,
+.st-key-m_theme_toggle_btn,
+.st-key-d_theme_toggle_btn > div,
+.st-key-m_theme_toggle_btn > div {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    width: auto !important;
+}
+
+.st-key-dmx_master_header_card .st-key-d_theme_toggle_btn button,
+.st-key-dmx_master_header_card .st-key-m_theme_toggle_btn button,
+.st-key-d_theme_toggle_btn button,
+.st-key-m_theme_toggle_btn button,
+.st-key-d_theme_toggle_btn button[kind="secondary"],
+.st-key-m_theme_toggle_btn button[kind="secondary"],
+.st-key-d_theme_toggle_btn [data-testid="stBaseButton-secondary"],
+.st-key-m_theme_toggle_btn [data-testid="stBaseButton-secondary"],
+.st-key-dmx_master_header_card .st-key-d_theme_toggle_btn button:hover,
+.st-key-dmx_master_header_card .st-key-m_theme_toggle_btn button:hover,
+.st-key-d_theme_toggle_btn button:hover,
+.st-key-m_theme_toggle_btn button:hover,
+.st-key-d_theme_toggle_btn button:active,
+.st-key-m_theme_toggle_btn button:active,
+.st-key-d_theme_toggle_btn button:focus,
+.st-key-m_theme_toggle_btn button:focus,
+.st-key-d_theme_toggle_btn button:focus-visible,
+.st-key-m_theme_toggle_btn button:focus-visible,
+[data-theme="dark"] .st-key-d_theme_toggle_btn button,
+[data-theme="dark"] .st-key-m_theme_toggle_btn button,
+[data-theme="dark"] .st-key-d_theme_toggle_btn button:hover,
+[data-theme="dark"] .st-key-m_theme_toggle_btn button:hover,
+[data-theme="dark"] .st-key-d_theme_toggle_btn button:active,
+[data-theme="dark"] .st-key-m_theme_toggle_btn button:active,
+[data-theme="dark"] .st-key-d_theme_toggle_btn button:focus,
+[data-theme="dark"] .st-key-m_theme_toggle_btn button:focus {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    min-height: 40px !important;
+    max-height: 40px !important;
+    border-radius: 50% !important;
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    padding: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin: 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+}
+
+.st-key-dmx_master_header_card .st-key-d_theme_toggle_btn button:hover,
+.st-key-dmx_master_header_card .st-key-m_theme_toggle_btn button:hover,
+.st-key-d_theme_toggle_btn button:hover,
+.st-key-m_theme_toggle_btn button:hover,
+[data-theme="dark"] .st-key-d_theme_toggle_btn button:hover,
+[data-theme="dark"] .st-key-m_theme_toggle_btn button:hover {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    transform: scale(1.18) !important;
+}
+
+.st-key-d_theme_toggle_btn button:hover::before,
+.st-key-m_theme_toggle_btn button:hover::before {
+    filter: drop-shadow(0 2px 10px rgba(37, 99, 235, 0.6)) !important;
+}
+
+[data-theme="dark"] .st-key-d_theme_toggle_btn button:hover::before,
+[data-theme="dark"] .st-key-m_theme_toggle_btn button:hover::before {
+    filter: drop-shadow(0 2px 10px rgba(245, 158, 11, 0.8)) !important;
+}
+
+.st-key-d_theme_toggle_btn button:active,
+.st-key-m_theme_toggle_btn button:active {
+    transform: scale(0.92) !important;
+}
+
+.st-key-d_theme_toggle_btn button p,
+.st-key-m_theme_toggle_btn button p,
+.st-key-d_theme_toggle_btn button span,
+.st-key-m_theme_toggle_btn button span {
+    display: none !important;
+}
+
+/* Theme Toggle Icon: In Dark Mode displays SUN (to switch to Light), in Light Mode displays MOON (to switch to Dark) */
+.st-key-dmx_master_header_card .st-key-d_theme_toggle_btn button::before,
+.st-key-dmx_master_header_card .st-key-m_theme_toggle_btn button::before,
+.st-key-d_theme_toggle_btn button::before,
+.st-key-m_theme_toggle_btn button::before {
+    content: '' !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    height: 28px !important;
+    min-height: 28px !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-image: url('""" + ("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%23F59E0B%22 stroke=%22%23F59E0B%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%225%22/%3E%3Cpath d=%22M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42%22/%3E%3C/svg%3E" if is_dark else "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%232563EB%22 stroke=%22%232563EB%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z%22/%3E%3C/svg%3E") + """') !important;
+    transition: transform 0.2s ease, filter 0.2s ease !important;
+}
+
+/* ── Profile Trigger Button ('Dv ▾' Avatar or 'Sign In') ── */
+.st-key-top_profile_trigger button {
+    background: #2563EB !important;
+    border: 1px solid #2563EB !important;
+    color: #FFFFFF !important;
+    border-radius: 20px !important;
+    font-weight: 800 !important;
+    font-size: 0.80rem !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 12px !important;
+    letter-spacing: 0.5px !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+}
+.st-key-top_profile_trigger button p,
+.st-key-top_profile_trigger button span {
+    color: #FFFFFF !important;
+    font-weight: 800 !important;
+}
+.st-key-top_profile_trigger button:hover {
+    background: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+}
+.st-key-top_auth_signin_btn button {
+    background: #2563EB !important;
+    border: 1px solid #2563EB !important;
+    color: #FFFFFF !important;
+    border-radius: 20px !important;
+    font-weight: 700 !important;
+    font-size: 0.80rem !important;
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 14px !important;
+}
+.st-key-top_auth_signin_btn button p,
+.st-key-top_auth_signin_btn button span {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+.st-key-top_auth_signin_btn button:hover {
+    background: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
+}
+
+/* ── Profile Dropdown Box ── */
+.st-key-top_profile_dropdown_box {
+    position: absolute !important;
+    top: 48px !important;
+    right: 0 !important;
+    width: 250px !important;
+    padding: 12px !important;
+    background: #FFFFFF !important;
+    border: 1px solid #DCE6F3 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16) !important;
+    z-index: 1000000 !important;
+}
+
+/* ── Mobile Header Single-Row Layout & Controls ── */
+.st-key-dmx_mobile_container {
+    width: 100% !important;
+}
+.st-key-dmx_mobile_container [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.st-key-dmx_mobile_container [data-testid="stColumn"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+}
+.st-key-dmx_mobile_container [data-testid="stColumn"]:nth-child(1) {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+}
+.st-key-dmx_mobile_container [data-testid="stColumn"]:nth-child(2) {
+    flex: 0 0 102px !important;
+    width: 102px !important;
+    min-width: 102px !important;
+}
+.st-key-dmx_mobile_container [data-testid="stColumn"]:nth-child(3) {
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-dmx_mobile_container [data-testid="stColumn"]:nth-child(4) {
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Mobile Brand Center Alignment & Proportion */
+.st-key-dmx_mobile_container .dmx-brand-block {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    height: 100% !important;
+    min-height: 38px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.st-key-dmx_mobile_container .dmx-brand-icon {
+    width: 30px !important;
+    height: 30px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
+}
+.st-key-dmx_mobile_container .dmx-brand-text {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    line-height: 1.15 !important;
+    min-width: 0 !important;
+}
+.st-key-dmx_mobile_container .dmx-brand-title {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    line-height: 1.15 !important;
+    color: #0F172A !important;
+    letter-spacing: -0.2px !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+}
+[data-theme="dark"] .st-key-dmx_mobile_container .dmx-brand-title {
+    color: #F8FAFC !important;
+}
+.st-key-dmx_mobile_container .dmx-brand-subtitle {
+    font-size: 0.52rem !important;
+    color: #64748B !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+}
+
+/* Mobile Language Selector Dropdown */
+.st-key-m_lang_wrap {
+    width: 100% !important;
+    position: relative !important;
+}
+.st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
+    height: 36px !important;
+    min-height: 36px !important;
+    border-radius: 8px !important;
+    border: 1px solid #DCE6F3 !important;
+    background: #FFFFFF !important;
+    font-size: 0.70rem !important;
+    font-weight: 600 !important;
+    padding-left: 22px !important;
+    padding-right: 4px !important;
+    color: #1E293B !important;
+}
+[data-theme="dark"] .st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
+    background: #111827 !important;
+    border-color: #1E2E4E !important;
+    color: #F8FAFC !important;
+}
+
+/* Mobile Hamburger Button */
+.st-key-m_hamburger_btn button {
+    min-width: 36px !important;
+    width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    border: 1px solid #DCE6F3 !important;
+    background: #FFFFFF !important;
+    color: #1E293B !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: none !important;
+}
+[data-theme="dark"] .st-key-m_hamburger_btn button {
+    background: #111827 !important;
+    border-color: #1E2E4E !important;
+    color: #F8FAFC !important;
+}
+.st-key-m_hamburger_btn button[kind="primary"] {
+    background: #EFF6FF !important;
+    border: 1.5px solid #3B82F6 !important;
+    color: #1D4ED8 !important;
+}
+[data-theme="dark"] .st-key-m_hamburger_btn button[kind="primary"] {
+    background: rgba(37, 99, 235, 0.22) !important;
+    border-color: #3B82F6 !important;
+    color: #60A5FA !important;
+}
+
+/* ── Mobile Drawer Card (Clean Navigation Only) ── */
+.st-key-dmx_mobile_drawer_card {
+    background: #FFFFFF !important;
+    border: 1.5px solid #E2E8F0 !important;
+    border-radius: 16px !important;
+    padding: 16px 14px !important;
+    margin-top: 10px !important;
+    box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12) !important;
+}
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card {
+    background: #111827 !important;
+    border-color: #1E2E4E !important;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5) !important;
+}
+.dmx-drawer-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #2563EB;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+}
+[data-theme="dark"] .dmx-drawer-header {
+    color: #60A5FA;
+    border-bottom-color: rgba(30, 46, 78, 0.7);
+}
+
+/* Mobile Drawer Clean Navigation Buttons */
+.st-key-dmx_mobile_drawer_card button {
+    height: 42px !important;
+    min-height: 42px !important;
+    border-radius: 10px !important;
+    font-size: 0.88rem !important;
+    font-weight: 600 !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    padding: 0 14px !important;
+    margin-bottom: 6px !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    background: #F8FAFC !important;
+    color: #1E293B !important;
+    transition: all 0.15s ease !important;
+}
+.st-key-dmx_mobile_drawer_card button:hover {
+    background: #EFF6FF !important;
+    border-color: #93C5FD !important;
+    color: #1D4ED8 !important;
+    transform: translateX(3px) !important;
+}
+.st-key-dmx_mobile_drawer_card button[kind="primary"] {
+    background: #2563EB !important;
+    border-color: #2563EB !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+}
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+    color: #F1F5F9 !important;
+}
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button:hover {
+    background: #2D3D58 !important;
+    border-color: #3B82F6 !important;
+    color: #93C5FD !important;
+}
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button[kind="primary"] {
+    background: #2563EB !important;
+    border-color: #2563EB !important;
+    color: #FFFFFF !important;
+}
+
+.dmx-drawer-footer-card {
+    margin-top: 14px;
+    padding: 12px;
+    background: rgba(37, 99, 235, 0.05);
+    border: 1px solid rgba(37, 99, 235, 0.15);
+    border-radius: 12px;
+    text-align: center;
+}
+[data-theme="dark"] .dmx-drawer-footer-card {
+    background: rgba(37, 99, 235, 0.10) !important;
+    border-color: rgba(37, 99, 235, 0.25) !important;
+}
+
+/* Collapse empty elements & zero-height iframe containers so they don't produce flex gaps */
+div[data-testid="stVerticalBlock"] > div.element-container:has(style:only-child),
+div[data-testid="stVerticalBlock"] > div.element-container:has(script:only-child),
+div[data-testid="stVerticalBlock"] > div.stElementContainer:has(style:only-child),
+div[data-testid="stVerticalBlock"] > div.stElementContainer:has(script:only-child),
+div[data-testid="stVerticalBlock"] > div.element-container:has(iframe[height="0"]),
+div[data-testid="stVerticalBlock"] > div.stElementContainer:has(iframe[height="0"]),
+div[data-testid="stVerticalBlock"] > div.element-container:has(iframe[style*="height: 0px"]),
+div[data-testid="stVerticalBlock"] > div.stElementContainer:has(iframe[style*="height: 0px"]),
+div[data-testid="stVerticalBlock"] > div.element-container:has(iframe[style*="height:0px"]),
+div[data-testid="stVerticalBlock"] > div.stElementContainer:has(iframe[style*="height:0px"]),
+div[data-testid="stVerticalBlock"] > div.stElementContainer:has(iframe[srcdoc*="localStorage"]),
+div[data-testid="stVerticalBlock"] > div.element-container:has(iframe[srcdoc*="localStorage"]),
+div[data-testid="stVerticalBlock"] > div.element-container:empty,
+div[data-testid="stVerticalBlock"] > div.stElementContainer:empty {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+}
+
+/* ── Responsive Visibility & Mobile NOT Fixed Breakpoints ── */
+@media (max-width: 1024px) {
+    .st-key-dmx_desktop_container { display: none !important; }
+    .st-key-dmx_mobile_container { display: block !important; }
+
+    /* Mobile Header is NOT fixed: scrolls naturally with page */
+    .st-key-dmx_master_header_card {
+        position: relative !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 2px 0 12px 0 !important;
+        border-radius: 14px !important;
+        padding: 8px 12px !important;
+        box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06) !important;
+    }
+    .stApp .main .block-container,
+    .stMainBlockContainer {
+        padding-top: 0.5rem !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    /* Mobile Stepper Horizontal Smooth Scroll */
+    .mm-stepper {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        gap: 6px !important;
+        padding: 8px 8px !important;
+        margin-bottom: 14px !important;
+        scrollbar-width: none !important;
+    }
+    .mm-stepper::-webkit-scrollbar {
+        display: none !important;
+    }
+    .mm-step-item {
+        flex: 0 0 auto !important;
+        min-width: max-content !important;
+        gap: 6px !important;
+    }
+    .mm-step-text-title {
+        display: inline-block !important;
+        font-size: 0.74rem !important;
+        white-space: nowrap !important;
+    }
+    .mm-step-arrow {
+        flex: 0 0 auto !important;
+        padding: 0 2px !important;
+        font-size: 0.8rem !important;
+    }
+}
+@media (min-width: 1025px) {
+    .st-key-dmx_desktop_container { display: block !important; }
+    .st-key-dmx_mobile_container,
+    .st-key-dmx_mobile_drawer_card { display: none !important; }
+    .stApp .main .block-container,
+    .stMainBlockContainer {
+        padding-top: 4.8rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+with st.container(key="dmx_master_header_card"):
+    # -------------------------------------------------------------
+    # 1. DESKTOP VIEW (Image 2 Design)
+    # -------------------------------------------------------------
+    with st.container(key="dmx_desktop_container"):
+        d_cols = st.columns([1.40, 1.30, 1.15, 1.25, 1.15, 1.45, 0.70, 1.20, 0.45, 0.75], vertical_alignment="center")
+
+        # Col 0: Brand Logo & Title
+        with d_cols[0]:
+            brand_img = f'<img src="{ICON_B64}" class="dmx-brand-icon" alt="DocMindX AI" />' if ICON_B64 else ""
+            st.markdown(f"""
+            <div class="dmx-brand-block">
+                {brand_img}
+                <div class="dmx-brand-text">
+                    <div class="dmx-brand-title">DocMindX <span style="color: #2563EB;">AI</span></div>
+                    <div class="dmx-brand-subtitle">{T.get("app_tagline", "Better Health. Brighter Tomorrow.")}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Col 1-6: Navigation Buttons with Unique Colored Material Icons
+        _nav_icons = [
+            ":material/home:",
+            ":material/description:",
+            ":material/location_on:",
+            ":material/folder:",
+            ":material/groups:",
+            ":material/info:"
+        ]
+        for idx, p_key in enumerate(panel_keys, start=1):
+            with d_cols[idx]:
+                with st.container(key=f"d_nav_{idx}"):
+                    is_active = (active_p == p_key)
+                    if st.button(
+                        panel_map[p_key],
+                        key=f"d_nav_btn_{idx}",
+                        icon=_nav_icons[idx - 1],
+                        type="primary" if is_active else "secondary",
+                        use_container_width=True
+                    ):
+                        st.session_state["active_panel"] = p_key
+                        st.rerun()
+
+        # Col 7: Language Selector with SVG Globe Icon
+        with d_cols[7]:
+            with st.container(key="d_lang_wrap"):
+                st.selectbox(
+                    "Language",
+                    options=LANG_OPTIONS,
+                    index=curr_lang_idx,
+                    key="d_top_lang_select",
+                    label_visibility="collapsed",
+                    on_change=sync_language,
+                    args=("d_top_lang_select",)
+                )
+
+        # Col 8: Light/Dark Mode Icon (Pure Moon in light mode, Sun in dark mode)
+        with d_cols[8]:
+            if st.button(
+                "",
+                key="d_theme_toggle_btn",
+            ):
+                st.session_state["dark_mode"] = not is_dark
+                st.rerun()
+
+        # Col 9: Profile Avatar 'Dv ▾' or 'Sign In' Button
+        with d_cols[9]:
+            if is_logged_in:
+                _pname = str(top_auth_user.get("full_name", "User")).strip() or "User"
+                _pemail = str(top_auth_user.get("email", ""))
+                _parts = _pname.split()
+                if len(_parts) >= 2:
+                    _ini = f"{_parts[0][0]}{_parts[1][0]}".title()
+                elif len(_pname) >= 2:
+                    _ini = f"{_pname[0].upper()}{_pname[1].lower()}"
+                else:
+                    _ini = "Dv"
+
+                if st.button(f"{_ini} ▾", key="top_profile_trigger", use_container_width=True, help=f"{_pname} account menu"):
+                    st.session_state["top_profile_open"] = not st.session_state.get("top_profile_open", False)
+                    st.rerun()
+
+                if st.session_state.get("top_profile_open", False):
+                    with st.container(key="top_profile_dropdown_box"):
+                        _is_adm   = auth_svc.is_admin_session(top_auth_user)
+                        _role_lbl = "ADMINISTRATOR" if _is_adm else "PATIENT"
+                        _rc       = "#DC2626" if _is_adm else "#2563EB"
+                        st.markdown(
+                            f'<div style="padding-bottom:9px;border-bottom:1px solid rgba(148,163,184,0.2);margin-bottom:8px;">'
+                            f'<div style="font-weight:800;font-size:0.88rem;color:var(--mm-text-primary);">{html.escape(_pname)}</div>'
+                            f'<div style="font-size:0.72rem;color:var(--mm-text-secondary);margin-top:2px;overflow-wrap:anywhere;">{html.escape(_pemail)}</div>'
+                            f'<span style="display:inline-block;margin-top:6px;font-size:0.65rem;font-weight:800;'
+                            f'padding:2px 8px;border-radius:99px;background:{_rc}18;color:{_rc};border:1px solid {_rc}40;">'
+                            f'{_role_lbl}</span></div>',
+                            unsafe_allow_html=True
+                        )
+                        if _is_adm:
+                            if st.button("Admin Console", key="d_dd_admin", use_container_width=True):
+                                st.session_state.update({"active_panel": "Admin Panel", "top_profile_open": False})
+                                st.rerun()
+                        else:
+                            if st.button("Profile", key="d_dd_profile", use_container_width=True):
+                                st.session_state.update({"active_panel": "Family Management", "top_profile_open": False, "family_settings_open": False})
+                                st.rerun()
+                            if st.button("Settings", key="d_dd_settings", use_container_width=True):
+                                st.session_state.update({"active_panel": "Family Management", "top_profile_open": False, "family_settings_open": True})
+                                st.rerun()
+                        if st.button("Sign Out", key="d_prof_logout", use_container_width=True):
+                            st.session_state["top_profile_open"] = False
+                            auth_ui.logout_user()
+                            st.rerun()
+            else:
+                if st.button(T.get("btn_signin", "Sign In"), key="top_auth_signin_btn", use_container_width=True):
+                    st.session_state["active_panel"] = "Account / Authentication"
+                    st.rerun()
+
+    # -------------------------------------------------------------
+    # 2. MOBILE VIEW (Image 3 Left Phone: Collapsed State)
+    # -------------------------------------------------------------
+    with st.container(key="dmx_mobile_container"):
+        m_cols = st.columns([2.35, 1.1, 0.55, 0.55], vertical_alignment="center")
+
+        with m_cols[0]:
+            _bi_m = f'<img src="{ICON_B64}" class="dmx-brand-icon" alt="DocMindX AI" />' if ICON_B64 else ""
+            st.markdown(
+                f'<div class="dmx-brand-block">'
+                f'{_bi_m}'
+                f'<div class="dmx-brand-text">'
+                f'<div class="dmx-brand-title">DocMindX <span style="color:#2563EB;">AI</span></div>'
+                f'<div class="dmx-brand-subtitle">{T.get("app_tagline", "Better Health. Brighter Tomorrow.")}</div>'
+                f'</div></div>',
+                unsafe_allow_html=True
+            )
+
+        with m_cols[1]:
+            with st.container(key="m_lang_wrap"):
+                st.selectbox(
+                    "Lang",
+                    options=LANG_OPTIONS,
+                    index=curr_lang_idx,
+                    key="m_top_lang_select",
+                    label_visibility="collapsed",
+                    on_change=sync_language,
+                    args=("m_top_lang_select",)
+                )
+
+        with m_cols[2]:
+            if st.button(
+                "",
+                key="m_theme_toggle_btn",
+            ):
+                st.session_state["dark_mode"] = not is_dark
+                st.rerun()
+
+        with m_cols[3]:
+            is_drawer_open = st.session_state.get("mobile_nav_open", False)
+            if st.button(
+                " ",
+                icon=":material/close:" if is_drawer_open else ":material/menu:",
+                key="m_hamburger_btn",
+                type="primary" if is_drawer_open else "secondary",
+                use_container_width=True,
+                help="Close navigation" if is_drawer_open else "Open navigation"
+            ):
+                st.session_state["mobile_nav_open"] = not is_drawer_open
+                st.rerun()
+
+    # -------------------------------------------------------------
+    # 3. MOBILE MENU DRAWER (Image 3 Right Phone: Expanded State)
+    # -------------------------------------------------------------
+    if st.session_state.get("mobile_nav_open", False):
+        with st.container(key="dmx_mobile_drawer_card"):
+            # Section A: Navigation
+            st.markdown("""
+            <div class="dmx-drawer-header">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="#2563EB"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                <span>{T.get("nav_heading", "Navigation")}</span>
+            </div>
+            """, unsafe_allow_html=True)
+
+            _m_nav_icons = [
+                ":material/home:",
+                ":material/description:",
+                ":material/location_on:",
+                ":material/folder:",
+                ":material/groups:",
+                ":material/info:"
+            ]
+            for m_idx, p_key in enumerate(panel_keys, start=1):
+                with st.container(key=f"m_nav_{m_idx}"):
+                    if st.button(
+                        panel_map[p_key],
+                        key=f"m_nav_btn_{m_idx}",
+                        icon=_m_nav_icons[m_idx - 1],
+                        type="primary" if active_p == p_key else "secondary",
+                        use_container_width=True
+                    ):
+                        st.session_state["active_panel"] = p_key
+                        st.session_state["mobile_nav_open"] = False
+                        st.rerun()
+
+
+
+            # Section D: Bottom Brand Footer Card
+            brand_img_drawer = f'<img src="{ICON_B64}" style="width: 36px; height: 36px; object-fit: contain;" alt="DocMindX AI" />' if ICON_B64 else ""
+            st.markdown(f"""
+            <div class="dmx-drawer-footer-card">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                    {brand_img_drawer}
+                    <div style="text-align: left;">
+                        <div style="font-size: 0.96rem; font-weight: 800; color: var(--mm-text-primary);">DocMindX <span style="color: #2563EB;">AI</span></div>
+                        <div style="font-size: 0.62rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("app_tagline", "Better Health. Brighter Tomorrow.")}</div>
+                    </div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Section E: User Profile / Auth Actions
+            if is_logged_in:
+                p_name = str(top_auth_user.get("full_name", "User"))
+                p_email = str(top_auth_user.get("email", ""))
+                st.markdown(f"""
+                <div style="margin-top: 10px; padding: 8px 12px; background: rgba(37,99,235,0.06); border-radius: 10px; display: flex; align-items: center; justify-content: space-between;">
+                    <div>
+                        <div style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-primary);">{html.escape(p_name)}</div>
+                        <div style="font-size: 0.68rem; color: var(--mm-text-secondary);">{html.escape(p_email)}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                if auth_svc.is_admin_session(top_auth_user):
+                    if st.button("Admin Console", key="m_dd_admin", use_container_width=True):
+                        st.session_state.update({"active_panel": "Admin Panel", "mobile_nav_open": False})
+                        st.rerun()
+                else:
+                    if st.button("Profile", key="m_nav_profile", use_container_width=True):
+                        st.session_state.update({"active_panel": "Family Management", "mobile_nav_open": False, "family_settings_open": False})
+                        st.rerun()
+                    if st.button("Settings", key="m_nav_settings", use_container_width=True):
+                        st.session_state.update({"active_panel": "Family Management", "mobile_nav_open": False, "family_settings_open": True})
+                        st.rerun()
+                if st.button("Sign Out", key="m_drawer_logout", use_container_width=True):
+                    st.session_state["mobile_nav_open"] = False
+                    auth_ui.logout_user()
+                    st.rerun()
+            else:
+                if st.button(T.get("btn_signin_register", "Sign In / Register"), key="m_drawer_signin", use_container_width=True):
+                    st.session_state["active_panel"] = "Account / Authentication"
+                    st.session_state["mobile_nav_open"] = False
+                    st.rerun()
+
+
 # ----------------- MAIN CONTENT AREA -----------------
 
 # ==============================================================================
@@ -914,7 +2282,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     # 1. Top Header Bar (Identical and consistent with Modules 2, 3, 4)
     assessment_icon_html = '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(37, 99, 235, 0.08); border: 1.5px solid #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25); flex-shrink: 0;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3v5a5.5 5.5 0 0 0 11 0V3"></path><path d="M10 13.5v3.5a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-1.5"></path><circle cx="17" cy="15.5" r="2.5"></circle></svg></div>'
     with st.container(key="mm_top_header_card_1"):
-        hdr_c1, hdr_c2, hdr_c3, hdr_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
+        hdr_c1, hdr_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
         with hdr_c1:
             title_p1 = T.get("p1_header_title", "AI Health & Symptom Assessment")
             sub_p1 = T.get("p1_header_subtitle", "Provide your symptoms and demographic details. Our clinical intelligence engine analyzes potential conditions and triages severity.")
@@ -929,27 +2297,13 @@ if st.session_state["active_panel"] == "Health Assessment":
             )
         with hdr_c2:
             safe_markdown(
-                f'<div style="display: flex; justify-content: center; align-items: center; height: 38px;">'
+                f'<div style="display: flex; justify-content: flex-end; align-items: center; height: 38px;">'
                 f'<span style="height: 36px; padding: 0 16px; border-radius: 20px; background: rgba(16, 185, 129, 0.10); border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-weight: 700; font-size: 0.80rem; display: inline-flex; align-items: center; gap: 8px;">'
                 f'<span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block;"></span>'
                 f'{T.get("ai_online", "AI System Online")}'
                 f'</span>'
                 f'</div>'
             )
-        with hdr_c3:
-            header_lang_1 = st.selectbox(
-                "Header Lang Selector",
-                options=LANG_OPTIONS,
-                key="hdr_lang_p1",
-                label_visibility="collapsed",
-                on_change=sync_language,
-                args=("hdr_lang_p1",)
-            )
-        with hdr_c4:
-            new_theme_p1 = theme_toggle_switch(is_dark=st.session_state.get("dark_mode", False), key="hdr_sun_moon_p1")
-            if new_theme_p1 != st.session_state.get("dark_mode", False):
-                st.session_state["dark_mode"] = new_theme_p1
-                st.rerun()
 
     # 2. Stepping Progress Bar with Horizontal Connecting Lines (Matching Image 2)
     s1_active = "active" if current_step == 1 else ("done" if current_step > 1 else "")
@@ -1010,7 +2364,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     if current_step == 1:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+            <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
                     <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1026,8 +2380,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 1 OF 4</span>
-                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">BASIC INFORMATION</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 1 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step1_sub", "BASIC INFORMATION")}</span>
                     </div>
                 </div>
             </div>
@@ -1188,9 +2542,9 @@ if st.session_state["active_panel"] == "Health Assessment":
         # Symptoms Search & Clinical Triage Card
         with st.container(key="symptoms_search_card", border=True):
             safe_markdown(f"""
-            <div class="mm-symptoms-card-header">
-                <div class="mm-symptoms-header-left">
-                    <div class="mm-symptoms-header-icon">
+            <div class="mm-symptoms-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
+                <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                             <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" fill="#2563EB"/>
                             <path d="M14 2V8H20" fill="#93C5FD"/>
@@ -1198,8 +2552,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                         </svg>
                     </div>
                     <div>
-                        <div class="mm-symptoms-header-title">{T.get("card_symptoms_title", "Clinical Symptoms")} <span style="color: #EF4444;">*</span></div>
-                        <div class="mm-symptoms-header-sub">{T.get("symptom_search_placeholder", "Search and add symptoms (e.g. fever, headache, cough)...")}</div>
+                        <div class="mm-symptoms-header-title" style="font-size: 1.25rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.25; margin: 0;">{T.get("card_symptoms_title", "Clinical Symptoms")} <span style="color: #EF4444;">*</span></div>
+                        <div class="mm-symptoms-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("symptom_search_placeholder", "Search and add symptoms (e.g. fever, headache, cough)...")}</div>
                     </div>
                 </div>
             </div>
@@ -1471,7 +2825,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     elif current_step == 2:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+            <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
                     <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #E0F2FE; border: 1.2px solid #BAE6FD; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1488,8 +2842,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 2 OF 4</span>
-                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">CLINICAL SYMPTOMS</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 2 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step2_sub", "CLINICAL SYMPTOMS")}</span>
                     </div>
                 </div>
             </div>
@@ -1567,7 +2921,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     elif current_step == 3:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+            <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
                     <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1584,8 +2938,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 3 OF 4</span>
-                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">MEDICAL HISTORY</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 3 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step3_sub", "MEDICAL HISTORY")}</span>
                     </div>
                 </div>
             </div>
@@ -1722,7 +3076,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     elif current_step == 4:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
-            <div class="mm-step-card-header" style="background: linear-gradient(135deg, rgba(37,99,235,0.06) 0%, rgba(59,130,246,0.02) 100%); border-bottom: 1.5px solid #BFDBFE; padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-radius: 16px 16px 0 0; margin: -16px -16px 16px -16px;">
+            <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
                     <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1738,8 +3092,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">STEP 4 OF 4</span>
-                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">ANALYSIS &amp; TRIAGE</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 4 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step4_sub", "ANALYSIS & TRIAGE")}</span>
                     </div>
                 </div>
             </div>
@@ -2851,7 +4205,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                             # Resolve medicine packaging / product image
                             med_img = med.get('image')
                             if not med_img or not isinstance(med_img, str) or not med_img.strip():
-                                from ai.utils.image_resolver import resolve_image
+                                from ai.utils.image_resolver import \
+                                    resolve_image
                                 med_img, _ = resolve_image("medicine", med.get('name', ''))
                                 med['image'] = med_img
                         
@@ -3064,7 +4419,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                             yt_link = y_item.get('youtube_url', f"https://www.youtube.com/results?search_query=how+to+do+{main_name}+yoga+tutorial")
                             y_img = y_item.get('image')
                             if not y_img or not isinstance(y_img, str) or not y_img.strip():
-                                from ai.utils.image_resolver import resolve_image
+                                from ai.utils.image_resolver import \
+                                    resolve_image
                                 y_img, _ = resolve_image("yoga", f"{main_name} {sans_raw}")
                                 y_item['image'] = y_img
                             fallback_yoga_img = "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=600&q=80"
@@ -3957,7 +5313,7 @@ if st.session_state["active_panel"] == "Health Assessment":
 elif st.session_state["active_panel"] == "Medical Report":
     report_icon_html = '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(37, 99, 235, 0.08); border: 1.5px solid #2563EB; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25); flex-shrink: 0;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 7v4"/><path d="M10 9h4"/></svg></div>'
     with st.container(key="mm_top_header_card_2"):
-        hdr2_c1, hdr2_c2, hdr2_c3, hdr2_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
+        hdr2_c1, hdr2_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
         with hdr2_c1:
             title_p2 = T.get("p2_header_title", "Medical Report & Prescription Analyzer")
             sub_p2 = T.get("p2_header_subtitle", "Automated laboratory reference interval comparison, layman explanations, and prescription guidance.")
@@ -3972,30 +5328,16 @@ elif st.session_state["active_panel"] == "Medical Report":
             )
         with hdr2_c2:
             safe_markdown(
-                f'<div style="display: flex; justify-content: center; align-items: center; height: 38px;">'
-                f'<span style="height: 36px; padding: 0 16px; border-radius: 20px; background: #E0F2FE; border: 1px solid #BAE6FD; color: #0284C7; font-weight: 700; font-size: 0.80rem; display: inline-flex; align-items: center; gap: 6px;">'
+                f'<div style="display: flex; justify-content: flex-end; align-items: center; height: 38px;">'
+                f'<span class="mm-ocr-ai-badge" style="height: 36px; padding: 0 16px; border-radius: 20px; background: var(--mm-ocr-badge-bg, #E0F2FE); border: 1px solid var(--mm-ocr-badge-border, #BAE6FD); color: var(--mm-ocr-badge-color, #0284C7); font-weight: 700; font-size: 0.80rem; display: inline-flex; align-items: center; gap: 6px;">'
                 f'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">'
                 f'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
                 f'<polyline points="14 2 14 8 20 8"/>'
                 f'</svg>'
-                f'OCR + CLINICAL AI'
+                f'{T.get("badge_ocr_ai", "OCR + CLINICAL AI")}'
                 f'</span>'
                 f'</div>'
             )
-        with hdr2_c3:
-            header_lang_2 = st.selectbox(
-                "Header Lang Selector 2",
-                options=LANG_OPTIONS,
-                key="hdr_lang_p2",
-                label_visibility="collapsed",
-                on_change=sync_language,
-                args=("hdr_lang_p2",)
-            )
-        with hdr2_c4:
-            new_theme_p2 = theme_toggle_switch(is_dark=st.session_state.get("dark_mode", False), key="hdr_sun_moon_p2")
-            if new_theme_p2 != st.session_state.get("dark_mode", False):
-                st.session_state["dark_mode"] = new_theme_p2
-                st.rerun()
 
     if "p2_step" not in st.session_state:
         st.session_state["p2_step"] = 1
@@ -4006,7 +5348,25 @@ elif st.session_state["active_panel"] == "Medical Report":
     s2_cls = "active" if p2_cur_step == 2 else ("done" if p2_cur_step > 2 else "")
     s3_cls = "active" if p2_cur_step == 3 else ""
     st.markdown(f"""
-    <div class="mm-stepper">
+    <style>
+    .mm-report-stepper > .mm-step-arrow {{
+        flex: 0 0 70px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        padding: 0;
+    }}
+    @media (max-width: 767px) {{
+        .mm-report-stepper > .mm-step-arrow {{
+            flex: 0 1 14px;
+            height: 25px;
+            font-size: 0.68rem;
+        }}
+    }}
+    </style>
+    <div class="mm-stepper mm-report-stepper">
         <div class="mm-step-item">
             <div class="mm-step-num {s1_cls}">1</div>
             <div>
@@ -4134,6 +5494,19 @@ elif st.session_state["active_panel"] == "Medical Report":
             box-sizing: border-box !important;
             resize: none !important;
         }
+        .st-key-med_report_upload_card,
+        .st-key-med_report_ocr_card {
+            height: 100% !important;
+            min-height: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        div[data-testid="stHorizontalBlock"] > div:has(> .st-key-med_report_upload_card),
+        div[data-testid="stHorizontalBlock"] > div:has(> .st-key-med_report_ocr_card) {
+            display: flex !important;
+            align-items: stretch !important;
+            height: 100% !important;
+        }
         </style>
         """, unsafe_allow_html=True)
         col_p2_1, col_p2_2 = st.columns([1, 1], gap="medium")
@@ -4212,8 +5585,8 @@ elif st.session_state["active_panel"] == "Medical Report":
                         {'DOCUMENT LOADED' if uploaded_doc else 'AWAITING FILE'}
                     </span>
                 </div>
-                <div style="font-size: 0.78rem; color: #1D4ED8; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <div class="mm-ocr-info-banner" style="font-size: 0.78rem; color: var(--mm-info-banner-color, #1D4ED8); background: var(--mm-info-banner-bg, #EFF6FF); border: 1px solid var(--mm-info-banner-border, #BFDBFE); border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <line x1="12" y1="16" x2="12" y2="12"/>
                         <line x1="12" y1="8" x2="12.01" y2="8"/>
@@ -4840,7 +6213,7 @@ elif st.session_state["active_panel"] == "Medical Report":
 elif st.session_state["active_panel"] == "Nearby Healthcare":
     gis_icon_html = '<img src="https://cdn-icons-png.flaticon.com/512/4002/4002972.png" style="width: 52px; height: 52px; border-radius: 14px; object-fit: contain; padding: 5px; background: rgba(2,132,199,0.08); box-shadow: 0 4px 14px rgba(2,132,199,0.35); border: 1.5px solid #0284C7;" alt="Healthcare Finder Icon"/>'
     with st.container(key="mm_top_header_card_3"):
-        hdr3_c1, hdr3_c2, hdr3_c3, hdr3_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
+        hdr3_c1, hdr3_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
         with hdr3_c1:
             title_p3 = T.get("p3_header_title", "Nearby Healthcare & Emergency Finder")
             sub_p3 = T.get("p3_header_subtitle", "Locate verified 24/7 trauma centers, hospitals, clinics, and pharmacies with live routing.")
@@ -4855,27 +6228,13 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
             )
         with hdr3_c2:
             safe_markdown(
-                f'<div style="display: flex; justify-content: center; align-items: center; height: 38px;">'
+                f'<div style="display: flex; justify-content: flex-end; align-items: center; height: 38px;">'
                 f'<span class="mm-gis-engine-badge">'
                 f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>'
                 f'{T.get("p3_gis_badge", "LIVE GIS HEALTHCARE ENGINE")}'
                 f'</span>'
                 f'</div>'
             )
-        with hdr3_c3:
-            header_lang_3 = st.selectbox(
-                "Header Lang Selector 3",
-                options=LANG_OPTIONS,
-                key="hdr_lang_p3",
-                label_visibility="collapsed",
-                on_change=sync_language,
-                args=("hdr_lang_p3",)
-            )
-        with hdr3_c4:
-            new_theme_p3 = theme_toggle_switch(is_dark=st.session_state.get("dark_mode", False), key="hdr_sun_moon_p3")
-            if new_theme_p3 != st.session_state.get("dark_mode", False):
-                st.session_state["dark_mode"] = new_theme_p3
-                st.rerun()
 
     gis_c1, gis_c2, gis_c3 = st.columns([1.1, 1.1, 1.1])
 
@@ -5269,7 +6628,7 @@ elif st.session_state["active_panel"] == "Health Records":
     is_user_auth = bool(curr_auth_user and auth_ui.is_authenticated())
 
     with st.container(key="mm_top_header_card_4"):
-        hdr4_c1, hdr4_c2, hdr4_c3, hdr4_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
+        hdr4_c1, hdr4_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
         with hdr4_c1:
             title_p4 = T.get("p4_header_title", "Health Records & Clinical Vault")
             sub_p4 = T.get("p4_header_subtitle", "Cryptographically secured medical vault, family longitudinal tracking, and diagnostic archive.")
@@ -5301,21 +6660,7 @@ elif st.session_state["active_panel"] == "Health Records":
                     'GUEST SESSION MODE'
                     '</span>'
                 )
-            st.markdown(f"<div style='display: flex; justify-content: center; align-items: center; height: 38px;'>{badge_html}</div>", unsafe_allow_html=True)
-        with hdr4_c3:
-            st.selectbox(
-                "Header Lang Selector 4",
-                options=LANG_OPTIONS,
-                key="hdr_lang_p4",
-                label_visibility="collapsed",
-                on_change=sync_language,
-                args=("hdr_lang_p4",)
-            )
-        with hdr4_c4:
-            new_theme_p4 = theme_toggle_switch(is_dark=st.session_state.get("dark_mode", False), key="hdr_sun_moon_p4")
-            if new_theme_p4 != st.session_state.get("dark_mode", False):
-                st.session_state["dark_mode"] = new_theme_p4
-                st.rerun()
+            st.markdown(f"<div style='display: flex; justify-content: flex-end; align-items: center; height: 38px;'>{badge_html}</div>", unsafe_allow_html=True)
 
     # Reusable Clinical Record Card Renderer
     def render_clinical_record_view(scan: dict, idx: int, is_authenticated: bool = True):
@@ -5909,13 +7254,13 @@ elif st.session_state["active_panel"] == "Health Records":
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
 
 
-elif st.session_state["active_panel"] == "About DocMindX AI":
+elif st.session_state["active_panel"] == "About":
     about_icon_b64 = get_base64_image(FAVICON_PATH)
     about_icon_html = f'<img src="{about_icon_b64}" style="width: 52px; height: 52px; border-radius: 14px; object-fit: contain; padding: 4px; background: rgba(245,158,11,0.08); box-shadow: 0 4px 14px rgba(245,158,11,0.35); border: 1.5px solid #F59E0B;" alt="DocMindX Brand Icon"/>' if about_icon_b64 else '<img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" style="width: 52px; height: 52px; border-radius: 14px; object-fit: contain; padding: 5px; background: rgba(245,158,11,0.08); box-shadow: 0 4px 14px rgba(245,158,11,0.35); border: 1.5px solid #F59E0B;" alt="DocMindX Brand Icon"/>'
     with st.container(key="mm_top_header_card_5"):
-        hdr5_c1, hdr5_c2, hdr5_c3, hdr5_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
+        hdr5_c1, hdr5_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
         with hdr5_c1:
-            title_p5 = T.get("p5_header_title", "About DocMindX AI")
+            title_p5 = T.get("p5_header_title", "About")
             sub_p5 = T.get("p5_header_subtitle", "Architecture, system intelligence, clinical datasets, and development credits.")
             st.markdown(
                 f'<div style="display: flex; align-items: center; gap: 16px;">'
@@ -5928,23 +7273,9 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
                 unsafe_allow_html=True
             )
         with hdr5_c2:
-            st.markdown("<div style='display: flex; justify-content: center; align-items: center; height: 38px;'><span class='mm-badge mm-badge-success' style='height: 38px; line-height: 38px; padding: 0 16px; display: inline-flex; align-items: center;'>V2.0 PRODUCTION</span></div>", unsafe_allow_html=True)
-        with hdr5_c3:
-            header_lang_5 = st.selectbox(
-                "Header Lang Selector 5",
-                options=LANG_OPTIONS,
-                key="hdr_lang_p5",
-                label_visibility="collapsed",
-                on_change=sync_language,
-                args=("hdr_lang_p5",)
-            )
-        with hdr5_c4:
-            new_theme_p5 = theme_toggle_switch(is_dark=st.session_state.get("dark_mode", False), key="hdr_sun_moon_p5")
-            if new_theme_p5 != st.session_state.get("dark_mode", False):
-                st.session_state["dark_mode"] = new_theme_p5
-                st.rerun()
+            st.markdown("<div style='display: flex; justify-content: flex-end; align-items: center; height: 38px;'><span class='mm-badge mm-badge-success' style='height: 38px; line-height: 38px; padding: 0 16px; display: inline-flex; align-items: center;'>V2.0 PRODUCTION</span></div>", unsafe_allow_html=True)
 
-    # Localized Content Dictionary for About DocMindX AI (En / Hi / Gu)
+    # Localized Content Dictionary for About (En / Hi / Gu)
     ABOUT_TEXT = {
         "en": {
             "creator_badge": "Founder, Architect & Creator",
@@ -6260,7 +7591,17 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
         }
     }
     
-    A = ABOUT_TEXT.get(lang_code, ABOUT_TEXT["en"])
+    A = ABOUT_TEXT.get(lang_code)
+    if not A:
+        _about_file = os.path.join(os.path.dirname(__file__), "translations", f"about_{lang_code}.json")
+        if os.path.exists(_about_file):
+            try:
+                with open(_about_file, "r", encoding="utf-8") as _af:
+                    A = json.load(_af)
+            except Exception:
+                A = ABOUT_TEXT["en"]
+        else:
+            A = ABOUT_TEXT["en"]
 
     # Multilingual labels for badges, tooltips and callout boxes
     ABOUT_LABELS = {
@@ -6422,7 +7763,7 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
     <div class="mm-card" style="border: 1px solid var(--mm-border-color); border-radius: 16px; padding: 22px 24px; margin-bottom: 18px; background: var(--mm-card-bg); box-shadow: 0 4px 20px rgba(0,0,0,0.03);">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
             <div style="display: flex; align-items: flex-start; gap: 16px; flex: 1 1 450px;">
-                <div style="width: 52px; height: 52px; border-radius: 14px; background: #EFF6FF; border: 1.5px solid #DBEAFE; display: flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,0.12);">
+                <div class="mm-creator-avatar" style="width: 52px; height: 52px; border-radius: 14px; background: var(--mm-creator-avatar-bg, #EFF6FF); border: 1.5px solid var(--mm-creator-avatar-border, #DBEAFE); display: flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37,99,235,0.12);">
                     <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z"/></svg>
                 </div>
                 <div>
@@ -7593,10 +8934,10 @@ elif st.session_state["active_panel"] == "About DocMindX AI":
 # ==============================================================================
 # MODULE 6: NATIONAL HEALTH RESOURCE COMMAND CENTER (HACKATHON TRACK)
 # ==============================================================================
-elif st.session_state["active_panel"] == "National Command Center":
+elif st.session_state["active_panel"] == "National Command":
     cc_icon_html = '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(16, 185, 129, 0.08); border: 1.5px solid #10B981; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25); flex-shrink: 0;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>'
     with st.container(key="mm_top_header_card_6"):
-        hdr6_c1, hdr6_c2, hdr6_c3, hdr6_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
+        hdr6_c1, hdr6_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
         with hdr6_c1:
             title_p6 = T.get("p6_header_title", "National Health Resource Command Center")
             sub_p6 = T.get("p6_header_subtitle", "Data-driven intelligence platform for public health supply chains, bed capacity & cross-district redistribution.")
@@ -7610,21 +8951,7 @@ elif st.session_state["active_panel"] == "National Command Center":
                 f'</div>'
             )
         with hdr6_c2:
-            st.markdown(f"<div style='display: flex; justify-content: center; align-items: center; height: 38px;'><span class='mm-badge mm-badge-brand' style='height: 38px; line-height: 38px; padding: 0 16px; display: inline-flex; align-items: center;'>{T.get('p6_badge', 'OFFICIAL DATA INTEGRATED')}</span></div>", unsafe_allow_html=True)
-        with hdr6_c3:
-            header_lang_6 = st.selectbox(
-                "Header Lang Selector 6",
-                options=LANG_OPTIONS,
-                key="hdr_lang_p6",
-                label_visibility="collapsed",
-                on_change=sync_language,
-                args=("hdr_lang_p6",)
-            )
-        with hdr6_c4:
-            new_theme_p6 = theme_toggle_switch(is_dark=st.session_state.get("dark_mode", False), key="hdr_sun_moon_p6")
-            if new_theme_p6 != st.session_state.get("dark_mode", False):
-                st.session_state["dark_mode"] = new_theme_p6
-                st.rerun()
+            st.markdown(f"<div style='display: flex; justify-content: flex-end; align-items: center; height: 38px;'><span class='mm-badge mm-badge-brand' style='height: 38px; line-height: 38px; padding: 0 16px; display: inline-flex; align-items: center;'>{T.get('p6_badge', 'OFFICIAL DATA INTEGRATED')}</span></div>", unsafe_allow_html=True)
 
     render_command_center_dashboard(lang_code=lang_code, is_dark=st.session_state.get("dark_mode", False))
     st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
@@ -7751,7 +9078,7 @@ div.st-key-floating_chat_pill {
     border: none !important;
     filter: drop-shadow(0 0 12px rgba(37, 99, 235, 0.85)) drop-shadow(0 0 24px rgba(6, 182, 212, 0.55)) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45)) !important;
     cursor: pointer !important;
-    transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease !important;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -7808,7 +9135,7 @@ div.st-key-floating_chat_pill {
     background: rgba(15, 23, 42, 0.28) !important;
     backdrop-filter: blur(2px) !important;
     cursor: pointer !important;
-    animation: mmBackdropFade 0.22s ease-out forwards !important;
+    animation: mmBackdropFade 0.16s ease-out forwards !important;
 }
 
 @keyframes mmBackdropFade {
@@ -7819,153 +9146,250 @@ div.st-key-floating_chat_pill {
 @keyframes mmDrawerSlideUp {
     0% {
         opacity: 0;
-        transform: translateY(24px) scale(0.95);
+        transform: translateY(14px) scale(0.98);
     }
     100% {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
 }
+@keyframes mmDrawerSlideDown {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+    }
+}
+</style>
+""", unsafe_allow_html=True)
 
-/* Floating AI Assistant Drawer Window */
+# Dynamic Floating AI Assistant Drawer Styles
+_drw_bg = "#0B132B" if is_dark else "#FFFFFF"
+_drw_border = "#1E293B" if is_dark else "rgba(226, 232, 240, 0.95)"
+_drw_hdr_bg = "linear-gradient(135deg, #071E3D 0%, #0F3460 50%, #1A56DB 100%)" if is_dark else "linear-gradient(135deg, #0A58CA 0%, #1D4ED8 50%, #2563EB 100%)"
+_drw_btn_bg = "#1E293B" if is_dark else "#FFFFFF"
+_drw_btn_border = "#334155" if is_dark else "rgba(255, 255, 255, 0.8)"
+_drw_btn_color = "#F8FAFC" if is_dark else "#0F172A"
+_ctx_bg = "rgba(14, 165, 233, 0.12)" if is_dark else "rgba(224, 242, 254, 0.7)"
+_ctx_border = "rgba(14, 165, 233, 0.3)" if is_dark else "#BAE6FD"
+_ctx_icon_bg = "rgba(14, 165, 233, 0.22)" if is_dark else "#E0F2FE"
+_ctx_title = "#38BDF8" if is_dark else "#0284C7"
+_ctx_val = "#7DD3FC" if is_dark else "#0369A1"
+_grt_bg = "#141D2E" if is_dark else "#FFFFFF"
+_grt_border = "#1E293B" if is_dark else "#E2E8F0"
+_grt_title = "#F8FAFC" if is_dark else "#0F172A"
+_grt_sub = "#94A3B8" if is_dark else "#64748B"
+_sec_title = "#F8FAFC" if is_dark else "#0F172A"
+_sec_badge_bg = "rgba(37, 99, 235, 0.20)" if is_dark else "#EFF6FF"
+_sec_badge_border = "rgba(37, 99, 235, 0.45)" if is_dark else "#DBEAFE"
+_sec_badge_color = "#60A5FA" if is_dark else "#2563EB"
+
+st.markdown(f"""
+<style>
 /* Floating AI Assistant Drawer Window */
 .st-key-slide_chat_drawer,
 div.st-key-slide_chat_drawer,
-div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {
+div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
     position: fixed !important;
-    bottom: 74px !important;
-    right: 22px !important;
-    width: 440px !important;
-    max-width: calc(100vw - 28px) !important;
+    bottom: 58px !important;
+    right: 18px !important;
+    width: 540px !important;
+    max-width: calc(100vw - 24px) !important;
     height: auto !important;
-    max-height: calc(100vh - 84px) !important;
-    background: #FFFFFF !important;
-    border: 1.2px solid rgba(226, 232, 240, 0.95) !important;
-    border-radius: 24px !important;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22), 0 0 1px rgba(0, 0, 0, 0.08) !important;
+    max-height: calc(100vh - 72px) !important;
+    background: {_drw_bg} !important;
+    background-color: {_drw_bg} !important;
+    border: 1.2px solid {_drw_border} !important;
+    border-radius: 20px !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), 0 0 1px rgba(0, 0, 0, 0.08) !important;
     z-index: 999999 !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    animation: mmDrawerSlideUp 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+    animation: mmDrawerSlideUp 0.16s cubic-bezier(0.16, 1, 0.3, 1) both !important;
     padding: 0 0 10px 0 !important;
-}
+}}
 
-/* Vibrant Blue Gradient Header matching Image 2 */
-.st-key-popup_unified_header {
-    background: linear-gradient(135deg, #0A58CA 0%, #1D4ED8 50%, #2563EB 100%) !important;
-    padding: 14px 16px !important;
-    border-radius: 23px 23px 0 0 !important;
+@media (max-width: 560px) {{
+    .st-key-slide_chat_drawer,
+    div.st-key-slide_chat_drawer,
+    div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
+        right: 8px !important;
+        left: 8px !important;
+        bottom: 56px !important;
+        width: auto !important;
+        max-width: calc(100vw - 16px) !important;
+        max-height: calc(100vh - 66px) !important;
+        border-radius: 18px !important;
+    }}
+}}
+
+/* Header Banner */
+.st-key-popup_unified_header {{
+    background: {_drw_hdr_bg} !important;
+    padding: 12px 16px !important;
+    border-radius: 19px 19px 0 0 !important;
     margin: 0 !important;
-}
+}}
 
-/* Round White Header Close & Refresh Buttons */
+/* Square Rounded Header Close & Refresh Buttons */
 .st-key-drawer_close_x_btn button,
 .st-key-drawer_clear_chat_btn button,
 div[class*="st-key-drawer_close_x_btn"] button,
-div[class*="st-key-drawer_clear_chat_btn"] button {
+div[class*="st-key-drawer_clear_chat_btn"] button {{
     height: 36px !important;
     width: 36px !important;
     min-height: 36px !important;
     max-height: 36px !important;
     min-width: 36px !important;
     padding: 0 !important;
-    border-radius: 50% !important;
-    background: #FFFFFF !important;
-    border: 1px solid rgba(255, 255, 255, 0.6) !important;
-    color: #1E293B !important;
-    font-size: 1.05rem !important;
+    border-radius: 10px !important;
+    background: {_drw_btn_bg} !important;
+    border: 1px solid {_drw_btn_border} !important;
+    color: {_drw_btn_color} !important;
+    font-size: 0.90rem !important;
     font-weight: 700 !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
     margin: 0 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.14) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
     transition: all 0.18s ease !important;
-}
+}}
+.st-key-drawer_close_x_btn button [data-testid="stIconMaterial"],
+.st-key-drawer_clear_chat_btn button [data-testid="stIconMaterial"] {{
+    color: {_drw_btn_color} !important;
+    font-size: 20px !important;
+}}
 .st-key-drawer_close_x_btn button:hover,
-.st-key-drawer_clear_chat_btn button:hover {
-    background: #F8FAFC !important;
-    transform: scale(1.08) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.20) !important;
-}
-.st-key-drawer_clear_chat_btn button:hover {
-    transform: rotate(-180deg) scale(1.08) !important;
-    transition: transform 0.35s ease !important;
-}
+.st-key-drawer_clear_chat_btn button:hover {{
+    transform: scale(1.05) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18) !important;
+}}
 
 /* Active Context Banner */
-.mm-chat-context-card {
-    background: #F0F9FF;
-    border-bottom: 1px solid #BAE6FD;
-    padding: 9px 16px;
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    font-size: 0.78rem;
-}
-.mm-chat-context-icon {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    background: #E0F2FE;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-.mm-chat-context-title {
-    font-weight: 800;
-    color: #0284C7;
-    margin-right: 4px;
-}
-.mm-chat-context-val {
-    color: #0369A1;
-    font-weight: 600;
-}
+.mm-chat-context-card {{
+    background: {_ctx_bg} !important;
+    border: 1px solid {_ctx_border} !important;
+    border-radius: 12px !important;
+    margin: 10px 14px 4px 14px !important;
+    padding: 9px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-size: 0.80rem !important;
+}}
+.mm-chat-context-icon {{
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 7px !important;
+    background: {_ctx_icon_bg} !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}}
+.mm-chat-context-title {{
+    font-weight: 800 !important;
+    color: {_ctx_title} !important;
+    margin-right: 5px !important;
+}}
+.mm-chat-context-val {{
+    color: {_ctx_val} !important;
+    font-weight: 700 !important;
+}}
 
-/* Greeting Card */
-.mm-chat-greeting-wrap {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin: 6px 0 14px 0;
-}
-.mm-chat-avatar {
-    width: 38px;
-    height: 38px;
-    min-width: 38px;
-    border-radius: 50%;
-    background: #0B1930;
-    border: 2px solid #0284C7;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 3px 10px rgba(2, 132, 199, 0.28);
-    flex-shrink: 0;
-}
-.mm-chat-greeting-card {
-    background: #F8FAFC;
-    border: 1.2px solid #E2E8F0;
-    border-radius: 18px;
-    padding: 12px 16px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.02);
-    flex: 1;
-}
-.mm-chat-greeting-title {
-    font-size: 0.92rem;
-    font-weight: 800;
-    color: #0F172A;
-    line-height: 1.3;
-    margin-bottom: 3px;
-}
-.mm-chat-greeting-sub {
-    font-size: 0.80rem;
-    color: #64748B;
-    font-weight: 500;
-}
+/* Greeting Card Speech Bubble */
+.mm-chat-greeting-wrap {{
+    display: flex !important;
+    gap: 12px !important;
+    align-items: flex-start !important;
+    margin: 6px 0 14px 0 !important;
+}}
+.mm-chat-avatar {{
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    border-radius: 50% !important;
+    background: #0B1E3D !important;
+    border: 2px solid #06B6D4 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 3px 10px rgba(6, 182, 212, 0.28) !important;
+    margin-top: 2px !important;
+}}
+.mm-chat-greeting-card {{
+    position: relative !important;
+    background: {_grt_bg} !important;
+    border: 1.2px solid {_grt_border} !important;
+    border-radius: 18px !important;
+    padding: 14px 18px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+    flex: 1 !important;
+}}
+.mm-chat-greeting-card::before {{
+    content: '' !important;
+    position: absolute !important;
+    left: -7px !important;
+    top: 16px !important;
+    width: 12px !important;
+    height: 12px !important;
+    background: {_grt_bg} !important;
+    border-left: 1.2px solid {_grt_border} !important;
+    border-bottom: 1.2px solid {_grt_border} !important;
+    transform: rotate(45deg) !important;
+}}
+.mm-chat-greeting-title {{
+    font-size: 0.94rem !important;
+    font-weight: 800 !important;
+    color: {_grt_title} !important;
+    line-height: 1.35 !important;
+    margin-bottom: 4px !important;
+}}
+.mm-chat-greeting-sub {{
+    font-size: 0.82rem !important;
+    color: {_grt_sub} !important;
+    font-weight: 500 !important;
+}}
+.mm-chat-section-header {{
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin: 12px 0 10px 0 !important;
+}}
+.mm-chat-section-title {{
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-size: 0.98rem !important;
+    font-weight: 800 !important;
+    color: {_sec_title} !important;
+    letter-spacing: -0.2px !important;
+}}
+.mm-chat-section-badge {{
+    background: {_sec_badge_bg} !important;
+    border: 1px solid {_sec_badge_border} !important;
+    border-radius: 20px !important;
+    padding: 4px 12px !important;
+    font-size: 0.70rem !important;
+    color: {_sec_badge_color} !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+}}
+</style>
+""", unsafe_allow_html=True)
 
+st.markdown("""
+<style>
 /* Quick Actions Section Header */
 .mm-chat-section-header {
     display: flex;
@@ -8160,50 +9584,79 @@ div[class*="st-key-drawer_clear_chat_btn"] button {
 /* Input Bar matching Image 2 */
 div[class*="st-key-slide_chat_form"] form,
 .st-key-slide_chat_form [data-testid="stForm"] {
-    border: 1.5px solid #E2E8F0 !important;
-    border-radius: 9999px !important;
-    padding: 3px 6px 3px 16px !important;
-    background: #FFFFFF !important;
+    border: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
     margin: 4px 12px 2px 12px !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
-    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    transition: none !important;
+}
+div[class*="st-key-slide_chat_form"],
+div[class*="st-key-slide_chat_form"] > div,
+div[class*="st-key-slide_chat_form"] [data-testid="stForm"],
+div[class*="st-key-slide_chat_form"] [data-testid="stVerticalBlockBorderWrapper"] {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
 }
 div[class*="st-key-slide_chat_form"] form:focus-within,
 .st-key-slide_chat_form [data-testid="stForm"]:focus-within {
-    border-color: #2563EB !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14) !important;
-}
-div[class*="st-key-slide_chat_form"] input {
     border: none !important;
     box-shadow: none !important;
-    background: transparent !important;
-    padding: 6px 0 !important;
-    font-size: 0.84rem !important;
-    color: #0F172A !important;
 }
-div[class*="st-key-slide_chat_form"] input::placeholder {
-    color: #94A3B8 !important;
+div[class*="st-key-slide_chat_form"] input,
+.st-key-slide_chat_form input {
+    border: 1.2px solid {_drw_btn_border} !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    background: {_grt_bg} !important;
+    padding: 9px 14px !important;
+    font-size: 0.85rem !important;
+    color: {_grt_title} !important;
+    -webkit-text-fill-color: {_grt_title} !important;
+    height: 42px !important;
 }
-div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button {
-    width: 38px !important;
-    height: 38px !important;
-    min-width: 38px !important;
-    min-height: 38px !important;
-    border-radius: 50% !important;
-    background: #0066FF !important;
-    border: none !important;
+div[class*="st-key-slide_chat_form"] input::placeholder,
+.st-key-slide_chat_form input::placeholder {
+    color: {_grt_sub} !important;
+    -webkit-text-fill-color: {_grt_sub} !important;
+}
+div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button,
+div[class*="st-key-slide_chat_form"] button,
+.st-key-slide_chat_form button {
+    width: 48px !important;
+    height: 42px !important;
+    min-width: 48px !important;
+    min-height: 42px !important;
+    border-radius: 12px !important;
+    background: #2563EB !important;
+    background-color: #2563EB !important;
+    border: 1px solid #3B82F6 !important;
     color: #FFFFFF !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
     cursor: pointer !important;
-    box-shadow: 0 4px 12px rgba(0, 102, 255, 0.4) !important;
-    transition: all 0.18s ease !important;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.45) !important;
+    transition: all 0.16s ease !important;
 }
-div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:hover {
-    background: #0052CC !important;
-    transform: scale(1.08) !important;
+div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:hover,
+div[class*="st-key-slide_chat_form"] button:hover,
+.st-key-slide_chat_form button:hover {
+    background: #1D4ED8 !important;
+    background-color: #1D4ED8 !important;
+    border-color: #60A5FA !important;
+    transform: scale(1.05) !important;
+}
+div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button [data-testid="stIconMaterial"],
+div[class*="st-key-slide_chat_form"] button [data-testid="stIconMaterial"],
+.st-key-slide_chat_form button [data-testid="stIconMaterial"] {
+    font-size: 20px !important;
+    color: #FFFFFF !important;
+    fill: #FFFFFF !important;
 }
 
 /* Disclaimer below input */
@@ -8220,6 +9673,63 @@ div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:h
     box-sizing: border-box !important;
     margin: 0 !important;
     background: transparent !important;
+}
+
+/* Stable assistant message typography and readable Markdown tables. */
+.st-key-slide_chat_drawer .mm-ai-chat-bubble,
+.st-key-slide_chat_drawer .mm-ai-chat-bubble * {
+    font-size: 0.82rem !important;
+    line-height: 1.45 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+.st-key-slide_chat_drawer .mm-ai-chat-bubble h1,
+.st-key-slide_chat_drawer .mm-ai-chat-bubble h2,
+.st-key-slide_chat_drawer .mm-ai-chat-bubble h3,
+.st-key-slide_chat_drawer .mm-ai-chat-bubble h4 {
+    font-size: 0.88rem !important;
+    margin: 8px 0 4px !important;
+}
+.st-key-slide_chat_drawer .mm-ai-chat-bubble p {
+    margin: 0 0 6px !important;
+}
+.st-key-slide_chat_drawer .mm-ai-chat-bubble ul,
+.st-key-slide_chat_drawer .mm-ai-chat-bubble ol {
+    margin: 4px 0 7px 18px !important;
+    padding: 0 !important;
+}
+.st-key-slide_chat_drawer .mm-ai-chat-bubble table {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    border-collapse: collapse !important;
+    font-size: 0.72rem !important;
+    margin: 8px 0 !important;
+}
+.st-key-slide_chat_drawer .mm-ai-chat-bubble th,
+.st-key-slide_chat_drawer .mm-ai-chat-bubble td {
+    min-width: 78px !important;
+    padding: 5px 7px !important;
+    border: 1px solid #CBD5E1 !important;
+    text-align: left !important;
+    vertical-align: top !important;
+    white-space: normal !important;
+    word-break: normal !important;
+}
+.st-key-slide_chat_drawer .mm-ai-chat-bubble th {
+    background: #EFF6FF !important;
+    color: #1E40AF !important;
+    font-weight: 700 !important;
+}
+[data-theme="dark"] .st-key-slide_chat_drawer .mm-ai-chat-bubble th,
+[data-dark-mode="true"] .st-key-slide_chat_drawer .mm-ai-chat-bubble th {
+    background: #1E3A5F !important;
+    color: #DBEAFE !important;
+}
+[data-theme="dark"] .st-key-slide_chat_drawer .mm-ai-chat-bubble td,
+[data-dark-mode="true"] .st-key-slide_chat_drawer .mm-ai-chat-bubble td {
+    border-color: #334155 !important;
 }
 
 /* Visible Action Buttons Container */
@@ -8338,11 +9848,13 @@ div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:h
 }
 [data-theme="dark"] div[class*="st-key-slide_chat_form"] form,
 [data-theme="dark"] .st-key-slide_chat_form [data-testid="stForm"] {
-    background: #141D2E !important;
-    border-color: #1E293B !important;
+    background: transparent !important;
+    border: none !important;
 }
 [data-theme="dark"] div[class*="st-key-slide_chat_form"] input {
     color: #F8FAFC !important;
+    background: #141D2E !important;
+    border-color: #1E293B !important;
 }
 [data-theme="dark"] div[class*="st-key-slide_chat_form"] input::placeholder {
     color: #64748B !important;
@@ -8356,18 +9868,41 @@ div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:h
     gap: 8px !important;
     margin-bottom: 8px !important;
 }
+.st-key-slide_chat_drawer [data-testid="stVerticalBlockBorderWrapper"] {
+    scroll-padding-top: 12px !important;
+}
+.st-key-slide_chat_drawer [data-testid="stVerticalBlockBorderWrapper"] > div {
+    scroll-padding-top: 12px !important;
+}
+.st-key-slide_chat_drawer .st-key-floating_chat_content {
+    padding-top: 8px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+}
+.st-key-slide_chat_drawer .st-key-floating_chat_content [data-testid="stHorizontalBlock"] {
+    margin-top: 0 !important;
+}
 .st-key-slide_chat_drawer div[data-testid="stHorizontalBlock"] > div {
     min-width: 0 !important;
 }
 
-/* Base style for all 7 QA action buttons */
+/* Compact two-column quick-action grid: all six buttons share one height. */
+.st-key-slide_chat_drawer .st-key-dyn_chip_r1,
+.st-key-slide_chat_drawer .st-key-dyn_chip_r2,
+.st-key-slide_chat_drawer .st-key-dyn_chip_r3_1,
+.st-key-slide_chat_drawer .st-key-dyn_chip_r3_2,
+.st-key-slide_chat_drawer .st-key-dyn_chip_r3_3,
+.st-key-slide_chat_drawer .st-key-dyn_chip_r4_1 {
+    margin: 0 !important;
+}
+
+/* Base style for all 6 QA action buttons */
 .st-key-dyn_chip_r1 button,
 .st-key-dyn_chip_r2 button,
 .st-key-dyn_chip_r3_1 button,
 .st-key-dyn_chip_r3_2 button,
 .st-key-dyn_chip_r3_3 button,
-.st-key-dyn_chip_r4_1 button,
-.st-key-dyn_chip_r4_2 button {
+.st-key-dyn_chip_r4_1 button {
     background: #FFFFFF !important;
     border: 1.2px solid #E2E8F0 !important;
     border-radius: 14px !important;
@@ -8387,8 +9922,7 @@ div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:h
 .st-key-dyn_chip_r3_1 button:hover,
 .st-key-dyn_chip_r3_2 button:hover,
 .st-key-dyn_chip_r3_3 button:hover,
-.st-key-dyn_chip_r4_1 button:hover,
-.st-key-dyn_chip_r4_2 button:hover {
+.st-key-dyn_chip_r4_1 button:hover {
     border-color: #2563EB !important;
     transform: translateY(-2px) !important;
     box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12) !important;
@@ -8398,10 +9932,15 @@ div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:h
 /* Typography inside QA buttons */
 div[class*="st-key-dyn_chip_"] button div[data-testid="stMarkdownContainer"] {
     width: 100% !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
     text-align: left !important;
 }
 div[class*="st-key-dyn_chip_"] button p {
     margin: 0 !important;
+    min-width: 0 !important;
+    width: 100% !important;
     text-align: left !important;
     line-height: 1.25 !important;
     color: #64748B !important;
@@ -8415,13 +9954,22 @@ div[class*="st-key-dyn_chip_"] button p strong {
     color: #0F172A !important;
     line-height: 1.25 !important;
     margin-bottom: 2px !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
 }
 
-/* Card 1 & Card 2: Full-Width Row Cards */
+/* All quick-action buttons use the same compact card geometry. */
 .st-key-dyn_chip_r1 button,
-.st-key-dyn_chip_r2 button {
-    padding: 12px 36px 12px 62px !important;
-    min-height: 58px !important;
+.st-key-dyn_chip_r2 button,
+.st-key-dyn_chip_r3_1 button,
+.st-key-dyn_chip_r3_2 button,
+.st-key-dyn_chip_r3_3 button,
+.st-key-dyn_chip_r4_1 button {
+    padding: 9px 28px 9px 48px !important;
+    min-height: 64px !important;
+    height: 64px !important;
     display: flex !important;
     align-items: center !important;
 }
@@ -8477,21 +10025,7 @@ div[class*="st-key-dyn_chip_"] button p strong {
     background-size: 20px 20px !important;
 }
 
-/* Row 3 & Row 4: 2 Column Compact Horizontal Cards (Food timing?, Danger signs, Yoga poses, Lab report) */
-.st-key-dyn_chip_r3_1 button,
-.st-key-dyn_chip_r3_2 button,
-.st-key-dyn_chip_r3_3 button,
-.st-key-dyn_chip_r4_1 button {
-    padding: 10px 28px 10px 48px !important;
-    min-height: 64px !important;
-    height: auto !important;
-    display: flex !important;
-    align-items: center !important;
-    text-align: left !important;
-    justify-content: flex-start !important;
-    overflow: visible !important;
-    box-sizing: border-box !important;
-}
+/* Two-column card text remains clipped safely instead of overlapping icons. */
 .st-key-dyn_chip_r3_1 button div[data-testid="stMarkdownContainer"],
 .st-key-dyn_chip_r3_2 button div[data-testid="stMarkdownContainer"],
 .st-key-dyn_chip_r3_3 button div[data-testid="stMarkdownContainer"],
@@ -8532,6 +10066,9 @@ div[class*="st-key-dyn_chip_"] button p strong {
     margin: 0 !important;
     padding: 0 !important;
     display: block !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 /* Right Chevron Arrows on 2-Column Cards */
@@ -8591,52 +10128,13 @@ div[class*="st-key-dyn_chip_"] button p strong {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 2v7.31L4.2 18.5a2 2 0 0 0 1.7 2.9h12.2a2 2 0 0 0 1.7-2.9L14 9.31V2'/%3E%3Cpath d='M8.5 2h7'/%3E%3Cpath d='M14 9.3h-4'/%3E%3C/svg%3E") !important;
 }
 
-/* Row 5: Full-Width Nearby Hospitals Card */
-.st-key-dyn_chip_r4_2 button {
-    padding: 12px 36px 12px 62px !important;
-    min-height: 58px !important;
-    display: flex !important;
-    align-items: center !important;
-}
-.st-key-dyn_chip_r4_2 button::after {
-    content: '' !important;
-    position: absolute !important;
-    right: 14px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 16px !important;
-    height: 16px !important;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'/%3E%3C/svg%3E") no-repeat center !important;
-    background-size: 14px 14px !important;
-    transition: transform 0.18s ease !important;
-}
-.st-key-dyn_chip_r4_2 button:hover::after {
-    transform: translateY(-50%) translateX(3px) !important;
-}
-.st-key-dyn_chip_r4_2 button::before {
-    content: '' !important;
-    position: absolute !important;
-    left: 14px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 36px !important;
-    height: 36px !important;
-    border-radius: 10px !important;
-    background-color: #ECFDF5 !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23059669' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 21h18'/%3E%3Cpath d='M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16'/%3E%3Cpath d='M10 9h4'/%3E%3Cpath d='M12 7v4'/%3E%3Cpath d='M9 16h2'/%3E%3Cpath d='M13 16h2'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-size: 20px 20px !important;
-}
-
 /* Dark Mode Overrides for QA Action Cards */
 [data-theme="dark"] .st-key-dyn_chip_r1 button,
 [data-theme="dark"] .st-key-dyn_chip_r2 button,
 [data-theme="dark"] .st-key-dyn_chip_r3_1 button,
 [data-theme="dark"] .st-key-dyn_chip_r3_2 button,
 [data-theme="dark"] .st-key-dyn_chip_r3_3 button,
-[data-theme="dark"] .st-key-dyn_chip_r4_1 button,
-[data-theme="dark"] .st-key-dyn_chip_r4_2 button {
+[data-theme="dark"] .st-key-dyn_chip_r4_1 button {
     background: #141D2E !important;
     border-color: #283347 !important;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4) !important;
@@ -8646,8 +10144,7 @@ div[class*="st-key-dyn_chip_"] button p strong {
 [data-theme="dark"] .st-key-dyn_chip_r3_1 button:hover,
 [data-theme="dark"] .st-key-dyn_chip_r3_2 button:hover,
 [data-theme="dark"] .st-key-dyn_chip_r3_3 button:hover,
-[data-theme="dark"] .st-key-dyn_chip_r4_1 button:hover,
-[data-theme="dark"] .st-key-dyn_chip_r4_2 button:hover {
+[data-theme="dark"] .st-key-dyn_chip_r4_1 button:hover {
     background: #1A2540 !important;
     border-color: #38BDF8 !important;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6) !important;
@@ -8663,8 +10160,7 @@ div[class*="st-key-dyn_chip_"] button p strong {
 [data-theme="dark"] .st-key-dyn_chip_r3_1 button::before,
 [data-theme="dark"] .st-key-dyn_chip_r3_2 button::before,
 [data-theme="dark"] .st-key-dyn_chip_r3_3 button::before,
-[data-theme="dark"] .st-key-dyn_chip_r4_1 button::before,
-[data-theme="dark"] .st-key-dyn_chip_r4_2 button::before {
+[data-theme="dark"] .st-key-dyn_chip_r4_1 button::before {
     background-color: #1E293B !important;
 }
 </style>
@@ -8762,10 +10258,10 @@ if chat_is_open:
         """, unsafe_allow_html=True)
 
         # 3. Scrollable Message & Interactive Suggestions Container
-        chat_box = st.container(height=265)
+        chat_box = st.container(height=450, key="floating_chat_content")
         with chat_box:
             # A. Greeting Card with DocMindX robot avatar
-            safe_markdown("""<div class="mm-chat-greeting-wrap">
+            safe_markdown(f"""<div class="mm-chat-greeting-wrap">
 <div class="mm-chat-avatar">
 <svg viewBox="0 0 36 36" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
 <circle cx="18" cy="4.5" r="2.2" fill="#FFFFFF"/>
@@ -8780,75 +10276,294 @@ if chat_is_open:
 </svg>
 </div>
 <div class="mm-chat-greeting-card">
-<div class="mm-chat-greeting-title">Hello! I'm your <b>DocMindX Clinical AI Assistant</b>.</div>
-<div class="mm-chat-greeting-sub">How can I help you today?</div>
+<div class="mm-chat-greeting-title">{T.get("chat_greeting_title", "Hello! I'm your <b>DocMindX Clinical AI Assistant</b>.")}</div>
+<div class="mm-chat-greeting-sub">{T.get("chat_greeting_sub", "How can I help you today?")}</div>
 </div>
 </div>""")
 
             # B. Quick Actions Section Header
-            safe_markdown("""<div class="mm-chat-section-header">
+            safe_markdown(f"""<div class="mm-chat-section-header">
 <div class="mm-chat-section-title">
 <svg width="17" height="17" viewBox="0 0 24 24" fill="#2563EB" stroke="none">
 <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
 </svg>
-<span>Quick Actions</span>
+<span>{T.get("chat_quick_actions", "Quick Actions")}</span>
 </div>
-<div class="mm-chat-section-badge">Choose a topic or type your question below.</div>
+<div class="mm-chat-section-badge">{T.get("chat_quick_badge", "Choose a topic or type your question below.")}</div>
 </div>""")
 
-            # C. Rich Interactive Quick Action Cards
-            if st.button("**Explain my symptoms in simple words**  \nGet easy-to-understand explanations", key="dyn_chip_r1", use_container_width=True):
-                st.session_state["floating_chat_history"].append({"role": "user", "content": "Please explain my current symptoms and what they indicate in simple terms."})
-                with st.spinner("Analyzing query..."):
-                    reply = ask_DocMindX_ai("Please explain my current symptoms and what they indicate in simple terms.", st.session_state["floating_chat_history"], current_context, lang_code)
-                st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
-                st.rerun()
+            _qa_btn_bg = "#141D2E" if is_dark else "#FFFFFF"
+            _qa_btn_border = "#1E293B" if is_dark else "#E2E8F0"
+            _qa_btn_color = "#F8FAFC" if is_dark else "#0F172A"
+            _qa_btn_hover_bg = "#1E293B" if is_dark else "#F8FBFF"
+            _qa_btn_hover_border = "#38BDF8" if is_dark else "#93C5FD"
+            _qa_title_color = "#F8FAFC" if is_dark else "#0F172A"
+            _qa_sub_color = "#94A3B8" if is_dark else "#64748B"
 
-            if st.button("**Which medicine should I take?**  \nGet guidance on medications", key="dyn_chip_r2", use_container_width=True):
-                st.session_state["floating_chat_history"].append({"role": "user", "content": "Can you explain the prescribed medicines and active compounds?"})
-                with st.spinner("Analyzing query..."):
-                    reply = ask_DocMindX_ai("Can you explain the prescribed medicines and active compounds?", st.session_state["floating_chat_history"], current_context, lang_code)
-                st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
-                st.rerun()
+            st.markdown(f"""
+            <style>
+            .st-key-floating_chat_content [data-testid="stHorizontalBlock"] {{
+                gap: 8px !important;
+                margin: 0 0 8px 0 !important;
+                align-items: stretch !important;
+            }}
+            .st-key-floating_chat_content [data-testid="stColumn"] {{
+                min-width: 0 !important;
+            }}
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] {{
+                height: 100% !important;
+                margin: 0 !important;
+            }}
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button {{
+                width: 100% !important;
+                height: auto !important;
+                min-height: 96px !important;
+                max-height: 110px !important;
+                padding: 8px 4px 6px !important;
+                border: 1.2px solid {_qa_btn_border} !important;
+                border-radius: 14px !important;
+                background: {_qa_btn_bg} !important;
+                color: {_qa_btn_color} !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+                overflow: hidden !important;
+                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+                transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+                cursor: pointer !important;
+            }}
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button:hover {{
+                border-color: {_qa_btn_hover_border} !important;
+                background: {_qa_btn_hover_bg} !important;
+                transform: translateY(-2px) !important;
+                box-shadow: 0 6px 14px rgba(37, 99, 235, 0.10) !important;
+            }}
+            /* Material Icon as 34px Circular Badge */
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button [data-testid="stIconMaterial"] {{
+                width: 34px !important;
+                height: 34px !important;
+                min-width: 34px !important;
+                min-height: 34px !important;
+                border-radius: 50% !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                font-size: 18px !important;
+                margin: 0 auto 4px auto !important;
+                transition: transform 0.15s ease !important;
+            }}
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button:hover [data-testid="stIconMaterial"] {{
+                transform: scale(1.08) !important;
+            }}
+            /* Card Typography */
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button div[data-testid="stMarkdownContainer"] {{
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                justify-content: center !important;
+                text-align: center !important;
+                width: 100% !important;
+            }}
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p {{
+                margin: 0 !important;
+                width: 100% !important;
+                text-align: center !important;
+                font-size: 0.63rem !important;
+                line-height: 1.2 !important;
+                color: {_qa_sub_color} !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+            }}
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p strong {{
+                font-size: 0.74rem !important;
+                font-weight: 700 !important;
+                color: {_qa_title_color} !important;
+                display: block !important;
+                line-height: 1.25 !important;
+                margin-bottom: 2px !important;
+                white-space: normal !important;
+                word-break: break-word !important;
+            }}
+            /* Mobile 2-column flexible grid (< 540px) */
+            @media (max-width: 540px) {{
+                .st-key-floating_chat_content [data-testid="stHorizontalBlock"] {{
+                    display: grid !important;
+                    grid-template-columns: repeat(2, 1fr) !important;
+                    gap: 8px !important;
+                    margin-bottom: 8px !important;
+                }}
+                .st-key-floating_chat_content [data-testid="stHorizontalBlock"] > div,
+                .st-key-floating_chat_content [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{
+                    width: 100% !important;
+                    min-width: 0 !important;
+                    flex: none !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button {{
+                    min-height: 94px !important;
+                    padding: 6px 4px 6px !important;
+                    border-radius: 12px !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button [data-testid="stIconMaterial"] {{
+                    width: 32px !important;
+                    height: 32px !important;
+                    min-width: 32px !important;
+                    min-height: 32px !important;
+                    font-size: 17px !important;
+                    margin-bottom: 3px !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p strong {{
+                    font-size: 0.72rem !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p {{
+                    font-size: 0.62rem !important;
+                }}
+            }}
+            </style>
+            """, unsafe_allow_html=True)
 
-            col_qa3_1, col_qa3_2 = st.columns(2)
-            with col_qa3_1:
-                if st.button("**Food timing?**  \nDiet & meal guidance", key="dyn_chip_r3_1", use_container_width=True):
-                    st.session_state["floating_chat_history"].append({"role": "user", "content": "When should I take my medicines with food?"})
-                    with st.spinner("Analyzing query..."):
-                        reply = ask_DocMindX_ai("When should I take my medicines with food?", st.session_state["floating_chat_history"], current_context, lang_code)
-                    st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
-                    st.rerun()
-            with col_qa3_2:
-                if st.button("**Danger signs**  \nImmediate care signs", key="dyn_chip_r3_2", use_container_width=True):
-                    st.session_state["floating_chat_history"].append({"role": "user", "content": "What are emergency red flags and danger signs?"})
-                    with st.spinner("Analyzing query..."):
-                        reply = ask_DocMindX_ai("What are emergency red flags and danger signs?", st.session_state["floating_chat_history"], current_context, lang_code)
-                    st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
-                    st.rerun()
+            # C. 12 Quick Action Cards matching Image 2 with Context-Aware Inquiries
+            _s_list = current_context.get("symptoms", [])
+            _sym_s = ", ".join(_s_list[:2]) if _s_list else (current_context.get("top_disease") or "my symptoms")
+            _dis_s = current_context.get("top_disease") or "Peptic Ulcer Disease & Acid Peptic Disorders"
+            _med_raw = current_context.get("medicines", [])
+            _med_s = "Prescribed Medicines"
+            if _med_raw:
+                _fm = _med_raw[0]
+                _med_s = (_fm.get("medicine_name") if isinstance(_fm, dict) else str(_fm)).split("(")[0].strip() or "Medication"
 
-            col_qa4_1, col_qa4_2 = st.columns(2)
-            with col_qa4_1:
-                if st.button("**Yoga poses**  \nHelpful postures", key="dyn_chip_r3_3", use_container_width=True):
-                    st.session_state["floating_chat_history"].append({"role": "user", "content": "Which restorative yoga postures will speed up my recovery?"})
-                    with st.spinner("Analyzing query..."):
-                        reply = ask_DocMindX_ai("Which restorative yoga postures will speed up my recovery?", st.session_state["floating_chat_history"], current_context, lang_code)
-                    st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
-                    st.rerun()
-            with col_qa4_2:
-                if st.button("**Lab report**  \nUpload & analyze reports", key="dyn_chip_r4_1", use_container_width=True):
-                    st.session_state["floating_chat_history"].append({"role": "user", "content": "How and where do I scan my lab blood report or doctor prescription in DocMindX AI?"})
-                    with st.spinner("Analyzing query..."):
-                        reply = ask_DocMindX_ai("How and where do I scan my lab blood report or doctor prescription in DocMindX AI?", st.session_state["floating_chat_history"], current_context, lang_code)
-                    st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
-                    st.rerun()
+            qa_cards_data = [
+                {
+                    "id": "sym", "icon": ":material/stethoscope:",
+                    "title": T.get("qa_sym_title", "Symptoms"),
+                    "sub": T.get("qa_sym_sub", "Check symptoms"),
+                    "query": f"मेरे लक्षणों ({_sym_s}) का सरल अर्थ और संभावित कारण समझाएं।" if lang_code == "hi" else (
+                        f"મારા લક્ષણો ({_sym_s}) નો સરળ અર્થ અને સંભવિત કારણ સમજાવો." if lang_code == "gu" else
+                        translate_dynamic_text(f"Explain the meaning and possible clinical causes of my symptoms ({_sym_s}) in simple terms.", lang_code)
+                    )
+                },
+                {
+                    "id": "med", "icon": ":material/medication:",
+                    "title": T.get("qa_med_title", "Medicines"),
+                    "sub": T.get("qa_med_sub", "Drug information"),
+                    "query": f"{_med_s} की खुराक, सही समय और जरूरी सावधानियां बताएं।" if lang_code == "hi" else (
+                        f"{_med_s} ની માત્રા, સાચો સમય અને જરૂરી સાવચેતી સમજાવો." if lang_code == "gu" else
+                        translate_dynamic_text(f"Explain the therapeutic purpose, precautions, and timing for taking {_med_s}.", lang_code)
+                    )
+                },
+                {
+                    "id": "dos", "icon": ":material/description:",
+                    "title": T.get("qa_dos_title", "Dosage"),
+                    "sub": T.get("qa_dos_sub", "How to take?"),
+                    "query": f"{_med_s} और {_dis_s} के लिए सही dosage और भोजन का समय समझाएं।" if lang_code == "hi" else (
+                        f"{_med_s} અને {_dis_s} માટે યોગ્ય માત્રા અને જમવાનો સમય સમજાવો." if lang_code == "gu" else
+                        translate_dynamic_text(f"Explain safe dosage guidelines, food timing, and administration instructions for {_med_s}.", lang_code)
+                    )
+                },
+                {
+                    "id": "sef", "icon": ":material/warning:",
+                    "title": T.get("qa_sef_title", "Side Effects"),
+                    "sub": T.get("qa_sef_sub", "Adverse reactions"),
+                    "query": f"{_med_s} के संभावित दुष्प्रभाव और किन red flags पर डॉक्टर से तुरंत मिलना चाहिए?" if lang_code == "hi" else (
+                        f"{_med_s} ની કઈ આડઅસર જણાય તો તરત ડોક્ટરનો સંપર્ક કરવો?" if lang_code == "gu" else
+                        translate_dynamic_text(f"What common and serious adverse effects should I monitor with {_med_s}?", lang_code)
+                    )
+                },
+                {
+                    "id": "fdt", "icon": ":material/restaurant:",
+                    "title": T.get("qa_fdt_title", "Food & Diet"),
+                    "sub": T.get("qa_fdt_sub", "Nutrition advice"),
+                    "query": f"{_dis_s} में कौन सा पौष्टिक भोजन खाना चाहिए और किन चीजों से परहेज करें?" if lang_code == "hi" else (
+                        f"{_dis_s} માં કયો ખોરાક લેવો હિતાવહ છે અને કઈ વસ્તુઓનો પરહેજ કરવો?" if lang_code == "gu" else
+                        translate_dynamic_text(f"What foods are clinically recommended for {_dis_s}, and what items should be avoided?", lang_code)
+                    )
+                },
+                {
+                    "id": "dis", "icon": ":material/favorite:",
+                    "title": T.get("qa_dis_title", "Disease Info"),
+                    "sub": T.get("qa_dis_sub", "Clinical causes"),
+                    "query": f"{_dis_s} की स्थिति, इसके मुख्य कारण और रोग नियंत्रण के उपाय बताएं।" if lang_code == "hi" else (
+                        f"{_dis_s} સ્થિતિ, તેના મુખ્ય કારણો અને નિયંત્રણના પગલાં જણાવો." if lang_code == "gu" else
+                        translate_dynamic_text(f"Explain {_dis_s} in detail, including its clinical pathology, triggers, and outlook.", lang_code)
+                    )
+                },
+                {
+                    "id": "lab", "icon": ":material/science:",
+                    "title": T.get("qa_lab_title", "Lab Tests"),
+                    "sub": T.get("qa_lab_sub", "Pathology tests"),
+                    "query": f"{_dis_s} और {_sym_s} के लिए कौन से जरूरी लैब टेस्ट डॉक्टर से डिस्कस करने चाहिए?" if lang_code == "hi" else (
+                        f"{_dis_s} અને {_sym_s} માટે કયા લેબ ટેસ્ટ અંગે ડોક્ટર સાથે વાત કરવી?" if lang_code == "gu" else
+                        translate_dynamic_text(f"Which diagnostic lab tests and reports should I discuss with my physician for {_dis_s} and {_sym_s}?", lang_code)
+                    )
+                },
+                {
+                    "id": "trt", "icon": ":material/medical_services:",
+                    "title": T.get("qa_trt_title", "Treatment"),
+                    "sub": T.get("qa_trt_sub", "Care plan"),
+                    "query": f"{_dis_s} के लिए सामान्यतः क्या इलाज विकल्प और रिकवरी टाइमलाइन होती है?" if lang_code == "hi" else (
+                        f"{_dis_s} માટે સારવારના વિકલ્પો અને રિકવરી સમય જણાવો." if lang_code == "gu" else
+                        translate_dynamic_text(f"What clinical treatment options and expected recovery timeline apply to {_dis_s}?", lang_code)
+                    )
+                },
+                {
+                    "id": "yog", "icon": ":material/self_improvement:",
+                    "title": T.get("qa_yog_title", "Yoga & Wellness"),
+                    "sub": T.get("qa_yog_sub", "Holistic recovery"),
+                    "query": f"{_dis_s} में कौन से सुरक्षित योगासन, प्राणायाम और जीवनशैली सुझाव लाभकारी हैं?" if lang_code == "hi" else (
+                        f"{_dis_s} માટે સલામત યોગાસન, પ્રાણાયામ અને જીવનશૈલી સૂચનો આપો." if lang_code == "gu" else
+                        translate_dynamic_text(f"Suggest safe yoga postures, breathing routines, and lifestyle modifications for {_dis_s}.", lang_code)
+                    )
+                },
+                {
+                    "id": "chd", "icon": ":material/child_care:",
+                    "title": T.get("qa_chd_title", "Pediatric Care"),
+                    "sub": T.get("qa_chd_sub", "Child precautions"),
+                    "query": f"बच्चों में {_sym_s} होने पर क्या विशेष बाल रोग सावधानियां बरतनी चाहिए?" if lang_code == "hi" else (
+                        f"બાળકોમાં {_sym_s} જણાય ત્યારે કઈ પીડિયાટ્રિક સાવચેતી રાખવી?" if lang_code == "gu" else
+                        translate_dynamic_text(f"What pediatric considerations and warning signs apply if a child experiences {_sym_s}?", lang_code)
+                    )
+                },
+                {
+                    "id": "eld", "icon": ":material/person:",
+                    "title": T.get("qa_eld_title", "Elderly Care"),
+                    "sub": T.get("qa_eld_sub", "Senior guidelines"),
+                    "query": f"बुजुर्ग मरीजों में {_dis_s} और {_med_s} के साथ क्या सुरक्षा सावधानियां जरूरी हैं?" if lang_code == "hi" else (
+                        f"વૃદ્ધ દર્દીઓ માટે {_dis_s} અને {_med_s} અંગે કઈ સાવચેતી જરૂરી છે?" if lang_code == "gu" else
+                        translate_dynamic_text(f"What geriatric care, medication timing, and monitoring are vital for senior citizens with {_dis_s}?", lang_code)
+                    )
+                },
+                {
+                    "id": "ask", "icon": ":material/forum:",
+                    "title": T.get("qa_ask_title", "Ask Question"),
+                    "sub": T.get("qa_ask_sub", "Free inquiry"),
+                    "query": f"DocMindX AI, मेरी वर्तमान स्वास्थ्य स्थिति ({_dis_s}, {_sym_s}) पर आपका क्या सुझाव है?" if lang_code == "hi" else (
+                        f"DocMindX AI, મારી વર્તમાન સ્થિતિ ({_dis_s}, {_sym_s}) અંગે તમારું માર્ગદર્શન આપો." if lang_code == "gu" else
+                        translate_dynamic_text(f"Hello DocMindX AI, please give me a clinical assessment and guidance for {_dis_s} and {_sym_s}.", lang_code)
+                    )
+                }
+            ]
 
-            if st.button("**Nearby hospitals & emergency clinics**  \nFind trusted medical centers", key="dyn_chip_r4_2", use_container_width=True):
-                st.session_state["floating_chat_history"].append({"role": "user", "content": "Where are nearby emergency hospitals and clinics and how do I find them?"})
-                with st.spinner("Analyzing query..."):
-                    reply = ask_DocMindX_ai("Where are nearby emergency hospitals and clinics and how do I find them?", st.session_state["floating_chat_history"], current_context, lang_code)
-                st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
-                st.rerun()
+            for row_start in range(0, len(qa_cards_data), 4):
+                action_columns = st.columns(4)
+                for action_index, card in enumerate(qa_cards_data[row_start:row_start + 4]):
+                    with action_columns[action_index]:
+                        if st.button(
+                            f"**{card['title']}**\n\n{card['sub']}",
+                            key=f"dyn_qa_{card['id']}",
+                            icon=card["icon"],
+                            use_container_width=True,
+                        ):
+                            st.session_state["floating_chat_history"].append({"role": "user", "content": card["query"]})
+                            with st.spinner("Analyzing query..."):
+                                reply = ask_DocMindX_ai(
+                                    card["query"],
+                                    st.session_state["floating_chat_history"],
+                                    current_context,
+                                    lang_code,
+                                )
+                            st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
+                            st.rerun()
 
             # D. Dynamic Chat history messages
             if st.session_state["floating_chat_history"]:
@@ -8913,7 +10628,7 @@ if chat_is_open:
                     label_visibility="collapsed"
                 )
             with fc_btn:
-                send_pressed = st.form_submit_button("", icon=":material/send:", help="Send message")
+                send_pressed = st.form_submit_button("", icon=":material/send:", help="Send message", type="primary")
 
         if send_pressed and user_msg_input and user_msg_input.strip():
             clean_user_q = user_msg_input.strip()
@@ -8934,8 +10649,7 @@ if chat_is_open:
             <span>This AI provides general information only. Always consult a qualified doctor.</span>
         </div>
         """)
-
-        # 6. Automatic Outside-Click Listener Script
+# 6. Snappy Outside-Click Listener Script
         components.html("""
         <script>
         (function() {
@@ -8955,7 +10669,7 @@ if chat_is_open:
                 }
                 setTimeout(function() {
                     parentDoc.addEventListener('pointerdown', handleOutsidePointer, true);
-                }, 200);
+                }, 100);
             } catch(e) {}
         })();
         </script>
@@ -8967,5 +10681,3 @@ if chat_is_open:
                 reply = ask_DocMindX_ai(q_to_process, st.session_state["floating_chat_history"], current_context, lang_code)
             st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
             st.rerun()
-
-

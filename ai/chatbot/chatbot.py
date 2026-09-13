@@ -1,12 +1,14 @@
 """
-    DocMindX AI - Multilingual Conversational Healthcare Assistant
-Powered by Gemini AI (Primary) and Groq API (Secondary) with clinical knowledge
+DocMindX AI - Multilingual Conversational Healthcare Assistant
+Powered by Groq API (Primary) and Gemini AI (Fallback) with clinical knowledge
 guardrails, context-aware personalized guidance, and dynamic question generation.
 """
+import json
 import os
 import re
-import json
+
 import requests
+
 from config.settings import GEMINI_API_KEY, GROQ_API_KEY
 
 
@@ -33,29 +35,52 @@ def generate_dynamic_patient_questions(clinical_context: dict = None, lang_code:
     else:
         med_name = "Prescribed Medicines"
 
+    symptom_text = ", ".join(symptoms) if symptoms else (top_disease or "your current health concern")
+
     if lang_code == "hi":
         return [
-            {"label": f"{med_name} कब और कैसे लेनी चाहिए?", "query": f"{med_name} दवा की खुराक (Dosage), भोजन के साथ लेने का समय और मुख्य सावधानियां विस्तार से बताएं।"},
-            {"label": f"{disease_name or 'इस बीमारी'} में क्या खाना और क्या परहेज करें?", "query": f"{disease_name or sym_name} में क्या खाना चाहिए और क्या परहेज (Foods to avoid) करना चाहिए?"},
-            {"label": "खतरे के संकेत: डॉक्टर को कब दिखाना चाहिए?", "query": f"{sym_name or disease_name} में कौन से गंभीर लक्षण (Emergency Red-Flags) दिखने पर तुरंत अस्पताल जाना चाहिए?"},
-            {"label": "लक्षणों का सरल भाषा में अर्थ समझें", "query": f"मेरे बताए गए लक्षणों ({', '.join(symptoms) if symptoms else 'वर्तमान स्थिति'}) का सरल भाषा में क्या मतलब और कारण हो सकता है?"},
-            {"label": "DocMindX AI से रिपोर्ट कैसे समझें?", "query": "DocMindX AI में ब्लड रिपोर्ट, प्रिस्क्रिप्शन और लैब टेस्ट का विश्लेषण कैसे कराया जाता है?"}
+            {"label": f"{symptom_text} को सरल भाषा में समझाएं", "query": f"मेरे लक्षणों ({symptom_text}) का सरल अर्थ और संभावित कारण समझाएं।"},
+            {"label": f"{med_name} कब और कैसे लें?", "query": f"{med_name} की खुराक, भोजन का समय और सावधानियां बताएं।"},
+            {"label": f"{disease_name} में क्या खाएं?", "query": f"{disease_name} में कौन सा भोजन लाभदायक है और किन चीजों से परहेज करें?"},
+            {"label": "खतरे के संकेत कौन से हैं?", "query": f"{symptom_text} में कौन से red flags होने पर तुरंत अस्पताल जाना चाहिए?"},
+            {"label": "दवा के दुष्प्रभाव बताएं", "query": f"{med_name} के सामान्य और गंभीर दुष्प्रभाव तथा उनसे बचने की सावधानियां बताएं।"},
+            {"label": "दवाओं का आपसी असर समझाएं", "query": f"मेरी दवाओं ({med_name}) के बीच drug interaction या allergy risk समझाएं।"},
+            {"label": "रिपोर्ट का अर्थ कैसे समझें?", "query": "मेरी medical report के abnormal values को आसान भाषा में कैसे समझें?"},
+            {"label": "कौन से टेस्ट जरूरी हो सकते हैं?", "query": f"{disease_name} और {symptom_text} के लिए डॉक्टर से कौन से tests discuss करने चाहिए?"},
+            {"label": "ठीक होने में कितना समय लगेगा?", "query": f"{disease_name} या {symptom_text} में सामान्य recovery timeline और सुधार के संकेत बताएं।"},
+            {"label": "घर पर क्या सावधानी रखें?", "query": f"{symptom_text} के दौरान घर पर सुरक्षित self-care और monitoring steps बताएं।"},
+            {"label": "योग और lifestyle guidance", "query": f"{disease_name} में सुरक्षित yoga, rest और lifestyle guidance बताएं।"},
+            {"label": "अगला clinical step क्या है?", "query": f"{disease_name} के लिए मेरा अगला सुरक्षित clinical step और doctor follow-up कब होना चाहिए?"}
         ]
     elif lang_code == "gu":
         return [
-            {"label": f"{med_name} ક્યારે અને કેવી રીતે લેવી?", "query": f"{med_name} દવા ક્યારે લેવી, યોગ્ય માત્રા (Dosage), જમ્યા પહેલાં/પછી અને શું સાવચેતી રાખવી?"},
-            {"label": f"{disease_name or 'આ તકલીફ'}માં આહાર અને પરહેજ શું રાખવો?", "query": f"{disease_name or sym_name} માં શું ખાવું જોઈએ અને કઈ વસ્તુઓનો પરહેજ કરવો?"},
-            {"label": "કયા લક્ષણોમાં તાત્કાલિક ડૉક્ટર પાસે જવું?", "query": f"{sym_name or disease_name} માં કયા કટોકટીના લક્ષણો (Emergency Red-Flags) જણાય તો તરત જ ડૉક્ટરનો સંપર્ક કરવો?"},
-            {"label": "મારા લક્ષણો સરળ ભાષામાં સમજાવો", "query": f"મેં જણાવેલા લક્ષણો ({', '.join(symptoms) if symptoms else 'આરોગ્ય સ્થિતિ'}) પાછળનું શું કારણ હોઈ શકે અને સરળ અર્થ શું છે?"},
-            {"label": "DocMindX AI માં રિપોર્ટ સ્કેન કેવી રીતે કરવો?", "query": "DocMindX AI પ્લેટફોર્મ પર લેબ બ્લડ રિપોર્ટ અને ડૉક્ટરની ચિઠ્ઠીનું વિશ્લેષણ કેવી રીતે કરી શકાય?"}
+            {"label": f"{symptom_text} સરળ ભાષામાં સમજાવો", "query": f"મારા લક્ષણો ({symptom_text}) નો સરળ અર્થ અને સંભવિત કારણ સમજાવો."},
+            {"label": f"{med_name} ક્યારે અને કેવી રીતે લેવી?", "query": f"{med_name} ની માત્રા, જમવાનો સમય અને સાવચેતી સમજાવો."},
+            {"label": f"{disease_name} માં શું ખાવું?", "query": f"{disease_name} માં કયો આહાર લાભદાયક છે અને કઈ વસ્તુઓથી પરહેજ કરવો?"},
+            {"label": "ખતરાના સંકેતો કયા છે?", "query": f"{symptom_text} માં કયા red flags જણાય તો તરત હોસ્પિટલ જવું જોઈએ?"},
+            {"label": "દવાની આડઅસર સમજાવો", "query": f"{med_name} ની સામાન્ય અને ગંભીર આડઅસર તથા સાવચેતી સમજાવો."},
+            {"label": "દવાઓ વચ્ચેની અસર સમજાવો", "query": f"મારી દવાઓ ({med_name}) વચ્ચે drug interaction અથવા allergy risk સમજાવો."},
+            {"label": "રિપોર્ટનો અર્થ કેવી રીતે સમજવો?", "query": "મારી medical report ના abnormal values સરળ ભાષામાં સમજાવો."},
+            {"label": "કયા ટેસ્ટની જરૂર પડી શકે?", "query": f"{disease_name} અને {symptom_text} માટે કયા tests અંગે doctor સાથે ચર્ચા કરવી?"},
+            {"label": "સાજા થવામાં કેટલો સમય?", "query": f"{disease_name} અથવા {symptom_text} માટે સામાન્ય recovery timeline સમજાવો."},
+            {"label": "ઘરે કઈ સાવચેતી રાખવી?", "query": f"{symptom_text} દરમિયાન ઘરે સુરક્ષિત self-care અને monitoring steps આપો."},
+            {"label": "યોગ અને lifestyle guidance", "query": f"{disease_name} માટે સુરક્ષિત yoga, rest અને lifestyle guidance આપો."},
+            {"label": "આગળનું clinical step શું છે?", "query": f"{disease_name} માટે આગળનું સુરક્ષિત clinical step અને doctor follow-up ક્યારે કરવો?"}
         ]
     else:
         return [
-            {"label": f"When & how should I take {med_name}?", "query": f"What is the recommended dosage, food timing, and key precautions for {med_name}?"},
-            {"label": f"Dietary guide & foods to avoid in {disease_name or 'this condition'}?", "query": f"What foods should I eat and what dietary restrictions should I follow for {disease_name or sym_name}?"},
-            {"label": "When to seek immediate emergency care?", "query": f"What are the critical red-flag emergency symptoms for {sym_name or disease_name} that require immediate hospital care?"},
-            {"label": "Explain my clinical symptoms in plain terms", "query": f"Can you explain what my symptoms ({', '.join(symptoms) if symptoms else 'condition'}) mean and their potential physiological causes?"},
-            {"label": "How does DocMindX AI analyze medical reports?", "query": "How does DocMindX AI process laboratory blood reports, radiology findings, and prescriptions?"}
+            {"label": f"Explain {symptom_text} in plain terms", "query": f"Explain the meaning and possible causes of my symptoms ({symptom_text}) in simple terms."},
+            {"label": f"When and how to take {med_name}?", "query": f"Explain the dosage, food timing, and precautions for {med_name}."},
+            {"label": f"What foods help with {disease_name}?", "query": f"What foods may help with {disease_name}, and what should I avoid?"},
+            {"label": "What are the danger signs?", "query": f"What red flags related to {symptom_text} require immediate hospital care?"},
+            {"label": "Explain medicine side effects", "query": f"What common and serious side effects should I watch for with {med_name}?"},
+            {"label": "Check medicine interactions", "query": f"Explain possible drug interactions or allergy risks involving {med_name}."},
+            {"label": "How should I read my report?", "query": "Explain the abnormal values in my medical report in plain language."},
+            {"label": "Which tests may be needed?", "query": f"Which tests should I discuss with my doctor for {disease_name} and {symptom_text}?"},
+            {"label": "How long may recovery take?", "query": f"What is the usual recovery timeline and improvement signs for {disease_name}?"},
+            {"label": "What care is safe at home?", "query": f"Give safe home-care and monitoring steps for {symptom_text}."},
+            {"label": "Yoga and lifestyle guidance", "query": f"Suggest safe yoga, rest, and lifestyle guidance for {disease_name}."},
+            {"label": "What is the next clinical step?", "query": f"What is the next safe clinical step and doctor follow-up plan for {disease_name}?"}
         ]
 
 
@@ -121,7 +146,7 @@ def detect_redirect_action(text: str, lang_code: str = "en"):
         }
         return {"panel": "Health Records", "label": labels.get(lang_code, labels["en"])}
 
-    # 5. National Command Center
+    # 5. National Command
     elif any(w in t for w in [
         "supply chain", "phc", "command center", "stockout", "shortage", "redistribution", "bed capacity", 
         "workforce", "national health", "daskroi", "sanand", "bavla", "olpad", "insulin stock",
@@ -129,11 +154,11 @@ def detect_redirect_action(text: str, lang_code: str = "en"):
         "સપ્લાય ચેઈન", "કમાન્ડ સેન્ટર", "દવા અછત", "રીડિસ્ટ્રિબ્યુશન", "બેડ ઉપલબ્ધતા"
     ]):
         labels = {
-            "en": "Open National Command Center",
+            "en": "Open National Command",
             "hi": "राष्ट्रीय कमान केंद्र खोलें",
             "gu": "રાષ્ટ્રીય કમાન્ડ સેન્ટર ખોલો"
         }
-        return {"panel": "National Command Center", "label": labels.get(lang_code, labels["en"])}
+        return {"panel": "National Command", "label": labels.get(lang_code, labels["en"])}
 
     return None
 
@@ -141,7 +166,7 @@ def detect_redirect_action(text: str, lang_code: str = "en"):
 def ask_DocMindX_ai(user_message: str, chat_history: list = None, clinical_context: dict = None, lang_code: str = "en") -> str:
     """
     Advanced Multilingual Clinical AI Chatbot.
-    Uses Live Gemini API as the primary intelligence engine with conversational memory
+    Uses Live Groq API as the primary conversational engine with Gemini as fallback
     and full patient demographic & clinical context to deliver real, comprehensive answers.
     Refuses non-medical queries politely. Emits NO emojis.
     """
@@ -221,39 +246,7 @@ CRITICAL RULES & OPERATIONAL INSTRUCTIONS:
    - Always highlight danger warning signs (such as high persistent fever >103°F, acute shortness of breath, severe chest pain, or sudden confusion) where immediate emergency medical evaluation is necessary.
    - Conclude with a brief standard clinical advisory reminding the patient that this is AI guidance and they should confirm treatment with their treating doctor."""
 
-    # Format Chat History for LLM
-    # 1. Primary Engine: Gemini API (gemini-3.5-flash-lite & gemini-3.8-flash)
-    if GEMINI_API_KEY:
-        gemini_contents = []
-        for msg in chat_history[-6:]:
-            role = "user" if msg.get("role") == "user" else "model"
-            content = msg.get("content", "").strip()
-            if content:
-                gemini_contents.append({"role": role, "parts": [{"text": content}]})
-        gemini_contents.append({"role": "user", "parts": [{"text": user_message}]})
-
-        for gem_model in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "systemInstruction": {"parts": [{"text": system_prompt}]},
-                    "contents": gemini_contents,
-                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}
-                }
-                res = requests.post(url, json=payload, timeout=9)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and parts[0].get("text"):
-                            ans = parts[0]["text"].strip()
-                            if ans:
-                                return ans
-            except Exception as e:
-                print(f"Gemini {gem_model} chat notice: {e}")
-
-    # 2. Secondary Engine: Groq API
+    # Normal chatbot conversations use Groq first.
     if GROQ_API_KEY:
         groq_messages = [{"role": "system", "content": system_prompt}]
         for msg in chat_history[-6:]:
@@ -283,6 +276,37 @@ CRITICAL RULES & OPERATIONAL INSTRUCTIONS:
                         return ans
             except Exception as e:
                 print(f"Groq {groq_model} chat notice: {e}")
+
+    # Gemini is retained only as a fallback for normal chat outages.
+    if GEMINI_API_KEY:
+        gemini_contents = []
+        for msg in chat_history[-6:]:
+            role = "user" if msg.get("role") == "user" else "model"
+            content = msg.get("content", "").strip()
+            if content:
+                gemini_contents.append({"role": role, "parts": [{"text": content}]})
+        gemini_contents.append({"role": "user", "parts": [{"text": user_message}]})
+
+        for gem_model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:generateContent?key={GEMINI_API_KEY}"
+                payload = {
+                    "systemInstruction": {"parts": [{"text": system_prompt}]},
+                    "contents": gemini_contents,
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}
+                }
+                res = requests.post(url, json=payload, timeout=9)
+                if res.status_code == 200:
+                    data = res.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts and parts[0].get("text"):
+                            ans = parts[0]["text"].strip()
+                            if ans:
+                                return ans
+            except Exception as e:
+                print(f"Gemini {gem_model} chat fallback notice: {e}")
 
     # 3. Dynamic Patient-Context Knowledge Fallback (If APIs are temporarily unreachable)
     q_lower = user_message.lower()

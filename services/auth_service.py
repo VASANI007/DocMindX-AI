@@ -16,8 +16,25 @@ import services.email_service as email_service
 
 load_dotenv()
 
-ADMIN_EMAIL = os.getenv("DOCMINDX_ADMIN_EMAIL", "docmindxai@gmail.com").strip().lower()
-ADMIN_PASSWORD_HASH = os.getenv("DOCMINDX_ADMIN_PASSWORD_HASH", "")
+def _get_secret(key: str, default: str = "") -> str:
+    """
+    Reads a secret from Streamlit Cloud st.secrets (production)
+    or falls back to os.getenv / .env (local development).
+    This dual-source lookup is required because:
+    - .env is in .gitignore and is NOT pushed to GitHub
+    - Streamlit Cloud uses st.secrets (configured via the Secrets panel)
+    """
+    try:
+        import streamlit as st
+        val = st.secrets.get(key, None)
+        if val:
+            return str(val).strip()
+    except Exception:
+        pass
+    return os.getenv(key, default).strip()
+
+ADMIN_EMAIL = _get_secret("DOCMINDX_ADMIN_EMAIL", "docmindxai@gmail.com").lower()
+ADMIN_PASSWORD_HASH = _get_secret("DOCMINDX_ADMIN_PASSWORD_HASH", "")
 
 # OTP Configuration
 OTP_EXPIRY_MINUTES = 10
@@ -395,9 +412,9 @@ def change_user_password(user_id: int, current_password: str, new_password: str,
 # ============================================================
 
 def get_admin_credentials() -> tuple[str, str]:
-    """Fetches administrator email and password hash from environment."""
-    adm_email = os.getenv("DOCMINDX_ADMIN_EMAIL", "docmindxai@gmail.com").strip().lower()
-    adm_hash = os.getenv("DOCMINDX_ADMIN_PASSWORD_HASH", "")
+    """Fetches administrator email and password hash from environment or Streamlit secrets."""
+    adm_email = _get_secret("DOCMINDX_ADMIN_EMAIL", "docmindxai@gmail.com").lower()
+    adm_hash = _get_secret("DOCMINDX_ADMIN_PASSWORD_HASH", "")
     return adm_email, adm_hash
 
 def authenticate_admin_credentials(email: str, password: str) -> tuple[bool, str]:

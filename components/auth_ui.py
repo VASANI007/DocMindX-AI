@@ -4,11 +4,14 @@ Provides a full-page clinical identity portal for Registration, 2FA Login,
 Recovery Password, Change Password, and Administrator Authentication.
 Zero popups/dialogs, zero emojis, clean clinical design system.
 """
-import streamlit as st
 import datetime
+
+import streamlit as st
+
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
 from components.theme_toggle import theme_toggle_switch
+
 
 def init_auth_session_state():
     """Initializes authentication session state variables."""
@@ -152,6 +155,17 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
     T = T or {}
     LANG_OPTIONS = LANG_OPTIONS or ["English", "हिन्दी (Hindi)", "ગુજરાતી (Gujarati)"]
 
+    # Keep one password visibility control: Streamlit's eye remains visible,
+    # while browser-native reveal buttons are disabled to avoid duplication.
+    st.markdown("""
+    <style>
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # Redirect already logged-in users directly to their designated panel
     curr_user = get_current_user()
     if curr_user and is_authenticated():
@@ -173,12 +187,12 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
     )
 
     with st.container(key="mm_top_header_card_auth"):
-        hdr_c1, hdr_c2, hdr_c3, hdr_c4 = st.columns([2.7, 1.3, 1.1, 0.7], vertical_alignment="center")
+        hdr_c1, hdr_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
         with hdr_c1:
-            title_auth = "Clinical Security & Identity Portal"
-            sub_auth = "Dual-factor identity verification, patient registration, and credential recovery."
+            title_auth = T.get("auth_portal_title", "Clinical Security & Identity Portal")
+            sub_auth = T.get("auth_portal_sub", "Dual-factor identity verification, patient registration, and credential recovery.")
             st.markdown(
-                f'<div style="display: flex; align-items: center; gap: 16px;">'
+                f'<div style="display: flex; align-items: center; gap: 20px;">'
                 f'{auth_icon_html}'
                 f'<div style="min-width: 0; flex: 1;">'
                 f'<div style="margin: 0; font-size: 1.45rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.25;">{title_auth}</div>'
@@ -189,29 +203,14 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
             )
         with hdr_c2:
             st.markdown(
-                f'<div style="display: flex; justify-content: center; align-items: center; height: 38px;">'
+                f'<div style="display: flex; justify-content: flex-end; align-items: center; height: 38px;">'
                 f'<span style="height: 36px; padding: 0 16px; border-radius: 20px; background: rgba(16, 185, 129, 0.10); border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-weight: 700; font-size: 0.80rem; display: inline-flex; align-items: center; gap: 8px;">'
                 f'<span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block;"></span>'
-                f'2FA SECURITY ACTIVE'
+                f'{T.get("auth_2fa_active", "2FA SECURITY ACTIVE")}'
                 f'</span>'
                 f'</div>',
                 unsafe_allow_html=True
             )
-        with hdr_c3:
-            if sync_language:
-                st.selectbox(
-                    "Header Lang Selector Auth",
-                    options=LANG_OPTIONS,
-                    key="hdr_lang_auth",
-                    label_visibility="collapsed",
-                    on_change=sync_language,
-                    args=("hdr_lang_auth",)
-                )
-        with hdr_c4:
-            new_theme_auth = theme_toggle_switch(is_dark=st.session_state.get("dark_mode", False), key="hdr_sun_moon_auth")
-            if new_theme_auth != st.session_state.get("dark_mode", False):
-                st.session_state["dark_mode"] = new_theme_auth
-                st.rerun()
 
     st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
 
@@ -220,29 +219,30 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
     if view == "RECOVERY":
         # Top banner for Recovery matching Image 4
         st.markdown("""
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 14px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(37, 99, 235, 0.04);">
+        <div class="auth-top-sub-banner" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-radius: 14px; margin-bottom: 16px;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <svg width="34" height="34" viewBox="0 0 24 24" fill="#2563EB">
                     <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     <polyline points="7 12 10 12 11.5 8 13.5 16 15 12 17 12" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
                 <div style="text-align: left;">
-                    <div class="auth-card-title" style="font-weight: 800; font-size: 1.15rem; color: #0F172A; line-height: 1.1;">DocMindX AI</div>
-                    <div class="auth-card-subtitle" style="font-size: 0.65rem; color: #64748B; font-weight: 600; letter-spacing: 0.02em;">Secure Health • Smarter Tomorrow</div>
+                    <div class="auth-card-title" style="font-weight: 800; font-size: 1.15rem; line-height: 1.1;">DocMindX AI</div>
+                    <div class="auth-card-subtitle" style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.02em;">Secure Health • Smarter Tomorrow</div>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 34px; height: 34px; border-radius: 10px; background: #EFF6FF; border: 1.5px solid #BFDBFE; display: flex; align-items: center; justify-content: center;">
+                <div class="auth-safe-pill" style="width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         <polyline points="9 12 11 14 15 10"/>
                     </svg>
                 </div>
                 <div style="text-align: left;">
-                    <div class="auth-card-title" style="font-weight: 700; font-size: 0.82rem; color: #1E293B; line-height: 1.1;">Your Data is Safe</div>
-                    <div class="auth-card-subtitle" style="font-size: 0.68rem; color: #64748B;">Encrypted & Protected</div>
+                    <div class="auth-card-title" style="font-weight: 700; font-size: 0.82rem; line-height: 1.1;">Your Data is Safe</div>
+                    <div class="auth-card-subtitle" style="font-size: 0.68rem;">Encrypted & Protected</div>
                 </div>
             </div>
+
         </div>
         """, unsafe_allow_html=True)
 
@@ -300,7 +300,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             We'll send a secure password recovery code to your registered email address.
                         </p>
                         <!-- Safe & Secure Box -->
-                        <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 100%; max-width: 320px; margin: 0 auto 12px auto; text-align: left;">
+                        <div class="auth-recovery-safe-box" style="border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 100%; max-width: 320px; margin: 0 auto 12px auto; text-align: left;">
                             <div style="width: 34px; height: 34px; border-radius: 10px; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
@@ -308,8 +308,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                                 </svg>
                             </div>
                             <div>
-                                <strong style="color: #1E40AF; font-size: 0.82rem; display: block;">Safe & Secure</strong>
-                                <span style="color: #64748B; font-size: 0.70rem; line-height: 1.35;">Your information is never shared with anyone and is fully encrypted.</span>
+                                <strong class="auth-recovery-safe-title" style="font-size: 0.82rem; display: block;">Safe & Secure</strong>
+                                <span class="auth-recovery-safe-sub" style="font-size: 0.70rem; line-height: 1.35;">Your information is never shared with anyone and is fully encrypted.</span>
                             </div>
                         </div>
                     </div>
@@ -325,7 +325,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.markdown("""
+                st.markdown(f"""
                 <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
                     <div style="width: 44px; height: 44px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -335,9 +335,9 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         </svg>
                     </div>
                     <div>
-                        <h3 class="auth-card-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; color: #1E293B;">Enterprise Medical Vault</h3>
+                        <h3 class="auth-card-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; color: #1E293B;">{T.get("auth_vault_title", "Enterprise Medical Vault")}</h3>
                         <p class="auth-card-subtitle" style="margin: 2px 0 0 0; font-size: 0.80rem; color: #64748B; line-height: 1.45;">
-                            DocMindX AI enforces bank-grade dual-factor cryptographic identity protocols. Your clinical health records, family profiles, and scan history remain strictly isolated and protected.
+                            {T.get("auth_vault_sub", "DocMindX AI enforces bank-grade dual-factor cryptographic identity protocols. Your clinical health records, family profiles, and scan history remain strictly isolated and protected.")}
                         </p>
                     </div>
                 </div>
@@ -353,8 +353,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             </svg>
                         </div>
                         <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">Mandatory Dual-Factor (2FA) OTP</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">Single-use cryptographic OTPs sent to your verified email.</span>
+                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat1_title", "Mandatory Dual-Factor (2FA) OTP")}</strong>
+                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat1_sub", "Single-use cryptographic OTPs sent to your verified email.")}</span>
                         </div>
                     </div>
                     <!-- 02 -->
@@ -366,8 +366,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             </svg>
                         </div>
                         <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">Bcrypt 12-Round Password Encryption</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">Passwords and OTPs are never stored or logged in plaintext.</span>
+                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat2_title", "Bcrypt 12-Round Password Encryption")}</strong>
+                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat2_sub", "Passwords and OTPs are never stored or logged in plaintext.")}</span>
                         </div>
                     </div>
                     <!-- 03 -->
@@ -379,8 +379,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             </svg>
                         </div>
                         <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">Relational Family Profiles</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">Attach scans and reports dynamically to individual family members.</span>
+                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat3_title", "Relational Family Profiles")}</strong>
+                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat3_sub", "Attach scans and reports dynamically to individual family members.")}</span>
                         </div>
                     </div>
                     <div class="auth-feat-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 7px 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
@@ -391,8 +391,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             </svg>
                         </div>
                         <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">Parameterized SQL Defense</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">100% prepared statements with absolute SQL injection immunity.</span>
+                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat4_title", "Parameterized SQL Defense")}</strong>
+                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat4_sub", "100% prepared statements with absolute SQL injection immunity.")}</span>
                         </div>
                     </div>
                 </div>
@@ -465,8 +465,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                     !
                 </div>
                 <div style="font-size: 0.74rem; line-height: 1.35;">
-                    <strong style="color: #DC2626;">Clinical Privacy Standard:</strong>
-                    <span style="color: #991B1B;">Compliant with HIPAA and WHO clinical health data security guidelines.</span>
+                    <strong style="color: #DC2626;">{T.get("auth_privacy_std", "Clinical Privacy Standard:")}</strong>
+                    <span style="color: #991B1B;">{T.get("auth_privacy_desc", "Compliant with HIPAA and WHO clinical health data security guidelines.")}</span>
                 </div>
             </div>
             <div class="auth-trust-grid" style="display: grid; grid-template-columns: repeat(4, minmax(72px, 1fr)); gap: 8px; margin-top: 12px; margin-bottom: 4px; width: 100%;">
@@ -477,8 +477,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         </svg>
                     </div>
                     <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">Secure</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">Bank-Grade</div>
+                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_secure", "Secure")}</div>
+                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_bank_grade", "Bank-Grade")}</div>
                     </div>
                 </div>
                 <div class="auth-trust-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 8px; display: flex; align-items: flex-start; gap: 6px; min-height: 64px; box-sizing: border-box; overflow: visible;">
@@ -488,8 +488,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         </svg>
                     </div>
                     <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">Private</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">Your Control</div>
+                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_private", "Private")}</div>
+                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_control", "Your Control")}</div>
                     </div>
                 </div>
                 <div class="auth-trust-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 8px; display: flex; align-items: flex-start; gap: 6px; min-height: 64px; box-sizing: border-box; overflow: visible;">
@@ -499,8 +499,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         </svg>
                     </div>
                     <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">Compliant</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">HIPAA / WHO</div>
+                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_compliant", "Compliant")}</div>
+                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_hipaa", "HIPAA / WHO")}</div>
                     </div>
                 </div>
                 <div class="auth-trust-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 8px; display: flex; align-items: flex-start; gap: 6px; min-height: 64px; box-sizing: border-box; overflow: visible;">
@@ -510,8 +510,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         </svg>
                     </div>
                     <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">Trusted</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">Healthcare</div>
+                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_trusted", "Trusted")}</div>
+                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_health", "Healthcare")}</div>
                     </div>
                 </div>
             </div>
@@ -523,11 +523,11 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
         with st.container(key="auth_right_signin_card", border=True):
             # 1. SIGN IN VIEW
             if view == "LOGIN":
-                st.markdown("""
+                st.markdown(f"""
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <div class="auth-icon-badge" style="width: 44px; height: 44px; border-radius: 12px; background: var(--mm-icon-box-bg, #EFF6FF); border: 1px solid var(--mm-icon-box-border, #DBEAFE); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                                 <circle cx="9" cy="7" r="4"/>
                                 <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
@@ -535,8 +535,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             </svg>
                         </div>
                         <div>
-                            <h3 class="auth-card-title" style="margin: 0; font-size: 1.35rem; font-weight: 800; color: #0F172A;">Patient Sign In</h3>
-                            <p class="auth-card-subtitle" style="margin: 3px 0 0 0; font-size: 0.80rem; color: #64748B;">Enter your registered email and password to receive your 2FA verification code.</p>
+                            <h3 class="auth-card-title" style="margin: 0; font-size: 1.35rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">{T.get("auth_patient_signin", "Patient Sign In")}</h3>
+                            <p class="auth-card-subtitle" style="margin: 3px 0 0 0; font-size: 0.80rem; color: var(--mm-text-secondary, #64748B);">{T.get("auth_patient_signin_sub", "Enter your registered email and password to receive your 2FA verification code.")}</p>
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -546,41 +546,42 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         </svg>
                         <div style="text-align: left;">
                             <div class="auth-card-title" style="font-weight: 800; font-size: 1.15rem; color: #0F172A; line-height: 1.1;">DocMindX AI</div>
-                            <div class="auth-card-subtitle" style="font-size: 0.65rem; color: #64748B; font-weight: 600; letter-spacing: 0.02em;">Secure Health • Smarter Tomorrow</div>
+                            <div class="auth-card-subtitle" style="font-size: 0.65rem; color: #64748B; font-weight: 600; letter-spacing: 0.02em;">{T.get("app_tagline", "Better Health. Brighter Tomorrow.")}</div>
                         </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
 
-                st.markdown("""
+                st.markdown(f"""
                 <div class="auth-input-label">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                         <polyline points="22,6 12,13 2,6"/>
                     </svg>
-                    <span>Registered Email Address</span>
+                    <span>{T.get("auth_email_label", "Registered Email Address")}</span>
                 </div>
                 """, unsafe_allow_html=True)
-                login_email = st.text_input("Registered Email Address", key="panel_login_email", placeholder="you@example.com", label_visibility="collapsed")
+                login_email = st.text_input(T.get("auth_email_label", "Registered Email Address"), key="panel_login_email", placeholder="you@example.com", label_visibility="collapsed")
 
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                st.markdown("""
+                st.markdown(f"""
                 <div class="auth-input-label">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                    <span>Account Password</span>
+                    <span>{T.get("auth_pass_label", "Account Password")}</span>
                 </div>
                 """, unsafe_allow_html=True)
 
-                login_password = st.text_input("Account Password", type="password", key="panel_login_password", placeholder="••••••••", label_visibility="collapsed")
+                login_password = st.text_input(T.get("auth_pass_label", "Account Password"), type="password", key="panel_login_password", placeholder="••••••••", label_visibility="collapsed")
 
                 st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
                 c_btn1, c_btn2 = st.columns([1, 1], gap="medium")
                 with c_btn1:
+                    btn_c2fa = f"**{T.get('auth_btn_continue_2fa', 'Continue to 2FA Code →')}**  \n{T.get('auth_btn_continue_2fa_sub', 'Get verification code on your email')}"
                     if st.button(
-                        "**Continue to 2FA Code →**  \nGet verification code on your email",
+                        btn_c2fa,
                         type="primary",
                         use_container_width=True,
                         key="panel_btn_login_submit"
@@ -606,27 +607,30 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                                 else:
                                     st.error(msg)
                 with c_btn2:
+                    btn_creg = f"**{T.get('auth_btn_create_acc', 'Create New Account')}**  \n{T.get('auth_btn_create_acc_sub', 'Join DocMindX AI')}"
                     if st.button(
-                        "**Create New Account**  \nJoin DocMindX AI",
+                        btn_creg,
                         use_container_width=True,
                         key="panel_btn_goto_reg"
                     ):
                         st.session_state["auth_view"] = "REGISTER"
                         st.rerun()
 
-                st.markdown('<div class="auth-or-divider"><span>OR</span></div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="auth-or-divider"><span>{T.get("auth_or", "OR")}</span></div>', unsafe_allow_html=True)
                 opt_c1, opt_c2 = st.columns([1, 1], gap="medium")
                 with opt_c1:
+                    btn_crec = f"**{T.get('auth_btn_rec_pass', 'Recovery Password')}**  \n{T.get('auth_btn_rec_pass_sub', 'Reset your account password')}"
                     if st.button(
-                        "**Recovery Password**  \nReset your account password",
+                        btn_crec,
                         use_container_width=True,
                         key="panel_btn_goto_rec"
                     ):
                         st.session_state["auth_view"] = "RECOVERY"
                         st.rerun()
                 with opt_c2:
+                    btn_cadm = f"**{T.get('auth_btn_admin_access', 'Administrator Access')}**  \n{T.get('auth_btn_admin_access_sub', 'Authorized personnel only')}"
                     if st.button(
-                        "**Administrator Access**  \nAuthorized personnel only",
+                        btn_cadm,
                         use_container_width=True,
                         key="panel_btn_goto_admin"
                     ):
@@ -634,8 +638,9 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         st.rerun()
 
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                btn_cdash = f"**{T.get('auth_btn_return_dash', 'Return to Clinical Dashboard')}**  \n{T.get('auth_btn_return_dash_sub', 'Back to main application')}"
                 if st.button(
-                    "**Return to Clinical Dashboard**  \nBack to main application",
+                    btn_cdash,
                     use_container_width=True,
                     key="panel_btn_return_dashboard"
                 ):
@@ -661,17 +666,17 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
             elif view == "LOGIN_OTP":
                 email = st.session_state.get("auth_temp_email", "")
                 st.markdown(f"""
-                <div style="background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-                    <div style="font-weight: 700; color: #60A5FA; font-size: 1.0rem; margin-bottom: 4px;">Enter Dual-Factor Verification Code</div>
-                    <div style="font-size: 0.84rem; color: #CBD5E1;">A 6-digit cryptographic verification code has been dispatched to <strong>{email}</strong>.</div>
-                </div>
+                    <div class="auth-login-otp-banner" style="border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+                        <div class="auth-login-otp-title" style="font-weight: 700; font-size: 1.0rem; margin-bottom: 4px;">Enter Dual-Factor Verification Code</div>
+                        <div class="auth-login-otp-sub" style="font-size: 0.84rem;">A 6-digit cryptographic verification code has been dispatched to <strong class="auth-login-otp-email">{email}</strong>.</div>
+                    </div>
                 """, unsafe_allow_html=True)
 
                 otp_input = st.text_input("Enter 6-Digit Code", max_chars=6, key="panel_login_otp_input", placeholder="123456")
 
                 c_v1, c_v2 = st.columns([1, 1])
                 with c_v1:
-                    if st.button("Verify Code & Complete Sign In", type="primary", use_container_width=True, key="panel_btn_verify_login"):
+                    if st.button(T.get("btn_verify_signin", "Verify Code & Complete Sign In"), type="primary", use_container_width=True, key="panel_btn_verify_login"):
                         if not otp_input or len(otp_input.strip()) < 6:
                             st.error("Please enter the complete 6-digit code.")
                         else:
@@ -688,7 +693,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             else:
                                 st.error(msg)
                 with c_v2:
-                    if st.button("Resend Verification Code", use_container_width=True, key="panel_btn_resend_login"):
+                    if st.button(T.get("btn_resend_code", "Resend Verification Code"), use_container_width=True, key="panel_btn_resend_login"):
                         ok, msg = auth_svc.send_login_verification_code(email)
                         if ok:
                             st.success(msg)
@@ -697,7 +702,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             st.warning(msg)
 
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                if st.button("← Back to Sign In", key="panel_btn_back_from_otp"):
+                if st.button(T.get("btn_back_signin", "← Back to Sign In"), key="panel_btn_back_from_otp"):
                     st.session_state["auth_view"] = "LOGIN"
                     st.rerun()
 
@@ -707,7 +712,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 st.markdown("""
                 <div class="auth-patient-card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
-                        <div style="width: 52px; height: 52px; border-radius: 16px; background: #EFF6FF; border: 1.5px solid #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);">
+                        <div class="auth-patient-hdr-icon" style="width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="#2563EB">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                                 <circle cx="9" cy="7" r="4"/>
@@ -816,7 +821,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 st.markdown(f"""
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; margin-bottom: 8px;">
                     <div class="auth-input-help" style="margin: 0;">Used to calculate your real-time age accurately.</div>
-                    <span style="font-size: 0.74rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 8px; border-radius: 12px;">
+                    <span class="auth-age-calc-badge" style="font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">
                         Age: {curr_calc_age if curr_calc_age is not None else '--'} Years (Auto-updates)
                     </span>
                 </div>
@@ -888,7 +893,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 st.markdown(render_password_requirements_box(), unsafe_allow_html=True)
 
                 st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
-                if st.button("Register & Send Activation Code →", type="primary", use_container_width=True, key="panel_btn_submit_reg"):
+                if st.button(T.get("auth_btn_reg_submit", "Register & Send Activation Code →"), type="primary", use_container_width=True, key="panel_btn_submit_reg"):
                     reg_dob_str = reg_dob_val.strftime("%Y-%m-%d") if reg_dob_val else ""
                     ok, msg = auth_svc.register_user(reg_name, reg_email, reg_pass, reg_conf, dob=reg_dob_str)
                     if ok:
@@ -900,12 +905,12 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         st.error(msg)
 
                 st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-                if st.button("→ Already have an account? Sign In", use_container_width=True, key="panel_btn_back_to_login"):
+                if st.button(T.get("auth_btn_already_acc", "→ Already have an account? Sign In"), use_container_width=True, key="panel_btn_back_to_login"):
                     st.session_state["auth_view"] = "LOGIN"
                     st.rerun()
 
                 st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-                if st.button("← Return to Clinical Dashboard", use_container_width=True, key="panel_btn_reg_return_dash"):
+                if st.button(T.get("auth_btn_return_dash", "← Return to Clinical Dashboard"), use_container_width=True, key="panel_btn_reg_return_dash"):
                     st.session_state["active_panel"] = "Health Assessment"
                     st.rerun()
 
@@ -1056,7 +1061,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 st.markdown("""
                 <div class="auth-patient-card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
-                        <div style="width: 52px; height: 52px; border-radius: 16px; background: #EFF6FF; border: 1.5px solid #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);">
+                        <div class="auth-patient-hdr-icon" style="width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                                 <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -1085,7 +1090,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                             </div>
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #E2E8F0; padding-left: 12px;">
-                            <div style="width: 30px; height: 30px; border-radius: 8px; background: #EFF6FF; border: 1px solid #DBEAFE; display: flex; align-items: center; justify-content: center;">
+                            <div class="auth-safe-pill-sm" style="width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                                     <polyline points="9 12 11 14 15 10"/>
@@ -1254,7 +1259,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 st.markdown("""
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 44px; height: 44px; border-radius: 12px; background: #FEF2F2; border: 1px solid #FECACA; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <div class="auth-admin-hdr-icon" style="width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                                 <circle cx="9" cy="7" r="4"/>
@@ -1264,7 +1269,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                         </div>
                         <div>
                             <h3 class="auth-card-title" style="margin: 0; font-size: 1.30rem; font-weight: 800; color: #0F172A;">National Administrator Console Sign-In</h3>
-                            <p class="auth-card-subtitle" style="margin: 2px 0 0 0; font-size: 0.80rem; color: #64748B;">Restricted access for certified national command center personnel.</p>
+                            <p class="auth-card-subtitle" style="margin: 2px 0 0 0; font-size: 0.80rem; color: #64748B;">Restricted access for certified National Command personnel.</p>
                         </div>
                     </div>
                     <div style="display: flex; align-items: center; gap: 10px;">
@@ -1279,15 +1284,15 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                     </div>
                 </div>
                 <div class="auth-admin-alert">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #FEE2E2; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div class="auth-admin-alert-icon" style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                     </div>
                     <div>
-                        <strong style="color: #DC2626; font-size: 0.84rem; display: block;">Authorized Personnel Only</strong>
-                        <span style="color: #991B1B; font-size: 0.76rem; line-height: 1.35;">This console is restricted to verified national command center administrators. All access attempts are logged and monitored.</span>
+                        <strong class="auth-admin-alert-title" style="font-size: 0.84rem; display: block;">Authorized Personnel Only</strong>
+                        <span class="auth-admin-alert-sub" style="font-size: 0.76rem; line-height: 1.35;">This console is restricted to verified National Command administrators. All access attempts are logged and monitored.</span>
                     </div>
                 </div>
                 <div class="auth-input-label">
@@ -1340,9 +1345,9 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
             elif view == "ADMIN_OTP":
                 email = st.session_state.get("auth_temp_email", "docmindxai@gmail.com")
                 st.markdown(f"""
-                <div style="background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-                    <div style="font-weight: 700; color: #F87171; font-size: 1.0rem; margin-bottom: 4px;">Admin Dual-Factor Key Verification</div>
-                    <div style="font-size: 0.82rem; color: #CBD5E1;">High-security authorization key dispatched to <strong>{email}</strong>.</div>
+                <div class="auth-admin-otp-banner" style="border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+                    <div class="auth-admin-otp-title" style="font-weight: 700; font-size: 1.0rem; margin-bottom: 4px;">Admin Dual-Factor Key Verification</div>
+                    <div class="auth-admin-otp-sub" style="font-size: 0.82rem;">High-security authorization key dispatched to <strong class="auth-admin-otp-email">{email}</strong>.</div>
                 </div>
                 """, unsafe_allow_html=True)
 

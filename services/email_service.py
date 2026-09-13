@@ -627,7 +627,7 @@ def send_support_ticket_to_admin(user_email: str, issue_text: str, ticket_id: st
     body = f"""
     <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700;">System Administrator Notification,</p>
     <p style="margin: 0 0 16px 0; font-size: 13.5px; color: #64748B; line-height: 1.55;">
-      A new customer support inquiry was submitted via the <strong>About DocMindX AI Helpdesk</strong>.
+      A new customer support inquiry was submitted via the <strong>About Helpdesk</strong>.
     </p>
     <div style="background: #F8FAFC; border: 1.5px solid #E2E8F0; border-radius: 12px; padding: 18px 20px; margin: 16px 0;">
       <table width="100%" cellpadding="0" cellspacing="0" border="0">

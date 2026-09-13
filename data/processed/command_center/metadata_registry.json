@@ -1,5 +1,5 @@
 {
-  "pipeline_name": "DocMindX AI National Command Center Ingestion Pipeline",
+  "pipeline_name": "DocMindX AI National Command Ingestion Pipeline",
   "execution_timestamp": "2026-09-02T16:54:37.891667",
   "execution_duration_sec": 9.51,
   "status": "COMPLETE",

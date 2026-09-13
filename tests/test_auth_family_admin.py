@@ -316,21 +316,30 @@ class TestDocMindXAuthFamilyAdminSuite(unittest.TestCase):
     # ============================================================
     def test_10_admin_authentication_and_authorization(self):
         """Tests Admin credentials, OTP, server-side authorization and privilege enforcement."""
+        # Admin plaintext password for testing — loaded from .env (DOCMINDX_ADMIN_PASSWORD)
+        # NEVER hardcode passwords in source code; always use environment variables.
+        admin_plain_password = os.getenv("DOCMINDX_ADMIN_PASSWORD", "")
+        if not admin_plain_password:
+            self.skipTest(
+                "DOCMINDX_ADMIN_PASSWORD not set in environment/.env — skipping admin auth test. "
+                "Add DOCMINDX_ADMIN_PASSWORD=<your_admin_password> to your .env file."
+            )
+
         # Non-admin user cannot authorize as admin
         regular_user = auth_db.get_user_by_email(self.test_email_1)
         self.assertFalse(auth_svc.is_admin_session(regular_user))
 
         # Admin required fields and minimum length tests
-        err_email, _ = auth_svc.authenticate_admin_credentials("", "D@ksh007")
+        err_email, _ = auth_svc.authenticate_admin_credentials("", admin_plain_password)
         self.assertFalse(err_email)
         err_pass, _ = auth_svc.authenticate_admin_credentials(self.admin_email, "")
         self.assertFalse(err_pass)
         err_short, _ = auth_svc.authenticate_admin_credentials(self.admin_email, "Short1!")
         self.assertFalse(err_short)
 
-        # Admin login step 1 with new password D@ksh007 (Email + Password)
-        ok, msg = auth_svc.authenticate_admin_credentials(self.admin_email, "D@ksh007")
-        self.assertTrue(ok)
+        # Admin login step 1 (Email + Password from .env)
+        ok, msg = auth_svc.authenticate_admin_credentials(self.admin_email, admin_plain_password)
+        self.assertTrue(ok, f"Admin login failed: {msg}")
 
         # Admin login step 2 (Admin OTP)
         otp_sent, _ = auth_svc.send_admin_login_otp_code(self.admin_email)
@@ -342,6 +351,7 @@ class TestDocMindXAuthFamilyAdminSuite(unittest.TestCase):
         v_ok, v_msg, adm_session = auth_svc.complete_admin_login(self.admin_email, adm_otp)
         self.assertTrue(v_ok)
         self.assertTrue(auth_svc.is_admin_session(adm_session))
+
 
     def test_11_admin_dynamic_kpis_and_user_governance(self):
         """Tests admin dynamic KPIs (no fake numbers), user disable/enable, and security logs."""

@@ -153,7 +153,7 @@ class IngestionManager:
     def run_all(self) -> Dict[str, Any]:
         """Runs the entire ingestion pipeline and generates the metadata registry."""
         start_time = datetime.now()
-        logger.info("=== Starting National Command Center Full Data Ingestion Pipeline ===")
+        logger.info("=== Starting National Command Full Data Ingestion Pipeline ===")
 
         results = {}
         results["pincode_geography"] = pincode_ingestor.ingest()
@@ -169,7 +169,7 @@ class IngestionManager:
 
         # Build Metadata & Provenance Registry
         metadata_registry = {
-            "pipeline_name": "DocMindX AI National Command Center Ingestion Pipeline",
+            "pipeline_name": "DocMindX AI National Command Ingestion Pipeline",
             "execution_timestamp": datetime.now().isoformat(),
             "execution_duration_sec": round((datetime.now() - start_time).total_seconds(), 2),
             "status": "COMPLETE",

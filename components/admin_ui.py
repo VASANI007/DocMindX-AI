@@ -57,8 +57,8 @@ def render_admin_dashboard_view():
                     <div style="font-size: 0.65rem; color: #64748B; font-weight: 700; letter-spacing: 0.06em;">CLINICAL AI HEALTHCARE SYSTEM</div>
                 </div>
             </div>
-            <div style="background: #FFE4E6; color: #E11D48; border: 1.5px solid #FECDD3; padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 800; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08);">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E11D48" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <div class="adm-super-admin-badge" style="padding: 6px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 800; display: flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(225, 29, 72, 0.08);">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>
                 </svg>
                 <span>SUPER ADMIN</span>
@@ -163,229 +163,130 @@ def render_admin_dashboard_view():
             </div>
             """, unsafe_allow_html=True)
 
-        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
-
-        col_act1, col_act2 = st.columns([2.3, 1.3])
-        with col_act1:
-            h_col_left, h_col_right = st.columns([3.0, 1.3])
-            with h_col_left:
-                st.markdown("""
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px; margin-bottom: 12px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"/>
-                        <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    <h4 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary); white-space: nowrap;">Recent Security &amp; System Activity</h4>
+        # Build activity log HTML as a string first (avoids Streamlit column height artifacts)
+        rec_act = kpis.get("recent_activity", [])
+        _act_html_list = []
+        if rec_act:
+            for _act in rec_act:
+                _ts  = str(_act.get("created_at", ""))[:19]
+                _ev  = _act.get("event_type", "")
+                _mail = _act.get("email") or "System"
+                _det = _act.get("details", "")
+        
+                if "FAIL" in _ev or "DISABLE" in _ev:
+                    _bg, _brd, _clr = "#FFF1F2", "#FECDD3", "#EF4444"
+                    _svg = '<polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
+                elif "PASSWORD" in _ev or "PWD" in _ev:
+                    _bg, _brd, _clr = "#FFFBEB", "#FDE68A", "#D97706"
+                    _svg = '<path d="m21 2-2 2m-1.5 1.5L14 9l-2-2-4 4 2 2-2 2-2-2-4 4 6 6 4-4-2-2 2-2 2 2 3.5-3.5"/><circle cx="17" cy="7" r="3"/>'
+                elif "OTP" in _ev:
+                    _bg, _brd, _clr = "#ECFDF5", "#A7F3D0", "#10B981"
+                    _svg = '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>'
+                elif "ACTIVATED" in _ev or "VERIF" in _ev:
+                    _bg, _brd, _clr = "#EFF6FF", "#BFDBFE", "#2563EB"
+                    _svg = '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'
+                else:
+                    _bg, _brd, _clr = "#EFF6FF", "#BFDBFE", "#2563EB"
+                    _svg = '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
+        
+                card_html = f"""<div class="adm-activity-card"><div style="display:flex;align-items:center;gap:12px;"><div style="width:36px;height:36px;border-radius:10px;background:{_bg};border:1.5px solid {_brd};display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{_clr}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">{_svg}</svg></div><div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><span style="color:{_clr};font-weight:800;font-size:0.82rem;">{_ev}</span><span style="font-size:0.78rem;color:#64748B;">{_mail}</span></div><div style="font-size:0.75rem;color:#94A3B8;margin-top:1px;">{_det}</div></div></div><span style="font-size:0.74rem;color:#64748B;flex-shrink:0;">{_ts}</span></div>"""
+                _act_html_list.append(card_html)
+    
+            _act_html = "".join(_act_html_list)
+        else:
+            _act_html = '<div style="color:#94A3B8;padding:12px 0;font-size:0.84rem;">No security activity recorded yet.</div>'
+        # Single markdown with CSS flex — both panels aligned to top, no Streamlit column gaps
+        st.markdown(f"""
+        <style>
+        .adm-flex-row {{ display:flex; gap:20px; align-items:flex-start; margin-top:18px; }}
+        .adm-flex-left {{ flex:2.3; min-width:0; }}
+        .adm-flex-right {{ flex:1.3; min-width:0; }}
+        .adm-logs-btn {{
+            background:linear-gradient(135deg,#1E3A5F,#1E2E4E);
+            border:1px solid #1E2E4E; border-radius:8px;
+            color:#60A5FA; padding:7px 16px;
+            font-size:0.84rem; font-weight:700;
+            cursor:pointer; white-space:nowrap;
+            transition:all 0.2s ease; font-family:inherit;
+        }}
+        .adm-logs-btn:hover {{
+            background:linear-gradient(135deg,#1E4A8F,#1E3460);
+            border-color:#3B82F6; color:#93C5FD;
+            transform:translateY(-1px);
+        }}
+        </style>
+        <div class="adm-flex-row">
+            <div class="adm-flex-left">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <h4 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--mm-text-primary);white-space:nowrap;">Recent Security &amp; System Activity</h4>
+                    </div>
+                    <button class="adm-logs-btn" onclick="(function(){{try{{var d=window.parent.document||document,ts=d.querySelectorAll('button[data-baseweb=\\'tab\\'],button[role=\\'tab\\']');for(var i=0;i<ts.length;i++){{var t=ts[i],tx=(t.innerText||t.textContent||'').trim();if(tx.includes('Security')||tx.includes('Audit')||i===4){{t.click();return;}}}}}}catch(e){{}}}})()">View All Logs &#8594;</button>
                 </div>
-                """, unsafe_allow_html=True)
-            with h_col_right:
-                view_all_logs = st.button("View All Logs →", key="btn_adm_view_all_logs", use_container_width=True)
-
-            # Auto-attach direct click listener & trigger on click
-            st.components.v1.html("""
-            <script>
-            (function() {
-                function switchToAuditTab() {
-                    try {
-                        const doc = window.parent.document || document;
-                        const tabs = doc.querySelectorAll('button[data-baseweb="tab"], button[role="tab"]');
-                        for (let i = 0; i < tabs.length; i++) {
-                            const t = tabs[i];
-                            const txt = (t.innerText || t.textContent || "").trim();
-                            if (txt.includes("Security & Audit") || txt.includes("Audit Logs") || (i === 4 && tabs.length >= 5)) {
-                                t.click();
-                                setTimeout(() => {
-                                    t.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }, 50);
-                                return true;
-                            }
-                        }
-                    } catch(e) {
-                        console.error("Tab switch error:", e);
-                    }
-                    return false;
-                }
-
-                function attachListener() {
-                    try {
-                        const doc = window.parent.document || document;
-                        const btn = doc.querySelector('.st-key-btn_adm_view_all_logs button');
-                        if (btn && !btn.dataset.tabListenerAttached) {
-                            btn.dataset.tabListenerAttached = "true";
-                            btn.addEventListener('click', function() {
-                                switchToAuditTab();
-                            });
-                        }
-                    } catch(e) {}
-                }
-
-                attachListener();
-                setTimeout(attachListener, 150);
-                setTimeout(attachListener, 400);
-                setTimeout(attachListener, 800);
-            })();
-            </script>
-            """, height=0, width=0)
-
-            if view_all_logs:
-                st.components.v1.html("""
-                <script>
-                (function() {
-                    try {
-                        const doc = window.parent.document || document;
-                        const tabs = doc.querySelectorAll('button[data-baseweb="tab"], button[role="tab"]');
-                        for (let i = 0; i < tabs.length; i++) {
-                            const t = tabs[i];
-                            const txt = (t.innerText || t.textContent || "").trim();
-                            if (txt.includes("Security & Audit") || txt.includes("Audit Logs") || (i === 4 && tabs.length >= 5)) {
-                                t.click();
-                                setTimeout(() => {
-                                    t.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                }, 50);
-                                break;
-                            }
-                        }
-                    } catch(e) {}
-                })();
-                </script>
-                """, height=0, width=0)
-
-            rec_act = kpis.get("recent_activity", [])
-            if rec_act:
-                for act in rec_act:
-                    ts = str(act.get("created_at", ""))[:19]
-                    ev = act.get("event_type", "")
-                    mail = act.get("email") or "System"
-                    det = act.get("details", "")
-
-                    # Smart icon styling per event type
-                    if "FAIL" in ev or "DISABLE" in ev:
-                        i_bg, i_brd, i_clr = "#FFF1F2", "#FECDD3", "#EF4444"
-                        svg_path = '<polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>'
-                    elif "PASSWORD" in ev or "PWD" in ev:
-                        i_bg, i_brd, i_clr = "#FFFBEB", "#FDE68A", "#D97706"
-                        svg_path = '<path d="m21 2-2 2m-1.5 1.5L14 9l-2-2-4 4 2 2-2 2-2-2-4 4 6 6 4-4-2-2 2-2 2 2 3.5-3.5"/><circle cx="17" cy="7" r="3"/>'
-                    elif "OTP" in ev:
-                        i_bg, i_brd, i_clr = "#ECFDF5", "#A7F3D0", "#10B981"
-                        svg_path = '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>'
-                    elif "ACTIVATED" in ev or "VERIF" in ev:
-                        i_bg, i_brd, i_clr = "#EFF6FF", "#BFDBFE", "#2563EB"
-                        svg_path = '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>'
-                    else:
-                        i_bg, i_brd, i_clr = "#EFF6FF", "#BFDBFE", "#2563EB"
-                        svg_path = '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>'
-
-                    st.markdown(f"""
-                    <div class="adm-activity-card">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="width: 36px; height: 36px; border-radius: 10px; background: {i_bg}; border: 1.5px solid {i_brd}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{i_clr}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    {svg_path}
-                                </svg>
-                            </div>
-                            <div>
-                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                    <span style="color: {i_clr}; font-weight: 800; font-size: 0.82rem;">{ev}</span>
-                                    <span style="font-size: 0.78rem; color: #64748B;">{mail}</span>
-                                </div>
-                                <div style="font-size: 0.75rem; color: #94A3B8; margin-top: 1px;">{det}</div>
-                            </div>
+                {_act_html}
+            </div>
+            <div class="adm-flex-right">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        <h4 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--mm-text-primary);">Operational Status</h4>
+                    </div>
+                    <div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#059669;border-radius:20px;padding:3px 12px;font-size:0.74rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+                        <span style="width:7px;height:7px;border-radius:50%;background:#10B981;display:inline-block;"></span>
+                        <span>All Systems Active</span>
+                    </div>
+                </div>
+                <div style="background:#0F172A;border:1.5px solid #1E2E4E;border-radius:14px;padding:18px 20px;box-shadow:0 4px 16px rgba(0,0,0,0.15);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:0.82rem;">
+                        <div style="display:flex;align-items:center;gap:10px;color:#F8FAFC;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                            <span>Database Engine: <strong style="color:#94A3B8;font-weight:600;">SQLite3 (Foreign Keys ON)</strong></span>
                         </div>
-                        <span style="font-size: 0.74rem; color: #64748B; flex-shrink: 0;">{ts}</span>
+                        <span style="color:#34D399;font-weight:700;font-size:0.78rem;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block;"></span> Online</span>
                     </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("No security activity recorded yet.")
-
-        with col_act2:
-            st.markdown("""
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                    <h4 style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary);">Operational Status</h4>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:0.82rem;">
+                        <div style="display:flex;align-items:center;gap:10px;color:#F8FAFC;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+                            <span>Dual-Factor Auth: <strong style="color:#94A3B8;font-weight:600;">Active &amp; Enforced</strong></span>
+                        </div>
+                        <span style="color:#34D399;font-weight:700;font-size:0.78rem;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block;"></span> Active</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:0.82rem;">
+                        <div style="display:flex;align-items:center;gap:10px;color:#F8FAFC;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <span>Password Security: <strong style="color:#94A3B8;font-weight:600;">Bcrypt (12 Rounds)</strong></span>
+                        </div>
+                        <span style="color:#34D399;font-weight:700;font-size:0.78rem;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block;"></span> Active</span>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;font-size:0.82rem;">
+                        <div style="display:flex;align-items:center;gap:10px;color:#F8FAFC;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                            <span>SQL Injection Protection: <strong style="color:#94A3B8;font-weight:600;">Parameterized Queries</strong></span>
+                        </div>
+                        <span style="color:#34D399;font-weight:700;font-size:0.78rem;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block;"></span> Active</span>
+                    </div>
+                    <div style="border-top:1px solid rgba(51,65,85,0.6);margin:10px 0 12px 0;"></div>
+                    <div style="display:flex;align-items:flex-start;gap:10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        <div>
+                            <div style="font-size:0.88rem;color:#34D399;font-weight:800;">All Governance Controls Active</div>
+                            <div style="font-size:0.74rem;color:#94A3B8;margin-top:1px;">System operating within secure parameters</div>
+                        </div>
+                    </div>
                 </div>
-                <div style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #059669; border-radius: 20px; padding: 3px 12px; font-size: 0.74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
-                    <span style="width: 7px; height: 7px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
-                    <span>All Systems Active</span>
+                <div style="background:#EFF6FF;border:1px solid #DBEAFE;border-radius:12px;padding:12px 16px;margin-top:14px;display:flex;align-items:center;gap:12px;">
+                    <div style="width:24px;height:24px;border-radius:50%;background:#2563EB;color:#FFFFFF;font-weight:800;font-size:0.78rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">i</div>
+                    <div style="font-size:0.80rem;color:#1E40AF;line-height:1.35;font-weight:500;">National healthcare data is protected with enterprise-grade security and monitoring.</div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
-
-            st.markdown("""
-            <div style="background: #0F172A; border: 1.5px solid #1E2E4E; border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.82rem;">
-                    <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <ellipse cx="12" cy="5" rx="9" ry="3"/>
-                            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
-                            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                        </svg>
-                        <span>Database Engine: <strong style="color: #94A3B8; font-weight: 600;">SQLite3 (Foreign Keys ON)</strong></span>
-                    </div>
-                    <span style="color: #34D399; font-weight: 700; font-size: 0.78rem; display: flex; align-items: center; gap: 5px;">
-                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #34D399; display: inline-block;"></span> Online
-                    </span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.82rem;">
-                    <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <polyline points="9 12 11 14 15 10"/>
-                        </svg>
-                        <span>Dual-Factor Auth: <strong style="color: #94A3B8; font-weight: 600;">Active &amp; Enforced</strong></span>
-                    </div>
-                    <span style="color: #34D399; font-weight: 700; font-size: 0.78rem; display: flex; align-items: center; gap: 5px;">
-                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #34D399; display: inline-block;"></span> Active
-                    </span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-size: 0.82rem;">
-                    <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                        <span>Password Security: <strong style="color: #94A3B8; font-weight: 600;">Bcrypt (12 Rounds)</strong></span>
-                    </div>
-                    <span style="color: #34D399; font-weight: 700; font-size: 0.78rem; display: flex; align-items: center; gap: 5px;">
-                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #34D399; display: inline-block;"></span> Active
-                    </span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; font-size: 0.82rem;">
-                    <div style="display: flex; align-items: center; gap: 10px; color: #F8FAFC;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="16 18 22 12 16 6"/>
-                            <polyline points="8 6 2 12 8 18"/>
-                        </svg>
-                        <span>SQL Injection Protection: <strong style="color: #94A3B8; font-weight: 600;">Parameterized Queries</strong></span>
-                    </div>
-                    <span style="color: #34D399; font-weight: 700; font-size: 0.78rem; display: flex; align-items: center; gap: 5px;">
-                        <span style="width: 6px; height: 6px; border-radius: 50%; background: #34D399; display: inline-block;"></span> Active
-                    </span>
-                </div>
-                <div style="border-top: 1px solid rgba(51, 65, 85, 0.6); margin: 10px 0 12px 0;"></div>
-                <div style="display: flex; align-items: flex-start; gap: 10px;">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-top: 2px; flex-shrink: 0;">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    <div>
-                        <div style="font-size: 0.88rem; color: #34D399; font-weight: 800;">All Governance Controls Active</div>
-                        <div style="font-size: 0.74rem; color: #94A3B8; margin-top: 1px;">System operating within secure parameters</div>
-                    </div>
-                </div>
-            </div>
-            <div style="background: #EFF6FF; border: 1px solid #DBEAFE; border-radius: 12px; padding: 12px 16px; margin-top: 14px; display: flex; align-items: center; gap: 12px;">
-                <div style="width: 24px; height: 24px; border-radius: 50%; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 0.78rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    i
-                </div>
-                <div style="font-size: 0.80rem; color: #1E40AF; line-height: 1.35; font-weight: 500;">
-                    National healthcare data is protected with enterprise-grade security and monitoring.
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        </div>
+        """, unsafe_allow_html=True)
 
 
     # -------------------------------------------------------------
@@ -500,19 +401,11 @@ def render_admin_dashboard_view():
             ]
             pal = palettes[idx % len(palettes)]
 
-            stat_color = "#059669" if u["account_status"] == "ACTIVE" else ("#E11D48" if u["account_status"] == "DISABLED" else "#D97706")
-            stat_bg = "#ECFDF5" if u["account_status"] == "ACTIVE" else ("#FFF1F2" if u["account_status"] == "DISABLED" else "#FFFBEB")
-            stat_border = "#A7F3D0" if u["account_status"] == "ACTIVE" else ("#FECDD3" if u["account_status"] == "DISABLED" else "#FDE68A")
-
-            ver_color = "#2563EB" if u["email_verified"] else "#64748B"
-            ver_bg = "#EFF6FF" if u["email_verified"] else "#F1F5F9"
-            ver_border = "#BFDBFE" if u["email_verified"] else "#E2E8F0"
-
             with st.container(border=True):
                 st.markdown(f"""
                 <div class="adm-user-card-header">
                     <div class="adm-user-card-main">
-                        <div class="adm-avatar-circle" style="background: {pal['bg']}; border: 1.5px solid {pal['border']}; color: {pal['text']};">
+                        <div class="adm-avatar-circle" data-pal="{idx % 3}">
                             {initials}
                         </div>
                         <div class="adm-user-meta-wrap">
@@ -525,26 +418,26 @@ def render_admin_dashboard_view():
                             </div>
                             <div class="adm-user-chips-row">
                                 <span class="adm-chip-item">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                                     Reg: {str(u['created_at'])[:10]}
                                 </span>
                                 <span class="adm-chip-item">
                                     Login: {str(u.get('last_login') or 'Never')[:10]}
                                 </span>
                                 <span class="adm-chip-item">
-                                    Family: <strong style="color: var(--mm-text-primary);">{u['family_count']}</strong>
+                                    Family: <strong>{u['family_count']}</strong>
                                 </span>
                                 <span class="adm-chip-item">
-                                    Scans: <strong style="color: var(--mm-text-primary);">{u['scan_count']}</strong>
+                                    Scans: <strong>{u['scan_count']}</strong>
                                 </span>
                             </div>
                         </div>
                     </div>
                     <div class="adm-user-card-pills">
-                        <span style="background: {stat_bg}; color: {stat_color}; border: 1px solid {stat_border}; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.03em;">
+                        <span class="adm-status-pill adm-status-{u['account_status'].lower()}">
                             {u['account_status']}
                         </span>
-                        <span style="background: {ver_bg}; color: {ver_color}; border: 1px solid {ver_border}; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700;">
+                        <span class="adm-verify-pill adm-verify-{'verified' if u['email_verified'] else 'unverified'}">
                             {'Verified' if u['email_verified'] else 'Unverified'}
                         </span>
                     </div>
@@ -885,7 +778,7 @@ def render_admin_dashboard_view():
                 for fm in fams:
                     bg_badge = f'<span style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; margin-left: 6px;">{fm["blood_group"]}</span>' if fm.get("blood_group") else ''
                     rel_badge = f'<span style="background: rgba(59, 130, 246, 0.15); color: #2563EB; border: 1px solid rgba(59, 130, 246, 0.3); padding: 2px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">{fm["relationship"]}</span>'
-                    st.markdown(f"""
+                    html_content = f"""
                     <div style="background: rgba(30, 41, 59, 0.05); border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;">
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                             <strong style="font-size: 0.95rem; color: var(--mm-text-primary);">{fm['name']}</strong>
@@ -896,7 +789,8 @@ def render_admin_dashboard_view():
                             Age: <strong>{fm.get('age') or 'N/A'}</strong> &bull; Gender: <strong>{fm.get('gender') or 'N/A'}</strong> &bull; Emergency Contact: <strong>{fm.get('emergency_contact') or 'None'}</strong>
                         </div>
                     </div>
-                    """, unsafe_allow_html=True)
+                    """
+                    st.markdown(html_content, unsafe_allow_html=True)
                     conds = [c["condition_name"] for c in fm.get("conditions", [])]
                     meds = [m["medicine_name"] for m in fm.get("medications", [])]
                     if conds:
@@ -1177,7 +1071,6 @@ def render_admin_dashboard_view():
 
         st.markdown(f"""
             <div class="adm-session-card">
-                <!-- Card Header -->
                 <div class="adm-session-card-header">
                     <div class="adm-session-hdr-left">
                         <div class="adm-session-lock-box">
@@ -1198,18 +1091,15 @@ def render_admin_dashboard_view():
                                 <path d="M0,5 Q50,0 100,6" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
                             </svg>
                         </div>
-                        <!-- Soft decorative plus icon -->
                         <div style="position: absolute; right: -28px; top: -4px; color: #BAE6FD; font-size: 2.2rem; font-weight: 200; opacity: 0.35; line-height: 1; pointer-events: none;">+</div>
                     </div>
                 </div>
-                <!-- Middle Navy Blue Banner -->
                 <div class="adm-session-banner">
-                    <!-- Section 1: Admin Identity -->
                     <div class="adm-session-admin-block">
                         <div class="adm-session-avatar">{admin_initial}</div>
                         <div>
                             <div style="font-size: 0.70rem; color: #94A3B8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Active Admin</div>
-                            <div style="font-size: 0.96rem; color: #FFFFFF; font-weight: 700; margin: 1px 0 4px 0;">{admin_email}</div>
+                            <div style="font-size: 0.96rem; color: #FFFFFF; font-weight: 700; margin: 1px 0 4px 0;">Daksh Vasani</div>
                             <div class="adm-session-crown-badge">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>
@@ -1219,7 +1109,6 @@ def render_admin_dashboard_view():
                         </div>
                     </div>
                     <div class="adm-session-divider"></div>
-                    <!-- Section 2: Session Established -->
                     <div class="adm-session-metric-block">
                         <div class="adm-session-icon-box">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BAE6FD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1236,7 +1125,6 @@ def render_admin_dashboard_view():
                         </div>
                     </div>
                     <div class="adm-session-divider"></div>
-                    <!-- Section 3: Privilege Level -->
                     <div class="adm-session-metric-block">
                         <div class="adm-session-icon-box">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#BAE6FD" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1249,13 +1137,11 @@ def render_admin_dashboard_view():
                             <div style="font-size: 0.70rem; color: #64748B;">Complete system access</div>
                         </div>
                     </div>
-                    <!-- Section 4: Session Active Pill -->
                     <div class="adm-session-status-pill">
                         <span class="adm-session-status-dot"></span>
                         <span>SESSION ACTIVE</span>
                     </div>
                 </div>
-                <!-- Notice Bar -->
                 <div class="adm-session-notice">
                     <div style="width: 22px; height: 22px; border-radius: 50%; background: #2563EB; color: #FFFFFF; font-weight: 800; font-size: 0.74rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">i</div>
                     <div style="font-size: 0.80rem; line-height: 1.4;">

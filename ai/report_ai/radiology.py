@@ -202,7 +202,7 @@ Return strictly a valid JSON object matching this schema:
 }}"""
 
         if GEMINI_API_KEY:
-            for model in ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-2.5-flash"]:
+            for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
                     payload = {

@@ -228,7 +228,7 @@ DocMindX-AI/
 ## 📂 `app.py`  
 **Central Application Controller & Streamlit Interface**
 - Renders the end-to-end multi-step assessment workflow (Patient Demographics $\to$ Symptom Intake $\to$ Laboratory Upload $\to$ Diagnostic Triage $\to$ Actionable Recovery).
-- Features dynamic top-bar navigation switching smoothly between the **Clinical Health Suite** and the **National Command Center**.
+- Features dynamic top-bar navigation switching smoothly between the **Clinical Health Suite** and the **National Command**.
 - Houses the floating **Conversational Medical Assistant** modal with full persistent consultation context.
 - Implements custom CSS styling tokens (`config/theme.py`) guaranteeing unified button heights, high-contrast accessible cards, and zero emoji clutter.
 
@@ -291,7 +291,7 @@ DocMindX-AI/
 ---
 
 ## 📂 `ai/supply_chain/redistribution_engine.py` & `demand_forecaster.py`  
-**National Command Center Intelligence Engines**
+**National Command Intelligence Engines**
 - `demand_forecaster.py`: Time-series forecasting model combining historical consumption, OPD influx, seasonal weather patterns, and disease outbreaks. Generates 7-day predictive curves with 95% confidence intervals.
 - `redistribution_engine.py`: Solves supply deficit crises using a two-stage logistics optimization algorithm (Haversine geographic radius $\to$ Google Routes transit matrix), minimizing transit hours and producing legal transfer manifests.
 
@@ -455,7 +455,7 @@ Verify all machine learning models, OCR parsers, and supply chain redistribution
 # Audit the Scikit-Learn Disease Prediction Model
 python verify_ml_model.py
 
-# Audit the 10 National Command Center Logistics & Outbreak Engines
+# Audit the 10 National Command Logistics & Outbreak Engines
 python verify_supply_chain.py
 ```
 

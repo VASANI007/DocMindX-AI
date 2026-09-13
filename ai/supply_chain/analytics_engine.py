@@ -154,7 +154,7 @@ class AnalyticsEngine:
         }
 
     def get_data_health_summary(self) -> Dict[str, Any]:
-        """Calculates internal National Command Center Data Health status."""
+        """Calculates internal National Command Data Health status."""
         total_sources = 8
         available_sources = 0
         for p in [self.facility_master_path, self.medicine_master_path, self.bed_capacity_path,

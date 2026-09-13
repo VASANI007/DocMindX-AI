@@ -64,8 +64,9 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
         transition: all 0.2s ease;
     }
     [data-theme="dark"] details.cc-provenance-details {
-        background: #1E293B !important;
-        border-color: #334155 !important;
+        background: #111827 !important;
+        border: none !important;
+        box-shadow: none !important;
     }
     details.cc-provenance-details summary {
         list-style: none;

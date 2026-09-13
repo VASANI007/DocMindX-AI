@@ -4,8 +4,11 @@ Powered by Gemini & Groq AI. Provides in-depth medical rationale, drug synergy a
 and interactive question-answering tailored to the patient's exact assessment results.
 """
 import json
+
 import requests
+
 from config.settings import GEMINI_API_KEY, GROQ_API_KEY
+
 
 def generate_deep_explanation(
     symptoms: list,
@@ -57,7 +60,27 @@ Clear clinical advice on when symptoms require immediate in-person medical evalu
 
 Write in a reassuring, professional, and clear tone in {lang_name}."""
 
-    # 1. Groq AI (Ultra-Fast Live Engine)
+    # Deep clinical explanations use Gemini first.
+    if GEMINI_API_KEY:
+        for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
+                payload = {
+                    "contents": [{"parts": [{"text": prompt}]}],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
+                }
+                headers = {"Content-Type": "application/json"}
+                res = requests.post(url, json=payload, headers=headers, timeout=10)
+                if res.status_code == 200:
+                    candidates = res.json().get("candidates", [])
+                    if candidates:
+                        txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        if txt and len(txt.strip()) > 100:
+                            return txt.strip()
+            except Exception as e:
+                print(f"Deep explanation Gemini notice: {e}")
+
+    # Groq remains only as a fallback for deep explanation outages.
     if GROQ_API_KEY:
         for model in ["qwen/qwen3.6-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
             try:
@@ -77,27 +100,7 @@ Write in a reassuring, professional, and clear tone in {lang_name}."""
                     if txt and len(txt.strip()) > 100:
                         return txt.strip()
             except Exception as e:
-                print(f"Deep explanation Groq notice: {e}")
-
-    # 2. Gemini AI
-    if GEMINI_API_KEY:
-        for model in ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-2.5-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
-                }
-                headers = {"Content-Type": "application/json"}
-                res = requests.post(url, json=payload, headers=headers, timeout=10)
-                if res.status_code == 200:
-                    candidates = res.json().get("candidates", [])
-                    if candidates:
-                        txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        if txt and len(txt.strip()) > 100:
-                            return txt.strip()
-            except Exception as e:
-                print(f"Deep explanation Gemini notice: {e}")
+                print(f"Deep explanation Groq fallback notice: {e}")
 
     # Local fallback (Clean, no emojis)
     if lang == "hi":
@@ -175,7 +178,7 @@ INSTRUCTIONS:
 4. Conclude with a warm safety reminder."""
 
     if GEMINI_API_KEY:
-        for model in ["gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-2.5-flash"]:
+        for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
                 payload = {
@@ -291,7 +294,7 @@ Explain next steps, which specialist physician to consult, and highlight danger 
 
     # 1. Gemini AI (Primary)
     if GEMINI_API_KEY:
-        for model in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-2.5-flash"]:
+        for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
             try:
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
                 payload = {

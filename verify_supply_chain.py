@@ -42,7 +42,7 @@ from components.national_health_map import generate_health_resource_map_html
 
 def test_full_supply_chain():
     print("=" * 80)
-    print("DocMindX AI — NATIONAL COMMAND CENTER 27-POINT PRODUCTION VERIFICATION")
+    print("DocMindX AI — National Command 27-POINT PRODUCTION VERIFICATION")
     print("=" * 80 + "\n")
 
     proc_dir = os.path.join(WORKSPACE_ROOT, "data", "processed", "command_center")
@@ -250,7 +250,7 @@ def test_full_supply_chain():
     print("\n--- Test 25: Regression Protection (Unrelated Modules 1-5 Intact) ---")
     with open(os.path.join(WORKSPACE_ROOT, "app.py"), "r", encoding="utf-8") as f:
         app_code = f.read()
-    for mod in ["Health Assessment", "Medical Report", "Nearby Healthcare", "Health Records", "About DocMindX AI"]:
+    for mod in ["Health Assessment", "Medical Report", "Nearby Healthcare", "Health Records", "About"]:
         assert mod in app_code, f"Missing panel: {mod}"
     print("Regression Protection: All 5 primary DocMindX AI clinical panels verified 100% intact.")
 

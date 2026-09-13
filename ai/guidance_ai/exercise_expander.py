@@ -97,9 +97,9 @@ Output strictly valid JSON with these exact keys:
 Do NOT prescribe this as a medical cure. Do NOT output anything outside the JSON object.
 """
 
-    # 2. Try Gemini 2.0+
+    # 2. Try Gemini (gemini-3.6-flash)
     if GEMINI_API_KEY:
-        for gemini_model in ["gemini-2.0-flash", "gemini-2.0-flash-lite"]:
+        for gemini_model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
             try:
                 gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={GEMINI_API_KEY}"
                 payload = {
