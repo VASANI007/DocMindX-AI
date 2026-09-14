@@ -121,8 +121,14 @@ JSON:
         except Exception:
             continue
             
-    return {}
+try:
+    import streamlit as st
+    _cache_decorator = st.cache_data(ttl=3600)
+except Exception:
+    def _cache_decorator(func):
+        return func
 
+@_cache_decorator
 def load_translations(lang_code="en", force_reload=False):
     """
     Loads translations for the given language code with hybrid architecture:

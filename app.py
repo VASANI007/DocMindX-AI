@@ -85,6 +85,7 @@ from services.routes_service import get_route
 # Seed sample records if database table is initially empty
 seed_sample_records_if_empty()
 
+@st.cache_data
 def get_base64_image(image_path: str) -> str:
     try:
         if os.path.exists(image_path):
@@ -740,6 +741,26 @@ dark_mode_js = f"""
 </script>
 """
 st.markdown(dark_mode_js, unsafe_allow_html=True)
+components.html(f"""<script>
+(function() {{
+    try {{
+        var isDark = {'true' if is_dark else 'false'};
+        var pDoc = window.parent.document;
+        if (pDoc) {{
+            var targets = [pDoc.documentElement, pDoc.body];
+            var stApp = pDoc.querySelector('.stApp');
+            if (stApp) targets.push(stApp);
+            targets.forEach(function(el) {{
+                if (el) {{
+                    el.setAttribute('data-theme', isDark ? 'dark' : 'light');
+                    el.setAttribute('data-dark-mode', isDark ? 'true' : 'false');
+                }}
+            }});
+        }}
+        window.parent.postMessage({{type: "DocMindX_theme_toggle", dark: isDark}}, "*");
+    }} catch(e) {{}}
+}})();
+</script>""", height=0, scrolling=False)
 
 # ----------------- SIDEBAR -----------------
 with st.sidebar:
@@ -1038,26 +1059,49 @@ if is_dark:
     .stApp .text-muted {
         color: #94A3B8 !important;
     }
-    .stApp input,
-    .stApp textarea,
-    .stApp [data-baseweb="input"],
     .stApp [data-baseweb="base-input"],
     .stApp [data-baseweb="select"] > div {
         background-color: #1E293B !important;
         color: #F8FAFC !important;
+        border: 1.5px solid #334155 !important;
         border-color: #334155 !important;
+        border-radius: 8px !important;
     }
+    .stApp [data-baseweb="base-input"]:focus-within,
+    .stApp [data-baseweb="select"]:focus-within > div {
+        border-color: #3B82F6 !important;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+    }
+    .stApp [data-baseweb="input"],
+    .stApp .stTextInput > div,
+    .stApp .stTextArea > div,
+    .stApp .stNumberInput > div {
+        border: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+    .stApp input,
+    .stApp textarea,
+    .stApp .stTextInput input,
+    .stApp .stTextArea textarea,
+    .stApp .stNumberInput input,
+    .stApp [data-baseweb="base-input"] input,
+    .stApp [data-baseweb="base-input"] textarea,
     .stApp [data-baseweb="select"] input,
     [data-testid="stSelectbox"] input,
     div[data-baseweb="select"] input {
         border: none !important;
-        border-left: none !important;
-        border-right: none !important;
-        border-top: none !important;
-        border-bottom: none !important;
+        border-width: 0 !important;
         outline: none !important;
         box-shadow: none !important;
         background: transparent !important;
+        background-color: transparent !important;
+        caret-color: auto !important;
+    }
+    .stApp [data-baseweb="select"] input,
+    [data-testid="stSelectbox"] input,
+    div[data-baseweb="select"] input {
         caret-color: transparent !important;
         width: 0 !important;
         min-width: 0 !important;
@@ -1087,10 +1131,14 @@ if is_dark:
         background: #1E293B !important;
         border-color: #334155 !important;
         color: #E2E8F0 !important;
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
     }
     .st-key-dmx_master_header_card button p,
     .st-key-dmx_master_header_card button span {
         color: #E2E8F0 !important;
+        font-size: 0.78rem !important;
+        font-weight: 700 !important;
     }
     .st-key-dmx_master_header_card button:hover {
         background: #25334E !important;
@@ -1102,24 +1150,27 @@ if is_dark:
         background: rgba(37, 99, 235, 0.25) !important;
         border: 1.5px solid #60A5FA !important;
         color: #93C5FD !important;
+        font-weight: 800 !important;
         box-shadow: 0 0 12px rgba(59, 130, 246, 0.3) !important;
     }
     .st-key-dmx_master_header_card button[kind="primary"] p,
     .st-key-dmx_master_header_card button[kind="primary"] span {
         color: #93C5FD !important;
+        font-weight: 800 !important;
     }
-    .st-key-d_lang_wrap [data-testid="stSelectbox"] > div > div,
-    .st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
+    .st-key-d_lang_wrap [data-baseweb="select"] > div,
+    .st-key-m_lang_wrap [data-baseweb="select"] > div {
         background: #1E293B !important;
         border-color: #334155 !important;
         color: #F8FAFC !important;
     }
-    .st-key-d_lang_wrap [data-testid="stSelectbox"] span,
-    .st-key-m_lang_wrap [data-testid="stSelectbox"] span {
+    .st-key-d_lang_wrap [data-baseweb="select"] span,
+    .st-key-m_lang_wrap [data-baseweb="select"] span {
         color: #F8FAFC !important;
+        font-weight: 700 !important;
     }
-    .st-key-d_lang_wrap [data-testid="stSelectbox"] svg,
-    .st-key-m_lang_wrap [data-testid="stSelectbox"] svg {
+    .st-key-d_lang_wrap [data-baseweb="select"] svg,
+    .st-key-m_lang_wrap [data-baseweb="select"] svg {
         fill: #94A3B8 !important;
         color: #94A3B8 !important;
     }
@@ -1175,6 +1226,225 @@ if is_dark:
         border-color: #3B82F6 !important;
         color: #FFFFFF !important;
     }
+
+    /* ── Universal stAudioInput (Voice / Speech-to-Text) Dark Mode ── */
+    div[data-testid="stAudioInput"],
+    [data-testid="stAudioInput"],
+    .stAudioInput,
+    div[data-testid="stAudioInput"] > div,
+    div[data-testid="stAudioInput"] section {
+        background-color: #1E293B !important;
+        background: #1E293B !important;
+        border: 1.5px solid #334155 !important;
+        border-radius: 12px !important;
+        color: #F8FAFC !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    }
+    div[data-testid="stAudioInput"] button {
+        background-color: #0F172A !important;
+        background: #0F172A !important;
+        border: 1.5px solid #3B82F6 !important;
+        color: #60A5FA !important;
+    }
+    div[data-testid="stAudioInput"] button:hover {
+        background-color: #1E3A8A !important;
+        border-color: #60A5FA !important;
+        color: #93C5FD !important;
+    }
+    div[data-testid="stAudioInput"] svg {
+        fill: #60A5FA !important;
+        stroke: #60A5FA !important;
+        color: #60A5FA !important;
+    }
+    div[data-testid="stAudioInput"] span,
+    div[data-testid="stAudioInput"] p,
+    div[data-testid="stAudioInput"] div {
+        color: #F8FAFC !important;
+    }
+    /* Timecode timer inside audio input - remove solid white background */
+    div[data-testid="stAudioInput"] span[data-testid="stAudioInputWaveformTimeCode"],
+    [data-testid="stAudioInputWaveformTimeCode"],
+    span[data-testid="stAudioInputWaveformTimeCode"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        color: #38BDF8 !important;
+        font-family: monospace !important;
+        font-weight: 700 !important;
+        font-size: 0.82rem !important;
+    }
+    [data-testid="stElementToolbarButtonContainer"],
+    div[data-testid="stElementToolbar"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        display: none !important;
+    }
+    div[data-testid="stAudioInput"] canvas {
+        filter: invert(1) hue-rotate(180deg) brightness(1.2) !important;
+    }
+
+    /* ── Universal Expander Dark Mode ── */
+    details[data-testid="stExpander"],
+    [data-testid="stExpander"],
+    .streamlit-expander {
+        background-color: #111827 !important;
+        background: #111827 !important;
+        border: 1.5px solid #1E2E4E !important;
+        border-radius: 12px !important;
+        color: #F8FAFC !important;
+        overflow: hidden !important;
+    }
+    details[data-testid="stExpander"] summary,
+    [data-testid="stExpander"] summary,
+    details[data-testid="stExpander"] > summary,
+    [data-testid="stExpander"] > summary,
+    .streamlit-expanderHeader {
+        background-color: #1E293B !important;
+        background: #1E293B !important;
+        border-bottom: 1px solid #334155 !important;
+        color: #F8FAFC !important;
+        border-radius: 12px 12px 0 0 !important;
+        padding: 10px 16px !important;
+    }
+    details[data-testid="stExpander"]:not([open]) > summary {
+        border-bottom: none !important;
+        border-radius: 12px !important;
+    }
+    details[data-testid="stExpander"] > summary:hover,
+    .streamlit-expanderHeader:hover {
+        background-color: #25334E !important;
+        color: #60A5FA !important;
+    }
+    details[data-testid="stExpander"] > summary p,
+    details[data-testid="stExpander"] > summary span,
+    details[data-testid="stExpander"] > summary svg {
+        color: #F8FAFC !important;
+        fill: #F8FAFC !important;
+        stroke: #F8FAFC !important;
+    }
+    details[data-testid="stExpander"] > div[data-testid="stExpanderDetails"],
+    details[data-testid="stExpander"] > div:not([data-testid="stExpanderToggleIcon"]),
+    .streamlit-expanderContent {
+        background-color: #111827 !important;
+        background: #111827 !important;
+        color: #CBD5E1 !important;
+        padding: 14px 16px !important;
+    }
+
+    /* ── Universal Popover, Download & Secondary Buttons Dark Mode ── */
+    div[data-testid="stPopover"] button,
+    div[data-testid="stPopover"] > button,
+    div[data-testid="stDownloadButton"] button,
+    div[data-testid="stDownloadButton"] > button,
+    button[data-testid="baseButton-secondary"],
+    button[kind="secondary"] {
+        background: #1E293B !important;
+        background-color: #1E293B !important;
+        border: 1.5px solid #334155 !important;
+        color: #F8FAFC !important;
+        border-radius: 10px !important;
+        font-weight: 700 !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+    }
+    div[data-testid="stPopover"] button:hover,
+    div[data-testid="stPopover"] > button:hover,
+    div[data-testid="stDownloadButton"] button:hover,
+    div[data-testid="stDownloadButton"] > button:hover,
+    button[data-testid="baseButton-secondary"]:hover,
+    button[kind="secondary"]:hover {
+        background: #2563EB !important;
+        background-color: #2563EB !important;
+        border-color: #3B82F6 !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45) !important;
+    }
+    div[data-testid="stPopover"] button p,
+    div[data-testid="stPopover"] button span,
+    div[data-testid="stPopover"] button svg,
+    div[data-testid="stPopover"] button [data-testid="stIconMaterial"],
+    div[data-testid="stDownloadButton"] button p,
+    div[data-testid="stDownloadButton"] button span,
+    div[data-testid="stDownloadButton"] button svg,
+    div[data-testid="stDownloadButton"] button [data-testid="stIconMaterial"],
+    button[data-testid="baseButton-secondary"] p,
+    button[data-testid="baseButton-secondary"] span,
+    button[data-testid="baseButton-secondary"] svg,
+    button[data-testid="baseButton-secondary"] [data-testid="stIconMaterial"],
+    button[kind="secondary"] p,
+    button[kind="secondary"] span,
+    button[kind="secondary"] svg,
+    button[kind="secondary"] [data-testid="stIconMaterial"] {
+        color: #F8FAFC !important;
+        fill: #F8FAFC !important;
+    }
+    div[data-testid="stPopover"] button:hover p,
+    div[data-testid="stPopover"] button:hover span,
+    div[data-testid="stPopover"] button:hover svg,
+    div[data-testid="stPopover"] button:hover [data-testid="stIconMaterial"],
+    div[data-testid="stDownloadButton"] button:hover p,
+    div[data-testid="stDownloadButton"] button:hover span,
+    div[data-testid="stDownloadButton"] button:hover svg,
+    div[data-testid="stDownloadButton"] button:hover [data-testid="stIconMaterial"],
+    button[data-testid="baseButton-secondary"]:hover p,
+    button[data-testid="baseButton-secondary"]:hover span,
+    button[data-testid="baseButton-secondary"]:hover svg,
+    button[data-testid="baseButton-secondary"]:hover [data-testid="stIconMaterial"],
+    button[kind="secondary"]:hover p,
+    button[kind="secondary"]:hover span,
+    button[kind="secondary"]:hover svg,
+    button[kind="secondary"]:hover [data-testid="stIconMaterial"] {
+        color: #FFFFFF !important;
+        fill: #FFFFFF !important;
+    }
+    div[data-testid="stPopoverBody"] {
+        background-color: #111827 !important;
+        background: #111827 !important;
+        border: 1.5px solid #1E2E4E !important;
+        border-radius: 14px !important;
+        color: #F8FAFC !important;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+        padding: 16px !important;
+    }
+    div[data-testid="stPopoverBody"] p,
+    div[data-testid="stPopoverBody"] span,
+    div[data-testid="stPopoverBody"] div {
+        color: #F8FAFC !important;
+    }
+
+    /* Dialog close button in dark mode */
+    div[data-testid="stDialog"] button[aria-label="Close"],
+    div[role="dialog"] button[aria-label="Close"],
+    section[role="dialog"] button[aria-label="Close"] {
+        position: absolute !important;
+        top: 14px !important;
+        right: 14px !important;
+        z-index: 99999 !important;
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        min-height: 38px !important;
+        border-radius: 50% !important;
+        background: rgba(239, 68, 68, 0.20) !important;
+        border: 1.5px solid #EF4444 !important;
+        color: #FCA5A5 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+    div[data-testid="stDialog"] button[aria-label="Close"]:hover,
+    div[role="dialog"] button[aria-label="Close"]:hover {
+        background: #EF4444 !important;
+        color: #FFFFFF !important;
+    }
+    div[data-testid="stDialog"] button[aria-label="Close"] svg,
+    div[role="dialog"] button[aria-label="Close"] svg {
+        stroke: currentColor !important;
+        fill: currentColor !important;
+        width: 20px !important;
+        height: 20px !important;
+    }
+
     /* Step Indicators & Badges */
     .mm-step-progress-indicator {
         background: #111827 !important;
@@ -1356,6 +1626,11 @@ st.markdown("""
     padding: 6px 12px !important;
     backdrop-filter: blur(12px) !important;
 }
+[data-theme="dark"] .st-key-dmx_master_header_card {
+    background: rgba(15, 23, 42, 0.96) !important;
+    border-color: rgba(51, 65, 85, 0.85) !important;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45) !important;
+}
 .st-key-dmx_master_header_card [data-testid="stHorizontalBlock"] {
     align-items: center !important;
     gap: 4px !important;
@@ -1377,8 +1652,8 @@ st.markdown("""
     text-decoration: none;
 }
 .dmx-brand-icon {
-    width: 32px;
-    height: 32px;
+    width: 60px;
+    height: 60px;
     object-fit: contain;
     flex-shrink: 0;
 }
@@ -1387,11 +1662,16 @@ st.markdown("""
     min-width: 0;
 }
 .dmx-brand-title {
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     font-weight: 800;
     color: #0F172A;
     white-space: nowrap;
     letter-spacing: -0.2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+[data-theme="dark"] .dmx-brand-title {
+    color: #F8FAFC !important;
 }
 .dmx-brand-subtitle {
     font-size: 0.55rem;
@@ -1400,14 +1680,17 @@ st.markdown("""
     white-space: nowrap;
     margin-top: 1px;
 }
+[data-theme="dark"] .dmx-brand-subtitle {
+    color: #94A3B8 !important;
+}
 
 /* ── Universal Header Button Styles ── */
 .st-key-dmx_master_header_card button {
     height: 38px !important;
     min-height: 38px !important;
     border-radius: 8px !important;
-    font-size: 0.76rem !important;
-    font-weight: 600 !important;
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
     padding: 0 8px !important;
     white-space: nowrap !important;
     text-overflow: ellipsis !important;
@@ -1416,6 +1699,16 @@ st.markdown("""
     background: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
     color: """ + ('#E2E8F0' if is_dark else '#334155') + """ !important;
     transition: all 0.15s ease !important;
+}
+/* Force text truncation on button inner label */
+.st-key-dmx_desktop_container button p,
+.st-key-dmx_desktop_container button span:not([data-testid]) {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
 }
 .st-key-dmx_master_header_card button:hover {
     border-color: #2563EB !important;
@@ -1427,12 +1720,13 @@ st.markdown("""
     background: """ + ('rgba(37, 99, 235, 0.25)' if is_dark else '#EFF6FF') + """ !important;
     border: 1.5px solid """ + ('#60A5FA' if is_dark else '#3B82F6') + """ !important;
     color: """ + ('#93C5FD' if is_dark else '#1D4ED8') + """ !important;
-    font-weight: 700 !important;
+    font-weight: 800 !important;
     box-shadow: """ + ('0 0 12px rgba(59, 130, 246, 0.3)' if is_dark else '0 2px 8px rgba(37, 99, 235, 0.12)') + """ !important;
 }
 .st-key-dmx_master_header_card button[kind="primary"] p,
 .st-key-dmx_master_header_card button[kind="primary"] span {
     color: """ + ('#93C5FD' if is_dark else '#1D4ED8') + """ !important;
+    font-weight: 800 !important;
 }
 
 /* ── Single Colored Material Icons per nav button (Zero Duplicate SVGs) ── */
@@ -1449,63 +1743,127 @@ st.markdown("""
 .st-key-d_nav_6 button [data-testid="stIconMaterial"],
 .st-key-m_nav_6 button [data-testid="stIconMaterial"] { color: #2563EB !important; font-size: 16px !important; }
 
-/* ── Language Selectbox with SVG Globe Icon & Divider (Image 2) ── */
-.st-key-d_lang_wrap {
-    position: relative !important;
-    border-left: 1.5px solid """ + ('#334155' if is_dark else '#E2E8F0') + """ !important;
-    padding-left: 8px !important;
-}
-[data-theme="dark"] .st-key-d_lang_wrap {
-    border-left-color: #334155 !important;
-}
+/* ── Language Selectbox (Compact, Clean, No Card/Border Behind, Right-Aligned Arrow) ── */
+.st-key-d_lang_wrap,
 .st-key-m_lang_wrap {
     position: relative !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    width: 100% !important;
 }
-.st-key-d_lang_wrap [data-testid="stSelectbox"] > div > div,
-.st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
-    height: 38px !important;
-    min-height: 38px !important;
+.st-key-d_lang_wrap div,
+.st-key-m_lang_wrap div,
+.st-key-d_lang_wrap [data-testid="stSelectbox"],
+.st-key-m_lang_wrap [data-testid="stSelectbox"],
+.st-key-d_lang_wrap [data-baseweb="select"],
+.st-key-m_lang_wrap [data-baseweb="select"] {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+}
+.st-key-d_lang_wrap [data-baseweb="select"] > div,
+.st-key-m_lang_wrap [data-baseweb="select"] > div {
+    height: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
     border-radius: 8px !important;
     border: 1px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
     background: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
-    font-size: 0.74rem !important;
-    font-weight: 600 !important;
-    padding-left: 28px !important;
+    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+    box-shadow: none !important;
+    outline: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 0 !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    box-sizing: border-box !important;
+}
+.st-key-d_lang_wrap [data-baseweb="select"] > div:hover,
+.st-key-m_lang_wrap [data-baseweb="select"] > div:hover {
+    border-color: #2563EB !important;
+}
+[data-theme="dark"] .st-key-d_lang_wrap [data-baseweb="select"] > div,
+[data-theme="dark"] .st-key-m_lang_wrap [data-baseweb="select"] > div {
+    background: #1E293B !important;
+    border-color: #334155 !important;
+    color: #F8FAFC !important;
+}
+/* Value text bold and aligned to left with 26px margin after globe icon */
+.st-key-d_lang_wrap [data-baseweb="select"] > div > div:first-child,
+.st-key-m_lang_wrap [data-baseweb="select"] > div > div:first-child {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    margin-left: 26px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+}
+.st-key-d_lang_wrap [data-baseweb="select"] span,
+.st-key-m_lang_wrap [data-baseweb="select"] span {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
     color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
 }
-.st-key-d_lang_wrap [data-testid="stSelectbox"] span,
-.st-key-m_lang_wrap [data-testid="stSelectbox"] span {
-    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+[data-theme="dark"] .st-key-d_lang_wrap [data-baseweb="select"] span,
+[data-theme="dark"] .st-key-m_lang_wrap [data-baseweb="select"] span {
+    color: #F8FAFC !important;
 }
-.st-key-d_lang_wrap::before {
-    content: '';
-    position: absolute;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 14px;
-    height: 14px;
-    z-index: 10;
-    pointer-events: none;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E");
+/* Arrow neatly positioned at far right */
+.st-key-d_lang_wrap [data-baseweb="select"] > div > div:last-child,
+.st-key-m_lang_wrap [data-baseweb="select"] > div > div:last-child {
+    flex: 0 0 auto !important;
+    margin-left: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 16px !important;
+    height: 100% !important;
+    padding: 0 !important;
 }
+.st-key-d_lang_wrap [data-baseweb="select"] svg,
+.st-key-m_lang_wrap [data-baseweb="select"] svg {
+    width: 14px !important;
+    height: 14px !important;
+    fill: """ + ('#94A3B8' if is_dark else '#64748B') + """ !important;
+    color: """ + ('#94A3B8' if is_dark else '#64748B') + """ !important;
+}
+/* Zero out hidden input so it never clips language text */
+.st-key-d_lang_wrap [data-baseweb="select"] input,
+.st-key-m_lang_wrap [data-baseweb="select"] input {
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    position: absolute !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+/* Globe icon inside selectbox */
+.st-key-d_lang_wrap::before,
 .st-key-m_lang_wrap::before {
-    content: '';
-    position: absolute;
-    left: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 14px;
-    height: 14px;
-    z-index: 10;
-    pointer-events: none;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E");
+    content: '' !important;
+    position: absolute !important;
+    left: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 14px !important;
+    height: 14px !important;
+    z-index: 10 !important;
+    pointer-events: none !important;
+    background-size: contain !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
 }
 
 /* ── Desktop & Mobile Theme Toggle: Pure Sun/Moon Icon (No Button Box, No Border, No Background) ── */
@@ -1720,9 +2078,10 @@ st.markdown("""
     align-items: center !important;
 }
 .st-key-dmx_mobile_container [data-testid="stColumn"]:nth-child(2) {
-    flex: 0 0 102px !important;
-    width: 102px !important;
-    min-width: 102px !important;
+    flex: 0 0 118px !important;
+    width: 118px !important;
+    min-width: 115px !important;
+    max-width: 122px !important;
 }
 .st-key-dmx_mobile_container [data-testid="stColumn"]:nth-child(3) {
     flex: 0 0 36px !important;
@@ -1781,39 +2140,94 @@ st.markdown("""
     color: #64748B !important;
     margin: 0 !important;
     white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 145px !important;
+    display: block !important;
 }
 
-/* Mobile Language Selector Dropdown */
+/* Mobile Language Selector Dropdown (Compact, Clean Separation, Globe aligned) */
 .st-key-m_lang_wrap {
     width: 100% !important;
     position: relative !important;
+    max-width: 98px !important;
+    margin: 0 auto !important;
 }
-.st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
-    height: 36px !important;
-    min-height: 36px !important;
+.st-key-m_lang_wrap [data-baseweb="select"] > div {
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    padding: 0 4px 0 6px !important;
     border-radius: 8px !important;
-    border: 1px solid #DCE6F3 !important;
-    background: #FFFFFF !important;
-    font-size: 0.70rem !important;
-    font-weight: 600 !important;
-    padding-left: 22px !important;
-    padding-right: 4px !important;
-    color: #1E293B !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: relative !important;
 }
-[data-theme="dark"] .st-key-m_lang_wrap [data-testid="stSelectbox"] > div > div {
-    background: #111827 !important;
-    border-color: #1E2E4E !important;
-    color: #F8FAFC !important;
+.st-key-m_lang_wrap [data-baseweb="select"] > div > div:first-child {
+    font-size: 0.74rem !important;
+    font-weight: 700 !important;
+    margin-left: 18px !important;
+    padding: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1 !important;
+    color: inherit !important;
+}
+.st-key-m_lang_wrap [data-baseweb="select"] span {
+    font-size: 0.74rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+}
+.st-key-m_lang_wrap::before {
+    left: 6px !important;
+    width: 14px !important;
+    height: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 10 !important;
+    pointer-events: none !important;
+}
+.st-key-m_lang_wrap [data-baseweb="select"] > div > div:last-child {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 14px !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.st-key-m_lang_wrap [data-baseweb="select"] svg {
+    width: 12px !important;
+    height: 12px !important;
+    margin: auto 0 !important;
 }
 
-/* Mobile Hamburger Button */
+/* Mobile Theme Toggle Button (Moon / Sun) */
+.st-key-m_theme_toggle_btn button {
+    min-width: 34px !important;
+    width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    padding: 0 !important;
+    border-radius: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+}
+
+/* Mobile Hamburger Button (Perfect Centered 3 Lines) */
 .st-key-m_hamburger_btn button {
-    min-width: 36px !important;
-    width: 36px !important;
-    max-width: 36px !important;
-    height: 36px !important;
-    min-height: 36px !important;
-    max-height: 36px !important;
+    min-width: 34px !important;
+    width: 34px !important;
+    max-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
     padding: 0 !important;
     border-radius: 8px !important;
     border: 1px solid #DCE6F3 !important;
@@ -1823,6 +2237,40 @@ st.markdown("""
     align-items: center !important;
     justify-content: center !important;
     box-shadow: none !important;
+    margin: 0 auto !important;
+}
+.st-key-m_hamburger_btn button > div {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.st-key-m_hamburger_btn button [data-testid="stMarkdownContainer"],
+.st-key-m_hamburger_btn button p {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.st-key-m_hamburger_btn button span {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.st-key-m_hamburger_btn button [data-testid="stIconMaterial"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 20px !important;
+    line-height: 1 !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    width: auto !important;
+    text-align: center !important;
 }
 [data-theme="dark"] .st-key-m_hamburger_btn button {
     background: #111827 !important;
@@ -1894,26 +2342,42 @@ st.markdown("""
     color: #1D4ED8 !important;
     transform: translateX(3px) !important;
 }
-.st-key-dmx_mobile_drawer_card button[kind="primary"] {
+.st-key-dmx_mobile_drawer_card button[kind="primary"],
+.st-key-dmx_mobile_drawer_card button[kind="primary"] p,
+.st-key-dmx_mobile_drawer_card button[kind="primary"] span,
+.st-key-dmx_mobile_drawer_card button[kind="primary"] [data-testid="stIconMaterial"] {
     background: #2563EB !important;
     border-color: #2563EB !important;
     color: #FFFFFF !important;
+    fill: #FFFFFF !important;
+    opacity: 1 !important;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+}
+.st-key-dmx_mobile_drawer_card button[kind="secondary"] [data-testid="stIconMaterial"] {
+    color: #2563EB !important;
 }
 [data-theme="dark"] .st-key-dmx_mobile_drawer_card button {
     background: #1E293B !important;
     border-color: #334155 !important;
     color: #F1F5F9 !important;
 }
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button[kind="secondary"] [data-testid="stIconMaterial"] {
+    color: #60A5FA !important;
+}
 [data-theme="dark"] .st-key-dmx_mobile_drawer_card button:hover {
     background: #2D3D58 !important;
     border-color: #3B82F6 !important;
     color: #93C5FD !important;
 }
-[data-theme="dark"] .st-key-dmx_mobile_drawer_card button[kind="primary"] {
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button[kind="primary"],
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button[kind="primary"] p,
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button[kind="primary"] span,
+[data-theme="dark"] .st-key-dmx_mobile_drawer_card button[kind="primary"] [data-testid="stIconMaterial"] {
     background: #2563EB !important;
     border-color: #2563EB !important;
     color: #FFFFFF !important;
+    fill: #FFFFFF !important;
+    opacity: 1 !important;
 }
 
 .dmx-drawer-footer-card {
@@ -1955,8 +2419,35 @@ div[data-testid="stVerticalBlock"] > div.stElementContainer:empty {
 @media (max-width: 1024px) {
     .st-key-dmx_desktop_container { display: none !important; }
     .st-key-dmx_mobile_container { display: block !important; }
+    .st-key-dmx_mobile_container [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
 
-    /* Mobile Header is NOT fixed: scrolls naturally with page */
+    /* Eliminate mobile header top gap completely & flush layout */
+    header[data-testid="stHeader"],
+    [data-testid="stHeader"] {
+        display: none !important;
+        height: 0 !important;
+        min-height: 0 !important;
+    }
+    .stApp .main .block-container,
+    .stApp .stMain .block-container,
+    .stApp .block-container,
+    .stMainBlockContainer,
+    [data-testid="stMainBlockContainer"] {
+        padding-top: 2px !important;
+        margin-top: 0 !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    /* Collapse zero-height helper containers before header */
+    div[data-testid="stElementContainer"]:has(iframe[height="0"]),
+    div[data-testid="stElementContainer"][height="0px"],
+    div[data-testid="stElementContainer"]:has(.stIFrame[height="0"]),
+    .element-container:has(iframe[height="0"]),
+    iframe[height="0"] {
+        display: none !important;
+    }
     .st-key-dmx_master_header_card {
         position: relative !important;
         top: 0 !important;
@@ -1964,16 +2455,10 @@ div[data-testid="stVerticalBlock"] > div.stElementContainer:empty {
         right: 0 !important;
         width: 100% !important;
         max-width: 100% !important;
-        margin: 2px 0 12px 0 !important;
+        margin: 0 0 12px 0 !important;
         border-radius: 14px !important;
         padding: 8px 12px !important;
         box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06) !important;
-    }
-    .stApp .main .block-container,
-    .stMainBlockContainer {
-        padding-top: 0.5rem !important;
-        padding-left: 0.75rem !important;
-        padding-right: 0.75rem !important;
     }
 
     /* Mobile Stepper Horizontal Smooth Scroll */
@@ -2005,6 +2490,179 @@ div[data-testid="stVerticalBlock"] > div.stElementContainer:empty {
         padding: 0 2px !important;
         font-size: 0.8rem !important;
     }
+
+    /* Mobile Top Header Cards (All Panels) - Fully contained, no overflow */
+    div[class*="st-key-mm_top_header_card_"],
+    div[class*="st-key-mm_top_header_card"] {
+        display: block !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        padding: 16px 16px 14px 16px !important;
+        border-radius: 16px !important;
+        margin-bottom: 14px !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stHorizontalBlock"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 8px !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stColumn"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"],
+    div[class*="st-key-mm_top_header_card_"] [data-testid="column"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="column"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        display: block !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stVerticalBlock"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stVerticalBlock"] {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        gap: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stElementContainer"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stElementContainer"],
+    div[class*="st-key-mm_top_header_card_"] .element-container,
+    div[class*="st-key-mm_top_header_card"] .element-container {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stMarkdown"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdown"] {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stMarkdownContainer"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] {
+        height: auto !important;
+        min-height: auto !important;
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+        width: 100% !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stMarkdownContainer"] p,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] p {
+        margin-bottom: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] > div:first-child,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] > div:first-child,
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] > img,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] > img {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
+        border-radius: 12px !important;
+        flex-shrink: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] svg,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] svg {
+        width: 22px !important;
+        height: 22px !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] div[style*="font-size: 1.45rem"],
+    div[class*="st-key-mm_top_header_card"] div[style*="font-size: 1.45rem"] {
+        font-size: 1.08rem !important;
+        line-height: 1.25 !important;
+        font-weight: 800 !important;
+        word-break: break-word !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] div[style*="font-size: 0.85rem"],
+    div[class*="st-key-mm_top_header_card"] div[style*="font-size: 0.85rem"] {
+        font-size: 0.74rem !important;
+        line-height: 1.30 !important;
+        margin-top: 3px !important;
+        display: block !important;
+        word-break: break-word !important;
+    }
+    /* Column 2 (The Badge) */
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stColumn"]:last-child,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child,
+    div[class*="st-key-mm_top_header_card_"] [data-testid="column"]:last-child,
+    div[class*="st-key-mm_top_header_card"] [data-testid="column"]:last-child {
+        width: 100% !important;
+        flex: 0 0 auto !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-end !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 4px 0 0 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"],
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stColumn"]:last-child [data-testid="stElementContainer"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stElementContainer"],
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stColumn"]:last-child [data-testid="stMarkdown"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stMarkdown"] {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] [data-testid="stColumn"]:last-child [data-testid="stMarkdownContainer"] > div,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stMarkdownContainer"] > div {
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        height: auto !important;
+        min-height: 28px !important;
+        margin: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card_"] .mm-ocr-ai-badge,
+    div[class*="st-key-mm_top_header_card"] .mm-ocr-ai-badge,
+    div[class*="st-key-mm_top_header_card_"] span[style*="border-radius: 20px"],
+    div[class*="st-key-mm_top_header_card"] span[style*="border-radius: 20px"],
+    div[class*="st-key-mm_top_header_card_"] .mm-badge-online-pill,
+    div[class*="st-key-mm_top_header_card"] .mm-badge-online-pill {
+        height: 28px !important;
+        min-height: 28px !important;
+        max-height: 28px !important;
+        padding: 0 10px !important;
+        font-size: 0.70rem !important;
+        border-radius: 14px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
 }
 @media (min-width: 1025px) {
     .st-key-dmx_desktop_container { display: block !important; }
@@ -2017,6 +2675,39 @@ div[data-testid="stVerticalBlock"] > div.stElementContainer:empty {
         padding-right: 1rem !important;
     }
 }
+
+/* ── Smooth Panel Animations & Micro-Interactions ── */
+@keyframes dmxFadeSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes dmxDrawerSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+div[class*="st-key-mm_top_header_card_"],
+.mm-stepper {
+    animation: dmxFadeSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.st-key-dmx_mobile_drawer_card {
+    animation: dmxDrawerSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.st-key-dmx_master_header_card button,
+.st-key-dmx_mobile_drawer_card button {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -2025,7 +2716,7 @@ with st.container(key="dmx_master_header_card"):
     # 1. DESKTOP VIEW (Image 2 Design)
     # -------------------------------------------------------------
     with st.container(key="dmx_desktop_container"):
-        d_cols = st.columns([1.40, 1.30, 1.15, 1.25, 1.15, 1.45, 0.70, 1.20, 0.45, 0.75], vertical_alignment="center")
+        d_cols = st.columns([1.35, 1.15, 1.05, 1.15, 1.05, 1.15, 0.78, 0.95, 0.38, 0.70], vertical_alignment="center")
 
         # Col 0: Brand Logo & Title
         with d_cols[0]:
@@ -2040,7 +2731,7 @@ with st.container(key="dmx_master_header_card"):
             </div>
             """, unsafe_allow_html=True)
 
-        # Col 1-6: Navigation Buttons with Unique Colored Material Icons
+        # Col 1-6: Navigation Buttons with Unique Colored Material Icons (1: Health, 2: Medical, 3: Nearby, 4: Records, 5: National, 6: About)
         _nav_icons = [
             ":material/home:",
             ":material/description:",
@@ -2140,7 +2831,7 @@ with st.container(key="dmx_master_header_card"):
     # 2. MOBILE VIEW (Image 3 Left Phone: Collapsed State)
     # -------------------------------------------------------------
     with st.container(key="dmx_mobile_container"):
-        m_cols = st.columns([2.35, 1.1, 0.55, 0.55], vertical_alignment="center")
+        m_cols = st.columns([2.0, 1.10, 0.45, 0.45], vertical_alignment="center")
 
         with m_cols[0]:
             _bi_m = f'<img src="{ICON_B64}" class="dmx-brand-icon" alt="DocMindX AI" />' if ICON_B64 else ""
@@ -2177,7 +2868,7 @@ with st.container(key="dmx_master_header_card"):
         with m_cols[3]:
             is_drawer_open = st.session_state.get("mobile_nav_open", False)
             if st.button(
-                " ",
+                "",
                 icon=":material/close:" if is_drawer_open else ":material/menu:",
                 key="m_hamburger_btn",
                 type="primary" if is_drawer_open else "secondary",
@@ -2193,7 +2884,7 @@ with st.container(key="dmx_master_header_card"):
     if st.session_state.get("mobile_nav_open", False):
         with st.container(key="dmx_mobile_drawer_card"):
             # Section A: Navigation
-            st.markdown("""
+            st.markdown(f"""
             <div class="dmx-drawer-header">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="#2563EB"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
                 <span>{T.get("nav_heading", "Navigation")}</span>
@@ -3509,7 +4200,13 @@ if st.session_state["active_panel"] == "Health Assessment":
             med_detail = get_medicine_details(med['name'])
             modal_key_id = re.sub(r'[^a-zA-Z0-9]', '_', med['name'])[:15]
 
-            img_url = med.get("image", "")
+            fallback_img = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=600&q=80"
+            raw_img = med.get("image", "")
+            if raw_img and isinstance(raw_img, str) and (raw_img.startswith("http://") or raw_img.startswith("https://") or raw_img.startswith("data:image/")):
+                display_img = raw_img
+            else:
+                display_img = fallback_img
+
             med_type_str = (med.get('type') or 'Prescription').upper()
             generic_val = med_detail.get('generic_name') or med['name']
             course_val = med.get('course_duration') or '3 - 5 Days'
@@ -3549,24 +4246,18 @@ if st.session_state["active_panel"] == "Health Assessment":
                 )
             compounds_html = "".join(compounds_items)
 
-            if img_url:
-                img_block = (
-                    f'<a href="{img_url}" target="_blank" style="text-decoration:none;display:block;width:100%;text-align:center;">'
-                    f'<img src="{img_url}" class="mmp-img" alt="{med["name"]}" />'
-                    f'</a>'
-                    f'<div class="mmp-img-link">'
-                    f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">'
-                    f'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
-                    f'</svg>'
-                    f'<a href="{img_url}" target="_blank" style="color:#2563EB;text-decoration:none;font-weight:600;">Click image to open in new tab &nearr;</a>'
-                    f'</div>'
-                    f'<div class="mmp-img-disclaimer">* Representative / Similar Image (&#2360;&#2366;&#2306;&#2325;&#2375;&#2340;&#2367;&#2325; / &#2360;&#2350;&#2352;&#2370;&#2346; &#2330;&#2367;&#2340;&#2381;&#2352;)</div>'
-                )
-            else:
-                img_block = (
-                    f'<div style="font-size:0.95rem;font-weight:700;color:var(--mm-text-primary,#0F172A);text-align:center;padding:70px 10px;">{med["name"]}</div>'
-                    f'<div class="mmp-img-disclaimer">* Representative / Similar Image (&#2360;&#2366;&#2306;&#2325;&#2375;&#2340;&#2367;&#2325; / &#2360;&#2350;&#2352;&#2370;&#2346; &#2330;&#2367;&#2340;&#2381;&#2352;)</div>'
-                )
+            img_block = (
+                f'<a href="{display_img}" target="_blank" style="text-decoration:none;display:block;width:100%;text-align:center;">'
+                f'<img src="{display_img}" class="mmp-img" alt="{med["name"]}" onerror="this.onerror=null; this.src=\'{fallback_img}\';" />'
+                f'</a>'
+                f'<div class="mmp-img-link">'
+                f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">'
+                f'<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'
+                f'</svg>'
+                f'<a href="{display_img}" target="_blank" style="color:#2563EB;text-decoration:none;font-weight:600;">Click image to open in new tab &nearr;</a>'
+                f'</div>'
+                f'<div class="mmp-img-disclaimer">* Representative / Similar Image (&#2360;&#2366;&#2306;&#2325;&#2375;&#2340;&#2367;&#2325; / &#2360;&#2350;&#2352;&#2370;&#2346; &#2330;&#2367;&#2340;&#2381;&#2352;)</div>'
+            )
 
             raw_html_lines = [
                 '<style>',
@@ -3574,9 +4265,9 @@ if st.session_state["active_panel"] == "Health Assessment":
                 'div[data-modal-container="true"],',
                 'div[data-baseweb="modal"],',
                 'div[data-baseweb="backdrop"] {',
-                '    background: rgba(15, 23, 42, 0.18) !important;',
-                '    backdrop-filter: blur(4px) !important;',
-                '    -webkit-backdrop-filter: blur(4px) !important;',
+                '    background: rgba(15, 23, 42, 0.45) !important;',
+                '    backdrop-filter: blur(5px) !important;',
+                '    -webkit-backdrop-filter: blur(5px) !important;',
                 '}',
                 'div[data-testid="stDialog"] > div {',
                 '    background: transparent !important;',
@@ -3590,12 +4281,61 @@ if st.session_state["active_panel"] == "Health Assessment":
                 'section[role="dialog"] {',
                 '    max-width: 1060px !important;',
                 '    width: min(1060px, 94vw) !important;',
-                '    min-width: min(840px, 90vw) !important;',
+                '    min-width: 0 !important;',
                 '    border-radius: 20px !important;',
                 '    padding: 22px 24px !important;',
                 '    box-sizing: border-box !important;',
                 '    background: var(--mm-bg-surface, #FFFFFF) !important;',
-                '    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0,0,0,0.06) !important;',
+                '    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0,0,0,0.08) !important;',
+                '    position: relative !important;',
+                '}',
+                'div[data-testid="stDialog"] button[aria-label="Close"],',
+                'div[role="dialog"] button[aria-label="Close"],',
+                'section[role="dialog"] button[aria-label="Close"] {',
+                '    position: absolute !important;',
+                '    top: 14px !important;',
+                '    right: 14px !important;',
+                '    z-index: 99999 !important;',
+                '    width: 38px !important;',
+                '    height: 38px !important;',
+                '    min-width: 38px !important;',
+                '    min-height: 38px !important;',
+                '    border-radius: 50% !important;',
+                '    background: rgba(239, 68, 68, 0.16) !important;',
+                '    border: 1.5px solid rgba(239, 68, 68, 0.40) !important;',
+                '    color: #EF4444 !important;',
+                '    display: flex !important;',
+                '    align-items: center !important;',
+                '    justify-content: center !important;',
+                '    cursor: pointer !important;',
+                '    opacity: 1 !important;',
+                '    visibility: visible !important;',
+                '    transition: all 0.2s ease !important;',
+                '}',
+                'div[data-testid="stDialog"] button[aria-label="Close"]:hover,',
+                'div[role="dialog"] button[aria-label="Close"]:hover {',
+                '    background: #EF4444 !important;',
+                '    color: #FFFFFF !important;',
+                '    transform: scale(1.08) !important;',
+                '}',
+                'div[data-testid="stDialog"] button[aria-label="Close"] svg,',
+                'div[role="dialog"] button[aria-label="Close"] svg {',
+                '    stroke: currentColor !important;',
+                '    fill: currentColor !important;',
+                '    width: 20px !important;',
+                '    height: 20px !important;',
+                '}',
+                '[data-theme="dark"] div[data-testid="stDialog"] div[role="dialog"],',
+                '[data-theme="dark"] div[role="dialog"],',
+                '[data-theme="dark"] section[role="dialog"] {',
+                '    background: #0F172A !important;',
+                '    border: 1.5px solid #1E2E4E !important;',
+                '}',
+                '[data-theme="dark"] div[data-testid="stDialog"] button[aria-label="Close"],',
+                '[data-theme="dark"] div[role="dialog"] button[aria-label="Close"] {',
+                '    background: rgba(239, 68, 68, 0.22) !important;',
+                '    border-color: #EF4444 !important;',
+                '    color: #FCA5A5 !important;',
                 '}',
                 '.mmp-layout {',
                 '    display: flex;',
@@ -4008,24 +4748,30 @@ if st.session_state["active_panel"] == "Health Assessment":
                 "gu": "\u2726  AI Chat \u0aae\u0abe\u0a82 \u0aa6\u0ab5\u0abe\u0aa8\u0ac1\u0a82 \u0ab8\u0a82\u0aaa\u0ac2\u0ab0\u0acd\u0aa3 \u0ab5\u0abf\u0ab6\u0acd\u0ab2\u0ac7\u0ab7\u0aa3 \u0a85\u0aa8\u0ac7 \u0aae\u0abe\u0ab9\u0abf\u0aa4\u0ac0"
             }.get(lang_code, "\u2726  Deep Clinical Analysis & More Info in AI Chat")
 
-            if st.button(chat_btn_label, key=f"btn_deep_chat_{modal_key_id}", type="primary", use_container_width=True):
-                st.session_state["floating_chat_open"] = True
-                user_disp_q = f"Deep analyze and clinical breakdown for {med['name']}"
-                prompt_lang_name = {"en": "English", "hi": "Hindi", "gu": "Gujarati"}.get(lang_code, "English")
-                system_exec_q = (
-                    f"Please provide a comprehensive clinical, pharmacological, and therapeutic deep-dive for the medication '{med['name']}' in {prompt_lang_name}.\n"
-                    f"Include:\n"
-                    f"1. Active chemical compounds, molecular structure, and pharmacokinetics\n"
-                    f"2. Exact clinical indications (why this medicine is prescribed and how it works)\n"
-                    f"3. Optimal dosage, timing (food interactions), and duration rules\n"
-                    f"4. Contraindications, side effects to watch for, and safety precautions\n"
-                    f"5. Common commercial brand names available in pharmacies"
-                )
-                if "floating_chat_history" not in st.session_state:
-                    st.session_state["floating_chat_history"] = []
-                st.session_state["floating_chat_history"].append({"role": "user", "content": user_disp_q})
-                st.session_state["pending_chat_query"] = system_exec_q
-                st.rerun()
+            btn_c1, btn_c2 = st.columns([2.6, 1.2], vertical_alignment="center")
+            with btn_c1:
+                if st.button(chat_btn_label, key=f"btn_deep_chat_{modal_key_id}", type="primary", use_container_width=True):
+                    st.session_state["floating_chat_open"] = True
+                    user_disp_q = f"Deep analyze and clinical breakdown for {med['name']}"
+                    prompt_lang_name = {"en": "English", "hi": "Hindi", "gu": "Gujarati"}.get(lang_code, "English")
+                    system_exec_q = (
+                        f"Please provide a comprehensive clinical, pharmacological, and therapeutic deep-dive for the medication '{med['name']}' in {prompt_lang_name}.\n"
+                        f"Include:\n"
+                        f"1. Active chemical compounds, molecular structure, and pharmacokinetics\n"
+                        f"2. Exact clinical indications (why this medicine is prescribed and how it works)\n"
+                        f"3. Optimal dosage, timing (food interactions), and duration rules\n"
+                        f"4. Contraindications, side effects to watch for, and safety precautions\n"
+                        f"5. Common commercial brand names available in pharmacies"
+                    )
+                    if "floating_chat_history" not in st.session_state:
+                        st.session_state["floating_chat_history"] = []
+                    st.session_state["floating_chat_history"].append({"role": "user", "content": user_disp_q})
+                    st.session_state["pending_chat_query"] = system_exec_q
+                    st.rerun()
+            with btn_c2:
+                close_btn_label = {"en": "✕ Close Profile", "hi": "✕ बंद करें", "gu": "✕ બંધ કરો"}.get(lang_code, "✕ Close Profile")
+                if st.button(close_btn_label, key=f"btn_close_med_{modal_key_id}", type="secondary", use_container_width=True):
+                    st.rerun()
 
         
         st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
@@ -4171,7 +4917,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                         </div>
                     </div>
                     <div>
-                        <span class="mm-badge" style="background: #EFF6FF; color: #2563EB; border: 1.2px solid #BFDBFE; border-radius: 999px; padding: 6px 16px; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;">
+                        <span class="mm-badge" style="background: {'rgba(37, 99, 235, 0.18)' if is_dark else '#EFF6FF'}; color: {'#60A5FA' if is_dark else '#2563EB'}; border: 1.2px solid {'rgba(59, 130, 246, 0.4)' if is_dark else '#BFDBFE'}; border-radius: 999px; padding: 6px 16px; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;">
                             {len(medicine_gallery)} {T.get('medicines_badge', 'MEDICINES')}
                         </span>
                     </div>
@@ -4386,7 +5132,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                         </div>
                     </div>
                     <div>
-                        <span class="mm-badge" style="background: #ECFDF5; color: #059669; border: 1.2px solid #A7F3D0; border-radius: 999px; padding: 6px 16px; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;">
+                        <span class="mm-badge" style="background: {'rgba(16, 185, 129, 0.18)' if is_dark else '#ECFDF5'}; color: {'#34D399' if is_dark else '#059669'}; border: 1.2px solid {'rgba(16, 185, 129, 0.4)' if is_dark else '#A7F3D0'}; border-radius: 999px; padding: 6px 16px; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;">
                             {len(yoga_recs)} {T.get('routines_badge', 'ROUTINES')}
                         </span>
                     </div>
@@ -4781,7 +5527,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                         </div>
                     </div>
                     <div>
-                        <span class="mm-badge" style="background: #EFF6FF; color: #2563EB; border: 1.2px solid #BFDBFE; border-radius: 999px; padding: 6px 16px; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;">
+                        <span class="mm-badge" style="background: {'rgba(37, 99, 235, 0.18)' if is_dark else '#EFF6FF'}; color: {'#60A5FA' if is_dark else '#2563EB'}; border: 1.2px solid {'rgba(59, 130, 246, 0.4)' if is_dark else '#BFDBFE'}; border-radius: 999px; padding: 6px 16px; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase;">
                             {len(conditions_list)} CONDITIONS
                         </span>
                     </div>
@@ -8206,22 +8952,21 @@ elif st.session_state["active_panel"] == "About":
                         {A['sources_sub']}
                     </p>
                 </div>
-                <!-- Right side trust badge -->
                 <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
                     <div style="opacity: 0.75;">
-                        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="{'#38BDF8' if is_dark else '#93C5FD'}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                             <ellipse cx="12" cy="5" rx="9" ry="3" fill="rgba(37,99,235,0.06)"/>
                             <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
                             <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
                         </svg>
                     </div>
-                    <div style="background: rgba(224, 242, 254, 0.85); border: 1.5px solid #7DD3FC; border-radius: 9999px; padding: 7px 16px; display: flex; align-items: center; gap: 10px;">
+                    <div style="background: {'rgba(2, 132, 199, 0.18)' if is_dark else 'rgba(224, 242, 254, 0.85)'}; border: 1.5px solid {'rgba(56, 189, 248, 0.4)' if is_dark else '#7DD3FC'}; border-radius: 9999px; padding: 7px 16px; display: flex; align-items: center; gap: 10px;">
                         <div style="width: 22px; height: 22px; border-radius: 50%; background: #0284C7; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                         </div>
                         <div>
-                            <div style="font-size: 0.72rem; font-weight: 800; color: #0369A1; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.2;">100% REAL, AUDITED &amp; NON-FABRICATED</div>
-                            <div style="font-size: 0.68rem; color: #0284C7; font-weight: 500; line-height: 1.2;">{L.get('trusted_data', 'Trusted Data. Better Care.')}</div>
+                            <div style="font-size: 0.72rem; font-weight: 800; color: {'#38BDF8' if is_dark else '#0369A1'}; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.2;">100% REAL, AUDITED &amp; NON-FABRICATED</div>
+                            <div style="font-size: 0.68rem; color: {'#93C5FD' if is_dark else '#0284C7'}; font-weight: 500; line-height: 1.2;">{L.get('trusted_data', 'Trusted Data. Better Care.')}</div>
                         </div>
                     </div>
                 </div>
@@ -8570,10 +9315,10 @@ elif st.session_state["active_panel"] == "About":
     with tab_a5:
         # Top Protocol Banner Card
         st.markdown(f"""
-        <div class="mm-card" style="background: linear-gradient(135deg, rgba(239, 246, 255, 0.85) 0%, rgba(219, 234, 254, 0.5) 100%); border: 1.5px solid #BFDBFE; border-radius: 16px; padding: 22px 26px; margin-bottom: 22px; position: relative; overflow: hidden;">
+        <div class="mm-card" style="background: """ + ('linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%)' if is_dark else 'linear-gradient(135deg, rgba(239, 246, 255, 0.85) 0%, rgba(219, 234, 254, 0.5) 100%)') + """; border: 1.5px solid """ + ('#1E2E4E' if is_dark else '#BFDBFE') + """; border-radius: 16px; padding: 22px 26px; margin-bottom: 22px; position: relative; overflow: hidden;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
                 <div style="display: flex; align-items: center; gap: 16px;">
-                    <div style="width: 52px; height: 52px; border-radius: 14px; background: #DBEAFE; border: 1.5px solid #93C5FD; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.12);">
+                    <div style="width: 52px; height: 52px; border-radius: 14px; background: """ + ('rgba(37, 99, 235, 0.20)' if is_dark else '#DBEAFE') + """; border: 1.5px solid """ + ('rgba(59, 130, 246, 0.4)' if is_dark else '#93C5FD') + """; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37,99,235,0.12);">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
                             <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
@@ -8583,57 +9328,57 @@ elif st.session_state["active_panel"] == "About":
                         <div style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.08em; text-transform: uppercase;">
                             NATIONAL PATIENT &amp; CLINICIAN SUPPORT PROTOCOL
                         </div>
-                        <div style="font-size: 1.50rem; font-weight: 800; color: #1E293B; line-height: 1.25; margin-top: 2px;">
+                        <div style="font-size: 1.50rem; font-weight: 800; color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """; line-height: 1.25; margin-top: 2px;">
                             Official Clinical <span style="color: #2563EB;">Helpdesk &amp; Grievance Redressal</span>
                         </div>
-                        <div style="font-size: 0.86rem; color: #64748B; margin-top: 3px;">
+                        <div style="font-size: 0.86rem; color: """ + ('#94A3B8' if is_dark else '#64748B') + """; margin-top: 3px;">
                             Submit any technical issue, clinical query or system feedback directly to the National System Administration.
                         </div>
                     </div>
                 </div>
-                <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(224, 242, 254, 0.95); border: 1.5px solid #38BDF8; color: #0284C7; padding: 8px 16px; border-radius: 9999px; font-weight: 800; font-size: 0.76rem; letter-spacing: 0.04em;">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#0284C7" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: """ + ('rgba(2, 132, 199, 0.18)' if is_dark else 'rgba(224, 242, 254, 0.95)') + """; border: 1.5px solid """ + ('rgba(56, 189, 248, 0.4)' if is_dark else '#38BDF8') + """; color: """ + ('#38BDF8' if is_dark else '#0284C7') + """; padding: 8px 16px; border-radius: 9999px; font-weight: 800; font-size: 0.76rem; letter-spacing: 0.04em;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke=""" + ('#38BDF8' if is_dark else '#0284C7') + """ stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                     24-HOUR RESOLUTION PROMISE
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(191, 219, 254, 0.8);">
-                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin-top: 16px; padding-top: 14px; border-top: 1px solid """ + ('rgba(30, 46, 78, 0.8)' if is_dark else 'rgba(191, 219, 254, 0.8)') + """;">
+                <div style="display: flex; align-items: center; gap: 10px; background: """ + ('#111827' if is_dark else 'rgba(255,255,255,0.75)') + """; border: 1px solid """ + ('#1E2E4E' if is_dark else '#DBEAFE') + """; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: """ + ('rgba(37, 99, 235, 0.18)' if is_dark else '#EFF6FF') + """; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="#2563EB" stroke="#2563EB" stroke-width="1"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     </div>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Quick Response</div>
-                        <div style="font-size: 0.72rem; color: #64748B;">Acknowledgment within minutes</div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """;">Quick Response</div>
+                        <div style="font-size: 0.72rem; color: """ + ('#94A3B8' if is_dark else '#64748B') + """;">Acknowledgment within minutes</div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px; background: """ + ('#111827' if is_dark else 'rgba(255,255,255,0.75)') + """; border: 1px solid """ + ('#1E2E4E' if is_dark else '#DBEAFE') + """; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: """ + ('rgba(37, 99, 235, 0.18)' if is_dark else '#EFF6FF') + """; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
                     </div>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Direct to Administration</div>
-                        <div style="font-size: 0.72rem; color: #64748B;">Secure &amp; authenticated channel</div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """;">Direct to Administration</div>
+                        <div style="font-size: 0.72rem; color: """ + ('#94A3B8' if is_dark else '#64748B') + """;">Secure &amp; authenticated channel</div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px; background: """ + ('#111827' if is_dark else 'rgba(255,255,255,0.75)') + """; border: 1px solid """ + ('#1E2E4E' if is_dark else '#DBEAFE') + """; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: """ + ('rgba(37, 99, 235, 0.18)' if is_dark else '#EFF6FF') + """; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                     </div>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Automated Confirmation</div>
-                        <div style="font-size: 0.72rem; color: #64748B;">Instant email notification</div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """;">Automated Confirmation</div>
+                        <div style="font-size: 0.72rem; color: """ + ('#94A3B8' if is_dark else '#64748B') + """;">Instant email notification</div>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.75); border: 1px solid #DBEAFE; border-radius: 10px; padding: 8px 12px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <div style="display: flex; align-items: center; gap: 10px; background: """ + ('#111827' if is_dark else 'rgba(255,255,255,0.75)') + """; border: 1px solid """ + ('#1E2E4E' if is_dark else '#DBEAFE') + """; border-radius: 10px; padding: 8px 12px;">
+                    <div style="width: 32px; height: 32px; border-radius: 8px; background: """ + ('rgba(37, 99, 235, 0.18)' if is_dark else '#EFF6FF') + """; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>
                     </div>
                     <div>
-                        <div style="font-size: 0.82rem; font-weight: 700; color: #1E293B;">Dedicated Support</div>
-                        <div style="font-size: 0.72rem; color: #64748B;">For clinical &amp; technical issues</div>
+                        <div style="font-size: 0.82rem; font-weight: 700; color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """;">Dedicated Support</div>
+                        <div style="font-size: 0.72rem; color: """ + ('#94A3B8' if is_dark else '#64748B') + """;">For clinical &amp; technical issues</div>
                     </div>
                 </div>
             </div>
@@ -9234,6 +9979,25 @@ div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
     border-radius: 19px 19px 0 0 !important;
     margin: 0 !important;
 }}
+.st-key-popup_unified_header [data-testid="stHorizontalBlock"] {{
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+}}
+.st-key-popup_unified_header [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {{
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+}}
+.st-key-popup_unified_header [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:not(:first-child) {{
+    flex: 0 0 38px !important;
+    min-width: 38px !important;
+    width: 38px !important;
+}}
 
 /* Square Rounded Header Close & Refresh Buttons */
 .st-key-drawer_close_x_btn button,
@@ -9591,6 +10355,29 @@ div[class*="st-key-slide_chat_form"] form,
     margin: 4px 12px 2px 12px !important;
     box-shadow: none !important;
     transition: none !important;
+}
+div[class*="st-key-slide_chat_form"] [data-testid="stHorizontalBlock"],
+.st-key-slide_chat_form [data-testid="stHorizontalBlock"] {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+div[class*="st-key-slide_chat_form"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child,
+.st-key-slide_chat_form [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+div[class*="st-key-slide_chat_form"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child,
+.st-key-slide_chat_form [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child {
+    flex: 0 0 46px !important;
+    min-width: 46px !important;
+    width: 46px !important;
 }
 div[class*="st-key-slide_chat_form"],
 div[class*="st-key-slide_chat_form"] > div,
@@ -10435,7 +11222,7 @@ if chat_is_open:
 
             qa_cards_data = [
                 {
-                    "id": "sym", "icon": ":material/stethoscope:",
+                    "id": "sym", "icon": ":material/stethoscope:", "color": "#2563EB", "rgb": "37, 99, 235",
                     "title": T.get("qa_sym_title", "Symptoms"),
                     "sub": T.get("qa_sym_sub", "Check symptoms"),
                     "query": f"मेरे लक्षणों ({_sym_s}) का सरल अर्थ और संभावित कारण समझाएं।" if lang_code == "hi" else (
@@ -10444,7 +11231,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "med", "icon": ":material/medication:",
+                    "id": "med", "icon": ":material/medication:", "color": "#059669", "rgb": "5, 150, 105",
                     "title": T.get("qa_med_title", "Medicines"),
                     "sub": T.get("qa_med_sub", "Drug information"),
                     "query": f"{_med_s} की खुराक, सही समय और जरूरी सावधानियां बताएं।" if lang_code == "hi" else (
@@ -10453,7 +11240,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "dos", "icon": ":material/description:",
+                    "id": "dos", "icon": ":material/description:", "color": "#0891B2", "rgb": "8, 145, 178",
                     "title": T.get("qa_dos_title", "Dosage"),
                     "sub": T.get("qa_dos_sub", "How to take?"),
                     "query": f"{_med_s} और {_dis_s} के लिए सही dosage और भोजन का समय समझाएं।" if lang_code == "hi" else (
@@ -10462,7 +11249,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "sef", "icon": ":material/warning:",
+                    "id": "sef", "icon": ":material/warning:", "color": "#D97706", "rgb": "217, 119, 6",
                     "title": T.get("qa_sef_title", "Side Effects"),
                     "sub": T.get("qa_sef_sub", "Adverse reactions"),
                     "query": f"{_med_s} के संभावित दुष्प्रभाव और किन red flags पर डॉक्टर से तुरंत मिलना चाहिए?" if lang_code == "hi" else (
@@ -10471,7 +11258,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "fdt", "icon": ":material/restaurant:",
+                    "id": "fdt", "icon": ":material/restaurant:", "color": "#E11D48", "rgb": "225, 29, 72",
                     "title": T.get("qa_fdt_title", "Food & Diet"),
                     "sub": T.get("qa_fdt_sub", "Nutrition advice"),
                     "query": f"{_dis_s} में कौन सा पौष्टिक भोजन खाना चाहिए और किन चीजों से परहेज करें?" if lang_code == "hi" else (
@@ -10480,7 +11267,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "dis", "icon": ":material/favorite:",
+                    "id": "dis", "icon": ":material/favorite:", "color": "#7C3AED", "rgb": "124, 58, 237",
                     "title": T.get("qa_dis_title", "Disease Info"),
                     "sub": T.get("qa_dis_sub", "Clinical causes"),
                     "query": f"{_dis_s} की स्थिति, इसके मुख्य कारण और रोग नियंत्रण के उपाय बताएं।" if lang_code == "hi" else (
@@ -10489,7 +11276,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "lab", "icon": ":material/science:",
+                    "id": "lab", "icon": ":material/science:", "color": "#0284C7", "rgb": "2, 132, 199",
                     "title": T.get("qa_lab_title", "Lab Tests"),
                     "sub": T.get("qa_lab_sub", "Pathology tests"),
                     "query": f"{_dis_s} और {_sym_s} के लिए कौन से जरूरी लैब टेस्ट डॉक्टर से डिस्कस करने चाहिए?" if lang_code == "hi" else (
@@ -10498,7 +11285,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "trt", "icon": ":material/medical_services:",
+                    "id": "trt", "icon": ":material/medical_services:", "color": "#4F46E5", "rgb": "79, 70, 229",
                     "title": T.get("qa_trt_title", "Treatment"),
                     "sub": T.get("qa_trt_sub", "Care plan"),
                     "query": f"{_dis_s} के लिए सामान्यतः क्या इलाज विकल्प और रिकवरी टाइमलाइन होती है?" if lang_code == "hi" else (
@@ -10507,7 +11294,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "yog", "icon": ":material/self_improvement:",
+                    "id": "yog", "icon": ":material/self_improvement:", "color": "#16A34A", "rgb": "22, 163, 74",
                     "title": T.get("qa_yog_title", "Yoga & Wellness"),
                     "sub": T.get("qa_yog_sub", "Holistic recovery"),
                     "query": f"{_dis_s} में कौन से सुरक्षित योगासन, प्राणायाम और जीवनशैली सुझाव लाभकारी हैं?" if lang_code == "hi" else (
@@ -10516,7 +11303,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "chd", "icon": ":material/child_care:",
+                    "id": "chd", "icon": ":material/child_care:", "color": "#EA580C", "rgb": "234, 88, 12",
                     "title": T.get("qa_chd_title", "Pediatric Care"),
                     "sub": T.get("qa_chd_sub", "Child precautions"),
                     "query": f"बच्चों में {_sym_s} होने पर क्या विशेष बाल रोग सावधानियां बरतनी चाहिए?" if lang_code == "hi" else (
@@ -10525,7 +11312,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "eld", "icon": ":material/person:",
+                    "id": "eld", "icon": ":material/person:", "color": "#0D9488", "rgb": "13, 148, 136",
                     "title": T.get("qa_eld_title", "Elderly Care"),
                     "sub": T.get("qa_eld_sub", "Senior guidelines"),
                     "query": f"बुजुर्ग मरीजों में {_dis_s} और {_med_s} के साथ क्या सुरक्षा सावधानियां जरूरी हैं?" if lang_code == "hi" else (
@@ -10534,7 +11321,7 @@ if chat_is_open:
                     )
                 },
                 {
-                    "id": "ask", "icon": ":material/forum:",
+                    "id": "ask", "icon": ":material/forum:", "color": "#9333EA", "rgb": "147, 51, 234",
                     "title": T.get("qa_ask_title", "Ask Question"),
                     "sub": T.get("qa_ask_sub", "Free inquiry"),
                     "query": f"DocMindX AI, मेरी वर्तमान स्वास्थ्य स्थिति ({_dis_s}, {_sym_s}) पर आपका क्या सुझाव है?" if lang_code == "hi" else (
@@ -10543,6 +11330,60 @@ if chat_is_open:
                     )
                 }
             ]
+
+            _qa_rules_list = []
+            for _card in qa_cards_data:
+                _cid = _card["id"]
+                _col = _card["color"]
+                _rgb = _card["rgb"]
+                if is_dark:
+                    _card_bg = "rgba(15, 23, 42, 0.85)"
+                    _card_bdr = f"rgba({_rgb}, 0.38)"
+                    _card_hbg = f"rgba({_rgb}, 0.16)"
+                    _ic_bg = f"rgba({_rgb}, 0.22)"
+                    _ic_bdr = f"rgba({_rgb}, 0.50)"
+                    _t_col = "#F8FAFC"
+                    _s_col = "#94A3B8"
+                    _glow = f"rgba({_rgb}, 0.28)"
+                else:
+                    _card_bg = f"rgba({_rgb}, 0.04)"
+                    _card_bdr = f"rgba({_rgb}, 0.30)"
+                    _card_hbg = f"rgba({_rgb}, 0.10)"
+                    _ic_bg = f"rgba({_rgb}, 0.12)"
+                    _ic_bdr = f"rgba({_rgb}, 0.32)"
+                    _t_col = "#0F172A"
+                    _s_col = "#475569"
+                    _glow = f"rgba({_rgb}, 0.16)"
+
+                _qa_rules_list.append(f"""
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button {{
+                    background: {_card_bg} !important;
+                    background-color: {_card_bg} !important;
+                    border: 1.5px solid {_card_bdr} !important;
+                    box-shadow: 0 2px 8px {_glow} !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button:hover {{
+                    background: {_card_hbg} !important;
+                    background-color: {_card_hbg} !important;
+                    border-color: {_col} !important;
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 6px 18px {_glow} !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button [data-testid="stIconMaterial"] {{
+                    background: {_ic_bg} !important;
+                    background-color: {_ic_bg} !important;
+                    border: 1.2px solid {_ic_bdr} !important;
+                    color: {_col} !important;
+                    fill: {_col} !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button p strong {{
+                    color: {_t_col} !important;
+                }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button p {{
+                    color: {_s_col} !important;
+                }}
+                """)
+            st.markdown("<style>" + "\n".join(_qa_rules_list) + "</style>", unsafe_allow_html=True)
 
             for row_start in range(0, len(qa_cards_data), 4):
                 action_columns = st.columns(4)

@@ -228,36 +228,40 @@ td code {
 }
 
 /* Dark Mode Form Inputs (Inputs, TextAreas, Dropdowns) */
-[data-theme="dark"] input,
-[data-theme="dark"] textarea,
-[data-theme="dark"] [data-baseweb="input"],
 [data-theme="dark"] [data-baseweb="base-input"],
-[data-theme="dark"] [data-baseweb="input"] input,
-[data-theme="dark"] [data-baseweb="base-input"] input,
-[data-theme="dark"] [data-baseweb="base-input"] textarea,
-[data-theme="dark"] .stTextInput input,
-[data-theme="dark"] .stTextInput > div > div,
-[data-theme="dark"] .stTextArea textarea,
-[data-theme="dark"] .stTextArea > div > div,
+[data-theme="dark"] .stTextInput [data-baseweb="base-input"],
+[data-theme="dark"] .stTextArea [data-baseweb="base-input"],
+[data-theme="dark"] .stNumberInput [data-baseweb="base-input"],
 [data-theme="dark"] .stSelectbox > div > div,
 [data-theme="dark"] [data-baseweb="select"] > div,
-[data-theme="dark"] .stNumberInput input,
-[data-theme="dark"] .stNumberInput > div > div,
-[data-theme="dark"] .stDateInput input,
-[data-theme="dark"] .stTimeInput input,
+[data-theme="dark"] .stDateInput [data-baseweb="base-input"],
+[data-theme="dark"] .stTimeInput [data-baseweb="base-input"],
 [data-theme="dark"] .stMultiSelect > div > div,
 [data-theme="dark"] [data-baseweb="multi-select"] > div {
     background-color: #111827 !important;
     background: #111827 !important;
+    border: 1.5px solid #1E2E4E !important;
     border-color: #1E2E4E !important;
+    border-radius: 8px !important;
     color: #F8FAFC !important;
     -webkit-text-fill-color: #F8FAFC !important;
 }
 
-/* Ensure inner input elements themselves are also dark */
+/* Ensure inner input elements themselves never get extra border */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] [data-baseweb="input"],
+[data-theme="dark"] .stTextInput input,
+[data-theme="dark"] .stTextArea textarea,
+[data-theme="dark"] .stNumberInput input,
 [data-theme="dark"] .stTextInput [data-baseweb="base-input"] > input,
 [data-theme="dark"] .stTextInput [data-baseweb="input"] > input {
+    border: none !important;
+    border-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
     background: transparent !important;
+    background-color: transparent !important;
     color: #F8FAFC !important;
     -webkit-text-fill-color: #F8FAFC !important;
 }
@@ -1988,12 +1992,30 @@ div[data-testid="stColumn"] div[data-testid="stLinkButton"] a:hover {
 }
 
 /* Text Inputs, Selectboxes, Multiselects & Textareas */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
+.stTextInput [data-baseweb="base-input"],
+.stTextArea [data-baseweb="base-input"],
+.stNumberInput [data-baseweb="base-input"],
 [data-baseweb="select"] > div {
     background-color: var(--mm-bg-surface) !important;
     border: 1.5px solid var(--mm-border-color) !important;
     border-radius: 8px !important;
+    color: var(--mm-text-primary) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+}
+
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input,
+[data-baseweb="base-input"] input,
+[data-baseweb="base-input"] textarea {
+    border: none !important;
+    border-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
     color: var(--mm-text-primary) !important;
     font-family: 'Inter', sans-serif !important;
     font-size: 0.92rem !important;
@@ -2397,132 +2419,150 @@ div[class*="st-key-hdr_sun_moon_"] iframe {
     }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1024px) {
     div[class*="st-key-mm_top_header_card"] {
-        padding: 14px 16px !important;
+        display: block !important;
+        height: auto !important;
+        min-height: auto !important;
+        max-height: none !important;
+        padding: 16px 16px !important;
         border-radius: 16px !important;
         margin-bottom: 14px !important;
-        min-height: auto !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
     }
     div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] {
         display: flex !important;
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        gap: 10px 8px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        justify-content: flex-start !important;
+        gap: 10px !important;
         width: 100% !important;
+        height: auto !important;
     }
-    /* Row 1: Title & Icon takes full width */
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="column"]:first-child,
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {
-        flex: 1 1 100% !important;
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="column"] {
         width: 100% !important;
         min-width: 100% !important;
-        margin-bottom: 4px !important;
-    }
-    div[class*="st-key-mm_top_header_card"] img {
-        max-width: 44px !important;
-        width: 44px !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+        display: block !important;
         height: auto !important;
-        padding: 4px !important;
+        min-height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stVerticalBlock"] {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        gap: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stElementContainer"],
+    div[class*="st-key-mm_top_header_card"] .element-container {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdown"] {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] {
+        height: auto !important;
+        min-height: auto !important;
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+        width: 100% !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] p {
+        margin-bottom: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] {
+        display: flex !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+        width: 100% !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] > div:first-child,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] > img {
+        width: 44px !important;
+        height: 44px !important;
+        min-width: 44px !important;
+        min-height: 44px !important;
         border-radius: 12px !important;
         flex-shrink: 0 !important;
     }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stMarkdownContainer"] > div[style*="display: flex"] svg {
+        width: 22px !important;
+        height: 22px !important;
+    }
     div[class*="st-key-mm_top_header_card"] div[style*="font-size: 1.45rem"] {
-        font-size: 1.15rem !important;
+        font-size: 1.10rem !important;
         line-height: 1.25 !important;
         font-weight: 800 !important;
         word-break: break-word !important;
     }
     div[class*="st-key-mm_top_header_card"] div[style*="font-size: 0.85rem"] {
-        font-size: 0.76rem !important;
-        line-height: 1.25 !important;
-        margin-top: 2px !important;
+        font-size: 0.74rem !important;
+        line-height: 1.30 !important;
+        margin-top: 3px !important;
         display: block !important;
         word-break: break-word !important;
     }
-
-    /* Row 2: Controls row (Badge on left, Language & Theme Switch on right) */
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2),
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(2) {
-        flex: 0 1 auto !important;
-        width: auto !important;
-        min-width: 0 !important;
+    /* Column 2 (The Badge) */
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child,
+    div[class*="st-key-mm_top_header_card"] [data-testid="column"]:last-child {
+        width: 100% !important;
+        flex: 0 0 auto !important;
         display: flex !important;
         align-items: center !important;
-        justify-content: flex-start !important;
+        justify-content: flex-end !important;
+        height: auto !important;
+        min-height: auto !important;
+        margin: 4px 0 0 0 !important;
+        padding: 0 !important;
     }
-    div[class*="st-key-mm_top_header_card"] .mm-badge,
-    div[class*="st-key-mm_top_header_card"] .mm-badge-brand,
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stVerticalBlock"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stElementContainer"],
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stMarkdown"] {
+        height: auto !important;
+        min-height: auto !important;
+        width: 100% !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card"] [data-testid="stColumn"]:last-child [data-testid="stMarkdownContainer"] > div {
+        display: flex !important;
+        justify-content: flex-end !important;
+        align-items: center !important;
+        height: auto !important;
+        min-height: 30px !important;
+        margin: 0 !important;
+    }
+    div[class*="st-key-mm_top_header_card"] .mm-ocr-ai-badge,
+    div[class*="st-key-mm_top_header_card"] span[style*="border-radius: 20px"],
     div[class*="st-key-mm_top_header_card"] .mm-badge-online-pill {
-        font-size: 0.70rem !important;
-        font-weight: 700 !important;
-        padding: 0 10px !important;
-        height: 36px !important;
-        min-height: 36px !important;
-        line-height: 36px !important;
-        white-space: nowrap !important;
+        height: 30px !important;
+        min-height: 30px !important;
+        max-height: 30px !important;
+        padding: 0 12px !important;
+        font-size: 0.72rem !important;
+        border-radius: 15px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
         box-sizing: border-box !important;
-    }
-
-    /* Language selector - pushed to the right alongside theme toggle */
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(3),
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(3) {
-        flex: 0 0 86px !important;
-        width: 86px !important;
-        min-width: 86px !important;
-        margin-left: auto !important;
-    }
-    div[class*="st-key-mm_top_header_card"] .stSelectbox [data-baseweb="select"] > div:first-child {
-        min-height: 38px !important;
-        height: 38px !important;
-        padding: 0 6px !important;
-        font-size: 0.78rem !important;
-    }
-
-    /* Sun / Moon switch - full 78px width with >=44px touch target container */
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(4),
-    div[class*="st-key-mm_top_header_card"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:nth-child(4) {
-        flex: 0 0 78px !important;
-        width: 78px !important;
-        min-width: 78px !important;
-        min-height: 44px !important;
-    }
-    div[class*="st-key-mm_top_header_card"] [data-testid="stCustomComponentV1"],
-    div[class*="st-key-mm_top_header_card"] iframe,
-    div[class*="st-key-hdr_sun_moon_"] [data-testid="stCustomComponentV1"],
-    div[class*="st-key-hdr_sun_moon_"] iframe {
-        height: 40px !important;
-        min-height: 40px !important;
-        max-height: 44px !important;
-        width: 78px !important;
-        min-width: 78px !important;
-        border: none !important;
-        display: block !important;
-        margin: 0 auto !important;
-    }
-}
-
-@media (max-width: 568px) {
-    div[class*="st-key-mm_top_header_card"] {
-        padding: 10px 12px !important;
-        border-radius: 14px !important;
-    }
-    div[class*="st-key-mm_top_header_card"] img {
-        max-width: 38px !important;
-        width: 38px !important;
-        height: auto !important;
-        padding: 3px !important;
-    }
-    div[class*="st-key-mm_top_header_card"] div[style*="font-size: 1.45rem"] {
-        font-size: 1.02rem !important;
-    }
-    div[class*="st-key-mm_top_header_card"] div[style*="font-size: 0.85rem"] {
-        font-size: 0.72rem !important;
     }
 }
 
@@ -6894,38 +6934,65 @@ div[data-testid="stRadio"] [role="radiogroup"] > label > div:first-child {
     border-color: #475569 !important;
 }
 
-input,
-textarea,
-[data-baseweb="input"],
+/* Single border on BaseWeb input containers */
 [data-baseweb="base-input"],
-[data-baseweb="input"] input,
-[data-baseweb="base-input"] input,
-[data-baseweb="base-input"] textarea,
-.stTextInput input,
-.stTextInput > div,
-.stTextInput > div > div,
-.stTextArea textarea,
-.stTextArea > div,
-.stTextArea > div > div,
-.stSelectbox > div,
-.stSelectbox > div > div,
+.stTextInput [data-baseweb="base-input"],
+.stTextArea [data-baseweb="base-input"],
+.stNumberInput [data-baseweb="base-input"],
 [data-baseweb="select"] > div {
     background-color: #0F172A !important;
     background: #0F172A !important;
     border: 1.5px solid #1E2E4E !important;
     border-color: #1E2E4E !important;
+    border-radius: 8px !important;
     color: #F8FAFC !important;
     -webkit-text-fill-color: #F8FAFC !important;
 }
 
-input:focus,
-textarea:focus,
-[data-baseweb="input"]:focus-within,
-[data-baseweb="select"]:focus-within > div,
-.stTextInput > div > div:focus-within,
-.stTextArea > div > div:focus-within {
+/* Eliminate duplicate borders from outer wrappers and inner input elements */
+[data-baseweb="input"],
+.stTextInput > div,
+.stTextArea > div,
+.stNumberInput > div,
+.stSelectbox > div {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+input,
+textarea,
+[data-baseweb="input"] input,
+[data-baseweb="base-input"] input,
+[data-baseweb="base-input"] textarea,
+.stTextInput input,
+.stTextArea textarea,
+.stNumberInput input {
+    border: none !important;
+    border-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+}
+
+/* Focus ring only on the container */
+[data-baseweb="base-input"]:focus-within,
+.stTextInput [data-baseweb="base-input"]:focus-within,
+.stTextArea [data-baseweb="base-input"]:focus-within,
+.stNumberInput [data-baseweb="base-input"]:focus-within,
+[data-baseweb="select"]:focus-within > div {
     border-color: #2563EB !important;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) !important;
+}
+input:focus,
+textarea:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 input::placeholder,
@@ -9802,26 +9869,37 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-symptoms_search_card
 }
 
 /* Dark Mode Input & Password Rules Across Auth Portal */
-.stTextInput input,
-.stTextInput input:focus,
-.stTextInput input[type="password"],
-.stTextInput input[type="password"]:focus,
-div[class*="st-key-panel_"] input,
-div[class*="st-key-panel_"] input:focus,
-div[class*="st-key-panel_"] input[type="password"],
-div[class*="st-key-panel_"] [data-baseweb="input"],
 div[class*="st-key-panel_"] [data-baseweb="base-input"],
-div[class*="st-key-panel_"] .stTextInput > div > div {
+.stTextInput [data-baseweb="base-input"] {
     background: #0F172A !important;
     background-color: #0F172A !important;
-    border-color: rgba(59, 130, 246, 0.25) !important;
+    border: 1.5px solid rgba(59, 130, 246, 0.35) !important;
+    border-color: rgba(59, 130, 246, 0.35) !important;
+    border-radius: 8px !important;
+    color: #F8FAFC !important;
+}
+div[class*="st-key-panel_"] [data-baseweb="base-input"]:focus-within,
+.stTextInput [data-baseweb="base-input"]:focus-within {
+    border-color: #60A5FA !important;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+}
+div[class*="st-key-panel_"] input,
+div[class*="st-key-panel_"] textarea,
+.stTextInput input {
+    border: none !important;
+    border-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
     color: #F8FAFC !important;
     -webkit-text-fill-color: #F8FAFC !important;
 }
-.stTextInput input:focus,
-div[class*="st-key-panel_"] input:focus {
-    border-color: #60A5FA !important;
-    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+div[class*="st-key-panel_"] input:focus,
+.stTextInput input:focus {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 input:-webkit-autofill,
 input:-webkit-autofill:hover, 
@@ -10255,9 +10333,185 @@ input:-webkit-autofill:active {
 [data-theme="dark"] details[data-testid="stExpander"] summary span {
     color: #F8FAFC !important;
 }
-[data-theme="dark"] details[data-testid="stExpander"] > div {
+
+/* Dark Mode Universal Expander */
+[data-theme="dark"] details[data-testid="stExpander"],
+[data-theme="dark"] [data-testid="stExpander"],
+[data-theme="dark"] .streamlit-expander {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    border: 1.5px solid #1E2E4E !important;
+    border-radius: 12px !important;
+    color: #F8FAFC !important;
+    overflow: hidden !important;
+}
+[data-theme="dark"] details[data-testid="stExpander"] summary,
+[data-theme="dark"] [data-testid="stExpander"] summary,
+[data-theme="dark"] details[data-testid="stExpander"] > summary,
+[data-theme="dark"] [data-testid="stExpander"] > summary,
+[data-theme="dark"] .streamlit-expanderHeader {
+    background: #1E293B !important;
+    background-color: #1E293B !important;
+    border-bottom: 1px solid #334155 !important;
+    color: #F8FAFC !important;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 10px 16px !important;
+}
+[data-theme="dark"] details[data-testid="stExpander"]:not([open]) summary,
+[data-theme="dark"] [data-testid="stExpander"]:not([open]) summary,
+[data-theme="dark"] details[data-testid="stExpander"]:not([open]) > summary {
+    border-bottom: none !important;
+    border-radius: 12px !important;
+}
+[data-theme="dark"] details[data-testid="stExpander"] summary:hover,
+[data-theme="dark"] [data-testid="stExpander"] summary:hover,
+[data-theme="dark"] .streamlit-expanderHeader:hover {
+    background: #25334E !important;
+    background-color: #25334E !important;
+    color: #60A5FA !important;
+}
+[data-theme="dark"] details[data-testid="stExpander"] summary p,
+[data-theme="dark"] details[data-testid="stExpander"] summary span,
+[data-theme="dark"] details[data-testid="stExpander"] summary svg,
+[data-theme="dark"] [data-testid="stExpander"] summary * {
+    color: #F8FAFC !important;
+    fill: #F8FAFC !important;
+    stroke: #F8FAFC !important;
+}
+[data-theme="dark"] details[data-testid="stExpander"] > div[data-testid="stExpanderDetails"],
+[data-theme="dark"] details[data-testid="stExpander"] > div:not([data-testid="stExpanderToggleIcon"]),
+[data-theme="dark"] [data-testid="stExpander"] div[data-testid="stExpanderDetails"],
+[data-theme="dark"] .streamlit-expanderContent {
+    background: #111827 !important;
+    background-color: #111827 !important;
+    color: #CBD5E1 !important;
+    padding: 14px 16px !important;
+    border: none !important;
+}
+
+/* Dark Mode Universal Audio Input */
+[data-theme="dark"] div[data-testid="stAudioInput"],
+[data-theme="dark"] [data-testid="stAudioInput"],
+[data-theme="dark"] .stAudioInput {
+    background-color: #1E293B !important;
+    background: #1E293B !important;
+    border: 1.5px solid #334155 !important;
+    border-radius: 12px !important;
+    color: #F8FAFC !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"] > div,
+[data-theme="dark"] div[data-testid="stAudioInput"] section {
+    background-color: #1E293B !important;
+    background: #1E293B !important;
+    border-color: #334155 !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"] button[data-testid="stAudioInputActionButton"],
+[data-theme="dark"] div[data-testid="stAudioInput"] button {
+    background-color: #0F172A !important;
     background: #0F172A !important;
-    border-color: #1E293B !important;
+    border: 1.5px solid #3B82F6 !important;
+    color: #60A5FA !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"] button:hover {
+    background-color: #1E3A8A !important;
+    border-color: #60A5FA !important;
+    color: #93C5FD !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"] svg {
+    fill: #60A5FA !important;
+    stroke: #60A5FA !important;
+    color: #60A5FA !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"] span,
+[data-theme="dark"] div[data-testid="stAudioInput"] p,
+[data-theme="dark"] div[data-testid="stAudioInput"] div {
+    color: #F8FAFC !important;
+}
+/* Timecode timer inside audio input - remove solid white background */
+[data-theme="dark"] div[data-testid="stAudioInput"] span[data-testid="stAudioInputWaveformTimeCode"],
+[data-theme="dark"] [data-testid="stAudioInputWaveformTimeCode"],
+span[data-testid="stAudioInputWaveformTimeCode"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #38BDF8 !important;
+    font-family: monospace !important;
+    font-weight: 700 !important;
+    font-size: 0.82rem !important;
+}
+[data-theme="dark"] [data-testid="stElementToolbarButtonContainer"],
+[data-theme="dark"] div[data-testid="stElementToolbar"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    display: none !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"] canvas {
+    filter: invert(1) hue-rotate(180deg) brightness(1.2) !important;
+}
+
+/* Dark Mode Universal Popover & Secondary Buttons */
+[data-theme="dark"] div[data-testid="stPopover"] button,
+[data-theme="dark"] div[data-testid="stPopover"] > button,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button,
+[data-theme="dark"] div[data-testid="stDownloadButton"] > button,
+[data-theme="dark"] button[data-testid="baseButton-secondary"],
+[data-theme="dark"] button[kind="secondary"] {
+    background: #1E293B !important;
+    background-color: #1E293B !important;
+    border: 1.5px solid #334155 !important;
+    color: #F8FAFC !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+}
+[data-theme="dark"] div[data-testid="stPopover"] button:hover,
+[data-theme="dark"] div[data-testid="stPopover"] > button:hover,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button:hover,
+[data-theme="dark"] div[data-testid="stDownloadButton"] > button:hover,
+[data-theme="dark"] button[data-testid="baseButton-secondary"]:hover,
+[data-theme="dark"] button[kind="secondary"]:hover {
+    background: #2563EB !important;
+    background-color: #2563EB !important;
+    border-color: #3B82F6 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45) !important;
+}
+[data-theme="dark"] div[data-testid="stPopover"] button p,
+[data-theme="dark"] div[data-testid="stPopover"] button span,
+[data-theme="dark"] div[data-testid="stPopover"] button svg,
+[data-theme="dark"] div[data-testid="stPopover"] button [data-testid="stIconMaterial"],
+[data-theme="dark"] div[data-testid="stDownloadButton"] button p,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button span,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button svg,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button [data-testid="stIconMaterial"],
+[data-theme="dark"] button[data-testid="baseButton-secondary"] p,
+[data-theme="dark"] button[data-testid="baseButton-secondary"] span,
+[data-theme="dark"] button[data-testid="baseButton-secondary"] svg,
+[data-theme="dark"] button[data-testid="baseButton-secondary"] [data-testid="stIconMaterial"],
+[data-theme="dark"] button[kind="secondary"] p,
+[data-theme="dark"] button[kind="secondary"] span,
+[data-theme="dark"] button[kind="secondary"] svg,
+[data-theme="dark"] button[kind="secondary"] [data-testid="stIconMaterial"] {
+    color: #F8FAFC !important;
+    fill: #F8FAFC !important;
+}
+[data-theme="dark"] div[data-testid="stPopover"] button:hover p,
+[data-theme="dark"] div[data-testid="stPopover"] button:hover span,
+[data-theme="dark"] div[data-testid="stPopover"] button:hover svg,
+[data-theme="dark"] div[data-testid="stPopover"] button:hover [data-testid="stIconMaterial"],
+[data-theme="dark"] div[data-testid="stDownloadButton"] button:hover p,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button:hover span,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button:hover svg,
+[data-theme="dark"] div[data-testid="stDownloadButton"] button:hover [data-testid="stIconMaterial"],
+[data-theme="dark"] button[data-testid="baseButton-secondary"]:hover p,
+[data-theme="dark"] button[data-testid="baseButton-secondary"]:hover span,
+[data-theme="dark"] button[data-testid="baseButton-secondary"]:hover svg,
+[data-theme="dark"] button[data-testid="baseButton-secondary"]:hover [data-testid="stIconMaterial"],
+[data-theme="dark"] button[kind="secondary"]:hover p,
+[data-theme="dark"] button[kind="secondary"]:hover span,
+[data-theme="dark"] button[kind="secondary"]:hover svg,
+[data-theme="dark"] button[kind="secondary"]:hover [data-testid="stIconMaterial"] {
+    color: #FFFFFF !important;
+    fill: #FFFFFF !important;
 }
 
 /* Dark scrollbars */

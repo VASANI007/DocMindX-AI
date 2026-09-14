@@ -32,6 +32,34 @@ def safe_html(html_str: str):
     cleaned = "\n".join(line.strip() for line in html_str.strip().split("\n") if line.strip())
     st.markdown(cleaned, unsafe_allow_html=True)
 
+if hasattr(st, "dialog"):
+    @st.dialog("Clinical AI Supply Audit & Reasoning", width="large")
+    def render_full_ai_supply_analysis_dialog(fac_name, dist, st_name, med_name, stock, burn, days, scen_label, l_code):
+        st.markdown(f"**Facility:** {fac_name} ({dist}, {st_name})")
+        st.caption(f"Ground-truth clinical AI diagnostic generated for **{med_name}**")
+        with st.spinner("Compiling full clinical report..."):
+            explanation = explain_supply_risk_gemini(
+                facility_name=fac_name,
+                district=dist,
+                state=st_name,
+                medicine_name=med_name,
+                current_stock=stock,
+                daily_burn=burn,
+                days_remaining=days,
+                scenario_name=scen_label,
+                lang_code=l_code
+            )
+        st.markdown(f"""
+        <div style="background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.25); border-radius: 12px; padding: 18px; margin-top: 10px;">
+            <div style="font-size: 0.92rem; line-height: 1.65; color: var(--mm-text-primary);">
+                {explanation}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+else:
+    def render_full_ai_supply_analysis_dialog(fac_name, dist, st_name, med_name, stock, burn, days, scen_label, l_code):
+        pass
+
 def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False):
     """
     Renders the complete National Health Resource Command Center interface.
@@ -1551,79 +1579,77 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
         fc_fac = facilities[0] if facilities else None
         if fc_fac:
             # Inputs Card Container (Image 2)
-            st.markdown('<div class="cc-container-card" style="padding: 16px 18px 12px 18px; margin-bottom: 16px;">', unsafe_allow_html=True)
-            f_col1, f_col2, f_col3 = st.columns([1.2, 1.2, 1.4], vertical_alignment="center")
-            with f_col1:
-                st.markdown("""
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                    <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
-                        </svg>
-                    </div>
-                    <span style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-secondary);">Forecast Facility</span>
-                </div>
-                """, unsafe_allow_html=True)
-                sel_fc_fac_name = st.selectbox("Forecast Facility", options=[f["name"] for f in facilities], key="cc_fc_fac", label_visibility="collapsed")
-                sel_fac_obj = next((f for f in facilities if f["name"] == sel_fc_fac_name), fc_fac)
-
-            with f_col2:
-                st.markdown("""
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                    <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(16, 185, 129, 0.10); color: #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path>
-                            <path d="m8.5 8.5 7 7"></path>
-                        </svg>
-                    </div>
-                    <span style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-secondary);">Essential Medicine</span>
-                </div>
-                """, unsafe_allow_html=True)
-                med_options = list(sel_fac_obj["inventory"].keys())
-                sel_med_id = st.selectbox("Essential Medicine", options=med_options, format_func=lambda k: sel_fac_obj["inventory"][k]["name"], key="cc_fc_med", label_visibility="collapsed")
-
-            with f_col3:
-                # Ensure session state for horizon
-                if "cc_fc_horizon_val" not in st.session_state:
-                    st.session_state["cc_fc_horizon_val"] = 14
-
-                h_head_col, h_badge_col = st.columns([2.2, 1.2], vertical_alignment="center")
-                with h_head_col:
+            with st.container(border=True):
+                f_col1, f_col2, f_col3 = st.columns([1.2, 1.2, 1.4], vertical_alignment="center")
+                with f_col1:
                     st.markdown("""
-                    <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                         <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
-                                <line x1="16" y1="16" x2="16" y2="6"></line>
-                                <line x1="8" y1="2" x2="8" y2="6"></line>
-                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                                <path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path>
                             </svg>
                         </div>
-                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-secondary);">Forecast Horizon (Days)</span>
+                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-secondary);">Forecast Facility</span>
                     </div>
                     """, unsafe_allow_html=True)
-                with h_badge_col:
-                    st.markdown(f"""
-                    <div style="text-align: right;">
-                        <div style="font-size: 0.88rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.1;">{st.session_state['cc_fc_horizon_val']} Days</div>
-                        <div style="font-size: 0.65rem; color: var(--mm-text-secondary); margin-top: 1px;">Select forecast range</div>
+                    sel_fc_fac_name = st.selectbox("Forecast Facility", options=[f["name"] for f in facilities], key="cc_fc_fac", label_visibility="collapsed")
+                    sel_fac_obj = next((f for f in facilities if f["name"] == sel_fc_fac_name), fc_fac)
+
+                with f_col2:
+                    st.markdown("""
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(16, 185, 129, 0.10); color: #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path>
+                                <path d="m8.5 8.5 7 7"></path>
+                            </svg>
+                        </div>
+                        <span style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-secondary);">Essential Medicine</span>
                     </div>
                     """, unsafe_allow_html=True)
+                    med_options = list(sel_fac_obj["inventory"].keys())
+                    sel_med_id = st.selectbox("Essential Medicine", options=med_options, format_func=lambda k: sel_fac_obj["inventory"][k]["name"], key="cc_fc_med", label_visibility="collapsed")
 
-                horizon = st.slider(
-                    "Forecast Horizon (Days)",
-                    min_value=7,
-                    max_value=60,
-                    value=st.session_state["cc_fc_horizon_val"],
-                    step=1,
-                    key="cc_fc_horizon_slider",
-                    label_visibility="collapsed"
-                )
-                if horizon != st.session_state["cc_fc_horizon_val"]:
-                    st.session_state["cc_fc_horizon_val"] = horizon
-                    st.rerun()
+                with f_col3:
+                    # Ensure session state for horizon
+                    if "cc_fc_horizon_val" not in st.session_state:
+                        st.session_state["cc_fc_horizon_val"] = 14
 
-            st.markdown('</div>', unsafe_allow_html=True)
+                    h_head_col, h_badge_col = st.columns([2.2, 1.2], vertical_alignment="center")
+                    with h_head_col:
+                        st.markdown("""
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="width: 28px; height: 28px; border-radius: 8px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect>
+                                    <line x1="16" y1="16" x2="16" y2="6"></line>
+                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                </svg>
+                            </div>
+                            <span style="font-size: 0.78rem; font-weight: 700; color: var(--mm-text-secondary);">Forecast Horizon (Days)</span>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with h_badge_col:
+                        st.markdown(f"""
+                        <div style="text-align: right;">
+                            <div style="font-size: 0.88rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.1;">{st.session_state['cc_fc_horizon_val']} Days</div>
+                            <div style="font-size: 0.65rem; color: var(--mm-text-secondary); margin-top: 1px;">Select forecast range</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+                    horizon = st.slider(
+                        "Forecast Horizon (Days)",
+                        min_value=7,
+                        max_value=60,
+                        value=st.session_state["cc_fc_horizon_val"],
+                        step=1,
+                        key="cc_fc_horizon_slider",
+                        label_visibility="collapsed"
+                    )
+                    if horizon != st.session_state["cc_fc_horizon_val"]:
+                        st.session_state["cc_fc_horizon_val"] = horizon
+                        st.rerun()
 
             cur_item = sel_fac_obj["inventory"][sel_med_id]
             fc_res = demand_forecaster.forecast_demand(
@@ -1732,76 +1758,75 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
             """, unsafe_allow_html=True)
 
             # Chart Container Card (Image 2)
-            st.markdown('<div class="cc-container-card" style="padding: 16px 18px; margin: 18px 0 16px 0;">', unsafe_allow_html=True)
-            c_head_col, c_btn_col = st.columns([3.2, 1.3], vertical_alignment="center")
-            with c_head_col:
-                st.markdown("""
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-                            <line x1="8" y1="21" x2="16" y2="21"></line>
-                            <line x1="12" y1="17" x2="12" y2="21"></line>
-                        </svg>
+            with st.container(border=True):
+                c_head_col, c_btn_col = st.columns([3.2, 1.3], vertical_alignment="center")
+                with c_head_col:
+                    st.markdown("""
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(37, 99, 235, 0.10); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="8" y1="21" x2="16" y2="21"></line>
+                                <line x1="12" y1="17" x2="12" y2="21"></line>
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary);">Medicine Demand & Stock Projection</div>
+                            <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 1px;">Forecasted stock levels, daily consumption and uncertainty range for the selected medicine.</div>
+                        </div>
                     </div>
-                    <div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary);">Medicine Demand & Stock Projection</div>
-                        <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 1px;">Forecasted stock levels, daily consumption and uncertainty range for the selected medicine.</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
-            with c_btn_col:
-                b7, b14, b30, b60 = st.columns(4)
-                if b7.button("7D", key="btn_h_7", type="primary" if horizon == 7 else "secondary", use_container_width=True):
-                    st.session_state["cc_fc_horizon_val"] = 7
-                    st.rerun()
-                if b14.button("14D", key="btn_h_14", type="primary" if horizon == 14 else "secondary", use_container_width=True):
-                    st.session_state["cc_fc_horizon_val"] = 14
-                    st.rerun()
-                if b30.button("30D", key="btn_h_30", type="primary" if horizon == 30 else "secondary", use_container_width=True):
-                    st.session_state["cc_fc_horizon_val"] = 30
-                    st.rerun()
-                if b60.button("60D", key="btn_h_60", type="primary" if horizon == 60 else "secondary", use_container_width=True):
-                    st.session_state["cc_fc_horizon_val"] = 60
-                    st.rerun()
+                with c_btn_col:
+                    b7, b14, b30, b60 = st.columns(4)
+                    if b7.button("7D", key="btn_h_7", type="primary" if horizon == 7 else "secondary", use_container_width=True):
+                        st.session_state["cc_fc_horizon_val"] = 7
+                        st.rerun()
+                    if b14.button("14D", key="btn_h_14", type="primary" if horizon == 14 else "secondary", use_container_width=True):
+                        st.session_state["cc_fc_horizon_val"] = 14
+                        st.rerun()
+                    if b30.button("30D", key="btn_h_30", type="primary" if horizon == 30 else "secondary", use_container_width=True):
+                        st.session_state["cc_fc_horizon_val"] = 30
+                        st.rerun()
+                    if b60.button("60D", key="btn_h_60", type="primary" if horizon == 60 else "secondary", use_container_width=True):
+                        st.session_state["cc_fc_horizon_val"] = 60
+                        st.rerun()
 
-            # Plot Forecast Chart
-            pts = fc_res["forecast_points"]
-            dates = [p["date"] for p in pts]
-            demand_vals = [p["projected_demand"] for p in pts]
-            rem_stock_vals = [p["projected_remaining_stock"] for p in pts]
-            upper_vals = [p["upper_bound"] for p in pts]
-            lower_vals = [p["lower_bound"] for p in pts]
+                # Plot Forecast Chart
+                pts = fc_res["forecast_points"]
+                dates = [p["date"] for p in pts]
+                demand_vals = [p["projected_demand"] for p in pts]
+                rem_stock_vals = [p["projected_remaining_stock"] for p in pts]
+                upper_vals = [p["upper_bound"] for p in pts]
+                lower_vals = [p["lower_bound"] for p in pts]
 
-            fig_fc = go.Figure()
-            fig_fc.add_trace(go.Scatter(x=dates, y=upper_vals, mode="lines", line=dict(width=0), showlegend=False))
-            fig_fc.add_trace(go.Scatter(x=dates, y=lower_vals, mode="lines", fill="tonexty", fillcolor="rgba(59, 130, 246, 0.12)", line=dict(width=0), name="Residual-Based Uncertainty Band"))
-            fig_fc.add_trace(go.Scatter(x=dates, y=demand_vals, mode="lines+markers", name="Projected Daily Burn", line=dict(color="#3B82F6", width=2.5), marker=dict(size=6, color="#3B82F6")))
-            stock_color = "#EF4444" if fc_res["risk_level"] in ["CRITICAL", "HIGH"] else "#10B981"
-            fig_fc.add_trace(go.Scatter(x=dates, y=rem_stock_vals, mode="lines+markers", name="Projected Remaining Stock", line=dict(color=stock_color, width=2.5, dash="dot"), marker=dict(size=6, color=stock_color)))
+                fig_fc = go.Figure()
+                fig_fc.add_trace(go.Scatter(x=dates, y=upper_vals, mode="lines", line=dict(width=0), showlegend=False))
+                fig_fc.add_trace(go.Scatter(x=dates, y=lower_vals, mode="lines", fill="tonexty", fillcolor="rgba(59, 130, 246, 0.12)", line=dict(width=0), name="Residual-Based Uncertainty Band"))
+                fig_fc.add_trace(go.Scatter(x=dates, y=demand_vals, mode="lines+markers", name="Projected Daily Burn", line=dict(color="#3B82F6", width=2.5), marker=dict(size=6, color="#3B82F6")))
+                stock_color = "#EF4444" if fc_res["risk_level"] in ["CRITICAL", "HIGH"] else "#10B981"
+                fig_fc.add_trace(go.Scatter(x=dates, y=rem_stock_vals, mode="lines+markers", name="Projected Remaining Stock", line=dict(color=stock_color, width=2.5, dash="dot"), marker=dict(size=6, color=stock_color)))
 
-            fig_fc.update_layout(
-                template="plotly_dark" if is_dark else "plotly_white",
-                height=340,
-                xaxis_title="Date",
-                yaxis_title="Units",
-                margin=dict(l=20, r=20, t=20, b=20),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                legend=dict(
-                    orientation="v",
-                    yanchor="top",
-                    y=0.98,
-                    xanchor="right",
-                    x=0.98,
-                    bgcolor="rgba(255,255,255,0.7)" if not is_dark else "rgba(30,41,59,0.7)",
-                    bordercolor="rgba(0,0,0,0.1)",
-                    borderwidth=1
+                fig_fc.update_layout(
+                    template="plotly_dark" if is_dark else "plotly_white",
+                    height=340,
+                    xaxis_title="Date",
+                    yaxis_title="Units",
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    legend=dict(
+                        orientation="v",
+                        yanchor="top",
+                        y=0.98,
+                        xanchor="right",
+                        x=0.98,
+                        bgcolor="rgba(255,255,255,0.7)" if not is_dark else "rgba(30,41,59,0.7)",
+                        bordercolor="rgba(0,0,0,0.1)",
+                        borderwidth=1
+                    )
                 )
-            )
-            st.plotly_chart(fig_fc, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+                st.plotly_chart(fig_fc, use_container_width=True)
 
             # AI Supply Explainer (Ground Truth Structured Analysis) Container Card (Image 2)
             exp_col1, exp_col2 = st.columns([3.8, 1.2], vertical_alignment="center")
@@ -1828,22 +1853,18 @@ def render_command_center_dashboard(lang_code: str = "en", is_dark: bool = False
                 </div>
                 """, unsafe_allow_html=True)
             with exp_col2:
-                with st.popover("View Full AI Analysis →", icon=":material/description:", use_container_width=True):
-                    st.markdown("#### Clinical AI Supply Audit & Reasoning")
-                    st.caption(f"Ground-truth AI diagnostic generated for {cur_item['name']} at {sel_fac_obj['name']}")
-                    with st.spinner("Compiling full clinical report..."):
-                        explanation = explain_supply_risk_gemini(
-                            facility_name=sel_fac_obj["name"],
-                            district=sel_fac_obj["district"],
-                            state=sel_fac_obj["state"],
-                            medicine_name=cur_item["name"],
-                            current_stock=cur_item["stock"],
-                            daily_burn=cur_item["adjusted_daily_burn"],
-                            days_remaining=fc_res["doir_days"],
-                            scenario_name=SURGE_SCENARIOS[selected_scenario_key]["label"],
-                            lang_code=lang_code
-                        )
-                    st.info(explanation)
+                if st.button("View Full AI Analysis →", key="btn_view_full_ai_analysis", type="primary", use_container_width=True, icon=":material/description:"):
+                    render_full_ai_supply_analysis_dialog(
+                        fac_name=sel_fac_obj["name"],
+                        dist=sel_fac_obj["district"],
+                        st_name=sel_fac_obj["state"],
+                        med_name=cur_item["name"],
+                        stock=cur_item["stock"],
+                        burn=cur_item["adjusted_daily_burn"],
+                        days=fc_res["doir_days"],
+                        scen_label=SURGE_SCENARIOS[selected_scenario_key]["label"],
+                        l_code=lang_code
+                    )
 
     # ==========================================
     # TAB 4: EARLY WARNINGS & OUTBREAK INTELLIGENCE
