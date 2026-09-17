@@ -234,8 +234,11 @@ def fetch_dailymed_api_image(identifier: str) -> str | None:
     try:
         from api.dailymed import get_dailymed_spl_media, search_dailymed_spls
         for term in candidates:
-            spl_list = search_dailymed_spls(term, page_size=4)
+            spl_data = search_dailymed_spls(term, page_size=4)
+            spl_list = spl_data.get("results", []) if isinstance(spl_data, dict) else (spl_data or [])
             for s in spl_list:
+                if not isinstance(s, dict):
+                    continue
                 setid = s.get("setid")
                 if not setid:
                     continue

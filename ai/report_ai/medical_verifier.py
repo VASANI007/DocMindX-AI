@@ -49,10 +49,21 @@ RADIOLOGY_INDICATORS = [
     r"\bhyperintensity\b", r"\bhypointensity\b", r"\battenuation\b", r"\bparenchyma\b"
 ]
 
+# General Clinical / Triage / Health Summary / Consultation indicators
+GENERAL_CLINICAL_INDICATORS = [
+    r"\bclinical\b", r"\btriage\b", r"\bdiagnosis\b", r"\bpatient\b", r"\bconsultation\b",
+    r"\bdischarge\b", r"\bsymptom\b", r"\bseverity\b", r"\bblood group\b", r"\bhealthcare\b",
+    r"\bmedical report\b", r"\bhospital\b", r"\bphysician\b", r"\bvital signs\b", r"\bpulse\b",
+    r"\bblood pressure\b", r"\btemperature\b", r"\bhistory of present illness\b", r"\bassessment\b",
+    r"\bplan\b", r"\bmedimind\b", r"\bdocmindx\b", r"\bhealth summary\b", r"\bchief complaint\b",
+    r"\bphysical examination\b", r"\bprovisional diagnosis\b", r"\bfinal diagnosis\b",
+    r"\brecommendation\b", r"\brecovery\b", r"\bfollow-up\b", r"\boutpatient\b", r"\binpatient\b"
+]
+
 def verify_medical_document(text: str, expected_type: str = "any") -> dict:
     """
     Evaluates whether raw text corresponds to a genuine medical document of the specified type.
-    expected_type: 'lab', 'prescription', 'radiology', or 'any'
+    expected_type: 'lab', 'prescription', 'radiology', 'general_medical', 'other', or 'any'
     
     Returns:
         dict: {
@@ -79,8 +90,9 @@ def verify_medical_document(text: str, expected_type: str = "any") -> dict:
     lab_matches = [ind for ind in LAB_INDICATORS if re.search(ind, text_lower)]
     presc_matches = [ind for ind in PRESCRIPTION_INDICATORS if re.search(ind, text_lower)]
     rad_matches = [ind for ind in RADIOLOGY_INDICATORS if re.search(ind, text_lower)]
+    general_matches = [ind for ind in GENERAL_CLINICAL_INDICATORS if re.search(ind, text_lower)]
     
-    total_medical_matches = len(lab_matches) + len(presc_matches) + len(rad_matches)
+    total_medical_matches = len(lab_matches) + len(presc_matches) + len(rad_matches) + len(general_matches)
 
     # If non-medical context is prominent and there is virtually no medical terminology
     if len(non_med_matches) >= 2 and total_medical_matches <= 1:
@@ -95,7 +107,8 @@ def verify_medical_document(text: str, expected_type: str = "any") -> dict:
     score_map = {
         "lab": len(lab_matches),
         "prescription": len(presc_matches),
-        "radiology": len(rad_matches)
+        "radiology": len(rad_matches),
+        "general_medical": len(general_matches)
     }
     
     best_type = max(score_map, key=score_map.get)
@@ -106,12 +119,13 @@ def verify_medical_document(text: str, expected_type: str = "any") -> dict:
             "is_valid": False,
             "detected_type": "non_medical",
             "confidence": 0.90,
-            "reasons": ["No recognized medical diagnostic parameters, medications, or radiological findings detected."]
+            "reasons": ["No recognized medical diagnostic parameters, medications, or clinical findings detected."]
         }
 
     # If expected_type is specified, verify match
-    if expected_type in ["lab", "prescription", "radiology"]:
-        type_score = score_map.get(expected_type, 0)
+    norm_expected = "general_medical" if expected_type in ["general_medical", "other"] else expected_type
+    if norm_expected in ["lab", "prescription", "radiology", "general_medical"]:
+        type_score = score_map.get(norm_expected, 0)
         if type_score == 0 and len(non_med_matches) > 0:
             return {
                 "is_valid": False,
@@ -121,9 +135,9 @@ def verify_medical_document(text: str, expected_type: str = "any") -> dict:
             }
         return {
             "is_valid": True,
-            "detected_type": expected_type,
-            "confidence": min(0.99, 0.5 + (max(type_score, 1) * 0.1)),
-            "reasons": [f"Valid {expected_type} indicators verified."]
+            "detected_type": norm_expected if type_score > 0 else best_type,
+            "confidence": min(0.99, 0.5 + (max(type_score, max_score, 1) * 0.1)),
+            "reasons": [f"Valid {norm_expected} indicators verified."]
         }
 
     return {

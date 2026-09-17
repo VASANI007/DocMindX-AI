@@ -6,7 +6,7 @@ using AI vision / clinical LLM with resilient deterministic radiological fallbac
 import re
 import json
 import requests
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
 from ai.report_ai.medical_verifier import verify_medical_document
 
 RADIOLOGY_PATTERNS = [
@@ -201,41 +201,43 @@ Return strictly a valid JSON object matching this schema:
   ]
 }}"""
 
-        if GEMINI_API_KEY:
-            for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-                try:
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                    payload = {
-                        "contents": [{"parts": [{"text": prompt}]}],
-                        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048, "responseMimeType": "application/json"}
-                    }
-                    res = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
-                    if res.status_code == 200:
-                        data = res.json()
-                        candidates = data.get("candidates", [])
-                        if candidates:
-                            txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                            parsed = json.loads(txt)
-                            if parsed:
-                                is_rad = parsed.get("is_valid_radiology_report", True)
-                                findings = parsed.get("findings", [])
-                                if not is_rad or not findings:
-                                    return {
-                                        "is_valid_radiology_report": False,
-                                        "total_findings": 0,
-                                        "findings": [],
-                                        "overall_severity": "Unknown",
-                                        "summary": parsed.get("summary", "The uploaded document is not a radiological imaging report. No imaging findings detected.")
-                                    }
+        # Try Gemini Multi-Key Failover Pool
+        if gemini_pool.get_active_keys():
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048, "responseMimeType": "application/json"}
+            }
+            res_data, _, _ = gemini_pool.execute_with_failover(
+                payload=payload,
+                models=["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"],
+                timeout=12
+            )
+            if res_data:
+                candidates = res_data.get("candidates", [])
+                if candidates:
+                    txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    try:
+                        parsed = json.loads(txt)
+                        if parsed:
+                            is_rad = parsed.get("is_valid_radiology_report", True)
+                            findings = parsed.get("findings", [])
+                            if not is_rad or not findings:
                                 return {
-                                    "is_valid_radiology_report": True,
-                                    "total_findings": len(findings),
-                                    "overall_severity": parsed.get("overall_severity", "Normal"),
-                                    "findings": findings,
-                                    "summary": parsed.get("summary", "")
+                                    "is_valid_radiology_report": False,
+                                    "total_findings": 0,
+                                    "findings": [],
+                                    "overall_severity": "Unknown",
+                                    "summary": parsed.get("summary", "The uploaded document is not a radiological imaging report. No imaging findings detected.")
                                 }
-                except Exception as e:
-                    print(f"Gemini radiology note ({model}): {e}")
+                            return {
+                                "is_valid_radiology_report": True,
+                                "total_findings": len(findings),
+                                "overall_severity": parsed.get("overall_severity", "Normal"),
+                                "findings": findings,
+                                "summary": parsed.get("summary", "")
+                            }
+                    except Exception as e:
+                        print(f"Gemini radiology parser note: {e}")
 
         if GROQ_API_KEY:
             for model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:

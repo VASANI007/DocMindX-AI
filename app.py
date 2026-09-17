@@ -16,12 +16,14 @@ if WORKSPACE_ROOT not in sys.path:
     sys.path.insert(0, WORKSPACE_ROOT)
 
 
+import ast
 import base64
 import html
 import json
 import re
 import uuid
 from datetime import datetime
+
 
 import markdown
 import pandas as pd
@@ -40,6 +42,7 @@ from ai.chatbot.deep_explainer import (
     answer_assessment_question, generate_deep_explanation,
     generate_medical_report_comprehensive_breakdown)
 from ai.chatbot.rag import generate_health_summary_ai
+from ai.disease_prediction.canonical_concepts import canonical_normalizer
 from ai.disease_prediction.multilingual_symptom_extractor import \
     symptom_extractor
 from ai.disease_prediction.predict import SymptomTriageEngine
@@ -48,6 +51,8 @@ from ai.ocr.text_extractor import extract_text_from_file
 from ai.report_ai.blood_report import LabReportAnalyzer
 from ai.report_ai.prescription import PrescriptionAnalyzer
 from ai.report_ai.radiology import RadiologyReportAnalyzer
+from ai.report_ai.general_clinical_report import GeneralClinicalDocumentAnalyzer, general_clinical_analyzer
+from ai.report_ai.medical_verifier import verify_medical_document
 from ai.utils.care_recommendations import (
     get_dynamic_clinical_recommendations, get_medicine_gallery,
     get_youtube_search_url, localize_care_recommendations)
@@ -196,10 +201,15 @@ def get_prescription_analyzer():
 def get_radiology_analyzer():
     return RadiologyReportAnalyzer()
 
+@st.cache_resource
+def get_general_clinical_analyzer():
+    return GeneralClinicalDocumentAnalyzer()
+
 triage_engine = get_triage_engine()
 lab_analyzer = get_lab_analyzer()
 prescription_analyzer = get_prescription_analyzer()
 radiology_analyzer = get_radiology_analyzer()
+general_doc_analyzer = get_general_clinical_analyzer()
 
 
 @st.dialog("Deep Clinical AI Consultation & Q&A", width="large")
@@ -1089,6 +1099,10 @@ if is_dark:
     .stApp [data-baseweb="base-input"] input,
     .stApp [data-baseweb="base-input"] textarea,
     .stApp [data-baseweb="select"] input,
+    .stApp [data-testid="stSelectbox"] input,
+    .stApp [data-testid="stMultiSelect"] input,
+    .stApp .stSelectbox input,
+    .stApp .stMultiSelect input,
     [data-testid="stSelectbox"] input,
     div[data-baseweb="select"] input {
         border: none !important;
@@ -1097,19 +1111,29 @@ if is_dark:
         box-shadow: none !important;
         background: transparent !important;
         background-color: transparent !important;
-        caret-color: auto !important;
+        caret-color: #38BDF8 !important;
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
     }
-    .stApp [data-baseweb="select"] input,
-    [data-testid="stSelectbox"] input,
-    div[data-baseweb="select"] input {
-        caret-color: transparent !important;
-        width: 0 !important;
-        min-width: 0 !important;
-        padding: 0 !important;
+    .stApp [data-baseweb="select"],
+    .stApp [data-baseweb="select"] span,
+    .stApp [data-baseweb="select"] div,
+    .stApp [data-testid="stSelectbox"] span,
+    .stApp [data-testid="stMultiSelect"] span,
+    div[data-baseweb="select"] span,
+    div[data-baseweb="select"] div {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
     }
+    .stApp [data-baseweb="select"] input::placeholder,
+    .stApp [data-baseweb="select"] div[class*="Placeholder"],
+    .stApp [data-baseweb="select"] div[class*="placeholder"],
+    .stApp [data-testid="stSelectbox"] input::placeholder,
+    .stApp [data-testid="stMultiSelect"] input::placeholder,
     .stApp input::placeholder,
     .stApp textarea::placeholder {
         color: #64748B !important;
+        -webkit-text-fill-color: #64748B !important;
     }
     .stApp [data-testid="stVerticalBlockBorderWrapper"] {
         background-color: #111827 !important;
@@ -1230,47 +1254,86 @@ if is_dark:
     /* ── Universal stAudioInput (Voice / Speech-to-Text) Dark Mode ── */
     div[data-testid="stAudioInput"],
     [data-testid="stAudioInput"],
-    .stAudioInput,
-    div[data-testid="stAudioInput"] > div,
-    div[data-testid="stAudioInput"] section {
-        background-color: #1E293B !important;
-        background: #1E293B !important;
-        border: 1.5px solid #334155 !important;
-        border-radius: 12px !important;
-        color: #F8FAFC !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-    }
-    div[data-testid="stAudioInput"] button {
+    .stAudioInput {
         background-color: #0F172A !important;
         background: #0F172A !important;
-        border: 1.5px solid #3B82F6 !important;
-        color: #60A5FA !important;
+        border: 1.5px solid #1E2E4E !important;
+        border-radius: 12px !important;
+        padding: 6px 14px !important;
+        min-height: 52px !important;
+        color: #F8FAFC !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+        transition: all 0.25s ease !important;
+    }
+    div[data-testid="stAudioInput"]:hover,
+    [data-testid="stAudioInput"]:hover {
+        border-color: #38BDF8 !important;
+        box-shadow: 0 0 14px rgba(56, 189, 248, 0.15) !important;
+    }
+    div[data-testid="stAudioInput"] > div,
+    div[data-testid="stAudioInput"] section,
+    div[data-testid="stAudioInput"] section > div {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-width: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    div[data-testid="stAudioInput"] button[data-testid="stAudioInputActionButton"],
+    div[data-testid="stAudioInput"] button {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        min-height: 38px !important;
+        border-radius: 10px !important;
+        background-color: rgba(14, 165, 233, 0.12) !important;
+        background: rgba(14, 165, 233, 0.12) !important;
+        border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        padding: 0 !important;
+        margin: 0 !important;
     }
     div[data-testid="stAudioInput"] button:hover {
-        background-color: #1E3A8A !important;
-        border-color: #60A5FA !important;
-        color: #93C5FD !important;
+        background-color: rgba(14, 165, 233, 0.25) !important;
+        background: rgba(14, 165, 233, 0.25) !important;
+        border-color: #38BDF8 !important;
+        transform: scale(1.05) !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
     }
-    div[data-testid="stAudioInput"] svg {
-        fill: #60A5FA !important;
-        stroke: #60A5FA !important;
-        color: #60A5FA !important;
+    div[data-testid="stAudioInput"] svg,
+    div[data-testid="stAudioInput"] [data-testid="stIconMaterial"] {
+        fill: currentColor !important;
+        color: #38BDF8 !important;
+        width: 18px !important;
+        height: 18px !important;
     }
     div[data-testid="stAudioInput"] span,
     div[data-testid="stAudioInput"] p,
     div[data-testid="stAudioInput"] div {
         color: #F8FAFC !important;
     }
-    /* Timecode timer inside audio input - remove solid white background */
+    /* Timecode timer inside audio input */
     div[data-testid="stAudioInput"] span[data-testid="stAudioInputWaveformTimeCode"],
     [data-testid="stAudioInputWaveformTimeCode"],
     span[data-testid="stAudioInputWaveformTimeCode"] {
-        background: transparent !important;
-        background-color: transparent !important;
+        background: rgba(14, 165, 233, 0.1) !important;
+        background-color: rgba(14, 165, 233, 0.1) !important;
         color: #38BDF8 !important;
         font-family: monospace !important;
         font-weight: 700 !important;
-        font-size: 0.82rem !important;
+        font-size: 0.84rem !important;
+        letter-spacing: 0.08em !important;
+        padding: 3px 8px !important;
+        border-radius: 6px !important;
+        border: 1px solid rgba(56, 189, 248, 0.25) !important;
+        text-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
     }
     [data-testid="stElementToolbarButtonContainer"],
     div[data-testid="stElementToolbar"] {
@@ -1279,7 +1342,101 @@ if is_dark:
         display: none !important;
     }
     div[data-testid="stAudioInput"] canvas {
-        filter: invert(1) hue-rotate(180deg) brightness(1.2) !important;
+        filter: invert(1) hue-rotate(185deg) brightness(1.2) contrast(1.1) !important;
+        opacity: 0.85 !important;
+        background: transparent !important;
+    }
+
+    /* ── Universal Tooltips & Tip Messages (Single Clean Card) ── */
+    div[data-baseweb="tooltip"],
+    div[data-testid="stTooltipHoverTarget"] {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-width: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    /* Single Tooltip Card Wrapper */
+    div[data-baseweb="tooltip"] > div,
+    div[role="tooltip"] {
+        background-color: #0F172A !important;
+        background: #0F172A !important;
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+        border: 1.2px solid #1E2E4E !important;
+        border-radius: 8px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55) !important;
+        padding: 6px 12px !important;
+        font-size: 0.80rem !important;
+        line-height: 1.35 !important;
+        font-weight: 500 !important;
+        z-index: 999999 !important;
+        max-width: 320px !important;
+    }
+    /* Reset all inner nested wrappers inside tooltip */
+    div[data-baseweb="tooltip"] div,
+    div[role="tooltip"] div,
+    div[data-testid="stTooltipContent"],
+    [data-testid="stTooltipContent"],
+    .stTooltipContent {
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        border-width: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+    div[data-baseweb="tooltip"] *,
+    div[role="tooltip"] *,
+    div[data-testid="stTooltipContent"] *,
+    [data-testid="stTooltipContent"] *,
+    .stTooltipContent * {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+    }
+    div[data-baseweb="tooltip"] svg,
+    div[role="tooltip"] svg {
+        fill: #0F172A !important;
+        color: #0F172A !important;
+    }
+    /* Streamlit Help Popovers & Toasts */
+    div[data-testid="stHelpPopover"],
+    div[data-testid="stHelpPopover"] > div,
+    div[data-testid="stPopoverBody"],
+    div[data-testid="stPopoverContent"] {
+        background-color: #0F172A !important;
+        background: #0F172A !important;
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+        border: 1.2px solid #1E2E4E !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+    }
+    div[data-testid="stToast"],
+    [data-testid="stToast"],
+    div[data-testid="stNotification"] {
+        background-color: #0F172A !important;
+        background: #0F172A !important;
+        border: 1.5px solid #1E2E4E !important;
+        border-left: 4px solid #38BDF8 !important;
+        border-radius: 12px !important;
+        color: #F8FAFC !important;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 15px rgba(56, 189, 248, 0.15) !important;
+        padding: 12px 18px !important;
+    }
+    div[data-testid="stToast"] *,
+    [data-testid="stToast"] *,
+    div[data-testid="stNotification"] * {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+    }
+    div[data-testid="stToast"] svg,
+    div[data-testid="stNotification"] svg {
+        color: #38BDF8 !important;
+        fill: #38BDF8 !important;
     }
 
     /* ── Universal Expander Dark Mode ── */
@@ -1572,11 +1729,10 @@ if is_dark:
         border-color: #38BDF8 !important;
         box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25) !important;
     }
+    .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p,
     .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p strong {
         color: #F8FAFC !important;
-    }
-    .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p {
-        color: #94A3B8 !important;
+        font-weight: 700 !important;
     }
     .st-key-slide_chat_form,
     .st-key-slide_chat_form [data-testid="stForm"] {
@@ -3318,7 +3474,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                             raw_syms = d_match.iloc[0].get("symptoms", [])
                             if isinstance(raw_syms, str):
                                 try:
-                                    d_syms = eval(raw_syms) if raw_syms.startswith("[") else [x.strip() for x in raw_syms.split(",")]
+                                    d_syms = ast.literal_eval(raw_syms) if raw_syms.startswith("[") else [x.strip() for x in raw_syms.split(",")]
                                 except Exception:
                                     d_syms = [x.strip() for x in raw_syms.split(",")]
                             else:
@@ -3551,9 +3707,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                 c_nm = c_d.get("name") or c_d.get("disease_name") or c_d.get("name_hi") or c_d.get("name_gu")
                 if c_nm:
                     step2_syms = [c_nm]
-            if not step2_syms:
-                step2_syms = ["Headache"]
-            active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <span style="font-size: 0.70rem; opacity: 0.75;">✕</span></span>' for s in step2_syms])
+            if step2_syms:
+                active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <span style="font-size: 0.70rem; opacity: 0.75;">✕</span></span>' for s in step2_syms])
+            else:
+                active_s_html = f"<span style='font-size: 0.80rem; color: var(--mm-text-muted); font-style: italic;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Return to Step 1 to add symptoms.')}</span>"
             safe_markdown(f"<div style='margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px;'>{active_s_html}</div>")
 
             col_s1, col_s2 = st.columns(2)
@@ -3877,9 +4034,9 @@ if st.session_state["active_panel"] == "Health Assessment":
                     if c_name:
                         s_list_raw = [str(c_name).strip()]
                 if not s_list_raw:
-                    s_list_raw = ["Fever", "Headache"]
+                    s_list_raw = []
                 
-                s_list_str = ", ".join(s_list_raw)
+                s_list_str = ", ".join(s_list_raw) if s_list_raw else T.get("no_symptoms_reported", "No symptoms reported")
                 sym_lbl = T.get("selected_symptoms", "Selected Symptoms").rstrip(":")
                 sev_lbl = T.get("symptom_severity", "Symptom Severity Level").rstrip(":")
                 dur_lbl = T.get("symptom_duration", "Symptom Duration").rstrip(":")
@@ -4003,80 +4160,62 @@ if st.session_state["active_panel"] == "Health Assessment":
                 st.write("Cross-referencing ICD-11 knowledge graph and history...")
                 st.markdown('<div style="font-size: 0.88rem; display: flex; align-items: center; gap: 6px; padding: 2px 0;"><img src="https://cdn-icons-png.flaticon.com/512/190/190256.png" style="width: 14px; height: 14px; object-fit: contain;"/> Generating personalized health summary, dietary guidance & triage alerts...</div>', unsafe_allow_html=True)
                 
-                selected_ids = []
-                symptom_ontology_map = {
-                    "fever": ["S000001"],
-                    "high fever": ["S000002"],
-                    "high fever (above 103°f/39.4°c)": ["S000002"],
-                    "headache": ["S000061"],
-                    "cough": ["S000023"],
-                    "dry cough": ["S000023"],
-                    "sore throat": ["S000030"],
-                    "fatigue": ["S000005"],
-                    "severe fatigue": ["S000006"],
-                    "severe fatigue and weakness": ["S000006"],
-                    "body pain": ["S000011"],
-                    "body ache": ["S000011"],
-                    "nausea": ["S000086"],
-                    "vomiting": ["S000087"],
-                    "cold": ["S000035"],
-                    "chills": ["S000003"],
-                    "diarrhea": ["S000089"],
-                    "stomach pain": ["S000091"],
-                    "chest pain": ["S000046"],
-                    "shortness of breath": ["S000026"],
-                    "easy bruising": ["S000127"],
-                    "easy bruising or bleeding": ["S000127"],
-                    "easy bruising and bleeding (petechiae / purpura)": ["S000127"],
-                    "petechiae": ["S000127"],
-                    "frequent infections": ["S000001"],
-                    "bone and joint pain": ["S000011"],
-                    "night sweats": ["S000003"],
-                    "drenching night sweats": ["S000003"],
-                    "unintended weight loss": ["S000017"],
-                    "unintentional weight loss and night sweats": ["S000017"],
-                }
-                
-                for s_name in st.session_state.get("selected_symptoms_list", []):
-                    s_lower = s_name.strip().lower()
-                    if s_lower in symptom_ontology_map:
-                        selected_ids.extend(symptom_ontology_map[s_lower])
-                
-                if not selected_ids:
-                    selected_ids = ["S000001", "S000061"]
-
-                # Pass all selected symptom names & detected chief condition
                 s_list_names = st.session_state.get("selected_symptoms_list", [])
+                
+                # Canonical concept normalization across all languages and scripts
+                combined_s_text = " ".join([str(s) for s in s_list_names])
+                canon_rep = canonical_normalizer.normalize(combined_s_text) if combined_s_text.strip() else None
+
+                selected_ids = []
+                negative_findings = []
+                if canon_rep:
+                    selected_ids.extend(canon_rep.positive_symptoms)
+                    negative_findings.extend(canon_rep.negative_findings)
+
+                # Match symptoms against loaded triage_engine df_symptoms dynamically
+                engine_sym_df = getattr(triage_engine, "df_symptoms", pd.DataFrame())
+                if not engine_sym_df.empty and "symptom_name" in engine_sym_df.columns:
+                    for s_name in s_list_names:
+                        s_clean = str(s_name).strip().lower()
+                        match_rows = engine_sym_df[engine_sym_df["symptom_name"].astype(str).str.lower() == s_clean]
+                        if not match_rows.empty:
+                            sid = str(match_rows.iloc[0].get("symptom_id", "")).strip()
+                            if sid and sid not in selected_ids and sid not in negative_findings:
+                                selected_ids.append(sid)
+
+                # Anti-fabrication: Never invent silent fallback symptoms (e.g. Fever/Headache)!
+                # Pass positive symptom IDs, canonical names, and negative findings directly
                 chief_d = st.session_state.get("detected_chief_condition", {})
                 chief_name = chief_d.get("name") if isinstance(chief_d, dict) else None
 
-                # Run Comprehensive Knowledge-Graph Triage Engine
-                if hasattr(triage_engine, "evaluate_triage"):
-                    triage_res = triage_engine.evaluate_triage(
-                        reported_symptom_ids=selected_ids,
-                        patient_history={
-                            "age_group": u_ctx.get("age", "21-30"),
-                            "gender": u_ctx.get("gender", "Male"),
-                            "duration": u_ctx.get("duration", "1-3 Days"),
-                            "severity": u_ctx.get("severity", "Moderate"),
-                            "conditions": u_ctx.get("conditions", []),
-                            "location": u_ctx.get("location", "Ahmedabad, Gujarat"),
-                            "symptom_names": s_list_names,
-                            "chief_condition": chief_name
-                        },
-                        symptom_names=s_list_names,
-                        chief_condition=chief_name
-                    )
-                else:
-                    triage_res = triage_engine.evaluate_symptoms(
-                        selected_symptom_ids=selected_ids,
-                        age_group=u_ctx.get("age", "21-30"),
-                        gender=u_ctx.get("gender", "Male"),
-                        duration=u_ctx.get("duration", "1-3 Days"),
-                        existing_conditions=u_ctx.get("conditions", {}),
-                        symptom_names=s_list_names,
-                        chief_condition=chief_name
-                    )
+                # Run Global Production Clinical Pipeline Orchestrator (BioPortal, NLM, Triage, WHO ICD-11, etc.)
+                from ai.disease_prediction.clinical_pipeline import clinical_pipeline
+                triage_res = clinical_pipeline.run_pipeline(
+                    symptom_names=s_list_names,
+                    selected_symptom_ids=selected_ids,
+                    negative_findings=negative_findings,
+                    patient_context={
+                        "age": u_ctx.get("age", "21-30"),
+                        "age_group": u_ctx.get("age", "21-30"),
+                        "gender": u_ctx.get("gender", "Male"),
+                        "duration": u_ctx.get("duration", "1-3 Days"),
+                        "severity": u_ctx.get("severity", "Moderate"),
+                        "conditions": u_ctx.get("conditions", []),
+                        "location": u_ctx.get("location", "Ahmedabad, Gujarat"),
+                        "state": u_ctx.get("state") or u_ctx.get("location", "Gujarat"),
+                        "blood_group": u_ctx.get("blood_group", "None"),
+                        "medications": u_ctx.get("medications", "None"),
+                        "allergies": u_ctx.get("allergies", "None"),
+                        "surgeries": u_ctx.get("surgeries", ""),
+                        "details": u_ctx.get("details", ""),
+                        "symptom_names": s_list_names,
+                        "chief_condition": chief_name,
+                        "negative_findings": negative_findings
+                    },
+                    chief_condition=chief_name,
+                    run_bioportal=True,
+                    run_nlm=True
+                )
                 
                 st.session_state["p1_triage_results"] = triage_res
                 st.session_state["care_recommendations"] = None
@@ -4208,6 +4347,15 @@ if st.session_state["active_panel"] == "Health Assessment":
                 display_img = fallback_img
 
             med_type_str = (med.get('type') or 'Prescription').upper()
+            ver_badge_raw = med.get("verification_status")
+            if ver_badge_raw:
+                ver_badge_text = str(ver_badge_raw).replace("_", " ").upper()
+            elif med.get("is_verified") and med.get("openfda"):
+                ver_badge_text = "OPENFDA VERIFIED"
+            elif med.get("is_verified") and med.get("dailymed"):
+                ver_badge_text = "DAILYMED VERIFIED"
+            else:
+                ver_badge_text = "CLINICAL REFERENCE"
             generic_val = med_detail.get('generic_name') or med['name']
             course_val = med.get('course_duration') or '3 - 5 Days'
             dosage_val = med.get('dosage') or 'As prescribed by physician'
@@ -4633,7 +4781,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 '                    <circle cx="12" cy="12" r="11" fill="#16A34A"/>',
                 '                    <polyline points="7.5 12 10.5 15 16.5 9" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
                 '                </svg>',
-                '                DOCMINDX VERIFIED',
+                f'                {ver_badge_text}',
                 '            </div>',
                 '        </div>',
                 '    </div>',
@@ -5004,9 +5152,24 @@ if st.session_state["active_panel"] == "Health Assessment":
                             rx_color = "#38BDF8" if is_dark else "#0284C7"
                             rx_border = "rgba(14, 165, 233, 0.35)" if is_dark else "#BAE6FD"
 
-                            ver_bg = "rgba(34, 197, 94, 0.15)" if is_dark else "#DCFCE7"
-                            ver_color = "#4ADE80" if is_dark else "#16A34A"
-                            ver_border = "rgba(34, 197, 94, 0.35)" if is_dark else "#BBF7D0"
+                            ver_badge_raw = med.get("verification_status")
+                            if ver_badge_raw:
+                                ver_badge_text = str(ver_badge_raw).replace("_", " ").upper()
+                            elif med.get("is_verified") and med.get("openfda"):
+                                ver_badge_text = "OPENFDA VERIFIED"
+                            elif med.get("is_verified") and med.get("dailymed"):
+                                ver_badge_text = "DAILYMED VERIFIED"
+                            else:
+                                ver_badge_text = "CLINICAL REFERENCE"
+
+                            if "VERIFIED" in ver_badge_text:
+                                ver_bg = "rgba(34, 197, 94, 0.15)" if is_dark else "#DCFCE7"
+                                ver_color = "#4ADE80" if is_dark else "#16A34A"
+                                ver_border = "rgba(34, 197, 94, 0.35)" if is_dark else "#BBF7D0"
+                            else:
+                                ver_bg = "rgba(234, 179, 8, 0.15)" if is_dark else "#FEF9C3"
+                                ver_color = "#FACC15" if is_dark else "#CA8A04"
+                                ver_border = "rgba(234, 179, 8, 0.35)" if is_dark else "#FEF08A"
 
                             with st.container(border=True, key=f"med_card_box_{chunk_start}_{m_idx}"):
                                 card_html = f"""<div class="mm-med-card-content" style="width: 100%; box-sizing: border-box; display: flex; flex-direction: column; height: 100%;">
@@ -5056,7 +5219,7 @@ if st.session_state["active_panel"] == "Health Assessment":
     </span>
     <span class="mm-med-badge-verified" style="background: {ver_bg}; color: {ver_color}; border: 1.2px solid {ver_border}; border-radius: 999px; padding: 4px 14px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; display: inline-flex; align-items: center; gap: 6px;">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-    <span>DOCMINDX VERIFIED</span>
+    <span>{ver_badge_text}</span>
     </span>
     </div>
     </div>"""
@@ -5508,7 +5671,17 @@ if st.session_state["active_panel"] == "Health Assessment":
                     '</div>'
                 )
 
-        conditions_list = t_res.get("ranked_conditions", [])[:3]
+        conditions_list = t_res.get("ranked_conditions", [])
+
+        # Fallback warning: display if live clinical APIs were unavailable
+        _fw = t_res.get("fallback_warning") or (care_res.get("fallback_warning") if care_res else "")
+        _fallback_used = t_res.get("system_status", {}).get("fallback_used", False) or (care_res.get("fallback_used", False) if care_res else False)
+        if _fw or _fallback_used:
+            st.warning(
+                _fw or "⚠️ Live clinical data services are unavailable. Results are based on local clinical reference data and should be verified by a qualified healthcare professional.",
+                icon="⚠️"
+            )
+
         if conditions_list:
             with st.container(border=True):
                 st.markdown(f"""
@@ -5533,8 +5706,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                res_cols = st.columns(len(conditions_list))
-                for idx, cond in enumerate(conditions_list):
+                res_cols = st.columns(min(len(conditions_list), 4))
+                for idx, cond in enumerate(conditions_list[:4]):
                     with res_cols[idx]:
                         prob_pct = cond.get("match_percentage", 65)
                         urgency = "HIGH" if prob_pct > 70 else ("MODERATE" if prob_pct > 45 else "LOW")
@@ -5556,7 +5729,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                     <span class="mm-badge {badge_class}" style="border-radius: 999px; padding: 3px 10px; font-size: 0.70rem; font-weight: 800; text-transform: uppercase; flex-shrink: 0;">{urgency}</span>
                                 </div>
                                 <div style="font-size: 0.76rem; color: var(--mm-text-secondary); margin-bottom: 6px;">
-                                    Confidence Match: <b style="color: #2563EB;">{prob_pct}%</b> · ICD-11: {c_icd}
+                                    Confidence Score: <b style="color: #2563EB;">{prob_pct}/100</b> · ICD-11: {c_icd}
                                 </div>
                             </div>
                             <div style="border-top: 1px solid var(--mm-border-color); padding-top: 8px; margin-top: 6px; display: flex; align-items: flex-start; gap: 10px;">
@@ -6090,6 +6263,21 @@ elif st.session_state["active_panel"] == "Medical Report":
 
     p2_cur_step = st.session_state.get("p2_step", 1)
 
+    def reset_medical_report_scan():
+        st.session_state["p2_step"] = 1
+        st.session_state["p2_cached_doc_key"] = None
+        st.session_state["p2_cached_doc_text"] = ""
+        st.session_state["p2_deep_ai_chat"] = []
+        st.session_state["p2_doc_text_stream"] = ""
+        st.session_state["p2_doc_name"] = "Medical Document"
+        st.session_state["p2_uploader_version"] = st.session_state.get("p2_uploader_version", 0) + 1
+        st.session_state.pop("p2_doc_uploader", None)
+        keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_") or k.startswith("p2_saved_")]
+        for k in keys_to_clear:
+            st.session_state.pop(k, None)
+        st.rerun()
+
+
     s1_cls = "done" if p2_cur_step > 1 else "active"
     s2_cls = "active" if p2_cur_step == 2 else ("done" if p2_cur_step > 2 else "")
     s3_cls = "active" if p2_cur_step == 3 else ""
@@ -6277,22 +6465,33 @@ elif st.session_state["active_panel"] == "Medical Report":
                 <div style="font-size: 0.82rem; font-weight: 700; color: var(--mm-text-primary); margin-bottom: 6px;">{T.get("p2_select_doc_type", "Select Document Type")}</div>
                 """)
 
+                doc_type_options = [
+                    T.get("doc_type_lab", "Blood / Pathology Lab Report"),
+                    T.get("doc_type_presc", "Doctor Prescription"),
+                    T.get("doc_type_imaging", "Diagnostic Imaging / Radiology Report"),
+                    T.get("doc_type_other", "Other Medical Document")
+                ]
+                saved_choice = st.session_state.get("p2_doc_type_choice", doc_type_options[0])
+                default_idx = 0
+                for idx, opt in enumerate(doc_type_options):
+                    if opt == saved_choice or (saved_choice and (saved_choice in opt or opt in saved_choice)):
+                        default_idx = idx
+                        break
+
                 doc_type_choice = st.radio(
                     "Select Document Type",
-                    [
-                        T.get("doc_type_lab", "Blood / Pathology Lab Report"),
-                        T.get("doc_type_presc", "Doctor Prescription"),
-                        T.get("doc_type_imaging", "Diagnostic Imaging / Radiology Report"),
-                        T.get("doc_type_other", "Other Medical Document")
-                    ],
+                    options=doc_type_options,
+                    index=default_idx,
+                    key="p2_doc_type_choice_radio",
                     horizontal=True,
                     label_visibility="collapsed"
                 )
+                st.session_state["p2_doc_type_choice"] = doc_type_choice
 
                 uploaded_doc = st.file_uploader(
                     "Upload or Drag and Drop Medical Document",
                     type=["pdf", "png", "jpg", "jpeg"],
-                    key="p2_doc_uploader",
+                    key=f"p2_doc_uploader_{st.session_state.get('p2_uploader_version', 0)}",
                     help="Supports PDF, PNG, JPG, JPEG (Max 200MB)"
                 )
 
@@ -6578,11 +6777,118 @@ elif st.session_state["active_panel"] == "Medical Report":
         gender_for_report = st.session_state.get("p2_gender", "Male")
         doc_name = st.session_state.get("p2_doc_name", "Medical Document")
 
-        is_prescription = "Prescription" in str(doc_type_choice) or "पर्ची" in str(doc_type_choice) or "પ્રિસ્ક્રિપ્શન" in str(doc_type_choice) or "Presc" in str(doc_type_choice)
-        is_imaging = "Imaging" in str(doc_type_choice) or "Radiology" in str(doc_type_choice) or "रेडियोलॉजी" in str(doc_type_choice) or "इमेजिंग" in str(doc_type_choice) or "રેડિયોલોજી" in str(doc_type_choice) or "ઇમેજિંગ" in str(doc_type_choice)
+        # Category classification
+        is_prescription = any(k in str(doc_type_choice).lower() for k in ["prescription", "पर्ची", "પ્રિસ્ક્રિપ્શન", "presc"])
+        is_imaging = any(k in str(doc_type_choice).lower() for k in ["imaging", "radiology", "रेडियोलॉजी", "इमेजिंग", "રેડિયોલોજી", "ઇમેજિંગ", "x-ray", "ct", "mri"])
+        is_other = any(k in str(doc_type_choice).lower() for k in ["other", "अन्य", "અન્ય"])
+        is_lab = not (is_prescription or is_imaging or is_other)
+
+        # Smart Clinical Pre-check & Auto-Recovery:
+        # If user selected an inappropriate category or left default "Blood Report",
+        # the engine auto-recovers to the true medical document type!
+        gen_res = None
+        lab_res = None
+        presc_res = None
+        rad_res = None
 
         if is_prescription:
             presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
+            total_meds = presc_res.get("total_medicines_identified", 0)
+            if total_meds == 0:
+                v_chk = verify_medical_document(doc_text_stream, expected_type="any")
+                if v_chk.get("is_valid", False):
+                    det = v_chk.get("detected_type", "")
+                    if det == "radiology":
+                        auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+                        if auto_rad.get("total_findings", 0) > 0:
+                            is_imaging = True
+                            is_prescription = False
+                            rad_res = auto_rad
+                            st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
+                    elif det == "lab":
+                        auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                        if auto_lab.get("total_tests_detected", 0) > 0:
+                            is_lab = True
+                            is_prescription = False
+                            lab_res = auto_lab
+                            st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
+                    else:
+                        auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                        if auto_gen.get("total_findings", 0) > 0:
+                            is_other = True
+                            is_prescription = False
+                            gen_res = auto_gen
+                            st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+
+        elif is_imaging:
+            with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
+                rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+            total_findings = rad_res.get("total_findings", 0)
+            if total_findings == 0 or not rad_res.get("is_valid_radiology_report", True):
+                v_chk = verify_medical_document(doc_text_stream, expected_type="any")
+                if v_chk.get("is_valid", False):
+                    det = v_chk.get("detected_type", "")
+                    if det == "prescription":
+                        auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
+                        if auto_rx.get("total_medicines_identified", 0) > 0:
+                            is_prescription = True
+                            is_imaging = False
+                            presc_res = auto_rx
+                            st.info("Medical document automatically identified as Doctor Prescription.")
+                    elif det == "lab":
+                        auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                        if auto_lab.get("total_tests_detected", 0) > 0:
+                            is_lab = True
+                            is_imaging = False
+                            lab_res = auto_lab
+                            st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
+                    else:
+                        auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                        if auto_gen.get("total_findings", 0) > 0:
+                            is_other = True
+                            is_imaging = False
+                            gen_res = auto_gen
+                            st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+
+        elif is_other:
+            with st.spinner("Analyzing clinical parameters, patient profile, and health summary..."):
+                gen_res = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+
+        else:
+            # is_lab
+            with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
+                lab_res = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+            total_detected = lab_res.get("total_tests_detected", 0)
+            if total_detected == 0:
+                v_chk = verify_medical_document(doc_text_stream, expected_type="any")
+                if v_chk.get("is_valid", False):
+                    det = v_chk.get("detected_type", "")
+                    if det == "prescription":
+                        auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
+                        if auto_rx.get("total_medicines_identified", 0) > 0:
+                            is_prescription = True
+                            is_lab = False
+                            presc_res = auto_rx
+                            st.info("Medical document automatically identified as Doctor Prescription.")
+                    elif det == "radiology":
+                        auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+                        if auto_rad.get("total_findings", 0) > 0:
+                            is_imaging = True
+                            is_lab = False
+                            rad_res = auto_rad
+                            st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
+                    else:
+                        auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                        if auto_gen.get("total_findings", 0) > 0:
+                            is_other = True
+                            is_lab = False
+                            gen_res = auto_gen
+                            st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+
+        # ==================== RENDER SELECTED OR AUTO-DETECTED RESULT ====================
+        if is_prescription:
+            if presc_res is None:
+                presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
             total_meds = presc_res.get("total_medicines_identified", 0)
             if total_meds == 0:
                 st.markdown(f"""
@@ -6593,6 +6899,17 @@ elif st.session_state["active_panel"] == "Medical Report":
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+                n_col1, n_col2, n_col3 = st.columns([1, 1.4, 1])
+                with n_col2:
+                    if st.button(
+                        "New Scan / Upload Another Document",
+                        key="btn_p2_rx_empty_new_scan",
+                        type="primary",
+                        use_container_width=True
+                    ):
+                        reset_medical_report_scan()
             else:
                 # Automatic Clinical AI Patient Guide for Prescriptions
                 rx_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
@@ -6631,7 +6948,7 @@ elif st.session_state["active_panel"] == "Medical Report":
 
                 render_diagnostic_evaluation_view(
                     doc_name=doc_name,
-                    doc_type_choice=doc_type_choice,
+                    doc_type_choice="Doctor Prescription",
                     age_for_report=age_for_report,
                     gender_for_report=gender_for_report,
                     findings=presc_res.get("medicines", []),
@@ -6694,8 +7011,9 @@ elif st.session_state["active_panel"] == "Medical Report":
                     st.session_state[rx_save_key] = True
 
         elif is_imaging:
-            with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
-                rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+            if rad_res is None:
+                with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
+                    rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
 
             total_findings = rad_res.get("total_findings", 0)
             if total_findings == 0 or not rad_res.get("is_valid_radiology_report", True):
@@ -6707,6 +7025,17 @@ elif st.session_state["active_panel"] == "Medical Report":
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+                n_col1, n_col2, n_col3 = st.columns([1, 1.4, 1])
+                with n_col2:
+                    if st.button(
+                        "New Scan / Upload Another Document",
+                        key="btn_p2_rad_empty_new_scan",
+                        type="primary",
+                        use_container_width=True
+                    ):
+                        reset_medical_report_scan()
             else:
                 # Log analysis to SQLite database
                 try:
@@ -6758,7 +7087,7 @@ elif st.session_state["active_panel"] == "Medical Report":
 
                 render_diagnostic_evaluation_view(
                     doc_name=doc_name,
-                    doc_type_choice=doc_type_choice,
+                    doc_type_choice="Diagnostic Imaging / Radiology Report",
                     age_for_report=age_for_report,
                     gender_for_report=gender_for_report,
                     findings=rad_res.get("findings", []),
@@ -6821,9 +7150,152 @@ elif st.session_state["active_panel"] == "Medical Report":
                         st.session_state["session_scans"].insert(0, full_rad_record)
                     st.session_state[rad_save_key] = True
 
+        elif is_other:
+            if gen_res is None:
+                with st.spinner("Analyzing clinical observations, health summary, and patient profile..."):
+                    gen_res = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+
+            total_findings = gen_res.get("total_findings", 0)
+            if total_findings == 0 or not gen_res.get("is_valid_medical_report", True):
+                st.markdown(f"""
+                <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
+                    <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Clinical Parameters Detected</h4>
+                    <p style="margin: 0; font-size: 0.92rem; color: var(--mm-text-secondary);">
+                        {gen_res.get("summary", "The uploaded document does not contain recognizable clinical observations, diagnostic findings, or healthcare summaries. Please upload a clear medical document.")}
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+                n_col1, n_col2, n_col3 = st.columns([1, 1.4, 1])
+                with n_col2:
+                    if st.button(
+                        "New Scan / Upload Another Document",
+                        key="btn_p2_other_empty_new_scan",
+                        type="primary",
+                        use_container_width=True
+                    ):
+                        reset_medical_report_scan()
+            else:
+                # Log analysis to SQLite database DocMindX.db
+                try:
+                    log_report_analysis(
+                        report_name=doc_name,
+                        report_type="Clinical Summary Evaluation",
+                        extracted_text=doc_text_stream,
+                        summary=gen_res.get("summary", f"Detected {total_findings} clinical observations."),
+                        findings=gen_res.get("findings", []),
+                        abnormal_count=gen_res.get("abnormal_count", 0)
+                    )
+                except Exception as e:
+                    print(f"Notice logging clinical summary report: {e}")
+
+                ab_count = gen_res.get("abnormal_count", 0)
+                sev_status = gen_res.get("overall_severity", "Normal")
+
+                gen_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
+                if gen_cache_key not in st.session_state:
+                    with st.spinner("Generating Comprehensive Clinical AI Health Guide & Overview..."):
+                        gen_breakdown = generate_medical_report_comprehensive_breakdown(
+                            report_type=gen_res.get("document_title", "Clinical Health Summary"),
+                            doc_text=doc_text_stream,
+                            findings=gen_res.get("findings", []),
+                            age_group=age_for_report,
+                            gender=gender_for_report,
+                            lang=lang_code
+                        )
+                        st.session_state[gen_cache_key] = gen_breakdown
+                else:
+                    gen_breakdown = st.session_state[gen_cache_key]
+
+                kpi_data = {
+                    "card1": {
+                        "label": "CLINICAL OBSERVATIONS",
+                        "val": total_findings,
+                        "sub": gen_res.get("document_category", "Clinical Document")
+                    },
+                    "card2": {
+                        "label": "ATTENTION / HIGH RISK FLAGS",
+                        "val": ab_count,
+                        "sub": f"↑ {ab_count}" if ab_count > 0 else "↓ 0"
+                    },
+                    "card3": {
+                        "label": "ASSESSED CLINICAL STATUS",
+                        "val": sev_status,
+                        "sub": gen_res.get("document_title", "Medical Assessment")[:28]
+                    }
+                }
+
+                render_diagnostic_evaluation_view(
+                    doc_name=doc_name,
+                    doc_type_choice=gen_res.get("document_title", doc_type_choice),
+                    age_for_report=age_for_report,
+                    gender_for_report=gender_for_report,
+                    findings=gen_res.get("findings", []),
+                    breakdown_text=gen_breakdown,
+                    kpi_data=kpi_data,
+                    report_category="general_medical",
+                    T=T,
+                    lang_code=lang_code
+                )
+
+                # Auto-persist complete General Clinical record
+                curr_auth_user = auth_ui.get_current_user()
+                p2_ctx = st.session_state.get("p2_patient_context") or {}
+                p_mode = p2_ctx.get("mode", "GENERAL") if curr_auth_user else "GENERAL"
+                p_mem_id = p2_ctx.get("member_id") if p_mode == "FAMILY_MEMBER" else None
+                p_name = p2_ctx.get("name") or (curr_auth_user.get("full_name") if curr_auth_user else "General Patient")
+
+                gen_save_key = f"p2_saved_gen_{doc_name}_{p_mode}_{p_mem_id}"
+                if gen_save_key not in st.session_state:
+                    full_gen_record = {
+                        "scan_type": "Clinical Summary",
+                        "scan_mode": p_mode,
+                        "result_reference": doc_name,
+                        "summary": f"{sev_status} ({total_findings} clinical parameters)",
+                        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "patient_name": p_name,
+                        "family_member_name": p_name if p_mode == "FAMILY_MEMBER" else None,
+                        "patient_context": p2_ctx,
+                        "doc_name": doc_name,
+                        "findings": gen_res.get("findings", []),
+                        "total_findings": total_findings,
+                        "abnormal_count": ab_count,
+                        "overall_severity": sev_status,
+                        "breakdown": gen_breakdown,
+                        "kpi_data": kpi_data,
+                        "extracted_text": doc_text_stream,
+                        "user_inputs": {
+                            "age": age_for_report,
+                            "gender": gender_for_report,
+                            "doc_type": doc_type_choice
+                        }
+                    }
+                    if curr_auth_user:
+                        try:
+                            auth_db.save_medical_scan(
+                                user_id=curr_auth_user["id"],
+                                family_member_id=p_mem_id,
+                                scan_type="Clinical Summary",
+                                scan_mode=p_mode,
+                                result_reference=doc_name,
+                                summary=f"Clinical Summary — {sev_status} ({total_findings} findings)",
+                                details=full_gen_record
+                            )
+                        except Exception as save_err:
+                            print(f"Notice auto-saving clinical scan: {save_err}")
+                    st.session_state["current_session_scan"] = full_gen_record
+                    if "session_scans" not in st.session_state:
+                        st.session_state["session_scans"] = []
+                    if not any(s.get("result_reference") == doc_name and s.get("created_at") == full_gen_record["created_at"] for s in st.session_state["session_scans"]):
+                        st.session_state["session_scans"].insert(0, full_gen_record)
+                    st.session_state[gen_save_key] = True
+
         else:
-            with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
-                lab_res = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+            # is_lab
+            if lab_res is None:
+                with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
+                    lab_res = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
             
             total_detected = lab_res.get("total_tests_detected", 0)
 
@@ -6836,6 +7308,17 @@ elif st.session_state["active_panel"] == "Medical Report":
                     </p>
                 </div>
                 """, unsafe_allow_html=True)
+
+                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+                n_col1, n_col2, n_col3 = st.columns([1, 1.4, 1])
+                with n_col2:
+                    if st.button(
+                        "New Scan / Upload Another Document",
+                        key="btn_p2_lab_empty_new_scan",
+                        type="primary",
+                        use_container_width=True
+                    ):
+                        reset_medical_report_scan()
             else:
                 # Log analysis to SQLite database DocMindX.db
                 try:
@@ -6889,7 +7372,7 @@ elif st.session_state["active_panel"] == "Medical Report":
 
                 render_diagnostic_evaluation_view(
                     doc_name=doc_name,
-                    doc_type_choice=doc_type_choice,
+                    doc_type_choice="Blood / Pathology Lab Report",
                     age_for_report=age_for_report,
                     gender_for_report=gender_for_report,
                     findings=lab_res.get("findings", []),
@@ -7520,7 +8003,7 @@ elif st.session_state["active_panel"] == "Health Records":
                     
                     if medicines:
                         med_html = "<div style='display: flex; flex-direction: column; gap: 6px;'>"
-                        for m in medicines[:5]:
+                        for m in medicines:
                             m_name = m.get("name") or m.get("medicine_name") or "Medicine"
                             dosage = m.get("dosage") or m.get("frequency") or "As directed"
                             purpose = m.get("purpose") or m.get("indications") or "Prescribed Therapy"
@@ -7529,7 +8012,7 @@ elif st.session_state["active_panel"] == "Health Records":
                         st.markdown(med_html, unsafe_allow_html=True)
                     elif findings:
                         f_html = "<div style='display: flex; flex-direction: column; gap: 4px;'>"
-                        for f in findings[:6]:
+                        for f in findings:
                             t_name = f.get("test_name") or f.get("parameter") or f.get("observation") or "Finding"
                             val = f"{f.get('value', '')} {f.get('unit', '')}".strip()
                             st_txt = f.get("status") or f.get("severity") or "Evaluated"
@@ -7554,7 +8037,7 @@ elif st.session_state["active_panel"] == "Health Records":
 
                 if ranked_conds:
                     rc_html = "<div style='display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;'>"
-                    for rc in ranked_conds[:3]:
+                    for rc in ranked_conds:
                         rc_name = rc.get("name") or "Condition"
                         rc_prob = int(float(rc.get("confidence", rc.get("probability", 0.5))) * 100) if isinstance(rc.get("confidence") or rc.get("probability"), (int, float)) else 50
                         rc_html += f"<span style='background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); color: #7C3AED; font-weight: 700; font-size: 0.74rem; padding: 3px 10px; border-radius: 12px;'>{rc_name} ({rc_prob}%)</span>"
@@ -7575,14 +8058,14 @@ elif st.session_state["active_panel"] == "Health Records":
                 with g_col1:
                     if yoga:
                         y_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'><b>Targeted Yoga & Physical Therapy:</b><ul style='margin: 4px 0 0 16px; padding: 0;'>"
-                        for y in yoga[:3]:
+                        for y in yoga:
                             y_name = y.get("asana_name") or y.get("name") or "Asana"
                             y_html += f"<li>{y_name}</li>"
                         y_html += "</ul></div>"
                         st.markdown(y_html, unsafe_allow_html=True)
                     elif lifestyle:
                         l_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'><b>Lifestyle Protocols:</b><ul style='margin: 4px 0 0 16px; padding: 0;'>"
-                        for l in lifestyle[:3]:
+                        for l in lifestyle:
                             l_html += f"<li>{str(l)}</li>"
                         l_html += "</ul></div>"
                         st.markdown(l_html, unsafe_allow_html=True)
@@ -7592,16 +8075,16 @@ elif st.session_state["active_panel"] == "Health Records":
                     if isinstance(diet, dict) and (diet.get("foods_to_eat") or diet.get("foods_to_avoid")):
                         d_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'>"
                         if diet.get("foods_to_eat"):
-                            d_html += f"<b>Include:</b> {', '.join(diet['foods_to_eat'][:4])}<br/>"
+                            d_html += f"<b>Include:</b> {', '.join(diet['foods_to_eat'])}<br/>"
                         if diet.get("foods_to_avoid"):
-                            d_html += f"<b>Limit:</b> {', '.join(diet['foods_to_avoid'][:4])}"
+                            d_html += f"<b>Limit:</b> {', '.join(diet['foods_to_avoid'])}"
                         d_html += "</div>"
                         st.markdown(d_html, unsafe_allow_html=True)
                     else:
                         prec = details.get("precautions") or []
                         if prec:
                             p_html = "<div style='font-size: 0.76rem; color: var(--mm-text-secondary);'><b>Clinical Precautions:</b><ul style='margin: 4px 0 0 16px; padding: 0;'>"
-                            for p in prec[:2]:
+                            for p in prec:
                                 p_html += f"<li>{str(p)}</li>"
                             p_html += "</ul></div>"
                             st.markdown(p_html, unsafe_allow_html=True)
@@ -7966,11 +8449,11 @@ elif st.session_state["active_panel"] == "Health Records":
                         with i_c1:
                             if ins["yoga"]:
                                 st.markdown("<b style='font-size: 0.80rem; color: #7C3AED;'>Yoga & Physio Protocols:</b>", unsafe_allow_html=True)
-                                y_str = "".join([f"<li style='font-size: 0.76rem;'>{y.get('asana_name', y.get('name', 'Asana'))}</li>" for y in ins["yoga"][:4]])
+                                y_str = "".join([f"<li style='font-size: 0.76rem;'>{y.get('asana_name', y.get('name', 'Asana'))}</li>" for y in ins["yoga"]])
                                 st.markdown(f"<ul style='margin: 4px 0 0 16px; padding: 0;'>{y_str}</ul>", unsafe_allow_html=True)
                             elif ins["lifestyle"]:
                                 st.markdown("<b style='font-size: 0.80rem; color: #0284C7;'>Lifestyle Protocols:</b>", unsafe_allow_html=True)
-                                l_str = "".join([f"<li style='font-size: 0.76rem;'>{str(l)}</li>" for l in ins["lifestyle"][:3]])
+                                l_str = "".join([f"<li style='font-size: 0.76rem;'>{str(l)}</li>" for l in ins["lifestyle"]])
                                 st.markdown(f"<ul style='margin: 4px 0 0 16px; padding: 0;'>{l_str}</ul>", unsafe_allow_html=True)
                         with i_c2:
                             diet_obj = ins.get("diet")
@@ -7978,13 +8461,13 @@ elif st.session_state["active_panel"] == "Health Records":
                                 st.markdown("<b style='font-size: 0.80rem; color: #059669;'>Dietary Guidelines:</b>", unsafe_allow_html=True)
                                 d_str = ""
                                 if diet_obj.get("foods_to_eat"):
-                                    d_str += f"<div style='font-size: 0.76rem;'><b>Recommended:</b> {', '.join(diet_obj['foods_to_eat'][:4])}</div>"
+                                    d_str += f"<div style='font-size: 0.76rem;'><b>Recommended:</b> {', '.join(diet_obj['foods_to_eat'])}</div>"
                                 if diet_obj.get("foods_to_avoid"):
-                                    d_str += f"<div style='font-size: 0.76rem;'><b>Limit:</b> {', '.join(diet_obj['foods_to_avoid'][:4])}</div>"
+                                    d_str += f"<div style='font-size: 0.76rem;'><b>Limit:</b> {', '.join(diet_obj['foods_to_avoid'])}</div>"
                                 st.markdown(d_str, unsafe_allow_html=True)
                             elif ins["precautions"]:
                                 st.markdown("<b style='font-size: 0.80rem; color: #D97706;'>Clinical Precautions:</b>", unsafe_allow_html=True)
-                                p_str = "".join([f"<li style='font-size: 0.76rem;'>{str(p)}</li>" for p in ins["precautions"][:3]])
+                                p_str = "".join([f"<li style='font-size: 0.76rem;'>{str(p)}</li>" for p in ins["precautions"]])
                                 st.markdown(f"<ul style='margin: 4px 0 0 16px; padding: 0;'>{p_str}</ul>", unsafe_allow_html=True)
             else:
                 st.markdown(f"""
@@ -9758,43 +10241,44 @@ def clear_floating_chat():
 
 chat_is_open = st.session_state["floating_chat_open"]
 btn_transform = "rotate(45deg) scale(1.08)" if chat_is_open else "rotate(0deg) scale(1)"
+_launcher_display = "none" if chat_is_open else "flex"
 
 # Inject styling for the floating assistant drawer and elements (non-f-string style block to avoid bracket escaping issues)
-st.markdown("""
+st.markdown(f"""
 <style>
 /* Animated Eye Movement (Left, Right, Up, Down) & Blink */
-@keyframes eye-look-and-blink {
-    0%, 15% {
+@keyframes eye-look-and-blink {{
+    0%, 15% {{
         transform: translate(0, 0) scaleY(1);
-    }
-    20%, 35% {
+    }}
+    20%, 35% {{
         transform: translate(-2.5px, 0) scaleY(1); /* Look Left */
-    }
-    40%, 50% {
+    }}
+    40%, 50% {{
         transform: translate(2.5px, 0) scaleY(1);  /* Look Right */
-    }
-    55%, 65% {
+    }}
+    55%, 65% {{
         transform: translate(0, -2.5px) scaleY(1); /* Look Up */
-    }
-    70%, 80% {
+    }}
+    70%, 80% {{
         transform: translate(0, 2.5px) scaleY(1);  /* Look Down */
-    }
-    85% {
+    }}
+    85% {{
         transform: translate(0, 0) scaleY(1);      /* Center */
-    }
-    90% {
+    }}
+    90% {{
         transform: translate(0, 0) scaleY(0.08);   /* Blink */
-    }
-    94%, 100% {
+    }}
+    94%, 100% {{
         transform: translate(0, 0) scaleY(1);      /* Open */
-    }
-}
+    }}
+}}
 
 /* Floating Compact Medical Cross '+' Robot Button */
 .st-key-floating_ai_assistant,
 div.st-key-floating_ai_assistant,
 .st-key-floating_chat_pill,
-div.st-key-floating_chat_pill {
+div.st-key-floating_chat_pill {{
     position: fixed !important;
     bottom: 22px !important;
     right: 22px !important;
@@ -9804,10 +10288,12 @@ div.st-key-floating_chat_pill {
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
-}
+    display: {_launcher_display} !important;
+    visibility: {"hidden" if chat_is_open else "visible"} !important;
+}}
 
 .st-key-floating_ai_assistant button,
-.st-key-floating_chat_pill button {
+.st-key-floating_chat_pill button {{
     width: 48px !important;
     height: 48px !important;
     min-width: 48px !important;
@@ -9829,13 +10315,13 @@ div.st-key-floating_chat_pill {
     justify-content: center !important;
     padding: 0 !important;
     position: relative !important;
-}
+}}
 
 /* Animated Synchronized Glowing Eyes */
 .st-key-floating_ai_assistant button::before,
 .st-key-floating_ai_assistant button::after,
 .st-key-floating_chat_pill button::before,
-.st-key-floating_chat_pill button::after {
+.st-key-floating_chat_pill button::after {{
     content: "" !important;
     position: absolute !important;
     width: 4px !important;
@@ -9848,29 +10334,29 @@ div.st-key-floating_chat_pill {
     animation: eye-look-and-blink 4.5s infinite ease-in-out !important;
     box-shadow: 0 0 6px rgba(255, 255, 255, 0.95) !important;
     z-index: 10 !important;
-}
+}}
 
 .st-key-floating_ai_assistant button::before,
-.st-key-floating_chat_pill button::before {
+.st-key-floating_chat_pill button::before {{
     left: 16px !important;
-}
+}}
 
 .st-key-floating_ai_assistant button::after,
-.st-key-floating_chat_pill button::after {
+.st-key-floating_chat_pill button::after {{
     right: 16px !important;
-}
+}}
 
 .st-key-floating_ai_assistant button p,
 .st-key-floating_ai_assistant button span,
 .st-key-floating_ai_assistant button div,
 .st-key-floating_chat_pill button p,
 .st-key-floating_chat_pill button span,
-.st-key-floating_chat_pill button div {
+.st-key-floating_chat_pill button div {{
     display: none !important;
-}
+}}
 
 /* Backdrop for Click-Outside-to-Close */
-#mm-chat-backdrop {
+#mm-chat-backdrop {{
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -9881,33 +10367,33 @@ div.st-key-floating_chat_pill {
     backdrop-filter: blur(2px) !important;
     cursor: pointer !important;
     animation: mmBackdropFade 0.16s ease-out forwards !important;
-}
+}}
 
-@keyframes mmBackdropFade {
-    0% { opacity: 0; }
-    100% { opacity: 1; }
-}
+@keyframes mmBackdropFade {{
+    0% {{ opacity: 0; }}
+    100% {{ opacity: 1; }}
+}}
 
-@keyframes mmDrawerSlideUp {
-    0% {
+@keyframes mmDrawerSlideUp {{
+    0% {{
         opacity: 0;
         transform: translateY(14px) scale(0.98);
-    }
-    100% {
+    }}
+    100% {{
         opacity: 1;
         transform: translateY(0) scale(1);
-    }
-}
-@keyframes mmDrawerSlideDown {
-    0% {
+    }}
+}}
+@keyframes mmDrawerSlideDown {{
+    0% {{
         opacity: 1;
         transform: translateY(0) scale(1);
-    }
-    100% {
+    }}
+    100% {{
         opacity: 0;
         transform: translateY(14px) scale(0.98);
-    }
-}
+    }}
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -9934,6 +10420,15 @@ _sec_badge_color = "#60A5FA" if is_dark else "#2563EB"
 
 st.markdown(f"""
 <style>
+/* Hide Floating '+' Launcher when Drawer is Open */
+.st-key-floating_ai_assistant,
+div.st-key-floating_ai_assistant,
+.st-key-floating_chat_pill,
+div.st-key-floating_chat_pill {{
+    display: {_launcher_display} !important;
+    visibility: {"hidden" if chat_is_open else "visible"} !important;
+}}
+
 /* Floating AI Assistant Drawer Window */
 .st-key-slide_chat_drawer,
 div.st-key-slide_chat_drawer,
@@ -9958,81 +10453,184 @@ div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
     padding: 0 0 10px 0 !important;
 }}
 
-@media (max-width: 560px) {{
+/* Universal Drawer Reset & No Gaps */
+.st-key-slide_chat_drawer [data-testid="stVerticalBlock"],
+div.st-key-slide_chat_drawer [data-testid="stVerticalBlock"] {{
+    gap: 0px !important;
+}}
+
+@media (max-width: 768px), (max-width: 640px) {{
     .st-key-slide_chat_drawer,
     div.st-key-slide_chat_drawer,
     div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
-        right: 8px !important;
-        left: 8px !important;
-        bottom: 56px !important;
-        width: auto !important;
-        max-width: calc(100vw - 16px) !important;
-        max-height: calc(100vh - 66px) !important;
-        border-radius: 18px !important;
+        right: 0px !important;
+        left: 0px !important;
+        bottom: 0px !important;
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 92vh !important;
+        max-height: 92vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-sizing: border-box !important;
+        padding: 0 0 4px 0 !important;
+        margin: 0 !important;
+        overflow-x: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
+    }}
+
+    /* Scrollable chat body max height so bottom form is ALWAYS on screen */
+    .st-key-floating_chat_content,
+    div.st-key-floating_chat_content,
+    div[data-testid="stVerticalBlock"]:has(> .st-key-floating_chat_content),
+    .st-key-floating_chat_content [data-testid="stVerticalBlockBorderWrapper"] {{
+        max-height: calc(92vh - 170px) !important;
+        height: calc(92vh - 170px) !important;
+        overflow-y: auto !important;
     }}
 }}
 
-/* Header Banner */
-.st-key-popup_unified_header {{
+/* Universal Drawer Reset & Zero Gap */
+.st-key-slide_chat_drawer [data-testid="stVerticalBlock"],
+div[class*="st-key-slide_chat_drawer"] [data-testid="stVerticalBlock"] {{
+    gap: 0px !important;
+}}
+.st-key-slide_chat_drawer > div > [data-testid="stVerticalBlock"] > div,
+div[class*="st-key-slide_chat_drawer"] > div > [data-testid="stVerticalBlock"] > div {{
+    margin-top: 0px !important;
+    margin-bottom: 0px !important;
+    padding-top: 0px !important;
+    padding-bottom: 0px !important;
+}}
+
+/* Header Banner - Fixed 52px Height Row Flex Layout */
+div.st-key-popup_unified_header,
+.st-key-popup_unified_header,
+div[class*="st-key-popup_unified_header"] {{
     background: {_drw_hdr_bg} !important;
-    padding: 12px 16px !important;
+    padding: 0 10px !important;
     border-radius: 19px 19px 0 0 !important;
     margin: 0 !important;
-}}
-.st-key-popup_unified_header [data-testid="stHorizontalBlock"] {{
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 52px !important;
+    min-height: 52px !important;
+    max-height: 52px !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
     justify-content: space-between !important;
     gap: 8px !important;
-    width: 100% !important;
 }}
-.st-key-popup_unified_header [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {{
+
+/* Header Child 1: Title */
+div.st-key-popup_unified_header > div:first-child,
+.st-key-popup_unified_header > div:first-child,
+.mm-unified-header-title {{
     flex: 1 1 auto !important;
     min-width: 0 !important;
     width: auto !important;
-}}
-.st-key-popup_unified_header [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:not(:first-child) {{
-    flex: 0 0 38px !important;
-    min-width: 38px !important;
-    width: 38px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    position: static !important;
+    transform: none !important;
 }}
 
-/* Square Rounded Header Close & Refresh Buttons */
+div.st-key-popup_unified_header [data-testid="stMarkdownContainer"],
+div.st-key-popup_unified_header [data-testid="stMarkdownContainer"] p {{
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.2 !important;
+}}
+
+/* Header Children 2 & 3: Action Buttons with Clean 8px Gap */
+.st-key-drawer_clear_chat_btn,
+div[class*="st-key-drawer_clear_chat_btn"],
+div.st-key-popup_unified_header .st-key-drawer_clear_chat_btn {{
+    flex: 0 0 32px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    margin: 0 8px 0 0 !important; /* 8px GAP between clear and close */
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: static !important;
+    transform: none !important;
+}}
+
+.st-key-drawer_close_x_btn,
+div[class*="st-key-drawer_close_x_btn"],
+div.st-key-popup_unified_header .st-key-drawer_close_x_btn {{
+    flex: 0 0 32px !important;
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: static !important;
+    transform: none !important;
+}}
+
+div.st-key-popup_unified_header button,
 .st-key-drawer_close_x_btn button,
 .st-key-drawer_clear_chat_btn button,
 div[class*="st-key-drawer_close_x_btn"] button,
 div[class*="st-key-drawer_clear_chat_btn"] button {{
-    height: 36px !important;
-    width: 36px !important;
-    min-height: 36px !important;
-    max-height: 36px !important;
-    min-width: 36px !important;
+    height: 32px !important;
+    width: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
     padding: 0 !important;
-    border-radius: 10px !important;
-    background: {_drw_btn_bg} !important;
-    border: 1px solid {_drw_btn_border} !important;
-    color: {_drw_btn_color} !important;
-    font-size: 0.90rem !important;
-    font-weight: 700 !important;
+    border-radius: 9px !important;
+    background: rgba(255, 255, 255, 0.22) !important;
+    background-color: rgba(255, 255, 255, 0.22) !important;
+    border: 1.2px solid rgba(255, 255, 255, 0.45) !important;
+    color: #FFFFFF !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
     margin: 0 !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+    box-sizing: border-box !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
     transition: all 0.18s ease !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }}
+div.st-key-popup_unified_header button [data-testid="stIconMaterial"],
 .st-key-drawer_close_x_btn button [data-testid="stIconMaterial"],
 .st-key-drawer_clear_chat_btn button [data-testid="stIconMaterial"] {{
-    color: {_drw_btn_color} !important;
-    font-size: 20px !important;
+    color: #FFFFFF !important;
+    fill: #FFFFFF !important;
+    font-size: 18px !important;
+    display: inline-block !important;
+    visibility: visible !important;
 }}
 .st-key-drawer_close_x_btn button:hover,
 .st-key-drawer_clear_chat_btn button:hover {{
+    background: rgba(255, 255, 255, 0.35) !important;
+    border-color: #38BDF8 !important;
     transform: scale(1.05) !important;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.18) !important;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35) !important;
 }}
 
 /* Active Context Banner */
@@ -10040,12 +10638,17 @@ div[class*="st-key-drawer_clear_chat_btn"] button {{
     background: {_ctx_bg} !important;
     border: 1px solid {_ctx_border} !important;
     border-radius: 12px !important;
-    margin: 10px 14px 4px 14px !important;
-    padding: 9px 14px !important;
+    margin: 4px 10px 4px 10px !important;
+    padding: 7px 12px !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    text-align: left !important;
     font-size: 0.80rem !important;
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+    box-sizing: border-box !important;
 }}
 .mm-chat-context-icon {{
     width: 26px !important;
@@ -10126,7 +10729,11 @@ div[class*="st-key-drawer_clear_chat_btn"] button {{
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    margin: 12px 0 10px 0 !important;
+    margin: 16px 0 14px 0 !important;
+    padding: 0 0 4px 0 !important;
+    gap: 8px !important;
+    width: 100% !important;
+    position: relative !important;
 }}
 .mm-chat-section-title {{
     display: flex !important;
@@ -10156,10 +10763,14 @@ st.markdown("""
 <style>
 /* Quick Actions Section Header */
 .mm-chat-section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 10px 0 10px 0;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin: 16px 0 14px 0 !important;
+    padding: 0 0 4px 0 !important;
+    gap: 8px !important;
+    width: 100% !important;
+    position: relative !important;
 }
 .mm-chat-section-title {
     display: flex;
@@ -10345,78 +10956,114 @@ st.markdown("""
 .mm-qa-icon-lab { background: #E0F2FE; }
 .mm-qa-icon-hospital { background: #D1FAE5; }
 
-/* Input Bar matching Image 2 */
+/* Input Bar Form - Clean Absolute Pinned Send Button */
+div[class*="st-key-slide_chat_form"],
+.st-key-slide_chat_form,
 div[class*="st-key-slide_chat_form"] form,
-.st-key-slide_chat_form [data-testid="stForm"] {
+.st-key-slide_chat_form form,
+.st-key-slide_chat_form [data-testid="stForm"],
+div[data-testid="stForm"]:has(.st-key-floating_chat_user_input_val) {
     border: none !important;
     border-radius: 0 !important;
     padding: 0 !important;
     background: transparent !important;
-    margin: 4px 12px 2px 12px !important;
+    margin: 6px 10px 4px 10px !important;
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+    box-sizing: border-box !important;
     box-shadow: none !important;
     transition: none !important;
+    position: relative !important;
+    display: block !important;
+    height: 42px !important;
+    min-height: 42px !important;
 }
-div[class*="st-key-slide_chat_form"] [data-testid="stHorizontalBlock"],
-.st-key-slide_chat_form [data-testid="stHorizontalBlock"] {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    gap: 8px !important;
-    width: 100% !important;
-    margin: 0 !important;
-}
-div[class*="st-key-slide_chat_form"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child,
-.st-key-slide_chat_form [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:first-child {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    width: auto !important;
-}
-div[class*="st-key-slide_chat_form"] [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child,
-.st-key-slide_chat_form [data-testid="stHorizontalBlock"] > div[data-testid="stColumn"]:last-child {
-    flex: 0 0 46px !important;
-    min-width: 46px !important;
-    width: 46px !important;
-}
-div[class*="st-key-slide_chat_form"],
-div[class*="st-key-slide_chat_form"] > div,
-div[class*="st-key-slide_chat_form"] [data-testid="stForm"],
-div[class*="st-key-slide_chat_form"] [data-testid="stVerticalBlockBorderWrapper"] {
+
+/* Reset form wrappers */
+div[class*="st-key-slide_chat_form"] form > div,
+div[class*="st-key-slide_chat_form"] [data-testid="stVerticalBlockBorderWrapper"],
+div[class*="st-key-slide_chat_form"] [data-testid="stVerticalBlock"] {
     border: none !important;
     background: transparent !important;
     box-shadow: none !important;
     padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+    display: block !important;
+    position: static !important;
 }
-div[class*="st-key-slide_chat_form"] form:focus-within,
-.st-key-slide_chat_form [data-testid="stForm"]:focus-within {
-    border: none !important;
-    box-shadow: none !important;
+
+/* Text Input container takes 100% minus 48px */
+.st-key-floating_chat_user_input_val,
+div[class*="st-key-floating_chat_user_input_val"],
+div[class*="st-key-slide_chat_form"] .st-key-floating_chat_user_input_val,
+div[class*="st-key-slide_chat_form"] [data-testid="stTextInput"] {
+    position: absolute !important;
+    left: 0px !important;
+    top: 0px !important;
+    width: calc(100% - 48px) !important;
+    max-width: calc(100% - 48px) !important;
+    height: 42px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
 }
+
+/* Input element */
 div[class*="st-key-slide_chat_form"] input,
-.st-key-slide_chat_form input {
+.st-key-slide_chat_form input,
+.st-key-floating_chat_user_input_val input {
     border: 1.2px solid {_drw_btn_border} !important;
     border-radius: 12px !important;
     box-shadow: none !important;
     background: {_grt_bg} !important;
-    padding: 9px 14px !important;
-    font-size: 0.85rem !important;
+    padding: 8px 12px !important;
+    font-size: 0.84rem !important;
     color: {_grt_title} !important;
     -webkit-text-fill-color: {_grt_title} !important;
     height: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
 }
 div[class*="st-key-slide_chat_form"] input::placeholder,
 .st-key-slide_chat_form input::placeholder {
     color: {_grt_sub} !important;
     -webkit-text-fill-color: {_grt_sub} !important;
 }
-div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button,
-div[class*="st-key-slide_chat_form"] button,
-.st-key-slide_chat_form button {
-    width: 48px !important;
+
+/* Send Button pinned at top-right of form right next to input */
+div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"],
+.st-key-slide_chat_form [data-testid="stFormSubmitButton"],
+div[class*="st-key-FormSubmitter-slide_chat_form"],
+div[class*="st-key-slide_chat_form"] [data-testid="stVerticalBlock"] > div:last-child {
+    position: absolute !important;
+    right: 0px !important;
+    top: 0px !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
     height: 42px !important;
-    min-width: 48px !important;
     min-height: 42px !important;
+    max-height: 42px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 100 !important;
+}
+
+div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button,
+.st-key-slide_chat_form [data-testid="stFormSubmitButton"] button,
+div[class*="st-key-FormSubmitter-slide_chat_form"] button {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    min-height: 42px !important;
+    max-height: 42px !important;
     border-radius: 12px !important;
     background: #2563EB !important;
     background-color: #2563EB !important;
@@ -10427,23 +11074,26 @@ div[class*="st-key-slide_chat_form"] button,
     justify-content: center !important;
     padding: 0 !important;
     cursor: pointer !important;
-    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.45) !important;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.45) !important;
     transition: all 0.16s ease !important;
+    box-sizing: border-box !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button:hover,
-div[class*="st-key-slide_chat_form"] button:hover,
-.st-key-slide_chat_form button:hover {
+.st-key-slide_chat_form [data-testid="stFormSubmitButton"] button:hover {
     background: #1D4ED8 !important;
     background-color: #1D4ED8 !important;
     border-color: #60A5FA !important;
     transform: scale(1.05) !important;
 }
 div[class*="st-key-slide_chat_form"] [data-testid="stFormSubmitButton"] button [data-testid="stIconMaterial"],
-div[class*="st-key-slide_chat_form"] button [data-testid="stIconMaterial"],
-.st-key-slide_chat_form button [data-testid="stIconMaterial"] {
+.st-key-slide_chat_form [data-testid="stFormSubmitButton"] button [data-testid="stIconMaterial"] {
     font-size: 20px !important;
     color: #FFFFFF !important;
     fill: #FFFFFF !important;
+    display: inline-block !important;
+    visibility: visible !important;
 }
 
 /* Disclaimer below input */
@@ -10993,37 +11643,33 @@ if chat_is_open:
     with st.container(key="slide_chat_drawer"):
         # 2. Seamless Full-Width Blue Header with Clear Chat & Close Buttons (Image 2)
         with st.container(key="popup_unified_header"):
-            hdr_c1, hdr_c2, hdr_c3 = st.columns([3.3, 0.48, 0.48], vertical_alignment="center")
-            with hdr_c1:
-                st.markdown(f"""
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 34px; height: 34px; border-radius: 50%; background: #0B1E3D; border: 1.6px solid #06B6D4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);">
-                        <svg viewBox="0 0 36 36" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <circle cx="18" cy="4.5" r="2.2" fill="#FFFFFF"/>
-                            <path d="M18 6.7V9.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
-                            <rect x="7" y="9.5" width="22" height="19" rx="6" fill="#FFFFFF"/>
-                            <rect x="3.5" y="14.5" width="3.5" height="9" rx="1.7" fill="#FFFFFF"/>
-                            <rect x="29" y="14.5" width="3.5" height="9" rx="1.7" fill="#FFFFFF"/>
-                            <rect x="9.5" y="12" width="17" height="14" rx="4" fill="#0B132B"/>
-                            <circle cx="14" cy="17.5" r="2" fill="#38BDF8"/>
-                            <circle cx="22" cy="17.5" r="2" fill="#38BDF8"/>
-                            <path d="M14.5 22C16 23.2 20 23.2 21.5 22" stroke="#38BDF8" stroke-width="1.6" stroke-linecap="round"/>
-                        </svg>
+            st.markdown(f"""
+            <div class="mm-unified-header-title">
+                <div style="width: 32px; height: 32px; border-radius: 50%; background: #0B1E3D; border: 1.6px solid #06B6D4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);">
+                    <svg viewBox="0 0 36 36" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="18" cy="4.5" r="2.2" fill="#FFFFFF"/>
+                        <path d="M18 6.7V9.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="7" y="9.5" width="22" height="19" rx="6" fill="#FFFFFF"/>
+                        <rect x="3.5" y="14.5" width="3.5" height="9" rx="1.7" fill="#FFFFFF"/>
+                        <rect x="29" y="14.5" width="3.5" height="9" rx="1.7" fill="#FFFFFF"/>
+                        <rect x="9.5" y="12" width="17" height="14" rx="4" fill="#0B132B"/>
+                        <circle cx="14" cy="17.5" r="2" fill="#38BDF8"/>
+                        <circle cx="22" cy="17.5" r="2" fill="#38BDF8"/>
+                        <path d="M14.5 22C16 23.2 20 23.2 21.5 22" stroke="#38BDF8" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div style="min-width: 0; flex: 1;">
+                    <div style="font-weight: 800; font-size: 0.88rem; color: #FFFFFF; line-height: 1.2; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        DocMindX AI Clinical Assistant
                     </div>
-                    <div>
-                        <div style="font-weight: 800; font-size: 0.90rem; color: #FFFFFF; line-height: 1.25; letter-spacing: -0.2px;">
-                            DocMindX AI Clinical Assistant
-                        </div>
-                        <div style="font-size: 0.72rem; color: #E0E7FF; font-weight: 500; margin-top: 2px; display: flex; align-items: center; gap: 5px;">
-                            <span style="color: #4ADE80; font-size: 0.65rem;">🟢</span> Online • Triage & Medical Guidance
-                        </div>
+                    <div style="font-size: 0.70rem; color: #E0E7FF; font-weight: 500; margin-top: 1px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+                        <span style="color: #4ADE80; font-size: 0.60rem;">🟢</span> Online • Triage & Medical Guidance
                     </div>
                 </div>
-                """, unsafe_allow_html=True)
-            with hdr_c2:
-                st.button("", key="drawer_clear_chat_btn", on_click=clear_floating_chat, help="Clear Chat History", icon=":material/refresh:")
-            with hdr_c3:
-                st.button("", key="drawer_close_x_btn", on_click=toggle_floating_chat, help="Close Assistant", icon=":material/close:")
+            </div>
+            """, unsafe_allow_html=True)
+            st.button("", key="drawer_clear_chat_btn", on_click=clear_floating_chat, help="Clear Chat History", icon=":material/refresh:")
+            st.button("", key="drawer_close_x_btn", on_click=toggle_floating_chat, help="Close Assistant", icon=":material/close:")
 
         # Active Context Bar
         context_str = current_context.get("top_disease") or (", ".join(current_context.get("symptoms", [])[:2])) or "Peptic Ulcer Disease & Acid Peptic Disorders"
@@ -11069,7 +11715,7 @@ if chat_is_open:
 </div>""")
 
             # B. Quick Actions Section Header
-            safe_markdown(f"""<div class="mm-chat-section-header">
+            safe_markdown(f"""<div class="mm-chat-section-header" style="margin: 16px 0 14px 0; padding-bottom: 4px;">
 <div class="mm-chat-section-title">
 <svg width="17" height="17" viewBox="0 0 24 24" fill="#2563EB" stroke="none">
 <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8z"/>
@@ -11085,17 +11731,20 @@ if chat_is_open:
             _qa_btn_hover_bg = "#1E293B" if is_dark else "#F8FBFF"
             _qa_btn_hover_border = "#38BDF8" if is_dark else "#93C5FD"
             _qa_title_color = "#F8FAFC" if is_dark else "#0F172A"
-            _qa_sub_color = "#94A3B8" if is_dark else "#64748B"
 
             st.markdown(f"""
             <style>
             .st-key-floating_chat_content [data-testid="stHorizontalBlock"] {{
-                gap: 8px !important;
+                gap: 7px !important;
                 margin: 0 0 8px 0 !important;
                 align-items: stretch !important;
             }}
+            .st-key-floating_chat_content [data-testid="stHorizontalBlock"]:first-of-type {{
+                margin-top: 8px !important;
+            }}
             .st-key-floating_chat_content [data-testid="stColumn"] {{
                 min-width: 0 !important;
+                flex: 1 1 0% !important;
             }}
             .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] {{
                 height: 100% !important;
@@ -11103,73 +11752,72 @@ if chat_is_open:
             }}
             .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button {{
                 width: 100% !important;
-                height: auto !important;
-                min-height: 96px !important;
-                max-height: 110px !important;
-                padding: 8px 4px 6px !important;
+                height: 100% !important;
+                min-height: 44px !important;
+                padding: 6px 8px !important;
                 border: 1.2px solid {_qa_btn_border} !important;
-                border-radius: 14px !important;
+                border-radius: 12px !important;
                 background: {_qa_btn_bg} !important;
                 color: {_qa_btn_color} !important;
                 display: flex !important;
-                flex-direction: column !important;
+                flex-direction: row !important;
                 align-items: center !important;
-                justify-content: center !important;
-                text-align: center !important;
+                justify-content: flex-start !important;
+                gap: 6px !important;
+                text-align: left !important;
                 overflow: hidden !important;
+                box-sizing: border-box !important;
                 box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
-                transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+                transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease !important;
                 cursor: pointer !important;
             }}
             .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button:hover {{
                 border-color: {_qa_btn_hover_border} !important;
                 background: {_qa_btn_hover_bg} !important;
                 transform: translateY(-2px) !important;
-                box-shadow: 0 6px 14px rgba(37, 99, 235, 0.10) !important;
+                box-shadow: 0 5px 14px rgba(37, 99, 235, 0.12) !important;
             }}
-            /* Material Icon as 34px Circular Badge */
+            /* Material Icon as Circular Badge */
             .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button [data-testid="stIconMaterial"] {{
-                width: 34px !important;
-                height: 34px !important;
-                min-width: 34px !important;
-                min-height: 34px !important;
+                width: 28px !important;
+                height: 28px !important;
+                min-width: 28px !important;
+                min-height: 28px !important;
                 border-radius: 50% !important;
                 display: flex !important;
                 align-items: center !important;
                 justify-content: center !important;
-                font-size: 18px !important;
-                margin: 0 auto 4px auto !important;
+                font-size: 16px !important;
+                line-height: 1 !important;
+                margin: 0 !important;
+                flex-shrink: 0 !important;
+                box-sizing: border-box !important;
                 transition: transform 0.15s ease !important;
             }}
             .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button:hover [data-testid="stIconMaterial"] {{
                 transform: scale(1.08) !important;
             }}
-            /* Card Typography */
+            /* Card Typography Container & Text */
             .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button div[data-testid="stMarkdownContainer"] {{
                 display: flex !important;
-                flex-direction: column !important;
                 align-items: center !important;
-                justify-content: center !important;
-                text-align: center !important;
-                width: 100% !important;
-            }}
-            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p {{
+                justify-content: flex-start !important;
+                text-align: left !important;
+                flex: 1 1 auto !important;
+                min-width: 0 !important;
+                padding: 0 !important;
                 margin: 0 !important;
-                width: 100% !important;
-                text-align: center !important;
-                font-size: 0.63rem !important;
-                line-height: 1.2 !important;
-                color: {_qa_sub_color} !important;
-                white-space: normal !important;
-                word-break: break-word !important;
             }}
+            .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p,
             .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p strong {{
-                font-size: 0.74rem !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+                text-align: left !important;
+                font-size: 0.72rem !important;
                 font-weight: 700 !important;
-                color: {_qa_title_color} !important;
-                display: block !important;
                 line-height: 1.25 !important;
-                margin-bottom: 2px !important;
+                color: {_qa_title_color} !important;
                 white-space: normal !important;
                 word-break: break-word !important;
             }}
@@ -11178,8 +11826,8 @@ if chat_is_open:
                 .st-key-floating_chat_content [data-testid="stHorizontalBlock"] {{
                     display: grid !important;
                     grid-template-columns: repeat(2, 1fr) !important;
-                    gap: 8px !important;
-                    margin-bottom: 8px !important;
+                    gap: 6px !important;
+                    margin-bottom: 6px !important;
                 }}
                 .st-key-floating_chat_content [data-testid="stHorizontalBlock"] > div,
                 .st-key-floating_chat_content [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {{
@@ -11188,23 +11836,20 @@ if chat_is_open:
                     flex: none !important;
                 }}
                 .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button {{
-                    min-height: 94px !important;
-                    padding: 6px 4px 6px !important;
-                    border-radius: 12px !important;
+                    min-height: 40px !important;
+                    padding: 5px 6px !important;
+                    border-radius: 10px !important;
                 }}
                 .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button [data-testid="stIconMaterial"] {{
-                    width: 32px !important;
-                    height: 32px !important;
-                    min-width: 32px !important;
-                    min-height: 32px !important;
-                    font-size: 17px !important;
-                    margin-bottom: 3px !important;
+                    width: 24px !important;
+                    height: 24px !important;
+                    min-width: 24px !important;
+                    min-height: 24px !important;
+                    font-size: 14px !important;
                 }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p,
                 .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p strong {{
-                    font-size: 0.72rem !important;
-                }}
-                .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p {{
-                    font-size: 0.62rem !important;
+                    font-size: 0.67rem !important;
                 }}
             }}
             </style>
@@ -11224,7 +11869,6 @@ if chat_is_open:
                 {
                     "id": "sym", "icon": ":material/stethoscope:", "color": "#2563EB", "rgb": "37, 99, 235",
                     "title": T.get("qa_sym_title", "Symptoms"),
-                    "sub": T.get("qa_sym_sub", "Check symptoms"),
                     "query": f"मेरे लक्षणों ({_sym_s}) का सरल अर्थ और संभावित कारण समझाएं।" if lang_code == "hi" else (
                         f"મારા લક્ષણો ({_sym_s}) નો સરળ અર્થ અને સંભવિત કારણ સમજાવો." if lang_code == "gu" else
                         translate_dynamic_text(f"Explain the meaning and possible clinical causes of my symptoms ({_sym_s}) in simple terms.", lang_code)
@@ -11233,7 +11877,6 @@ if chat_is_open:
                 {
                     "id": "med", "icon": ":material/medication:", "color": "#059669", "rgb": "5, 150, 105",
                     "title": T.get("qa_med_title", "Medicines"),
-                    "sub": T.get("qa_med_sub", "Drug information"),
                     "query": f"{_med_s} की खुराक, सही समय और जरूरी सावधानियां बताएं।" if lang_code == "hi" else (
                         f"{_med_s} ની માત્રા, સાચો સમય અને જરૂરી સાવચેતી સમજાવો." if lang_code == "gu" else
                         translate_dynamic_text(f"Explain the therapeutic purpose, precautions, and timing for taking {_med_s}.", lang_code)
@@ -11242,7 +11885,6 @@ if chat_is_open:
                 {
                     "id": "dos", "icon": ":material/description:", "color": "#0891B2", "rgb": "8, 145, 178",
                     "title": T.get("qa_dos_title", "Dosage"),
-                    "sub": T.get("qa_dos_sub", "How to take?"),
                     "query": f"{_med_s} और {_dis_s} के लिए सही dosage और भोजन का समय समझाएं।" if lang_code == "hi" else (
                         f"{_med_s} અને {_dis_s} માટે યોગ્ય માત્રા અને જમવાનો સમય સમજાવો." if lang_code == "gu" else
                         translate_dynamic_text(f"Explain safe dosage guidelines, food timing, and administration instructions for {_med_s}.", lang_code)
@@ -11251,7 +11893,6 @@ if chat_is_open:
                 {
                     "id": "sef", "icon": ":material/warning:", "color": "#D97706", "rgb": "217, 119, 6",
                     "title": T.get("qa_sef_title", "Side Effects"),
-                    "sub": T.get("qa_sef_sub", "Adverse reactions"),
                     "query": f"{_med_s} के संभावित दुष्प्रभाव और किन red flags पर डॉक्टर से तुरंत मिलना चाहिए?" if lang_code == "hi" else (
                         f"{_med_s} ની કઈ આડઅસર જણાય તો તરત ડોક્ટરનો સંપર્ક કરવો?" if lang_code == "gu" else
                         translate_dynamic_text(f"What common and serious adverse effects should I monitor with {_med_s}?", lang_code)
@@ -11260,7 +11901,6 @@ if chat_is_open:
                 {
                     "id": "fdt", "icon": ":material/restaurant:", "color": "#E11D48", "rgb": "225, 29, 72",
                     "title": T.get("qa_fdt_title", "Food & Diet"),
-                    "sub": T.get("qa_fdt_sub", "Nutrition advice"),
                     "query": f"{_dis_s} में कौन सा पौष्टिक भोजन खाना चाहिए और किन चीजों से परहेज करें?" if lang_code == "hi" else (
                         f"{_dis_s} માં કયો ખોરાક લેવો હિતાવહ છે અને કઈ વસ્તુઓનો પરહેજ કરવો?" if lang_code == "gu" else
                         translate_dynamic_text(f"What foods are clinically recommended for {_dis_s}, and what items should be avoided?", lang_code)
@@ -11269,7 +11909,6 @@ if chat_is_open:
                 {
                     "id": "dis", "icon": ":material/favorite:", "color": "#7C3AED", "rgb": "124, 58, 237",
                     "title": T.get("qa_dis_title", "Disease Info"),
-                    "sub": T.get("qa_dis_sub", "Clinical causes"),
                     "query": f"{_dis_s} की स्थिति, इसके मुख्य कारण और रोग नियंत्रण के उपाय बताएं।" if lang_code == "hi" else (
                         f"{_dis_s} સ્થિતિ, તેના મુખ્ય કારણો અને નિયંત્રણના પગલાં જણાવો." if lang_code == "gu" else
                         translate_dynamic_text(f"Explain {_dis_s} in detail, including its clinical pathology, triggers, and outlook.", lang_code)
@@ -11278,7 +11917,6 @@ if chat_is_open:
                 {
                     "id": "lab", "icon": ":material/science:", "color": "#0284C7", "rgb": "2, 132, 199",
                     "title": T.get("qa_lab_title", "Lab Tests"),
-                    "sub": T.get("qa_lab_sub", "Pathology tests"),
                     "query": f"{_dis_s} और {_sym_s} के लिए कौन से जरूरी लैब टेस्ट डॉक्टर से डिस्कस करने चाहिए?" if lang_code == "hi" else (
                         f"{_dis_s} અને {_sym_s} માટે કયા લેબ ટેસ્ટ અંગે ડોક્ટર સાથે વાત કરવી?" if lang_code == "gu" else
                         translate_dynamic_text(f"Which diagnostic lab tests and reports should I discuss with my physician for {_dis_s} and {_sym_s}?", lang_code)
@@ -11287,7 +11925,6 @@ if chat_is_open:
                 {
                     "id": "trt", "icon": ":material/medical_services:", "color": "#4F46E5", "rgb": "79, 70, 229",
                     "title": T.get("qa_trt_title", "Treatment"),
-                    "sub": T.get("qa_trt_sub", "Care plan"),
                     "query": f"{_dis_s} के लिए सामान्यतः क्या इलाज विकल्प और रिकवरी टाइमलाइन होती है?" if lang_code == "hi" else (
                         f"{_dis_s} માટે સારવારના વિકલ્પો અને રિકવરી સમય જણાવો." if lang_code == "gu" else
                         translate_dynamic_text(f"What clinical treatment options and expected recovery timeline apply to {_dis_s}?", lang_code)
@@ -11296,7 +11933,6 @@ if chat_is_open:
                 {
                     "id": "yog", "icon": ":material/self_improvement:", "color": "#16A34A", "rgb": "22, 163, 74",
                     "title": T.get("qa_yog_title", "Yoga & Wellness"),
-                    "sub": T.get("qa_yog_sub", "Holistic recovery"),
                     "query": f"{_dis_s} में कौन से सुरक्षित योगासन, प्राणायाम और जीवनशैली सुझाव लाभकारी हैं?" if lang_code == "hi" else (
                         f"{_dis_s} માટે સલામત યોગાસન, પ્રાણાયામ અને જીવનશૈલી સૂચનો આપો." if lang_code == "gu" else
                         translate_dynamic_text(f"Suggest safe yoga postures, breathing routines, and lifestyle modifications for {_dis_s}.", lang_code)
@@ -11305,7 +11941,6 @@ if chat_is_open:
                 {
                     "id": "chd", "icon": ":material/child_care:", "color": "#EA580C", "rgb": "234, 88, 12",
                     "title": T.get("qa_chd_title", "Pediatric Care"),
-                    "sub": T.get("qa_chd_sub", "Child precautions"),
                     "query": f"बच्चों में {_sym_s} होने पर क्या विशेष बाल रोग सावधानियां बरतनी चाहिए?" if lang_code == "hi" else (
                         f"બાળકોમાં {_sym_s} જણાય ત્યારે કઈ પીડિયાટ્રિક સાવચેતી રાખવી?" if lang_code == "gu" else
                         translate_dynamic_text(f"What pediatric considerations and warning signs apply if a child experiences {_sym_s}?", lang_code)
@@ -11314,7 +11949,6 @@ if chat_is_open:
                 {
                     "id": "eld", "icon": ":material/person:", "color": "#0D9488", "rgb": "13, 148, 136",
                     "title": T.get("qa_eld_title", "Elderly Care"),
-                    "sub": T.get("qa_eld_sub", "Senior guidelines"),
                     "query": f"बुजुर्ग मरीजों में {_dis_s} और {_med_s} के साथ क्या सुरक्षा सावधानियां जरूरी हैं?" if lang_code == "hi" else (
                         f"વૃદ્ધ દર્દીઓ માટે {_dis_s} અને {_med_s} અંગે કઈ સાવચેતી જરૂરી છે?" if lang_code == "gu" else
                         translate_dynamic_text(f"What geriatric care, medication timing, and monitoring are vital for senior citizens with {_dis_s}?", lang_code)
@@ -11323,7 +11957,6 @@ if chat_is_open:
                 {
                     "id": "ask", "icon": ":material/forum:", "color": "#9333EA", "rgb": "147, 51, 234",
                     "title": T.get("qa_ask_title", "Ask Question"),
-                    "sub": T.get("qa_ask_sub", "Free inquiry"),
                     "query": f"DocMindX AI, मेरी वर्तमान स्वास्थ्य स्थिति ({_dis_s}, {_sym_s}) पर आपका क्या सुझाव है?" if lang_code == "hi" else (
                         f"DocMindX AI, મારી વર્તમાન સ્થિતિ ({_dis_s}, {_sym_s}) અંગે તમારું માર્ગદર્શન આપો." if lang_code == "gu" else
                         translate_dynamic_text(f"Hello DocMindX AI, please give me a clinical assessment and guidance for {_dis_s} and {_sym_s}.", lang_code)
@@ -11343,7 +11976,6 @@ if chat_is_open:
                     _ic_bg = f"rgba({_rgb}, 0.22)"
                     _ic_bdr = f"rgba({_rgb}, 0.50)"
                     _t_col = "#F8FAFC"
-                    _s_col = "#94A3B8"
                     _glow = f"rgba({_rgb}, 0.28)"
                 else:
                     _card_bg = f"rgba({_rgb}, 0.04)"
@@ -11352,22 +11984,21 @@ if chat_is_open:
                     _ic_bg = f"rgba({_rgb}, 0.12)"
                     _ic_bdr = f"rgba({_rgb}, 0.32)"
                     _t_col = "#0F172A"
-                    _s_col = "#475569"
                     _glow = f"rgba({_rgb}, 0.16)"
 
                 _qa_rules_list.append(f"""
                 .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button {{
                     background: {_card_bg} !important;
                     background-color: {_card_bg} !important;
-                    border: 1.5px solid {_card_bdr} !important;
-                    box-shadow: 0 2px 8px {_glow} !important;
+                    border: 1.4px solid {_card_bdr} !important;
+                    box-shadow: 0 2px 6px {_glow} !important;
                 }}
                 .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button:hover {{
                     background: {_card_hbg} !important;
                     background-color: {_card_hbg} !important;
                     border-color: {_col} !important;
                     transform: translateY(-2px) !important;
-                    box-shadow: 0 6px 18px {_glow} !important;
+                    box-shadow: 0 5px 14px {_glow} !important;
                 }}
                 .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button [data-testid="stIconMaterial"] {{
                     background: {_ic_bg} !important;
@@ -11376,11 +12007,9 @@ if chat_is_open:
                     color: {_col} !important;
                     fill: {_col} !important;
                 }}
+                .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button p,
                 .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button p strong {{
                     color: {_t_col} !important;
-                }}
-                .st-key-floating_chat_content div[class*="st-key-dyn_qa_{_cid}"] button p {{
-                    color: {_s_col} !important;
                 }}
                 """)
             st.markdown("<style>" + "\n".join(_qa_rules_list) + "</style>", unsafe_allow_html=True)
@@ -11390,7 +12019,7 @@ if chat_is_open:
                 for action_index, card in enumerate(qa_cards_data[row_start:row_start + 4]):
                     with action_columns[action_index]:
                         if st.button(
-                            f"**{card['title']}**\n\n{card['sub']}",
+                            card["title"],
                             key=f"dyn_qa_{card['id']}",
                             icon=card["icon"],
                             use_container_width=True,
@@ -11460,16 +12089,13 @@ if chat_is_open:
 
         # 4. Chat Input Form (Pill with Circular Send Button matching Image 2)
         with st.form(key="slide_chat_form", clear_on_submit=True):
-            fc_in, fc_btn = st.columns([5.3, 1], vertical_alignment="center")
-            with fc_in:
-                user_msg_input = st.text_input(
-                    "Chat Input",
-                    placeholder="Ask any medical, symptom, or medication question...",
-                    key="floating_chat_user_input_val",
-                    label_visibility="collapsed"
-                )
-            with fc_btn:
-                send_pressed = st.form_submit_button("", icon=":material/send:", help="Send message", type="primary")
+            user_msg_input = st.text_input(
+                "Chat Input",
+                placeholder="Ask any medical, symptom, or medication question...",
+                key="floating_chat_user_input_val",
+                label_visibility="collapsed"
+            )
+            send_pressed = st.form_submit_button("", icon=":material/send:", help="Send message", type="primary")
 
         if send_pressed and user_msg_input and user_msg_input.strip():
             clean_user_q = user_msg_input.strip()

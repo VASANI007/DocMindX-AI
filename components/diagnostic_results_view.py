@@ -513,7 +513,7 @@ def render_diagnostic_evaluation_view(
             name = m.get("extracted_name", "Medication")
             dose = m.get("frequency", "As directed")
             timing = m.get("timing", "With water")
-            gen = info.get("generic_name", "Standard Formulation")
+            gen = info.get("generic_name") or info.get("active_ingredient") or m.get("generic_name") or "Prescribed Entity"
             purp = info.get("purpose", "Prescribed for therapy")
             warn = info.get("warnings", "Take as directed.")
             table_rows_html += f"""
@@ -562,6 +562,36 @@ def render_diagnostic_evaluation_view(
             <th>Severity Status</th>
             <th>Clinical Explanation</th>
             <th colspan="2">Clinical Advice / Recommendation</th>
+        </tr>
+        """
+    elif report_category in ["general_medical", "other"]:
+        # General Medical Document / Clinical Health Summary Table
+        for item in findings:
+            param = item.get("parameter") or item.get("test_name", "Clinical Observation")
+            obs = str(item.get("observation") or item.get("value", "Documented"))
+            status = item.get("status", "Documented")
+            is_normal = status.lower() in ["normal", "documented", "stable"]
+            val_color = "#10B981" if is_normal else ("#EF4444" if any(w in status.lower() for w in ["severe", "high", "critical"]) else "#F59E0B")
+            pill_class = "mm-table-status-normal" if is_normal else "mm-table-status-abnormal"
+            icon_svg = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>' if is_normal else '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'
+            exp = item.get("clinical_notes") or item.get("explanation", "Documented in medical assessment.")
+            advice = item.get("action_advice", "Follow attending physician advice.")
+            table_rows_html += f"""
+            <tr>
+                <td><strong>{param}</strong></td>
+                <td><span style="font-weight: 700; color: {val_color};">{obs}</span></td>
+                <td><span class="mm-table-status-pill {pill_class}">{icon_svg} {status.upper()}</span></td>
+                <td>{exp}</td>
+                <td>{advice}</td>
+            </tr>
+            """
+        th_html = """
+        <tr>
+            <th>Clinical Parameter / Item</th>
+            <th>Observed Finding / Value</th>
+            <th>Status / Category</th>
+            <th>Clinical Significance</th>
+            <th>Clinical Advice & Action</th>
         </tr>
         """
     else:
@@ -676,7 +706,10 @@ def render_diagnostic_evaluation_view(
             st.session_state["p2_cached_doc_text"] = ""
             st.session_state["p2_deep_ai_chat"] = []
             st.session_state["p2_doc_text_stream"] = ""
-            keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_")]
+            st.session_state["p2_doc_name"] = "Medical Document"
+            st.session_state["p2_uploader_version"] = st.session_state.get("p2_uploader_version", 0) + 1
+            st.session_state.pop("p2_doc_uploader", None)
+            keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_") or k.startswith("p2_saved_")]
             for k in keys_to_clear:
                 st.session_state.pop(k, None)
             st.rerun()

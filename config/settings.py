@@ -7,7 +7,16 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # API Keys & Credentials (Loaded securely from .env)
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+from api.gemini_manager import (
+    get_gemini_api_keys,
+    get_active_gemini_key,
+    call_gemini_with_failover,
+    gemini_pool
+)
+
+# Multi-Key Pool for Google Gemini (Auto-Failover on 429 Quota Exceeded)
+GEMINI_API_KEYS = get_gemini_api_keys()
+GEMINI_API_KEY = get_active_gemini_key()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 OPENFDA_API_KEY = os.getenv("OPENFDA_API_KEY", "")
 BIOPORTAL_API_KEY = os.getenv("BIOPORTAL_API_KEY", "")

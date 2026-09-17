@@ -7,7 +7,7 @@ import json
 
 import requests
 
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
 
 
 def generate_deep_explanation(
@@ -60,25 +60,23 @@ Clear clinical advice on when symptoms require immediate in-person medical evalu
 
 Write in a reassuring, professional, and clear tone in {lang_name}."""
 
-    # Deep clinical explanations use Gemini first.
-    if GEMINI_API_KEY:
-        for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
-                }
-                headers = {"Content-Type": "application/json"}
-                res = requests.post(url, json=payload, headers=headers, timeout=10)
-                if res.status_code == 200:
-                    candidates = res.json().get("candidates", [])
-                    if candidates:
-                        txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        if txt and len(txt.strip()) > 100:
-                            return txt.strip()
-            except Exception as e:
-                print(f"Deep explanation Gemini notice: {e}")
+    # Deep clinical explanations use Gemini first (Multi-Key Failover Pool).
+    if gemini_pool.get_active_keys():
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
+        }
+        res_data, _, _ = gemini_pool.execute_with_failover(
+            payload=payload,
+            models=["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"],
+            timeout=10
+        )
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                if txt and len(txt.strip()) > 100:
+                    return txt.strip()
 
     # Groq remains only as a fallback for deep explanation outages.
     if GROQ_API_KEY:
@@ -177,23 +175,22 @@ INSTRUCTIONS:
 3. If they ask about taking medicines together, food timings, side effects, or recovery, provide exact clinical guidance.
 4. Conclude with a warm safety reminder."""
 
-    if GEMINI_API_KEY:
-        for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
-                }
-                res = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=10)
-                if res.status_code == 200:
-                    candidates = res.json().get("candidates", [])
-                    if candidates:
-                        txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        if txt and len(txt.strip()) > 20:
-                            return txt.strip()
-            except Exception as e:
-                print(f"Q&A Gemini notice: {e}")
+    if gemini_pool.get_active_keys():
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1024}
+        }
+        res_data, _, _ = gemini_pool.execute_with_failover(
+            payload=payload,
+            models=["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"],
+            timeout=10
+        )
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                if txt and len(txt.strip()) > 20:
+                    return txt.strip()
 
     if GROQ_API_KEY:
         try:
@@ -292,25 +289,23 @@ Provide specific, actionable dietary guidance:
 ### 5. सावधानियां व डॉक्टर से परामर्श (Medical Precautions & Red Flags)
 Explain next steps, which specialist physician to consult, and highlight danger signs (Red Flags) where urgent medical attention is required."""
 
-    # 1. Gemini AI (Primary)
-    if GEMINI_API_KEY:
-        for model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1800}
-                }
-                headers = {"Content-Type": "application/json"}
-                res = requests.post(url, json=payload, headers=headers, timeout=12)
-                if res.status_code == 200:
-                    candidates = res.json().get("candidates", [])
-                    if candidates:
-                        txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        if txt and len(txt.strip()) > 80:
-                            return txt.strip()
-            except Exception as e:
-                print(f"Report breakdown Gemini notice ({model}): {e}")
+    # 1. Gemini AI (Primary — Multi-Key Failover Pool)
+    if gemini_pool.get_active_keys():
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.2, "maxOutputTokens": 1800}
+        }
+        res_data, _, _ = gemini_pool.execute_with_failover(
+            payload=payload,
+            models=["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"],
+            timeout=12
+        )
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                if txt and len(txt.strip()) > 80:
+                    return txt.strip()
 
     # 2. Groq AI (Fallback)
     if GROQ_API_KEY:

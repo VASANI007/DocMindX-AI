@@ -9,7 +9,7 @@ import base64
 import requests
 from PIL import Image
 
-from config.settings import GEMINI_API_KEY
+from config.settings import GEMINI_API_KEY, gemini_pool
 
 
 def _is_binary_garbage(text: str) -> bool:
@@ -106,8 +106,8 @@ def extract_text_from_file(uploaded_file) -> str:
             except Exception:
                 pass
 
-    # 2. Vision OCR for Images & Scanned Documents (via Gemini Vision API)
-    if GEMINI_API_KEY:
+    # 2. Vision OCR for Images & Scanned Documents (via Gemini Vision Multi-Key Pool)
+    if gemini_pool.get_active_keys():
         opt_bytes, mime_type = (file_bytes, "application/pdf") if is_pdf else _optimize_image_bytes(file_bytes)
         b64_data = base64.b64encode(opt_bytes).decode("utf-8")
 
@@ -125,32 +125,26 @@ def extract_text_from_file(uploaded_file) -> str:
             "Output ONLY the extracted text."
         )
 
-        for model in models_to_try:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{
-                        "parts": [
-                            {"text": prompt},
-                            {
-                                "inline_data": {
-                                    "mime_type": mime_type,
-                                    "data": b64_data
-                                }
-                            }
-                        ]
-                    }],
-                    "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
-                }
-                headers = {"Content-Type": "application/json"}
-                res = requests.post(url, json=payload, headers=headers, timeout=12)
-                if res.status_code == 200:
-                    candidates = res.json().get("candidates", [])
-                    if candidates:
-                        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
-                        if text and len(text) >= 5 and not _is_binary_garbage(text):
-                            return text
-            except Exception:
-                pass
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {
+                        "inline_data": {
+                            "mime_type": mime_type,
+                            "data": b64_data
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
+        }
+        res_data, _, _ = gemini_pool.execute_with_failover(payload=payload, models=models_to_try, timeout=15)
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+                if text and len(text) >= 5 and not _is_binary_garbage(text):
+                    return text
 
     return ""

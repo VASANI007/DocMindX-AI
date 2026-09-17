@@ -12,7 +12,7 @@ import pandas as pd
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
 
 WORKSPACE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 VIDEO_LINKS_CSV = os.path.join(WORKSPACE_ROOT, "datasets", "media", "trusted_video_links.csv")
@@ -97,26 +97,27 @@ Output strictly valid JSON with these exact keys:
 Do NOT prescribe this as a medical cure. Do NOT output anything outside the JSON object.
 """
 
-    # 2. Try Gemini (gemini-3.6-flash)
-    if GEMINI_API_KEY:
-        for gemini_model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-            try:
-                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500, "responseMimeType": "application/json"}
-                }
-                res = requests.post(gemini_url, headers={"Content-Type": "application/json"}, json=payload, timeout=6)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        text_resp = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        parsed = json.loads(text_resp)
-                        if isinstance(parsed, dict) and "steps" in parsed:
-                            return parsed
-            except Exception:
-                pass
+    # 2. Try Gemini Multi-Key Failover Pool
+    if gemini_pool.get_active_keys():
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500, "responseMimeType": "application/json"}
+        }
+        res_data, _, _ = gemini_pool.execute_with_failover(
+            payload=payload,
+            models=["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"],
+            timeout=6
+        )
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                text_resp = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                try:
+                    parsed = json.loads(text_resp)
+                    if isinstance(parsed, dict) and "steps" in parsed:
+                        return parsed
+                except Exception:
+                    pass
 
     # 3. Try Groq (Llama 3.1)
     if GROQ_API_KEY:

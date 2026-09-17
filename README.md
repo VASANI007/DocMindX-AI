@@ -269,7 +269,7 @@ DocMindX-AI/
 ## 📂 `ai/chatbot/chatbot.py`  
 **Multi-Turn Clinical Conversational Assistant**
 - Maintains a real-time conversational thread equipped with complete awareness of the patient’s age, gender, reported symptoms, predicted diagnoses, and prescribed medications.
-- Prioritizes **Google Gemini AI** (`gemini-2.5-flash`) and seamlessly fails over to **Groq** (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`) if quota limits are reached.
+- Prioritizes **Google Gemini AI** (`gemini-3.6-flash`) and seamlessly fails over to **Groq** (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`) if quota limits are reached.
 - Adheres to clinical guardrails: professional tone, zero informal emoji usage, and explicit reminders to seek in-person medical evaluation.
 
 ---

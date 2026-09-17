@@ -1,10 +1,19 @@
+from typing import Optional, List, Dict, Any, Tuple
 """
     DocMindX AI - Dynamic Clinical Care & Recommendations Engine
 Powered by Gemini AI, Groq API, OpenFDA, DailyMed, WHO-ICD & BioPortal.
 Generates dynamic, patient-tailored medicine counts, food timings, recovery duration,
 supportive yoga & physio with YouTube tutorial links, and ice/hot compress guidance.
 Provides graceful local clinical dataset fallback with clear warning metadata if APIs are unreachable.
+
+ANTI-FABRICATION RULES:
+- AI is instructed to recommend medicines ONLY for reported symptoms / assessed condition.
+- AI must not invent symptoms or add medicines for conditions not present.
+- Medicine count is dynamic (no fixed padding).
+- All medicine entries are verified against OpenFDA / DailyMed.
+- Recovery time uses qualified language (not guaranteed).
 """
+import logging
 import sys
 import os
 import re
@@ -12,9 +21,15 @@ import json
 import urllib.parse
 import requests
 
+_logger = logging.getLogger("DocMindX.TriageEngine.CareRecommendations")
+
+# Valid model chains
+_GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]
+_GROQ_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, OPENFDA_API_KEY
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, OPENFDA_API_KEY, gemini_pool
 from ai.utils.image_resolver import resolve_image
 from ai.utils.seasonal_context import get_seasonal_health_context, INDIAN_STATES
 
@@ -86,23 +101,187 @@ def _first_candidate_name(medicine_name: str, brand_examples: str = "") -> str:
     return candidate.strip()
 
 
-def get_medicine_gallery(medicine_entries: list, max_items: int = 8) -> list:
+
+def _extract_clinical_presentation_attributes(
+    symptoms: list = None,
+    top_condition: str = "",
+    condition_category: str = "",
+    user_context: dict = None
+) -> dict:
     """
-    Enriches each medicine entry with live OpenFDA / DailyMed verification and resolved images.
+    Extracts standardized generalized clinical attributes from patient presentation.
+    Evaluates anatomical regions, physiological systems, and symptom concepts.
+    Completely disease-name agnostic.
+    """
+    symptoms_list = symptoms or []
+    text = f"{top_condition} {condition_category} " + " ".join([str(s) for s in symptoms_list])
+    text_lower = text.lower()
+
+    # 1. Neurological / Radicular / Neural compression involvement
+    has_radicular_symptoms = any(k in text_lower for k in [
+        "radiating", "radiates", "shooting pain", "nerve pain", "numbness",
+        "tingling", "paresthesia", "radiculopathy", "radicular", "loss of sensation",
+        "burning pain down", "pain radiating", "nerve compression", "shooting leg pain",
+        "lumbosacral radiculopathy", "sciatic nerve root irritation", "sciatic nerve", "dermatomal radiation",
+        "disc herniation", "herniated disc", "slipped disc", "disc prolapse",
+        "पैर में जा रहा", "रेडिएटिंग", "कमर से पैर", "પગમાં જાય", "ઝણઝણાટી", "झुनझुनी", "मुंगिया"
+    ])
+
+    # 2. Musculoskeletal / Joint / Spinal involvement
+    has_musculoskeletal_symptoms = any(k in text_lower for k in [
+        "back pain", "backache", "lumbar", "cervical", "neck pain", "joint", "knee",
+        "shoulder", "stiffness", "sprain", "strain", "muscle spasm", "tendon",
+        "ligament", "arthritis", "myalgia", "swelling in joint", "spondyl", "synov"
+    ])
+
+    # 3. Respiratory / Airway involvement
+    has_respiratory_symptoms = any(k in text_lower for k in [
+        "cough", "wheeze", "sputum", "shortness of breath", "breathless",
+        "dyspnea", "chest congestion", "bronch", "stridor", "airway"
+    ])
+
+    # 4. Gastrointestinal / Digestive involvement
+    has_gastrointestinal_symptoms = any(k in text_lower for k in [
+        "nausea", "vomiting", "acidity", "heartburn", "indigestion", "diarrhea",
+        "abdominal pain", "cramps", "bloating", "constipation", "reflux", "gastric", "colic"
+    ])
+
+    # 5. Systemic / Febrile / Multi-system presentation
+    has_systemic_fatigue_or_fever = any(k in text_lower for k in [
+        "fever", "pyrexia", "high temperature", "chills", "rigors",
+        "malaise", "body ache", "fatigue", "exhaustion", "weakness"
+    ])
+
+    # 6. Acute Emergency / Critical Red Flag
+    has_emergency_red_flags = any(k in text_lower for k in [
+        "severe chest pain", "chest pressure", "retrosternal", "cardiac arrest", "myocardial",
+        "coronary", "stroke", "facial droop", "slurred speech", "loss of consciousness", "unconscious",
+        "syncope", "acute shock", "uncontrolled bleeding", "anaphylaxis", "severe dyspnea", "cyanosis",
+        "respiratory failure"
+    ])
+
+    # 7. Localized superficial presentation (cutaneous, musculoskeletal, topical-amenable)
+    is_localized_superficial = has_musculoskeletal_symptoms or any(k in text_lower for k in [
+        "skin", "rash", "dermatitis", "eczema", "burn", "cutaneous", "lesion",
+        "wound", "contusion", "sprain", "local swelling", "erythema", "pruritus", "itch"
+    ])
+
+    # 8. Purely systemic or visceral presentation
+    is_systemic_presentation = has_systemic_fatigue_or_fever or any(k in text_lower for k in [
+        "internal", "visceral", "sepsis", "viremia", "bacteremia", "infection", "systemic"
+    ])
+
+    # 9. Oncological / Neoplastic indications
+    has_oncological_indications = any(k in text_lower for k in [
+        "neoplasm", "malignan", "carcinoma", "lymphoma", "sarcoma", "tumor", "cancer", "oncolog", "metastasis"
+    ])
+
+    # 10. Renal clearance / End-stage renal involvement
+    has_renal_failure_indications = any(k in text_lower for k in [
+        "renal failure", "kidney failure", "uremia", "dialysis", "end stage renal", "anuria", "severe azotemia", "ckd"
+    ])
+
+    # 11. Reactive bronchospasm
+    has_bronchospasm_indications = has_respiratory_symptoms and any(k in text_lower for k in [
+        "bronchospasm", "wheezing", "stridor", "airway constriction", "asthma attack", "reactive airway"
+    ])
+
+    # 12. Physiological presentation for compress/fomentation
+    is_febrile_hyperpyrexia = has_systemic_fatigue_or_fever and any(k in text_lower for k in [
+        "fever", "pyrexia", "high temperature", "chills", "ताप", "તાવ"
+    ])
+    is_acute_inflammatory_edema = any(k in text_lower for k in [
+        "acute sprain", "acute strain", "recent contusion", "swelling", "edema", "hematoma", "मोच", "सूजन", "સોજો"
+    ])
+    is_chronic_musculoskeletal_stiffness = has_musculoskeletal_symptoms and not is_acute_inflammatory_edema
+
+    return {
+        "has_radicular_symptoms": has_radicular_symptoms,
+        "has_musculoskeletal_symptoms": has_musculoskeletal_symptoms,
+        "has_respiratory_symptoms": has_respiratory_symptoms,
+        "has_gastrointestinal_symptoms": has_gastrointestinal_symptoms,
+        "has_systemic_fatigue_or_fever": has_systemic_fatigue_or_fever,
+        "has_emergency_red_flags": has_emergency_red_flags,
+        "is_localized_superficial": is_localized_superficial,
+        "is_systemic_presentation": is_systemic_presentation,
+        "has_oncological_indications": has_oncological_indications,
+        "has_renal_failure_indications": has_renal_failure_indications,
+        "has_bronchospasm_indications": has_bronchospasm_indications,
+        "is_acute_inflammatory_edema": is_acute_inflammatory_edema,
+        "is_chronic_musculoskeletal_stiffness": is_chronic_musculoskeletal_stiffness,
+    }
+
+
+def condition_supports_topical(top_condition: str = "", symptoms: list = None) -> bool:
+    """
+    Returns True if localized topical formulations (gels, creams, sprays, ointments)
+    are clinically appropriate for the patient's presentation.
+    Evaluates clinical presentation attributes: localized superficial tissue involvement
+    vs. purely systemic, visceral, or emergency presentations.
+    Completely disease-name agnostic.
+    """
+    attrs = _extract_clinical_presentation_attributes(symptoms=symptoms, top_condition=top_condition)
+
+    # Emergency cardiac or acute internal presentations -> Topical inappropriate
+    if attrs["has_emergency_red_flags"]:
+        return False
+
+    # Open bite wounds / deep punctures / bleeding cuts -> routine analgesic topical gel contraindicated
+    text_lower = f"{top_condition} " + " ".join([str(s) for s in (symptoms or [])]).lower()
+    if any(w in text_lower for w in ["bite", "dog bite", "animal bite", "deep cut", "puncture wound", "bleeding wound"]):
+        return False
+
+    # If the presentation is purely systemic/febrile with no localized musculoskeletal
+    # or cutaneous involvement, topical formulations have zero clinical indication
+    if attrs["is_systemic_presentation"] and not attrs["is_localized_superficial"]:
+        return False
+
+    # Permitted if patient has localized superficial (musculoskeletal or dermatological) indications
+    return attrs["is_localized_superficial"]
+
+
+
+def _extract_active_compound(name: str) -> str:
+    """Extracts simplified active compound name for deduplication."""
+    clean = re.sub(r'\(.*?\)', '', name).lower()
+    clean = re.sub(r'[0-9]+(\.[0-9]+)?\s*(mg|mcg|g|%|ml)', '', clean)
+    clean = re.sub(r' (inj|tablet|capsule|syrup|gel|cream|ointment|spray|drops|infusion|solution|oral) ', '', clean)
+    words = [w.strip() for w in clean.split() if len(w.strip()) > 2]
+    return words[0] if words else name.lower()[:8]
+
+
+def get_medicine_gallery(
+    medicine_entries: list,
+    max_items: Optional[int] = None,
+    top_condition: str = "",
+    symptoms: list = None,
+    duration: str = "1-3 Days"
+) -> list:
+    """
+    Enriches each medicine entry with live OpenFDA / DailyMed verification, route/form gating,
+    active compound deduplication, explicit dosage provenance, and resolved images.
+    Returns dynamic count (0, 1, 2, 3, etc.) - never pads or truncates to an artificial quota.
     """
     gallery = []
-    for entry in (medicine_entries or [])[:max_items]:
+    seen_dedup_keys = set()
+    symptoms = symptoms or []
+
+    entries = (medicine_entries or [])[:max_items] if max_items is not None else (medicine_entries or [])
+
+    for entry in entries:
         if isinstance(entry, dict):
             med_name = entry.get("medicine_name") or entry.get("name", "")
             brand_examples = entry.get("brand_examples", "")
             indication = entry.get("indication", "")
             dosage = entry.get("dosage", "")
-            course_duration = entry.get("course_duration") or entry.get("duration") or "3 – 5 Days"
+            course_duration = entry.get("course_duration") or entry.get("duration") or duration or "3 – 5 Days"
             food_timing = entry.get("food_timing", "After Food (खाने के बाद)")
             time_of_day = entry.get("time_of_day", "Twice Daily")
             warnings = entry.get("warnings", "Consult physician before use.")
             med_type = entry.get("type", "OTC")
             source_tag = entry.get("source", "Live Clinical AI")
+            spec_form = entry.get("form") or entry.get("dosage_form", "")
+            spec_route = entry.get("route", "")
         else:
             med_name = str(entry)
             brand_examples = ""
@@ -114,43 +293,152 @@ def get_medicine_gallery(medicine_entries: list, max_items: int = 8) -> list:
             warnings = "Consult doctor"
             med_type = "OTC"
             source_tag = "Clinical AI"
+            spec_form = ""
+            spec_route = ""
 
         candidate = _first_candidate_name(med_name, brand_examples)
         display_name = med_name if med_name else candidate
 
+        # Topical clinical appropriateness gate
+        name_lower = (display_name + " " + spec_form + " " + spec_route).lower()
+        is_topical = any(t in name_lower for t in ["gel", "cream", "ointment", "spray", "lotion", "topical", "liniment"])
+        if is_topical and not condition_supports_topical(top_condition, symptoms):
+            continue
+
+        # Active compound & route deduplication
+        compound = _extract_active_compound(candidate or display_name)
+        route_lower = (spec_route or "").lower()
+        if any(r in route_lower or r in name_lower for r in ["inject", "intravenous", "iv", "im", "subcutaneous", "infusion"]):
+            route_key = "injectable"
+            # Route gating: block routine injections for common mild short-duration illnesses, but permit Day 1 emergency prophylaxis
+            emergency_terms = [
+                "rabies", "arv", "rig", "antirabies", "anti-rabies", "tetanus",
+                "toxoid", "snake", "antivenom", "asv", "epinephrine", "adrenaline",
+                "resuscitation", "saline", "ringer", "dextrose", "insulin", "atropine",
+                "bite", "wound", "anaphylaxis", "shock"
+            ]
+            combined_context = (display_name + " " + top_condition + " " + " ".join([str(s) for s in symptoms])).lower()
+            is_emergency_prophylaxis = any(term in combined_context for term in emergency_terms)
+
+            is_short_duration = any(d in (str(course_duration) + " " + str(duration)).lower() for d in ["1-3", "1 day", "2 days", "3 days", "day 1", "day 0", "hours", "started today"])
+            is_common_mild = any(c in top_condition.lower() for c in ["common cold", "viral fever", "mild", "tension headache", "acute viral", "unspecified fever"])
+            if not is_emergency_prophylaxis and is_common_mild and is_short_duration:
+                _logger.info("[CareRecommendations] Blocked routine injectable '%s' for acute mild condition '%s'", display_name, top_condition)
+                continue
+        elif is_topical or any(r in route_lower for r in ["topical", "transdermal", "cutaneous"]):
+            route_key = "topical"
+        elif any(r in route_lower for r in ["inhal", "nasal"]):
+            route_key = "inhalation"
+        elif any(r in route_lower for r in ["eye", "opht"]):
+            route_key = "ophthalmic"
+        elif any(r in route_lower for r in ["ear", "otic"]):
+            route_key = "otic"
+        elif any(r in route_lower for r in ["rectal", "suppos"]):
+            route_key = "rectal"
+        else:
+            route_key = "oral"
+
+        dedup_key = (compound, route_key)
+        if dedup_key in seen_dedup_keys:
+            continue
+        seen_dedup_keys.add(dedup_key)
+
         api_source = source_tag
         api_info = None
+        fda_live = False
+        dailymed_live = False
+        dailymed_info = []
 
-        # Check OpenFDA for live enrichment
         if candidate:
             try:
+                from api.openfda import search_drug_openfda
                 api_info = search_drug_openfda(candidate)
-                if api_info and api_info.get("source"):
-                    api_source = f"{source_tag} + {api_info.get('source')}"
-            except Exception:
-                pass
+                if api_info and (api_info.get("is_live") or (api_info.get("status") == "SUCCESS" and api_info.get("brand_name"))):
+                    fda_live = True
+            except Exception as exc:
+                _logger.warning("[CareRecommendations] OpenFDA verification notice for '%s': %s", candidate, exc)
 
-        # Pass full name and brand to resolve real packaging photo
+            try:
+                from api.dailymed import search_dailymed_drugnames
+                dailymed_info = search_dailymed_drugnames(candidate)
+                if dailymed_info and len(dailymed_info) > 0:
+                    dailymed_live = True
+            except Exception as exc:
+                _logger.warning("[CareRecommendations] DailyMed verification notice for '%s': %s", candidate, exc)
+
+        is_clinically_verified = bool(fda_live or dailymed_live)
+        if fda_live and dailymed_live:
+            verification_status = "OPENFDA_AND_DAILYMED_VERIFIED"
+            provider = "OpenFDA + DailyMed"
+            api_source = f"{source_tag} [OpenFDA + DailyMed Verified]"
+        elif fda_live:
+            verification_status = "OPENFDA_VERIFIED"
+            provider = "OpenFDA"
+            api_source = f"{source_tag} [OpenFDA Verified]"
+        elif dailymed_live:
+            verification_status = "DAILYMED_VERIFIED"
+            provider = "DailyMed"
+            api_source = f"{source_tag} [DailyMed Verified]"
+        else:
+            verification_status = "CLINICAL_REFERENCE"
+            provider = "DocMindX Clinical Reference"
+            api_source = f"{source_tag} [Clinical Reference]"
+
+        candidate_dosage = dosage
+        verified_label_dosage = None
+        verified_strength = None
+        verified_route = spec_route or route_key.capitalize()
+        verified_form = spec_form or ("Gel" if is_topical else "Tablet" if route_key == "oral" else route_key.capitalize())
+
+        if api_info and isinstance(api_info, dict):
+            if api_info.get("verified_label_dosage"):
+                verified_label_dosage = api_info.get("verified_label_dosage")
+            if api_info.get("verified_strength"):
+                verified_strength = api_info.get("verified_strength")
+            if api_info.get("verified_route"):
+                verified_route = api_info.get("verified_route")
+            if api_info.get("verified_form"):
+                verified_form = api_info.get("verified_form")
+
+        is_inj = (route_key == "injectable")
+        is_hospital_protocol = is_inj
+        admin_setting = "Hospital / Clinic Administration by Healthcare Professional Only" if is_inj else "Self-administration / Oral as directed"
+
         search_query = f"{display_name} {candidate}".strip()
         image_path, is_fallback = resolve_image("medicine", search_query)
 
         gallery.append({
             "name": display_name,
+            "medicine_name": display_name,
+            "candidate_medication": display_name,
             "candidate_name": candidate,
-            "image": image_path,
-            "is_fallback": is_fallback,
+            "candidate_dosage": candidate_dosage,
+            "dosage": dosage,
+            "verified_label_dosage": verified_label_dosage,
+            "verified_strength": verified_strength,
+            "verified_route": verified_route,
+            "verified_form": verified_form,
+            "provider": provider,
+            "verification_status": verification_status,
+            "is_live": bool(is_clinically_verified),
+            "is_fallback": bool(not is_clinically_verified),
+            "is_verified": bool(is_clinically_verified),
             "source": api_source,
             "indication": indication,
-            "dosage": dosage,
             "course_duration": course_duration,
             "food_timing": food_timing,
             "time_of_day": time_of_day,
             "warnings": warnings,
             "type": med_type,
             "openfda": api_info,
+            "dailymed": dailymed_info[:2] if dailymed_info else [],
+            "route": verified_route,
+            "dosage_form": verified_form,
+            "is_hospital_protocol": is_hospital_protocol,
+            "administration_setting": admin_setting,
+            "image": image_path,
         })
     return gallery
-
 
 def get_youtube_search_url(query: str) -> str:
     """
@@ -192,6 +480,10 @@ def get_dynamic_clinical_recommendations(
     cond_lower = (top_condition or "").lower()
     sym_lower = " ".join([str(s) for s in symptoms]).lower()
 
+    # Extract standardized clinical presentation attributes and emergency gate
+    attrs = _extract_clinical_presentation_attributes(symptoms=symptoms, top_condition=top_condition, user_context=user_context)
+    is_emergency = bool(attrs.get("has_emergency_red_flags") or user_context.get("is_emergency", False))
+
     # Retrieve live seasonal health intelligence for the selected Indian State
     seasonal_data = get_seasonal_health_context(state, lang_code=lang_code)
 
@@ -215,6 +507,13 @@ PATIENT PROFILE:
 - Additional Notes: {details}
 - Primary Assessed Condition: {top_condition or 'Acute Illness'}
 
+ANTI-FABRICATION RULES (MANDATORY):
+0. ONLY recommend medicines that are DIRECTLY indicated for the reported symptoms and assessed condition.
+   DO NOT add medicines for symptoms the patient did NOT report.
+   DO NOT invent conditions or symptoms not present in the patient profile above.
+   Use qualified clinical language: "Pattern compatible with..." NOT "Patient is diagnosed with..."
+   Medicine count must be EXACTLY what is clinically required — do NOT pad with extra medicines.
+
 CRITICAL CLINICAL INSTRUCTIONS:
 1. LANGUAGE CONSISTENCY:
    - All text, indications, instructions, dietary advice, red flags, and food timing MUST be strictly in {lang_instruction}.
@@ -223,11 +522,11 @@ CRITICAL CLINICAL INSTRUCTIONS:
    - If Gujarati is requested, use pure Gujarati: "જમ્યા પછી", "જમ્યા પહેલા (ખાલી પેટે)".
 
 2. ILLNESS-SPECIFIC CLINICAL SUMMARY & TIMELINE:
-   - "summary": A personalized 2-3 sentence clinical summary strictly tailored to {top_condition}, current season ({seasonal_data['season_name']}), and reported symptoms in {lang_instruction}.
-   - "recovery_duration": Realistic recovery timeline strictly tailored to {top_condition}, severity ({severity}), and duration ({duration}) in {lang_instruction}.
+   - "summary": A personalized 2-3 sentence clinical summary strictly tailored to {top_condition}, current season ({seasonal_data['season_name']}), and reported symptoms in {lang_instruction}. Use "Pattern compatible with..." language.
+   - "recovery_duration": Realistic recovery timeline — use qualified language ("Recovery typically ranges from X to Y days depending on...") in {lang_instruction}.
 
 3. TIER 1: DYNAMIC ORAL MEDICINES:
-   - Prescribe the required medications (e.g. 3, 4, 5, 6 or more) appropriate for this patient's exact symptoms, severity, and duration.
+   - Prescribe ONLY the clinically indicated medications directly supported by evidence for this patient's exact symptoms, severity, and duration (return dynamic count: 0, 1, 2, 3, etc. - do NOT artificially target any fixed count).
    - For EACH medicine provide:
      - "name": Generic name with popular Indian brand in parentheses (e.g., "Paracetamol 650mg (Dolo 650 / Calpol)", "Pantoprazole 40mg (Pan 40)", "Oral Rehydration Salts (Electral / ORS)", "Azithromycin 500mg (Azee 500)", "Levocetirizine 5mg (Levocet)").
      - "indication": Specific symptom it treats in {lang_instruction}.
@@ -263,8 +562,8 @@ CRITICAL CLINICAL INSTRUCTIONS:
 
 6. TIER 4: PHYSIOTHERAPY & REHABILITATION EXERCISES (CONDITIONAL):
    - Analyze whether physical therapy, spinal mobility, joint rehabilitation exercises, or postural therapy are indicated for {top_condition}.
-   - Set "is_indicated" to true ONLY for musculoskeletal, orthopedic, spine, joint, or neurological conditions (e.g. Back pain, Sciatica, Arthritis, Frozen shoulder, Spondylosis, Knee pain, Sprain).
-   - Set "is_indicated" to false for purely systemic illnesses like viral fever, dengue, malaria, flu, simple headache.
+   - Set "is_indicated" to true ONLY when localized musculoskeletal, spinal, joint, or peripheral motor rehabilitation is clinically indicated.
+   - Set "is_indicated" to false for purely systemic illnesses, uncomplicated headaches, or non-musculoskeletal presentations.
    - If indicated, provide "condition_target" in {lang_instruction} and 2 to 4 "exercises":
      - "name": Name of stretch/exercise (e.g. "Cat-Cow Spinal Stretch", "Straight Leg Raise", "Wall Ladder Climbing").
      - "target_area": Targeted joint or muscle group in {lang_instruction}.
@@ -272,12 +571,12 @@ CRITICAL CLINICAL INSTRUCTIONS:
      - "caution": Warning when to stop (e.g. "Stop if sharp shooting pain occurs") in {lang_instruction}.
 
 7. TIER 5: SPECIALIZED HOSPITAL CLINICAL THERAPIES (CONDITIONAL):
-   - Analyze whether specialized tertiary clinical hospital procedures or therapies are required for this condition (e.g. Cancer/Malignancy -> Chemotherapy, Radiotherapy; Kidney Failure -> Hemodialysis; Severe Asthma/COPD -> Nebulization Therapy, Oxygen Support; Cardiac disease -> Angioplasty / Cardiac Rehab).
+   - Analyze whether specialized tertiary clinical hospital procedures or therapies are required for this condition (e.g. Malignancy -> Chemotherapy/Targeted biologics; Renal Failure -> Hemodialysis; Severe Airway Obstruction -> Nebulization Therapy, Oxygen Support; Cardiac ischemia -> Invasive Cardiology / Revascularization).
    - Set "is_indicated" to true ONLY for serious, chronic, or oncological conditions. Set "is_indicated": false for common or self-limiting conditions.
    - If true, provide "therapy_name", "specialist_consult", "overview", and "patient_guidance" in {lang_instruction}.
 
 8. SUPPORTIVE YOGA:
-   - Provide 3 to 4 restorative yoga postures tailored to this condition.
+   - Provide restorative yoga postures tailored to this clinical presentation. CRITICAL EXERCISE SAFETY RULE: For any patient presenting with radicular nerve symptoms, radiating limb pain, acute disc herniation risk, or neuroforaminal compression, NEVER prescribe spinal hyperextension postures (such as Cobra Pose / Bhujangasana or deep backward bends) or high-load axial compression. Recommend only gentle decompression, neutral spinal alignment, and restorative postures.
 
 9. DIETARY, HYDRATION, DO'S, DON'TS & RED FLAGS:
    - "foods_to_eat", "foods_to_avoid", "hydration_advice", "dos", "donts", "red_flags" in {lang_instruction}.
@@ -361,34 +660,36 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
 }}"""
     ai_data = None
     api_source_name = "DocMindX AI Verified Care"
+    ai_is_live = False
+    ai_provider_used = None
+    fallback_warning = ""
 
-    # 1. Try Gemini API (Primary High-Precision Multilingual Live Engine)
-    if GEMINI_API_KEY:
-        for gemini_model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048, "responseMimeType": "application/json"}
-                }
-                headers = {"Content-Type": "application/json"}
-                res = requests.post(url, headers=headers, json=payload, timeout=10)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        text_out = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                        parsed = _clean_json_response(text_out)
-                        if parsed and parsed.get("medicines"):
-                            ai_data = parsed
-                            api_source_name = "DocMindX AI Verified Care"
-                            break
-            except Exception as e:
-                print(f"Gemini {gemini_model} recommendations notice: {e}")
+    # 1. Try Gemini API (Primary — Multi-Key Failover Pool)
+    if gemini_pool.get_active_keys():
+        gemini_payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.15, "maxOutputTokens": 2500, "responseMimeType": "application/json"}
+        }
+        res_data, gemini_model, key_used = gemini_pool.execute_with_failover(
+            payload=gemini_payload,
+            models=_GEMINI_MODELS,
+            timeout=12
+        )
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                text_out = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                parsed = _clean_json_response(text_out)
+                if parsed and parsed.get("medicines"):
+                    ai_data = parsed
+                    api_source_name = f"DocMindX Clinical AI"
+                    ai_is_live = True
+                    ai_provider_used = f"Gemini ({gemini_model})"
+                    _logger.info("[CareRecommendations] Gemini %s SUCCESS with key pool", gemini_model)
 
-    # 2. Try Groq API (Secondary Live Engine)
+    # 2. Try Groq API (Secondary — valid model chain)
     if not ai_data and GROQ_API_KEY:
-        for groq_model in ["qwen/qwen3.6-27b", "llama-3.3-70b-versatile", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
+        for groq_model in _GROQ_MODELS:
             try:
                 headers = {
                     "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -400,86 +701,70 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                         {"role": "system", "content": f"You are DocMindX AI. Return strict JSON only in {lang_instruction}. Do not include emojis."},
                         {"role": "user", "content": prompt}
                     ],
-                    "temperature": 0.2,
-                    "max_tokens": 1800,
+                    "temperature": 0.15,
+                    "max_tokens": 2000,
                     "response_format": {"type": "json_object"}
                 }
-                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=10)
                 if res.status_code == 200:
                     text_out = res.json()["choices"][0]["message"]["content"]
                     parsed = _clean_json_response(text_out)
                     if parsed and parsed.get("medicines"):
                         ai_data = parsed
-                        api_source_name = "DocMindX AI Verified Care"
+                        api_source_name = f"DocMindX Clinical AI"
+                        ai_is_live = True
+                        ai_provider_used = f"Groq ({groq_model})"
+                        _logger.info("[CareRecommendations] Groq %s SUCCESS", groq_model)
                         break
-            except Exception as e:
-                print(f"Groq {groq_model} recommendations notice: {e}")
+                else:
+                    _logger.warning("[CareRecommendations] Groq %s HTTP %s", groq_model, res.status_code)
+            except requests.exceptions.Timeout:
+                _logger.warning("[CareRecommendations] Groq %s TIMEOUT", groq_model)
+            except requests.exceptions.ConnectionError:
+                _logger.warning("[CareRecommendations] Groq %s CONNECTION ERROR", groq_model)
+            except Exception as exc:
+                _logger.error("[CareRecommendations] Groq %s error: %s", groq_model, exc)
 
     # Process AI Data if successfully fetched from Live APIs
     if ai_data and ai_data.get("medicines"):
-        # Format medicines with OpenFDA + image resolver
+        # Format medicines with OpenFDA + DailyMed verification + image resolver
         raw_meds = ai_data.get("medicines", [])
         for m in raw_meds:
-            m["source"] = "DocMindX AI Verified"
+            m["source"] = "Clinical AI Candidate (Gemini/Groq)"
         med_gallery = get_medicine_gallery(raw_meds, max_items=12)
 
         # Format Yoga / Physio with YouTube search URLs and images
         yoga_list = []
-        raw_yoga = ai_data.get("yoga_physio") or ai_data.get("yoga_recommendations") or ai_data.get("yoga") or []
-        for y in raw_yoga:
-            y_name = y.get("name", "Child's Pose")
-            y_sansk = y.get("sanskrit_name", "")
-            y_ben = y.get("benefits", "Restorative stretching and recovery.")
-            y_inst = y.get("instructions", "")
-            
-            image_path, is_fallback_img = resolve_image("yoga", f"{y_name} {y_sansk}")
-            youtube_url = get_youtube_search_url(f"{y_name} {y_sansk}")
+        if is_emergency:
+            # EMERGENCY GATE: All routine yoga and exercises are strictly suspended
+            yoga_list = []
+        else:
+            raw_yoga = ai_data.get("yoga_physio") or ai_data.get("yoga_recommendations") or ai_data.get("yoga") or []
+            for y in raw_yoga:
+                y_name = y.get("name", "Restorative Posture")
+                y_sansk = y.get("sanskrit_name", "")
+                # Prevent hyperextension postures for radicular symptoms
+                if attrs.get("has_radicular_symptoms") and any(k in f"{y_name} {y_sansk}".lower() for k in ["cobra", "bhujanga", "backward bend", "backbend"]):
+                    continue
+                y_ben = y.get("benefits", "Restorative stretching and recovery.")
+                y_inst = y.get("instructions", "")
+                
+                image_path, is_fallback_img = resolve_image("yoga", f"{y_name} {y_sansk}")
+                youtube_url = get_youtube_search_url(f"{y_name} {y_sansk}")
 
-            yoga_list.append({
-                "name": y_name,
-                "sanskrit_name": y_sansk,
-                "benefits": y_ben,
-                "instructions": y_inst,
-                "image": image_path,
-                "is_fallback": is_fallback_img,
-                "youtube_url": youtube_url
-            })
-
-        # If LLM returned empty yoga list, populate from localized poses
-        if not yoga_list:
-            if lang_code == "gu":
-                curated_poses = [
-                    {"name": "બાળાસન (Child's Pose)", "sanskrit_name": "Balasana", "benefits": "શરીરના થાકને દૂર કરે છે અને માનસિક શાંતિ આપે છે.", "instructions": "ચટાઈ પર ઘૂંટણ વાળીને આગળ ઝૂકો અને શ્વાસ સામાન્ય રાખો."},
-                    {"name": "અનુલોમ વિલોમ (Pranayama)", "sanskrit_name": "Anulom Vilom", "benefits": "શ્વસનતંત્રને મજબૂત બનાવે છે અને ઓક્સિજન વધારે છે.", "instructions": "સીધા બેસીને એક નસકોરાથી શ્વાસ લો અને બીજામાંથી છોડો."},
-                    {"name": "શવાસન (Corpse Pose)", "sanskrit_name": "Shavasana", "benefits": "શરીરના દરેક સ્નાયુને ઊંડો આરામ આપી રિકવરી ઝડપી બનાવે છે.", "instructions": "પીઠ પર સીધા સૂઈ જાવ અને શરીરને ઢીલું છોડો."},
-                    {"name": "ભુજંગાસન (Cobra Pose)", "sanskrit_name": "Bhujangasana", "benefits": "છાતી અને ફેફસાંને ખોલે છે તથા પીઠનો દુખાવો ઓછો કરે છે.", "instructions": "પેટ પર સૂઈને બંને હાથના સહારે છાતી ઉપર ઉઠાવો."}
-                ]
-            elif lang_code == "hi":
-                curated_poses = [
-                    {"name": "बालासन (Child's Pose)", "sanskrit_name": "Balasana", "benefits": "शरीर की थकान दूर करता है और नर्वस सिस्टम को शांत करता है।", "instructions": "घुटनों के बल बैठें और आगे झुककर सिर जमीन पर टिकाएं।"},
-                    {"name": "अनुलोम विलोम प्राणायाम", "sanskrit_name": "Anulom Vilom", "benefits": "फेफड़ों की कार्यक्षमता बढ़ाता है और ऑक्सीजन स्तर सुधारता है।", "instructions": "सीधे बैठकर एक नासिका से सांस लें और दूसरी से छोड़ें।"},
-                    {"name": "शवासन (Corpse Pose)", "sanskrit_name": "Shavasana", "benefits": "रोग प्रतिरोधक क्षमता बढ़ाने और गहरी रिकवरी में सहायक।", "instructions": "पीठ के बल सीधे लेटें और पूरे शरीर को ढीला छोड़ें।"},
-                    {"name": "भुजंगासन (Cobra Pose)", "sanskrit_name": "Bhujangasana", "benefits": "छाती के संक्रमण में राहत और फेफड़ों को मजबूती देता है।", "instructions": "पेट के बल लेटकर हाथों के सहारे छाती ऊपर उठाएं।"}
-                ]
-            else:
-                curated_poses = [
-                    {"name": "Child's Pose", "sanskrit_name": "Balasana", "benefits": "Gently calms the nervous system, relieves fatigue and lowers tension.", "instructions": "Kneel, fold forward, resting forehead on mat with arms extended."},
-                    {"name": "Pranayama Deep Breathing", "sanskrit_name": "Anulom Vilom", "benefits": "Enhances oxygen saturation and respiratory vitality.", "instructions": "Sit upright, inhale through one nostril and exhale through other."},
-                    {"name": "Corpse Pose", "sanskrit_name": "Shavasana", "benefits": "Facilitates deep cellular recovery and restores energy.", "instructions": "Lie flat on back with arms relaxed and breathe naturally."},
-                    {"name": "Cobra Pose", "sanskrit_name": "Bhujangasana", "benefits": "Opens chest cavity and strengthens spinal musculature.", "instructions": "Lie prone and gently elevate upper torso."}
-                ]
-            for p in curated_poses:
-                image_path, is_fallback_img = resolve_image("yoga", p["sanskrit_name"])
-                youtube_url = get_youtube_search_url(f"{p['name']} {p['sanskrit_name']}")
                 yoga_list.append({
-                    "name": p["name"],
-                    "sanskrit_name": p["sanskrit_name"],
-                    "benefits": p["benefits"],
-                    "instructions": p["instructions"],
+                    "name": y_name,
+                    "sanskrit_name": y_sansk,
+                    "benefits": y_ben,
+                    "instructions": y_inst,
                     "image": image_path,
                     "is_fallback": is_fallback_img,
                     "youtube_url": youtube_url
                 })
+
+            # If LLM returned empty yoga list, populate safely from clinical attribute registry
+            if not yoga_list:
+                yoga_list = _get_condition_fallback_yoga(top_condition, symptoms, lang_code)
 
         foods_to_eat = ai_data.get("foods_to_eat") or []
         if isinstance(foods_to_eat, str):
@@ -526,8 +811,8 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 if os.path.exists(guidance_csv_path):
                     import pandas as pd
                     df_g = pd.read_csv(guidance_csv_path)
-                    cond_sub = (top_condition or "").lower().strip()[:8]
-                    matched_g = df_g[df_g["condition_name"].str.lower().str.contains(cond_sub, na=False, regex=False)]
+                    cond_words = [w for w in re.findall(r'\b\w{4,}\b', (top_condition or "").lower()) if w not in ["disease", "syndrome", "acute", "chronic", "pain"]]
+                    matched_g = df_g[df_g["condition_name"].str.lower().apply(lambda x: any(w in str(x).lower() for w in cond_words))] if cond_words else df_g.head(0)
                     if not matched_g.empty:
                         row = matched_g.iloc[0]
                         if not foods_to_eat:
@@ -547,8 +832,8 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                             mon_adv = str(row.get("monitoring_advice", "")).strip()
                             if mon_adv:
                                 red_flag_tips.append(f"Clinical Alert: {mon_adv}")
-            except Exception as e:
-                print(f"Condition guidance lookup notice: {e}")
+            except Exception as exc:
+                _logger.error("[CareRecommendations] Condition guidance lookup error: %s", exc)
 
         # Default dos & donts if empty
         if not clinical_dos:
@@ -663,6 +948,16 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 "exercises": enriched_exercises
             }
 
+        # Emergency Gate: Suppress routine physiotherapy exercises
+        if is_emergency:
+            physio_data = {
+                "is_indicated": False,
+                "clinical_rationale": "Emergency Gate Activated",
+                "condition_target": "Emergency Medical Evaluation Required",
+                "cautions": "Routine physical exercises are strictly contraindicated during an acute emergency.",
+                "exercises": []
+            }
+
         # 4. Parse Specialized Clinical Therapies (Chemotherapy, Dialysis, Nebulization, etc.)
         specialized_data = ai_data.get("specialized_therapies") or ai_data.get("specialized_therapy") or {}
         if not isinstance(specialized_data, dict):
@@ -703,15 +998,25 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 "message": seasonal_alert_data.get("message") or seasonal_data["alert_description"]
             }
 
+        summary_val = ai_data.get("summary", "")
+        if is_emergency and "EMERGENCY" not in summary_val.upper():
+            summary_val = "CRITICAL EMERGENCY ALERT: Clinical findings indicate a possible medical emergency requiring urgent in-person medical evaluation. Routine exercise and home management are suspended. " + summary_val
+        if is_emergency:
+            red_flag_tips = ["URGENT EMERGENCY EVALUATION REQUIRED: Report immediately to an Emergency Department."] + [r for r in red_flag_tips if "EMERGENCY EVALUATION" not in r]
+
         return {
             "is_fallback": False,
-            "api_source": api_source_name,
+            "is_live": True,
+            "fallback_used": False,
             "fallback_warning": "",
+            "api_source": api_source_name,
+            "ai_provider_used": ai_provider_used or "Unknown AI",
             "top_condition": top_condition,
             "lang_code": lang_code,
             "state": state,
-            "summary": ai_data.get("summary", ""),
-            "recovery_duration": ai_data.get("recovery_duration", "5 – 7 Days with appropriate rest and treatment."),
+            "is_emergency": is_emergency,
+            "summary": summary_val,
+            "recovery_duration": ai_data.get("recovery_duration", "Recovery timeline varies by individual response to treatment and symptom severity."),
             "seasonal_context": seasonal_data,
             "seasonal_alert": seasonal_alert_data,
             "medicine_gallery": med_gallery,
@@ -731,7 +1036,349 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
         }
 
     # 3. Resilient Local Dataset Fallback (When APIs are unreachable)
+    _logger.warning("[CareRecommendations] All AI providers failed — using LOCAL dataset fallback for: '%s'", top_condition)
     return _build_local_dataset_fallback(symptoms, user_context, top_condition, lang_code)
+
+
+
+def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_code: str = "en") -> list:
+    """
+    Dynamically loads condition-specific medicines from india_major_diseases.csv.
+    Returns dynamic count (1 to 4, or 0 if acute emergency) - never forces exactly 4.
+    """
+    cond_lower = (top_condition or "").lower().strip()
+    sym_lower = " ".join([str(s) for s in (symptoms or [])]).lower()
+
+    # If no symptoms reported or input is unresolvable ("something feels strange in my body"), return 0 medicines
+    if not symptoms or all(str(s).strip().lower() in ["something feels strange in my body", "unspecified", "unknown", "none", "insufficient_information", ""] for s in symptoms):
+        return []
+
+    # Emergency check: acute life-threatening presentations require hospital emergency care
+    if any(k in cond_lower or k in sym_lower for k in ["heart attack", "myocardial", "stroke", "severe chest pain", "crushing chest pain", "acute shock", "unconscious", "cyanosis"]):
+        return []
+
+    ft_after = "After Food" if lang_code == "en" else "भोजन के बाद" if lang_code == "hi" else "જમ્યા પછી"
+    ft_before = "Before Food (Empty Stomach)" if lang_code == "en" else "भोजन से पहले (खाली पेट)" if lang_code == "hi" else "જમ્યા પહેલા (ખાલી પેટે)"
+
+    # Look up in india_major_diseases.csv
+    try:
+        import pandas as pd
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", "disease", "india_major_diseases.csv")
+        if not os.path.exists(csv_path):
+            csv_path = "datasets/disease/india_major_diseases.csv"
+        if os.path.exists(csv_path):
+            df_major = pd.read_csv(csv_path)
+            cond_words = [w for w in re.findall(r'\b\w{4,}\b', cond_lower) if w not in ["disease", "syndrome", "acute", "chronic", "pain"]]
+            matched = df_major[df_major["disease_name"].str.lower().apply(lambda x: any(w in str(x).lower() for w in cond_words))] if cond_words else df_major.head(0)
+            if not matched.empty:
+                row = matched.iloc[0]
+                meds_raw = str(row.get("medicines", "[]"))
+                import ast
+                try:
+                    med_list = ast.literal_eval(meds_raw) if meds_raw.startswith("[") else [m.strip() for m in meds_raw.split(",") if m.strip()]
+                except Exception:
+                    med_list = [m.strip() for m in meds_raw.split(",") if m.strip()]
+                
+                parsed = []
+                for m_str in med_list:
+                    m_clean = str(m_str).strip(" '\"[]")
+                    if not m_clean:
+                        continue
+                    is_ppi = any(p in m_clean.lower() for p in ["prazole", "antacid"])
+                    parsed.append({
+                        "name": m_clean,
+                        "indication": f"Standard clinical therapy for {row.get('disease_name', top_condition)}.",
+                        "dosage": "As directed by physician (1 tablet daily / twice daily).",
+                        "course_duration": "5 to 7 Days" if lang_code == "en" else "5 से 7 दिन",
+                        "food_timing": ft_before if is_ppi else ft_after,
+                        "time_of_day": "Morning Empty Stomach" if is_ppi else "After meals",
+                        "type": "Prescription",
+                        "warnings": "Take strictly under clinical supervision." if lang_code == "en" else "चिकित्सक के परामर्श अनुसार लें।",
+                        "source": "India MoHFW Master Guidelines"
+                    })
+                if parsed:
+                    return parsed
+    except Exception as e:
+        pass
+
+    # Symptom-driven dynamic fallback
+    parsed = []
+    if any(f in sym_lower for f in ["fever", "pyrexia", "temperature", "बुखार", "તાવ"]):
+        parsed.append({
+            "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
+            "indication": "Reduces elevated body temperature and body aches." if lang_code == "en" else "बुखार और बदन दर्द में राहत देता है।",
+            "dosage": "1 Tablet every 6 to 8 hours as needed.",
+            "course_duration": "3 to 5 Days",
+            "food_timing": ft_after,
+            "time_of_day": "After meals",
+            "type": "OTC",
+            "warnings": "Do not exceed 3000mg per 24 hours.",
+            "source": "DocMindX Clinical Master"
+        })
+        parsed.append({
+            "name": "Oral Rehydration Salts (Electral / ORS)",
+            "indication": "Restores hydration and vital electrolyte balance.",
+            "dosage": "1 Sachet dissolved in 1 Litre clean water.",
+            "course_duration": "2 to 3 Days",
+            "food_timing": "With Water",
+            "time_of_day": "Throughout the day",
+            "type": "OTC",
+            "warnings": "Reconstitute in exact quantity of clean water.",
+            "source": "DocMindX Clinical Master"
+        })
+    elif any(p in sym_lower for p in ["back", "joint", "muscle", "sprain", "strain", "stiff", "tendon", "ligament", "ache", "pain", "કમર", "કમરનો દુખાવો", "પીઠ", "દર્દ"]):
+        parsed.append({
+            "name": "Ibuprofen 400mg (Brufen / Ibugesic)",
+            "indication": "Relieves musculoskeletal inflammation and pain.",
+            "dosage": "1 Tablet twice daily after food.",
+            "course_duration": "3 to 5 Days",
+            "food_timing": ft_after,
+            "time_of_day": "Morning & Night",
+            "type": "Prescription",
+            "warnings": "Always take after a meal to protect the stomach.",
+            "source": "DocMindX Clinical Master"
+        })
+        if condition_supports_topical(top_condition, symptoms):
+            parsed.append({
+                "name": "Diclofenac Diethylamine 1.16% Gel (Volini / Voveran)",
+                "indication": "Localized topical pain relief for muscular stiffness.",
+                "dosage": "Apply gently 2 to 3 times daily on affected area.",
+                "course_duration": "3 to 5 Days",
+                "food_timing": "External Use Only",
+                "time_of_day": "As needed",
+                "type": "OTC",
+                "warnings": "For external application only. Do not apply on broken skin.",
+                "source": "DocMindX Clinical Master"
+            })
+    else:
+        # Only add paracetamol if pain was explicitly reported
+        if any(w in sym_lower for w in ["pain", "discomfort", "sore", "hurt", "दर्द", "દુખાવો"]):
+            parsed.append({
+                "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
+                "indication": "Symptomatic pain and mild discomfort relief.",
+                "dosage": "1 Tablet SOS when needed.",
+                "course_duration": "3 Days",
+                "food_timing": ft_after,
+                "time_of_day": "As needed",
+                "type": "OTC",
+                "warnings": "Consult a registered doctor if symptoms persist.",
+                "source": "DocMindX Clinical Master"
+            })
+    return parsed
+
+
+# ==============================================================================
+# GENERALIZED EXERCISE & YOGA CLINICAL METADATA REGISTRY
+# ==============================================================================
+YOGA_POSTURE_REGISTRY = [
+    {
+        "name": "Knees-to-Chest Pose",
+        "sanskrit_name": "Apanasana",
+        "target_body_region": "lumbar_spine",
+        "movement_type": "flexion",
+        "spinal_extension": "none",
+        "loading_level": "none",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": ["acute_abdominal_surgery", "third_trimester_pregnancy"],
+        "suitable_for_attributes": ["lumbar_musculoskeletal", "radicular_symptoms", "digestive_distress"],
+        "benefits": "Gently decompresses lumbar spine without nerve-root pinching.",
+        "instructions": "Lie on your back, gently draw one knee then both toward chest."
+    },
+    {
+        "name": "Reclining Hamstring Stretch",
+        "sanskrit_name": "Supta Padangusthasana",
+        "target_body_region": "lower_extremity",
+        "movement_type": "restorative",
+        "spinal_extension": "none",
+        "loading_level": "none",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": ["acute_hamstring_tear"],
+        "suitable_for_attributes": ["lumbar_musculoskeletal", "radicular_symptoms"],
+        "benefits": "Safely releases posterior myofascial tension along lower extremity nerve pathways.",
+        "instructions": "Lie flat, loop towel around ball of foot and gently extend leg upward without forcing."
+    },
+    {
+        "name": "Pelvic Tilts",
+        "sanskrit_name": "Supta Pelvic Tilt",
+        "target_body_region": "lumbar_spine",
+        "movement_type": "neutral_stabilization",
+        "spinal_extension": "none",
+        "loading_level": "low",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": [],
+        "suitable_for_attributes": ["lumbar_musculoskeletal", "radicular_symptoms"],
+        "benefits": "Strengthens deep core stabilisers to support lumbar vertebrae in neutral alignment.",
+        "instructions": "Lie on back with knees bent, gently flatten lower back into mat."
+    },
+    {
+        "name": "Child's Pose",
+        "sanskrit_name": "Balasana",
+        "target_body_region": "spine_and_systemic",
+        "movement_type": "gentle_flexion",
+        "spinal_extension": "none",
+        "loading_level": "none",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": ["acute_knee_injury"],
+        "suitable_for_attributes": ["lumbar_musculoskeletal", "radicular_symptoms", "respiratory_support", "general_fatigue"],
+        "benefits": "Gently elongates the dorsal spine and calms the autonomic nervous system.",
+        "instructions": "Kneel, sit back on heels, gently fold forward extending arms."
+    },
+    {
+        "name": "Cobra Pose",
+        "sanskrit_name": "Bhujangasana",
+        "target_body_region": "lumbar_spine",
+        "movement_type": "extension",
+        "spinal_extension": "hyperextension",
+        "loading_level": "moderate",
+        "impact_level": "low",
+        "neurological_symptom_risk": "high",
+        "contraindications": ["radicular_symptoms", "acute_lumbar_herniation", "spinal_stenosis", "nerve_compression"],
+        "suitable_for_attributes": ["mild_non_radicular_back_stiffness"],
+        "benefits": "Strengthens upper spinal extensor musculature.",
+        "instructions": "Lie prone, gently press hands under shoulders to lift chest while keeping hips grounded."
+    },
+    {
+        "name": "Alternate Nostril Breathing",
+        "sanskrit_name": "Anulom Vilom",
+        "target_body_region": "respiratory",
+        "movement_type": "pranayama",
+        "spinal_extension": "none",
+        "loading_level": "none",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": [],
+        "suitable_for_attributes": ["respiratory_support", "general_fatigue", "stress_reduction"],
+        "benefits": "Enhances respiratory vital capacity, lowers sympathetic tone, and calms the nervous system.",
+        "instructions": "Sit tall, inhale through left nostril, exhale through right nostril gently."
+    },
+    {
+        "name": "Deep Yogic Breathing",
+        "sanskrit_name": "Bhastrika",
+        "target_body_region": "respiratory",
+        "movement_type": "pranayama",
+        "spinal_extension": "none",
+        "loading_level": "none",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": ["uncontrolled_hypertension", "active_vertigo"],
+        "suitable_for_attributes": ["respiratory_support"],
+        "benefits": "Clears bronchopulmonary congestion and increases oxygenation.",
+        "instructions": "Sit comfortably with upright spine, breathe deeply and rhythmically."
+    },
+    {
+        "name": "Diamond Pose",
+        "sanskrit_name": "Vajrasana",
+        "target_body_region": "pelvic_digestive",
+        "movement_type": "restorative",
+        "spinal_extension": "none",
+        "loading_level": "low",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": ["acute_knee_injury"],
+        "suitable_for_attributes": ["digestive_distress"],
+        "benefits": "Promotes gastric circulation and aids post-prandial digestion.",
+        "instructions": "Sit on heels with spine straight for 5 to 10 minutes after light meals."
+    },
+    {
+        "name": "Wind-Relieving Pose",
+        "sanskrit_name": "Pawanmuktasana",
+        "target_body_region": "abdominal_digestive",
+        "movement_type": "flexion",
+        "spinal_extension": "none",
+        "loading_level": "none",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": ["recent_abdominal_surgery"],
+        "suitable_for_attributes": ["digestive_distress", "lumbar_musculoskeletal"],
+        "benefits": "Assists gentle peristalsis and abdominal gas release.",
+        "instructions": "Lie on back, hug knees to chest gently."
+    },
+    {
+        "name": "Corpse Pose",
+        "sanskrit_name": "Shavasana",
+        "target_body_region": "systemic_rest",
+        "movement_type": "restorative",
+        "spinal_extension": "none",
+        "loading_level": "none",
+        "impact_level": "none",
+        "neurological_symptom_risk": "none",
+        "contraindications": [],
+        "suitable_for_attributes": ["general_fatigue", "digestive_distress", "respiratory_support", "stress_reduction"],
+        "benefits": "Facilitates deep cellular rest and somatic recovery.",
+        "instructions": "Lie flat on back and relax all abdominal muscles."
+    }
+]
+
+
+def _get_condition_fallback_yoga(top_condition: str, symptoms: list, lang_code: str = "en") -> list:
+    """
+    Generalized attribute-based supportive yoga & exercise safety engine.
+    Reasons from clinical attributes (movement properties, spinal extension, neurological risk,
+    and patient clinical presentation attributes). Completely disease-name agnostic.
+    """
+    attrs = _extract_clinical_presentation_attributes(symptoms=symptoms, top_condition=top_condition)
+
+    # Absolute contraindication: acute emergency red flags
+    if attrs["has_emergency_red_flags"]:
+        return []
+
+    poses = []
+    for posture in YOGA_POSTURE_REGISTRY:
+        # GENERALIZED SAFETY RULE: Postures with significant spinal hyperextension
+        # are strictly excluded for any patient presenting with radicular neurological symptoms
+        if posture.get("spinal_extension") == "hyperextension" and attrs["has_radicular_symptoms"]:
+            continue
+
+        # Exclude postures with high neurological symptom risk when radicular symptoms exist
+        if posture.get("neurological_symptom_risk") == "high" and attrs["has_radicular_symptoms"]:
+            continue
+
+        # Contraindication attribute matching
+        contra = posture.get("contraindications", [])
+        if attrs["has_radicular_symptoms"] and "radicular_symptoms" in contra:
+            continue
+        if attrs["has_emergency_red_flags"] and "severe_cardiac_emergency" in contra:
+            continue
+
+        # Suitability attribute matching
+        suit = posture.get("suitable_for_attributes", [])
+        matched = False
+        if attrs["has_radicular_symptoms"] and "radicular_symptoms" in suit:
+            matched = True
+        elif attrs["has_musculoskeletal_symptoms"] and "lumbar_musculoskeletal" in suit:
+            matched = True
+        elif attrs["has_respiratory_symptoms"] and "respiratory_support" in suit:
+            matched = True
+        elif attrs["has_gastrointestinal_symptoms"] and "digestive_distress" in suit:
+            matched = True
+        elif "general_fatigue" in suit or "stress_reduction" in suit:
+            matched = True
+
+        if matched:
+            poses.append(posture)
+
+    # Fallback to safe universal restorative postures if no specific match
+    if not poses:
+        poses = [p for p in YOGA_POSTURE_REGISTRY if p["sanskrit_name"] in ["Balasana", "Shavasana", "Anulom Vilom"]]
+
+    yoga_list = []
+    for p in poses:
+        image_path, is_fallback_img = resolve_image("yoga", p["sanskrit_name"])
+        youtube_url = get_youtube_search_url(f"{p['name']} {p['sanskrit_name']}")
+        yoga_list.append({
+            "name": p["name"],
+            "sanskrit_name": p["sanskrit_name"],
+            "benefits": p["benefits"],
+            "instructions": p["instructions"],
+            "image": image_path,
+            "is_fallback": is_fallback_img,
+            "youtube_url": youtube_url
+        })
+    return yoga_list
 
 
 def _build_local_dataset_fallback(
@@ -750,91 +1397,12 @@ def _build_local_dataset_fallback(
     ft_before = "Before Food (Empty Stomach)" if lang_code == "en" else "भोजन से पहले (खाली पेट)" if lang_code == "hi" else "જમ્યા પહેલા (ખાલી પેટે)"
     ft_water = "With Water (Sip Throughout Day)" if lang_code == "en" else "पानी के साथ (दिन भर घूंट लें)" if lang_code == "hi" else "પાણી સાથે (દિવસ દરમિયાન)"
 
-    fallback_meds = [
-        {
-            "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
-            "indication": "Reduces body temperature and relieves headache/body aches." if lang_code == "en" else "बुखार कम करता है और सिरदर्द व बदन दर्द में राहत देता है।" if lang_code == "hi" else "તાવ ઘટાડે છે અને માથાનો દુખાવો દૂર કરે છે.",
-            "dosage": "1 Tablet every 6 to 8 hours as needed." if lang_code == "en" else "1 गोली आवश्यकतानुसार दिन में 2-3 बार।" if lang_code == "hi" else "1 ગોળી જરૂર મુજબ દિવસમાં 2-3 વાર.",
-            "course_duration": "3 to 5 Days" if lang_code == "en" else "3 से 5 दिन तक" if lang_code == "hi" else "3 થી 5 દિવસ",
-            "food_timing": ft_after,
-            "time_of_day": "After meals",
-            "type": "OTC",
-            "warnings": "Do not exceed 3000mg per day." if lang_code == "en" else "दिन में 3000mg से अधिक न लें।" if lang_code == "hi" else "દિવસમાં 3000mg થી વધુ ન લેવી.",
-            "source": "DocMindX Clinical Dataset"
-        },
-        {
-            "name": "Ibuprofen 400mg (Brufen / Ibugesic)",
-            "indication": "Relieves acute muscular pain, inflammation, and headache." if lang_code == "en" else "मांसपेशियों के दर्द और सूजन में राहत देता है।" if lang_code == "hi" else "સ્નાયુઓના દુખાવા અને સોજામાં રાહત આપે છે.",
-            "dosage": "1 Tablet twice daily after meals." if lang_code == "en" else "1 गोली दिन में 2 बार भोजन के बाद।" if lang_code == "hi" else "1 ગોળી દિવસમાં 2 વાર જમ્યા પછી.",
-            "course_duration": "3 Days" if lang_code == "en" else "3 दिन तक" if lang_code == "hi" else "3 દિવસ",
-            "food_timing": ft_after,
-            "time_of_day": "Morning & Night",
-            "type": "Prescription",
-            "warnings": "Always take after food to avoid stomach irritation." if lang_code == "en" else "पेट की सुरक्षा के लिए हमेशा भोजन के बाद लें।" if lang_code == "hi" else "પેટમાં બળતરા ન થાય તે માટે હંમેશા જમ્યા પછી લેવી.",
-            "source": "DocMindX Clinical Dataset"
-        },
-        {
-            "name": "Pantoprazole 40mg (Pan 40 / Pantocid)",
-            "indication": "Protects stomach against acidity and medication-induced gastritis." if lang_code == "en" else "पेट में एसिडिटी और जलन से सुरक्षा प्रदान करता है।" if lang_code == "hi" else "એસિડિટી અને ગેસ્ટ્રાઇટિસથી પેટનું રક્ષણ કરે છે.",
-            "dosage": "1 Tablet in morning before breakfast." if lang_code == "en" else "1 गोली सुबह नाश्ते से 30 मिनट पहले।" if lang_code == "hi" else "1 ગોળી સવારે નાસ્તા પહેલાં.",
-            "course_duration": "3 to 5 Days" if lang_code == "en" else "3 से 5 दिन तक" if lang_code == "hi" else "3 થી 5 દિવસ",
-            "food_timing": ft_before,
-            "time_of_day": "Morning Empty Stomach",
-            "type": "Prescription",
-            "warnings": "Swallow whole with water." if lang_code == "en" else "पानी के साथ पूरी निगलें।" if lang_code == "hi" else "પાણી સાથે આખી ગળી જવી.",
-            "source": "DocMindX Clinical Dataset"
-        },
-        {
-            "name": "Oral Rehydration Salts (Electral / ORS)",
-            "indication": "Restores vital electrolyte balance and hydration." if lang_code == "en" else "शरीर में पानी और आवश्यक इलेक्ट्रोलाइट्स की भरपाई करता है।" if lang_code == "hi" else "શરીરમાં પાણી અને ક્ષારોનું સંતુલન જાળવે છે.",
-            "dosage": "1 Sachet in 1 Litre clean water, sip throughout day." if lang_code == "en" else "1 पाउच 1 लीटर पानी में घोलकर दिन भर पिएं।" if lang_code == "hi" else "1 પાઉચ 1 લિટર પાણીમાં ઓગાળીને પીવો.",
-            "course_duration": "2 to 3 Days" if lang_code == "en" else "2 से 3 दिन तक" if lang_code == "hi" else "2 થી 3 દિવસ",
-            "food_timing": ft_water,
-            "time_of_day": "Throughout the day",
-            "type": "OTC",
-            "warnings": "Reconstitute in exact quantity of water." if lang_code == "en" else "उचित मात्रा में पानी में घोलें।" if lang_code == "hi" else "યોગ્ય માત્રામાં પાણીમાં ઓગાળવું.",
-            "source": "DocMindX Clinical Dataset"
-        }
-    ]
+    attrs = _extract_clinical_presentation_attributes(symptoms=symptoms, top_condition=top_condition, user_context=user_context)
+    is_emergency = bool(attrs.get("has_emergency_red_flags") or user_context.get("is_emergency", False))
 
-    med_gallery = get_medicine_gallery(fallback_meds, max_items=8)
-    # Supportive Yoga Fallback
-    yoga_list = []
-    if lang_code == "gu":
-        curated_poses = [
-            {"name": "બાળાસન (Child's Pose)", "sanskrit_name": "Balasana", "benefits": "શરીરના થાકને દૂર કરે છે અને માનસિક શાંતિ આપે છે.", "instructions": "ચટાઈ પર ઘૂંટણ વાળીને આગળ ઝૂકો અને શ્વાસ સામાન્ય રાખો."},
-            {"name": "અનુલોમ વિલોમ (Pranayama)", "sanskrit_name": "Anulom Vilom", "benefits": "શ્વસનતંત્રને મજબૂત બનાવે છે અને ઓક્સિજન વધારે છે.", "instructions": "સીધા બેસીને એક નસકોરાથી શ્વાસ લો અને બીજામાંથી છોડો."},
-            {"name": "શવાસન (Corpse Pose)", "sanskrit_name": "Shavasana", "benefits": "શરીરના દરેક સ્નાયુને ઊંડો આરામ આપી રિકવરી ઝડપી બનાવે છે.", "instructions": "પીઠ પર સીધા સૂઈ જાવ અને શરીરને ઢીલું છોડો."},
-            {"name": "ભુજંગાસન (Cobra Pose)", "sanskrit_name": "Bhujangasana", "benefits": "છાતી અને ફેફસાંને ખોલે છે તથા પીઠનો દુખાવો ઓછો કરે છે.", "instructions": "પેટ પર સૂઈને બંને હાથના સહારે છાતી ઉપર ઉઠાવો."}
-        ]
-    elif lang_code == "hi":
-        curated_poses = [
-            {"name": "बालासन (Child's Pose)", "sanskrit_name": "Balasana", "benefits": "शरीर की थकान दूर करता है और नर्वस सिस्टम को शांत करता है।", "instructions": "घुटनों के बल बैठें और आगे झुककर सिर जमीन पर टिकाएं।"},
-            {"name": "अनुलोम विलोम प्राणायाम", "sanskrit_name": "Anulom Vilom", "benefits": "फेफड़ों की कार्यक्षमता बढ़ाता है और ऑक्सीजन स्तर सुधारता है।", "instructions": "सीधे बैठकर एक नासिका से सांस लें और दूसरी से छोड़ें।"},
-            {"name": "शवासन (Corpse Pose)", "sanskrit_name": "Shavasana", "benefits": "रोग प्रतिरोधक क्षमता बढ़ाने और गहरी रिकवरी में सहायक।", "instructions": "पीठ के बल सीधे लेटें और पूरे शरीर को ढीला छोड़ें।"},
-            {"name": "भुजंगासन (Cobra Pose)", "sanskrit_name": "Bhujangasana", "benefits": "छाती के संक्रमण में राहत और फेफड़ों को मजबूती देता है।", "instructions": "पेट के बल लेटकर हाथों के सहारे छाती ऊपर उठाएं।"}
-        ]
-    else:
-        curated_poses = [
-            {"name": "Child's Pose", "sanskrit_name": "Balasana", "benefits": "Gently calms the nervous system, relieves fatigue and lowers tension.", "instructions": "Kneel, fold forward, resting forehead on mat with arms extended forward."},
-            {"name": "Pranayama Deep Breathing", "sanskrit_name": "Anulom Vilom", "benefits": "Enhances oxygen saturation, calms mind and supports respiratory vitality.", "instructions": "Sit upright, inhale slowly through one nostril and exhale through other."},
-            {"name": "Corpse Pose", "sanskrit_name": "Shavasana", "benefits": "Facilitates deep cellular recovery and immune restoration during fever.", "instructions": "Lie flat on back with arms relaxed at sides and breathe naturally."},
-            {"name": "Cobra Pose", "sanskrit_name": "Bhujangasana", "benefits": "Opens chest cavity and relieves stiffness in upper body.", "instructions": "Lie on abdomen and gently arch upper torso upward."}
-        ]
-
-    for p in curated_poses:
-        image_path, is_fallback_img = resolve_image("yoga", p["sanskrit_name"])
-        youtube_url = get_youtube_search_url(f"{p['name']} {p['sanskrit_name']}")
-
-        yoga_list.append({
-            "name": p["name"],
-            "sanskrit_name": p["sanskrit_name"],
-            "benefits": p["benefits"],
-            "instructions": p["instructions"],
-            "image": image_path,
-            "is_fallback": is_fallback_img,
-            "youtube_url": youtube_url
-        })
+    fallback_meds = _get_condition_fallback_medicines(top_condition, symptoms, lang_code)
+    med_gallery = get_medicine_gallery(fallback_meds, max_items=None, top_condition=top_condition, symptoms=symptoms)
+    yoga_list = [] if is_emergency else _get_condition_fallback_yoga(top_condition, symptoms, lang_code)
 
     # Try condition-specific lookups from condition_guidance.csv
     csv_diet_tips = []
@@ -844,7 +1412,8 @@ def _build_local_dataset_fallback(
         if os.path.exists(guidance_csv_path):
             import pandas as pd
             df_g = pd.read_csv(guidance_csv_path)
-            matched_g = df_g[df_g["condition_name"].str.lower().str.contains(cond_lower[:8], na=False, regex=False)]
+            cond_words = [w for w in re.findall(r'\b\w{4,}\b', cond_lower) if w not in ["disease", "syndrome", "acute", "chronic", "pain"]]
+            matched_g = df_g[df_g["condition_name"].str.lower().apply(lambda x: any(w in str(x).lower() for w in cond_words))] if cond_words else df_g.head(0)
             if not matched_g.empty:
                 row = matched_g.iloc[0]
                 diet_rec = str(row.get("diet_recommendation", "")).strip()
@@ -868,94 +1437,110 @@ def _build_local_dataset_fallback(
         state = "Gujarat"
     seasonal_data = get_seasonal_health_context(state, lang_code=lang_code)
 
+    attrs = _extract_clinical_presentation_attributes(symptoms=symptoms, top_condition=top_condition, user_context=user_context)
+
     # 1. Fallback Injections / IV Fluids (Clinically gated)
     fb_injections = {"is_indicated": False, "items": [], "injections": []}
     dur_raw = str(user_context.get("duration", "")).lower().strip()
     is_short_duration = any(d in dur_raw for d in ["today", "1 - 3", "1-3", "1 to 3", "आज", "આજે"])
 
-    if any(k in cond_lower or k in sym_lower for k in ["severe dehydration", "dog bite", "rabies", "tetanus", "wound", "deep cut", "vomiting", "fever", "malaria", "typhoid"]):
-        if "dog bite" in cond_lower or "rabies" in cond_lower:
-            inj_items = [{
-                "name": "Anti-Rabies Vaccine (Rabipur / Vaxirab N)",
-                "dose": "1 Dose (0.5ml / 1.0ml)",
-                "type": "Vaccine / Intramuscular",
-                "route": "Intramuscular (IM - Deltoid)",
-                "administration_setting": "Administer at Primary Health Centre / Hospital (Day 0, 3, 7, 14, 28)",
-                "purpose": "Rabies post-exposure prophylaxis",
-                "precautions": "Wash wound thoroughly with soap and water for 15 minutes before injection."
-            }]
-            fb_injections = {
-                "is_indicated": True,
-                "clinical_rationale": "Immediate post-exposure rabies prophylaxis is vital." if lang_code == "en" else "रेबीज से बचाव के लिए तत्काल एंटी-रेबीज इंजेक्शन आवश्यक है।" if lang_code == "hi" else "હડકવા સામે રક્ષણ માટે તાત્કાલિક એન્ટિ-રેબીઝ ઈન્જેક્શન જરૂરી છે.",
-                "admin_setting": "Hospital / Clinic Administration Only",
-                "items": inj_items,
-                "injections": inj_items
-            }
-        elif any(k in cond_lower or k in sym_lower for k in ["tetanus", "wound", "cut"]):
-            inj_items = [{
-                "name": "Tetanus Toxoid (TT 0.5ml) / Td Vaccine",
-                "dose": "0.5ml Single Dose",
-                "type": "Toxoid / Intramuscular",
-                "route": "Intramuscular (IM)",
-                "administration_setting": "Administered by healthcare worker within 24 hours of injury",
-                "purpose": "Active immunization against tetanus",
-                "precautions": "Verify booster history; use sterile disposable syringe."
-            }]
-            fb_injections = {
-                "is_indicated": True,
-                "clinical_rationale": "Prevents anaerobic Clostridium tetani infection." if lang_code == "en" else "टिटनेस के गंभीर संक्रमण से बचाव हेतु इंजेक्शन आवश्यक है।" if lang_code == "hi" else "ધનુર સામે રક્ષણ માટે ઇન્જેક્શન જરૂરી છે.",
-                "admin_setting": "Hospital / Clinic Administration Only",
-                "items": inj_items,
-                "injections": inj_items
-            }
-        elif any(k in cond_lower or k in sym_lower for k in ["severe dehydration", "vomiting"]):
-            inj_items = [
-                {
-                    "name": "IV Normal Saline 0.9% (NS 500ml)",
-                    "dose": "500ml IV Infusion",
-                    "type": "Intravenous Infusion",
-                    "route": "Intravenous (IV Drip)",
-                    "administration_setting": "Administer at Hospital / Day Care Centre",
-                    "purpose": "Rapid volume resuscitation and rehydration",
-                    "precautions": "Monitor infusion rate and urine output."
-                },
-                {
-                    "name": "Inj. Ondansetron 4mg/2ml (Emeset)",
-                    "dose": "4mg IV Slow",
-                    "type": "Antiemetic Injectable",
-                    "route": "Intravenous (IV Slow)",
-                    "administration_setting": "Hospital / Clinic",
-                    "purpose": "Controls persistent nausea and vomiting",
-                    "precautions": "Administer over 2 to 5 minutes."
-                }
-            ]
-            fb_injections = {
-                "is_indicated": True,
-                "clinical_rationale": "Immediate fluid and electrolyte restoration." if lang_code == "en" else "गंभीर निर्जलीकरण रोकने हेतु IV ड्रिप आवश्यक है।" if lang_code == "hi" else "તીવ્ર ડિહાઇડ્રેશન રોકવા માટે IV ફ્લૂઇડ જરૂરી છે.",
-                "admin_setting": "Hospital / Clinic Administration Only",
-                "items": inj_items,
-                "injections": inj_items
-            }
-        elif any(k in cond_lower or k in sym_lower for k in ["fever", "malaria", "typhoid", "dengue"]) and not is_short_duration and str(user_context.get("severity", "")).lower() == "severe":
-            inj_items = [{
-                "name": "Inj. Paracetamol IV Infusion (100ml / 1000mg)",
-                "dose": "1000mg IV Infusion slowly over 15 minutes",
-                "type": "Antipyretic IV Infusion",
-                "route": "Intravenous (IV)",
-                "administration_setting": "Hospital / Day Care Unit",
-                "purpose": "Rapid antipyresis for refractory prolonged high fever",
-                "precautions": "Administer under physician supervision; monitor liver function."
-            }]
-            fb_injections = {
-                "is_indicated": True,
-                "clinical_rationale": "Indicated for prolonged severe fever unresponsive to oral antipyretics." if lang_code == "en" else "मौखिक दवाओं से न उतरने वाले लंबे समय के गंभीर बुखार के लिए अस्पताल में आई.वी. इन्फ्यूजन।" if lang_code == "hi" else "ઓરલ દવાઓથી કાબૂમાં ન આવતા લાંબા તાવ માટે હોસ્પિટલમાં IV ઇન્ફ્યુઝન.",
-                "admin_setting": "Hospital / Clinic Administration Only",
-                "items": inj_items,
-                "injections": inj_items
-            }
+    has_animal_bite_exposure = any(k in cond_lower or k in sym_lower for k in [
+        "animal bite", "dog bite", "monkey bite", "rabies", "animal saliva", "bite wound"
+    ])
+    has_contaminated_wound_exposure = any(k in cond_lower or k in sym_lower for k in [
+        "tetanus", "deep cut", "puncture wound", "soil contamination", "rusty", "dirty wound", "contaminated laceration"
+    ])
+    has_severe_dehydration_shock = any(k in cond_lower or k in sym_lower for k in [
+        "severe dehydration", "hypovolemia", "intractable vomiting", "persistent vomiting", "inability to retain fluids", "electrolyte collapse"
+    ])
+    has_refractory_severe_hyperpyrexia = (
+        attrs["has_systemic_fatigue_or_fever"]
+        and not is_short_duration
+        and str(user_context.get("severity", "")).lower() == "severe"
+    )
 
-    # 2. Fallback Compress Guidance (Condition-Gated)
-    if any(k in sym_lower or k in cond_lower for k in ["fever", "high fever", "temperature", "ताप", "તાવ"]):
+    if has_animal_bite_exposure:
+        inj_items = [{
+            "name": "Anti-Rabies Vaccine (Rabipur / Vaxirab N)",
+            "dose": "1 Dose (0.5ml / 1.0ml)",
+            "type": "Vaccine / Intramuscular",
+            "route": "Intramuscular (IM - Deltoid)",
+            "administration_setting": "Administer at Primary Health Centre / Hospital (Day 0, 3, 7, 14, 28)",
+            "purpose": "Rabies post-exposure prophylaxis",
+            "precautions": "Wash wound thoroughly with soap and water for 15 minutes before injection."
+        }]
+        fb_injections = {
+            "is_indicated": True,
+            "clinical_rationale": "Immediate post-exposure rabies prophylaxis is vital." if lang_code == "en" else "रेबीज से बचाव के लिए तत्काल एंटी-रेबीज इंजेक्शन आवश्यक है।" if lang_code == "hi" else "હડકવા સામે રક્ષણ માટે તાત્કાલિક એન્ટિ-રેબીઝ ઈન્જેક્શન જરૂરી છે.",
+            "admin_setting": "Hospital / Clinic Administration Only",
+            "items": inj_items,
+            "injections": inj_items
+        }
+    elif has_contaminated_wound_exposure:
+        inj_items = [{
+            "name": "Tetanus Toxoid (TT 0.5ml) / Td Vaccine",
+            "dose": "0.5ml Single Dose",
+            "type": "Toxoid / Intramuscular",
+            "route": "Intramuscular (IM)",
+            "administration_setting": "Administered by healthcare worker within 24 hours of injury",
+            "purpose": "Active immunization against tetanus",
+            "precautions": "Verify booster history; use sterile disposable syringe."
+        }]
+        fb_injections = {
+            "is_indicated": True,
+            "clinical_rationale": "Prevents anaerobic Clostridium tetani infection." if lang_code == "en" else "टिटनेस के गंभीर संक्रमण से बचाव हेतु इंजेक्शन आवश्यक है।" if lang_code == "hi" else "ધનુર સામે રક્ષણ માટે ઇન્જેક્શન જરૂરી છે.",
+            "admin_setting": "Hospital / Clinic Administration Only",
+            "items": inj_items,
+            "injections": inj_items
+        }
+    elif has_severe_dehydration_shock:
+        inj_items = [
+            {
+                "name": "IV Normal Saline 0.9% (NS 500ml)",
+                "dose": "500ml IV Infusion",
+                "type": "Intravenous Infusion",
+                "route": "Intravenous (IV Drip)",
+                "administration_setting": "Administer at Hospital / Day Care Centre",
+                "purpose": "Rapid volume resuscitation and rehydration",
+                "precautions": "Monitor infusion rate and urine output."
+            },
+            {
+                "name": "Inj. Ondansetron 4mg/2ml (Emeset)",
+                "dose": "4mg IV Slow",
+                "type": "Antiemetic Injectable",
+                "route": "Intravenous (IV Slow)",
+                "administration_setting": "Hospital / Clinic",
+                "purpose": "Controls persistent nausea and vomiting",
+                "precautions": "Administer over 2 to 5 minutes."
+            }
+        ]
+        fb_injections = {
+            "is_indicated": True,
+            "clinical_rationale": "Immediate fluid and electrolyte restoration." if lang_code == "en" else "गंभीर निर्जलीकरण रोकने हेतु IV ड्रिप आवश्यक है।" if lang_code == "hi" else "તીવ્ર ડિહાઇડ્રેશન રોકવા માટે IV ફ્લૂઇડ જરૂરી છે.",
+            "admin_setting": "Hospital / Clinic Administration Only",
+            "items": inj_items,
+            "injections": inj_items
+        }
+    elif has_refractory_severe_hyperpyrexia:
+        inj_items = [{
+            "name": "Inj. Paracetamol IV Infusion (100ml / 1000mg)",
+            "dose": "1000mg IV Infusion slowly over 15 minutes",
+            "type": "Antipyretic IV Infusion",
+            "route": "Intravenous (IV)",
+            "administration_setting": "Hospital / Day Care Unit",
+            "purpose": "Rapid antipyresis for refractory prolonged high fever",
+            "precautions": "Administer under physician supervision; monitor liver function."
+        }]
+        fb_injections = {
+            "is_indicated": True,
+            "clinical_rationale": "Indicated for prolonged severe fever unresponsive to oral antipyretics." if lang_code == "en" else "मौखिक दवाओं से न उतरने वाले लंबे समय के गंभीर बुखार के लिए अस्पताल में आई.वी. इन्फ्यूजन।" if lang_code == "hi" else "ઓરલ દવાઓથી કાબૂમાં ન આવતા લાંબા તાવ માટે હોસ્પિટલમાં IV ઇન્ફ્યુઝન.",
+            "admin_setting": "Hospital / Clinic Administration Only",
+            "items": inj_items,
+            "injections": inj_items
+        }
+
+    # 2. Fallback Compress Guidance (Physiologically Gated by Clinical Attributes)
+    if attrs.get("is_febrile_hyperpyrexia"):
         compress_info = {
             "is_indicated": True,
             "mode": "cold_sponging",
@@ -966,7 +1551,7 @@ def _build_local_dataset_fallback(
             "cautions": "Do NOT apply freezing ice directly to the skin. Avoid warm fomentation during active fever.",
             "precautions": "Do NOT apply freezing ice directly to the skin. Avoid warm fomentation during active fever."
         }
-    elif any(k in sym_lower or k in cond_lower for k in ["sprain", "swelling", "acute injury", "मोच", "सूजन", "સોજો"]):
+    elif attrs.get("is_acute_inflammatory_edema"):
         compress_info = {
             "is_indicated": True,
             "mode": "ice",
@@ -977,7 +1562,7 @@ def _build_local_dataset_fallback(
             "cautions": "Never apply bare ice directly to skin to avoid cold injury.",
             "precautions": "Never apply bare ice directly to skin to avoid cold injury."
         }
-    elif any(k in sym_lower or k in cond_lower for k in ["back pain", "cervical", "stiff", "muscle spasm", "joint pain", "arthritis", "कमर दर्द", "घुटनों का दर्द"]):
+    elif attrs.get("is_chronic_musculoskeletal_stiffness"):
         compress_info = {
             "is_indicated": True,
             "mode": "hot",
@@ -991,9 +1576,9 @@ def _build_local_dataset_fallback(
     else:
         compress_info = {"is_indicated": False, "mode": "none"}
 
-    # 3. Fallback Physiotherapy & Rehabilitation (Condition-Gated)
+    # 3. Fallback Physiotherapy & Rehabilitation (Physiologically Gated)
     fb_physio = {"is_indicated": False, "exercises": []}
-    if any(k in cond_lower or k in sym_lower for k in ["back pain", "cervical", "sciatica", "spondylosis", "frozen shoulder", "arthritis", "knee pain", "sprain"]):
+    if attrs["has_musculoskeletal_symptoms"] and not attrs["has_emergency_red_flags"] and not is_emergency:
         fb_physio = {
             "is_indicated": True,
             "condition_target": "Spine & Joint Mobility & Core Stabilization",
@@ -1025,9 +1610,13 @@ def _build_local_dataset_fallback(
             ]
         }
 
-    # 4. Fallback Specialized Clinical Therapies (Condition-Gated)
+    # 4. Fallback Specialized Clinical Therapies (Clinically Gated by Attributes)
     fb_specialized = {"is_indicated": False, "therapies": []}
-    if any(k in cond_lower for k in ["cancer", "carcinoma", "leukemia", "lymphoma", "sarcoma", "tumor", "malignan"]):
+    has_oncological_indications = attrs.get("has_oncological_indications", False)
+    has_renal_failure_indications = attrs.get("has_renal_failure_indications", False)
+    has_severe_bronchospasm_indications = attrs.get("has_bronchospasm_indications", False)
+
+    if has_oncological_indications:
         ov_text = "Malignant diseases require histological grading, staging (PET-CT), and individualized systemic chemotherapy or targeted biologics under tertiary oncology centre protocol." if lang_code == "en" else "कैंसर की स्थिति में ऑन्कोलॉजिस्ट की देखरेख में कीमोथेरेपी, रेडियोथेरेपी या इम्यूनोथेरेपी का विशेष अस्पताल आधारित प्रोटोकॉल दिया जाता है।" if lang_code == "hi" else "કેન્સરના કિસ્સામાં કેન્સર નિષ્ણાત (ઓન્કોલોજિસ્ટ) ની દેખરેખ હેઠળ કીમોથેરાપી અને વિશિષ્ટ હોસ્પિટલ સારવાર આપવામાં આવે છે."
         fb_specialized = {
             "is_indicated": True,
@@ -1043,7 +1632,7 @@ def _build_local_dataset_fallback(
                 "description": ov_text
             }]
         }
-    elif any(k in cond_lower for k in ["kidney failure", "renal failure", "ckd", "dialysis"]):
+    elif has_renal_failure_indications:
         ov_text = "Renal replacement therapy (Hemodialysis) filters metabolic waste and excess fluid when renal clearance falls below critical clinical levels."
         fb_specialized = {
             "is_indicated": True,
@@ -1059,7 +1648,7 @@ def _build_local_dataset_fallback(
                 "description": ov_text
             }]
         }
-    elif any(k in cond_lower for k in ["asthma", "copd"]) and any(k in sym_lower for k in ["severe", "breathless"]):
+    elif has_severe_bronchospasm_indications:
         ov_text = "Aerosolized bronchodilator nebulization relieves acute bronchospasm and restores airflow in reactive airway diseases."
         fb_specialized = {
             "is_indicated": True,
@@ -1165,13 +1754,22 @@ def _build_local_dataset_fallback(
             "Inability to retain liquids or severe signs of dehydration."
         ]
 
+    if is_emergency:
+        emergency_notice = "CRITICAL EMERGENCY ALERT: Clinical findings indicate a possible medical emergency requiring urgent in-person medical evaluation. Routine exercise and home management are suspended. "
+        summary_txt = emergency_notice + summary_txt
+        red_flags = ["URGENT EMERGENCY EVALUATION REQUIRED: Report immediately to an Emergency Department."] + [r for r in red_flags if "EMERGENCY EVALUATION" not in r]
+
     return {
         "is_fallback": True,
+        "is_live": False,
+        "fallback_used": True,
         "api_source": "Local Clinical Dataset (Offline Fallback)",
+        "ai_provider_used": None,
         "fallback_warning": warning_msg,
         "top_condition": top_condition,
         "lang_code": lang_code,
         "state": state,
+        "is_emergency": is_emergency,
         "summary": summary_txt,
         "recovery_duration": recovery_txt,
         "seasonal_context": seasonal_data,
@@ -1314,21 +1912,22 @@ Bundle to translate:
 {json.dumps(items_to_translate, ensure_ascii=False)}
 """
     translated_bundle = None
-    if GEMINI_API_KEY:
+    if gemini_pool.get_active_keys():
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent?key={GEMINI_API_KEY}"
-            res = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": trans_prompt}]}],
-                    "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
-                },
+            trans_payload = {
+                "contents": [{"parts": [{"text": trans_prompt}]}],
+                "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
+            }
+            res_data, _, _ = gemini_pool.execute_with_failover(
+                payload=trans_payload,
+                models=["gemini-3.6-flash", "gemini-3.5-flash-lite"],
                 timeout=10
             )
-            if res.status_code == 200:
-                raw_t = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-                translated_bundle = _clean_json_response(raw_t)
+            if res_data:
+                candidates = res_data.get("candidates", [])
+                if candidates:
+                    raw_t = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                    translated_bundle = _clean_json_response(raw_t)
         except Exception as e:
             print(f"Gemini localization notice: {e}")
 

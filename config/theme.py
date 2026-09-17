@@ -247,10 +247,17 @@ td code {
     -webkit-text-fill-color: #F8FAFC !important;
 }
 
-/* Ensure inner input elements themselves never get extra border */
+/* Ensure inner input elements themselves never get extra border and text is visible */
 [data-theme="dark"] input,
 [data-theme="dark"] textarea,
 [data-theme="dark"] [data-baseweb="input"],
+[data-theme="dark"] [data-baseweb="select"] input,
+[data-theme="dark"] [data-baseweb="select"] span,
+[data-theme="dark"] [data-baseweb="select"] div,
+[data-theme="dark"] .stSelectbox input,
+[data-theme="dark"] .stMultiSelect input,
+[data-theme="dark"] [data-testid="stSelectbox"] input,
+[data-theme="dark"] [data-testid="stMultiSelect"] input,
 [data-theme="dark"] .stTextInput input,
 [data-theme="dark"] .stTextArea textarea,
 [data-theme="dark"] .stNumberInput input,
@@ -264,12 +271,23 @@ td code {
     background-color: transparent !important;
     color: #F8FAFC !important;
     -webkit-text-fill-color: #F8FAFC !important;
+    caret-color: #38BDF8 !important;
 }
 
 [data-theme="dark"] input::placeholder,
-[data-theme="dark"] textarea::placeholder {
+[data-theme="dark"] textarea::placeholder,
+[data-theme="dark"] [data-baseweb="select"] input::placeholder,
+[data-theme="dark"] [data-baseweb="select"] div[class*="Placeholder"],
+[data-theme="dark"] [data-baseweb="select"] div[class*="placeholder"],
+[data-theme="dark"] [data-testid="stSelectbox"] input::placeholder,
+[data-theme="dark"] [data-testid="stMultiSelect"] input::placeholder {
     color: #64748B !important;
     -webkit-text-fill-color: #64748B !important;
+}
+
+[data-theme="dark"] [data-baseweb="select"] svg {
+    fill: #94A3B8 !important;
+    color: #94A3B8 !important;
 }
 
 /* Selectbox dropdown menu */
@@ -1393,7 +1411,16 @@ div[style*="overflow-x"] {
     div[class*="st-key-drawer_clear_chat_btn"] button,
     div[class*="st-key-drawer_close_x_btn"] button,
     .st-key-drawer_clear_chat_btn button,
-    .st-key-drawer_close_x_btn button,
+    .st-key-drawer_close_x_btn button {
+        min-width: 34px !important;
+        max-width: 34px !important;
+        width: 34px !important;
+        min-height: 34px !important;
+        max-height: 34px !important;
+        height: 34px !important;
+        padding: 0 !important;
+    }
+
     button[aria-label*="audio"],
     button[aria-label*="record"],
     button[aria-label*="mic"] {
@@ -6966,9 +6993,16 @@ textarea,
 [data-baseweb="input"] input,
 [data-baseweb="base-input"] input,
 [data-baseweb="base-input"] textarea,
+[data-baseweb="select"] input,
+[data-baseweb="select"] span,
+[data-baseweb="select"] div,
 .stTextInput input,
 .stTextArea textarea,
-.stNumberInput input {
+.stNumberInput input,
+.stSelectbox input,
+.stMultiSelect input,
+[data-testid="stSelectbox"] input,
+[data-testid="stMultiSelect"] input {
     border: none !important;
     border-width: 0 !important;
     outline: none !important;
@@ -6977,6 +7011,7 @@ textarea,
     background-color: transparent !important;
     color: #F8FAFC !important;
     -webkit-text-fill-color: #F8FAFC !important;
+    caret-color: #38BDF8 !important;
 }
 
 /* Focus ring only on the container */
@@ -7281,22 +7316,35 @@ div[class*="st-key-dyn_chip_"] [data-testid="baseButton-secondary"]:hover {
     border-color: #38BDF8 !important;
     color: #38BDF8 !important;
 }
+div[class*="st-key-drawer_clear_chat_btn"],
+.st-key-drawer_clear_chat_btn {
+    margin-right: 8px !important;
+}
 div[class*="st-key-drawer_clear_chat_btn"] button,
 div[class*="st-key-drawer_close_x_btn"] button,
 .st-key-drawer_clear_chat_btn button,
 .st-key-drawer_close_x_btn button {
-    background-color: #1E293B !important;
-    background: #1E293B !important;
-    color: #CBD5E1 !important;
-    border-color: #334155 !important;
+    background-color: rgba(255, 255, 255, 0.16) !important;
+    background: rgba(255, 255, 255, 0.16) !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255, 255, 255, 0.35) !important;
+    visibility: visible !important;
+}
+div[class*="st-key-drawer_clear_chat_btn"] button [data-testid="stIconMaterial"],
+div[class*="st-key-drawer_close_x_btn"] button [data-testid="stIconMaterial"],
+.st-key-drawer_clear_chat_btn button [data-testid="stIconMaterial"],
+.st-key-drawer_close_x_btn button [data-testid="stIconMaterial"] {
+    color: #FFFFFF !important;
+    fill: #FFFFFF !important;
+    visibility: visible !important;
 }
 div[class*="st-key-drawer_clear_chat_btn"] button:hover,
 div[class*="st-key-drawer_close_x_btn"] button:hover,
 .st-key-drawer_clear_chat_btn button:hover,
 .st-key-drawer_close_x_btn button:hover {
-    background-color: #1E293B !important;
+    background-color: rgba(255, 255, 255, 0.30) !important;
     border-color: #38BDF8 !important;
-    color: #38BDF8 !important;
+    color: #FFFFFF !important;
 }
 
 /* Chat Messages */
@@ -9035,6 +9083,36 @@ div[class*="st-key-cc_inv_fac_card"] [data-baseweb="select"] > div,
     transform: translateY(-1px) !important;
 }
 
+.st-key-btn_p2_lab_empty_new_scan button,
+.st-key-btn_p2_rx_empty_new_scan button,
+.st-key-btn_p2_rad_empty_new_scan button {
+    height: 48px !important;
+    min-height: 48px !important;
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+    box-sizing: border-box !important;
+    padding: 8px 22px !important;
+    background: #2563EB !important;
+    border: 1.5px solid #2563EB !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.28) !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+}
+.st-key-btn_p2_lab_empty_new_scan button:hover,
+.st-key-btn_p2_rx_empty_new_scan button:hover,
+.st-key-btn_p2_rad_empty_new_scan button:hover {
+    background: #1D4ED8 !important;
+    border-color: #1D4ED8 !important;
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.38) !important;
+    transform: translateY(-1px) !important;
+}
+
 .st-key-btn_p2_new_scan_action button,
 .st-key-btn_p2_download_pdf button {
     background: var(--mm-card-bg, #FFFFFF) !important;
@@ -10277,11 +10355,10 @@ input:-webkit-autofill:active {
     background: #1E293B !important;
     border-color: #38BDF8 !important;
 }
-[data-theme="dark"] .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p {
-    color: #94A3B8 !important;
-}
+[data-theme="dark"] .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p,
 [data-theme="dark"] .st-key-floating_chat_content div[class*="st-key-dyn_qa_"] button p strong {
     color: #F8FAFC !important;
+    font-weight: 700 !important;
 }
 [data-theme="dark"] .st-key-slide_chat_form [data-baseweb="base-input"] input,
 [data-theme="dark"] .st-key-slide_chat_form input {
@@ -10393,50 +10470,85 @@ input:-webkit-autofill:active {
 [data-theme="dark"] div[data-testid="stAudioInput"],
 [data-theme="dark"] [data-testid="stAudioInput"],
 [data-theme="dark"] .stAudioInput {
-    background-color: #1E293B !important;
-    background: #1E293B !important;
-    border: 1.5px solid #334155 !important;
+    background-color: #0F172A !important;
+    background: #0F172A !important;
+    border: 1.5px solid #1E2E4E !important;
     border-radius: 12px !important;
+    padding: 6px 14px !important;
+    min-height: 52px !important;
     color: #F8FAFC !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
+    transition: all 0.25s ease !important;
+}
+[data-theme="dark"] div[data-testid="stAudioInput"]:hover,
+[data-theme="dark"] [data-testid="stAudioInput"]:hover {
+    border-color: #38BDF8 !important;
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.15) !important;
 }
 [data-theme="dark"] div[data-testid="stAudioInput"] > div,
-[data-theme="dark"] div[data-testid="stAudioInput"] section {
-    background-color: #1E293B !important;
-    background: #1E293B !important;
-    border-color: #334155 !important;
+[data-theme="dark"] div[data-testid="stAudioInput"] section,
+[data-theme="dark"] div[data-testid="stAudioInput"] section > div {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 [data-theme="dark"] div[data-testid="stAudioInput"] button[data-testid="stAudioInputActionButton"],
 [data-theme="dark"] div[data-testid="stAudioInput"] button {
-    background-color: #0F172A !important;
-    background: #0F172A !important;
-    border: 1.5px solid #3B82F6 !important;
-    color: #60A5FA !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    min-height: 38px !important;
+    border-radius: 10px !important;
+    background-color: rgba(14, 165, 233, 0.12) !important;
+    background: rgba(14, 165, 233, 0.12) !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.35) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding: 0 !important;
+    margin: 0 !important;
 }
 [data-theme="dark"] div[data-testid="stAudioInput"] button:hover {
-    background-color: #1E3A8A !important;
-    border-color: #60A5FA !important;
-    color: #93C5FD !important;
+    background-color: rgba(14, 165, 233, 0.25) !important;
+    background: rgba(14, 165, 233, 0.25) !important;
+    border-color: #38BDF8 !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
 }
-[data-theme="dark"] div[data-testid="stAudioInput"] svg {
-    fill: #60A5FA !important;
-    stroke: #60A5FA !important;
-    color: #60A5FA !important;
+[data-theme="dark"] div[data-testid="stAudioInput"] svg,
+[data-theme="dark"] div[data-testid="stAudioInput"] [data-testid="stIconMaterial"] {
+    fill: currentColor !important;
+    color: #38BDF8 !important;
+    width: 18px !important;
+    height: 18px !important;
 }
 [data-theme="dark"] div[data-testid="stAudioInput"] span,
 [data-theme="dark"] div[data-testid="stAudioInput"] p,
 [data-theme="dark"] div[data-testid="stAudioInput"] div {
     color: #F8FAFC !important;
 }
-/* Timecode timer inside audio input - remove solid white background */
+/* Timecode timer inside audio input */
 [data-theme="dark"] div[data-testid="stAudioInput"] span[data-testid="stAudioInputWaveformTimeCode"],
 [data-theme="dark"] [data-testid="stAudioInputWaveformTimeCode"],
 span[data-testid="stAudioInputWaveformTimeCode"] {
-    background: transparent !important;
-    background-color: transparent !important;
+    background: rgba(14, 165, 233, 0.1) !important;
+    background-color: rgba(14, 165, 233, 0.1) !important;
     color: #38BDF8 !important;
     font-family: monospace !important;
     font-weight: 700 !important;
-    font-size: 0.82rem !important;
+    font-size: 0.84rem !important;
+    letter-spacing: 0.08em !important;
+    padding: 3px 8px !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(56, 189, 248, 0.25) !important;
+    text-shadow: 0 0 8px rgba(56, 189, 248, 0.3) !important;
 }
 [data-theme="dark"] [data-testid="stElementToolbarButtonContainer"],
 [data-theme="dark"] div[data-testid="stElementToolbar"] {
@@ -10445,7 +10557,101 @@ span[data-testid="stAudioInputWaveformTimeCode"] {
     display: none !important;
 }
 [data-theme="dark"] div[data-testid="stAudioInput"] canvas {
-    filter: invert(1) hue-rotate(180deg) brightness(1.2) !important;
+    filter: invert(1) hue-rotate(185deg) brightness(1.2) contrast(1.1) !important;
+    opacity: 0.85 !important;
+    background: transparent !important;
+}
+
+/* ── Universal Tooltips & Tip Messages (Single Clean Card) ── */
+div[data-baseweb="tooltip"],
+div[data-testid="stTooltipHoverTarget"] {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+/* Single Tooltip Card Wrapper */
+div[data-baseweb="tooltip"] > div,
+div[role="tooltip"] {
+    background-color: #0F172A !important;
+    background: #0F172A !important;
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+    border: 1.2px solid #1E2E4E !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55) !important;
+    padding: 6px 12px !important;
+    font-size: 0.80rem !important;
+    line-height: 1.35 !important;
+    font-weight: 500 !important;
+    z-index: 999999 !important;
+    max-width: 320px !important;
+}
+/* Reset all inner nested wrappers inside tooltip */
+div[data-baseweb="tooltip"] div,
+div[role="tooltip"] div,
+div[data-testid="stTooltipContent"],
+[data-testid="stTooltipContent"],
+.stTooltipContent {
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+div[data-baseweb="tooltip"] *,
+div[role="tooltip"] *,
+div[data-testid="stTooltipContent"] *,
+[data-testid="stTooltipContent"] *,
+.stTooltipContent * {
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+}
+div[data-baseweb="tooltip"] svg,
+div[role="tooltip"] svg {
+    fill: #0F172A !important;
+    color: #0F172A !important;
+}
+/* Streamlit Help Popovers & Toasts */
+div[data-testid="stHelpPopover"],
+div[data-testid="stHelpPopover"] > div,
+div[data-testid="stPopoverBody"],
+div[data-testid="stPopoverContent"] {
+    background-color: #0F172A !important;
+    background: #0F172A !important;
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+    border: 1.2px solid #1E2E4E !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6) !important;
+}
+div[data-testid="stToast"],
+[data-testid="stToast"],
+div[data-testid="stNotification"] {
+    background-color: #0F172A !important;
+    background: #0F172A !important;
+    border: 1.5px solid #1E2E4E !important;
+    border-left: 4px solid #38BDF8 !important;
+    border-radius: 12px !important;
+    color: #F8FAFC !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55), 0 0 15px rgba(56, 189, 248, 0.15) !important;
+    padding: 12px 18px !important;
+}
+div[data-testid="stToast"] *,
+[data-testid="stToast"] *,
+div[data-testid="stNotification"] * {
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+}
+div[data-testid="stToast"] svg,
+div[data-testid="stNotification"] svg {
+    color: #38BDF8 !important;
+    fill: #38BDF8 !important;
 }
 
 /* Dark Mode Universal Popover & Secondary Buttons */

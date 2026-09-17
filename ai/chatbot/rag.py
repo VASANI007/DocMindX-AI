@@ -7,7 +7,7 @@ import json
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
 
 def generate_health_summary_ai(symptoms_list, top_condition, user_context, lang="en"):
     """
@@ -30,31 +30,28 @@ def generate_health_summary_ai(symptoms_list, top_condition, user_context, lang=
     5. Be reassuring and clear.
     """
 
-    # 1. Try Gemini REST API
-    if GEMINI_API_KEY:
-        for gemini_model in ["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"]:
-            try:
-                gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "contents": [{
-                        "parts": [{"text": prompt}]
-                    }],
-                    "generationConfig": {
-                        "temperature": 0.4,
-                        "maxOutputTokens": 600
-                    }
-                }
-                headers = {"Content-Type": "application/json"}
-                res = requests.post(gemini_url, headers=headers, json=payload, timeout=8)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and "text" in parts[0]:
-                            return parts[0]["text"].strip()
-            except Exception as e:
-                print(f"Gemini {gemini_model} note: {e}")
+    # 1. Try Gemini REST API (Multi-Key Failover Pool)
+    if gemini_pool.get_active_keys():
+        payload = {
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "temperature": 0.4,
+                "maxOutputTokens": 600
+            }
+        }
+        res_data, _, _ = gemini_pool.execute_with_failover(
+            payload=payload,
+            models=["gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-flash-latest"],
+            timeout=8
+        )
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts and "text" in parts[0]:
+                    return parts[0]["text"].strip()
 
     # 2. Try Groq
     if GROQ_API_KEY:

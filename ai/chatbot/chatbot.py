@@ -9,7 +9,7 @@ import re
 
 import requests
 
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
 
 
 def generate_dynamic_patient_questions(clinical_context: dict = None, lang_code: str = "en") -> list:
@@ -277,8 +277,8 @@ CRITICAL RULES & OPERATIONAL INSTRUCTIONS:
             except Exception as e:
                 print(f"Groq {groq_model} chat notice: {e}")
 
-    # Gemini is retained only as a fallback for normal chat outages.
-    if GEMINI_API_KEY:
+    # Gemini is retained as resilient fallback for normal chat outages.
+    if gemini_pool.get_active_keys():
         gemini_contents = []
         for msg in chat_history[-6:]:
             role = "user" if msg.get("role") == "user" else "model"
@@ -287,26 +287,24 @@ CRITICAL RULES & OPERATIONAL INSTRUCTIONS:
                 gemini_contents.append({"role": role, "parts": [{"text": content}]})
         gemini_contents.append({"role": "user", "parts": [{"text": user_message}]})
 
-        for gem_model in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{gem_model}:generateContent?key={GEMINI_API_KEY}"
-                payload = {
-                    "systemInstruction": {"parts": [{"text": system_prompt}]},
-                    "contents": gemini_contents,
-                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}
-                }
-                res = requests.post(url, json=payload, timeout=9)
-                if res.status_code == 200:
-                    data = res.json()
-                    candidates = data.get("candidates", [])
-                    if candidates:
-                        parts = candidates[0].get("content", {}).get("parts", [])
-                        if parts and parts[0].get("text"):
-                            ans = parts[0]["text"].strip()
-                            if ans:
-                                return ans
-            except Exception as e:
-                print(f"Gemini {gem_model} chat fallback notice: {e}")
+        payload = {
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": gemini_contents,
+            "generationConfig": {"temperature": 0.3, "maxOutputTokens": 1024}
+        }
+        res_data, gem_model, _ = gemini_pool.execute_with_failover(
+            payload=payload,
+            models=["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"],
+            timeout=9
+        )
+        if res_data:
+            candidates = res_data.get("candidates", [])
+            if candidates:
+                parts = candidates[0].get("content", {}).get("parts", [])
+                if parts and parts[0].get("text"):
+                    ans = parts[0]["text"].strip()
+                    if ans:
+                        return ans
 
     # 3. Dynamic Patient-Context Knowledge Fallback (If APIs are temporarily unreachable)
     q_lower = user_message.lower()

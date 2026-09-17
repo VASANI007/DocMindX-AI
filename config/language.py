@@ -7,7 +7,7 @@ import json
 import os
 import re
 import requests
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
 
 TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "translations")
 DYNAMIC_CACHE_FILE = os.path.join(TRANSLATIONS_DIR, ".dynamic_cache.json")
@@ -83,7 +83,7 @@ def clean_json_str(s: str) -> str:
 
 def _translate_batch_with_gemini(missing_dict: dict, lang_code: str, lang_name: str) -> dict:
     """Translates a batch of key-value pairs into target language via Gemini API."""
-    if not GEMINI_API_KEY or not missing_dict:
+    if not gemini_pool.get_active_keys() or not missing_dict:
         return {}
     
     prompt = f"""You are an expert medical localization AI for the Government of India.
@@ -98,28 +98,25 @@ CRITICAL RULES:
 JSON:
 {json.dumps(missing_dict, ensure_ascii=False, indent=2)}
 """
-    # Try lightweight fast models
-    models_to_try = ["gemini-flash-lite-latest", "gemini-2.5-flash", "gemini-1.5-flash"]
-    for model in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-        try:
-            res = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
-                },
-                timeout=25
-            )
-            if res.status_code == 200:
-                raw_text = res.json()["candidates"][0]["content"]["parts"][0]["text"]
-                cleaned = clean_json_str(raw_text)
+    # Try lightweight fast models across key pool
+    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"]
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.1, "responseMimeType": "application/json"}
+    }
+    res_data, _, _ = gemini_pool.execute_with_failover(payload, models=models_to_try, timeout=25)
+    if res_data:
+        candidates = res_data.get("candidates", [])
+        if candidates:
+            raw_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+            cleaned = clean_json_str(raw_text)
+            try:
                 data = json.loads(cleaned)
                 if isinstance(data, dict):
                     return data
-        except Exception:
-            continue
+            except Exception:
+                pass
+    return {}
             
 try:
     import streamlit as st
@@ -203,7 +200,7 @@ def translate_dynamic_text(text: str, target_lang_code: str = "en") -> str:
     if text in lang_cache:
         return lang_cache[text]
 
-    if not GEMINI_API_KEY:
+    if not gemini_pool.get_active_keys():
         return text
 
     lang_name = LANGUAGE_NAME_MAP.get(target_lang_code, target_lang_code.title())
@@ -216,27 +213,20 @@ Rules:
 Text:
 {text}
 """
-    models_to_try = ["gemini-flash-lite-latest", "gemini-2.5-flash"]
-    for model in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GEMINI_API_KEY}"
-        try:
-            res = requests.post(
-                url,
-                headers={"Content-Type": "application/json"},
-                json={
-                    "contents": [{"parts": [{"text": prompt}]}],
-                    "generationConfig": {"temperature": 0.1}
-                },
-                timeout=12
-            )
-            if res.status_code == 200:
-                out = res.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                if out:
-                    lang_cache[text] = out
-                    _save_dynamic_cache()
-                    return out
-        except Exception:
-            continue
+    models_to_try = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-flash-lite-latest"]
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.1}
+    }
+    res_data, _, _ = gemini_pool.execute_with_failover(payload, models=models_to_try, timeout=12)
+    if res_data:
+        candidates = res_data.get("candidates", [])
+        if candidates:
+            out = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+            if out:
+                lang_cache[text] = out
+                _save_dynamic_cache()
+                return out
 
     return text
 
