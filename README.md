@@ -1,6 +1,6 @@
 <!-- 🌌 HEADER -->
 <p align="center">
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0a192f,50:112240,100:0077b6&height=220&section=header&text=⚡%20DocMindX%20AI&fontSize=42&fontColor=ffffff&animation=fadeIn"/>
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0a192f,50:112240,100:0077b6&height=220&section=header&text=%20DocMindX%20AI&fontSize=42&fontColor=ffffff&animation=fadeIn"/>
 </p>
 
 <p align="center">
@@ -14,7 +14,7 @@
 
 ---
 
-# ⚡ DocMindX AI  
+#  DocMindX AI  
 ### Next-Gen Clinical AI Diagnostic Triage, Multimodal Medical OCR & National Health Command Center
 
 An **enterprise-grade, end-to-end clinical intelligence and healthcare logistics platform** engineered to solve critical bottlenecks in healthcare access and public health response. DocMindX AI empowers citizens, frontline health workers, and administrators to **assess symptoms across Indic languages, extract insights from handwritten prescriptions and lab reports, cross-reference verified pharmaceutical databases, predict clinical conditions with 97.58% differential accuracy, and optimize public health supply chain resilience** — all in one unified, real-time ecosystem.
