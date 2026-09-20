@@ -156,6 +156,13 @@ input[type="password"]::-ms-clear {
 """
 st.markdown(hide_streamlit_cloud_ui, unsafe_allow_html=True)
 
+# DocMindX AI — Startup Splash / Loading Screen (Cold start / browser refresh only)
+if st.query_params.get("reset") == "true":
+    st.session_state.pop("_docmindx_startup_ready", None)
+
+if not st.session_state.get("_docmindx_startup_ready", False):
+    from components.startup_splash import render_startup_splash_screen
+    render_startup_splash_screen()
 
 # Read query parameters to sync dark mode state if requested
 qp_theme = st.query_params.get("theme", None)
@@ -4188,7 +4195,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 chief_d = st.session_state.get("detected_chief_condition", {})
                 chief_name = chief_d.get("name") if isinstance(chief_d, dict) else None
 
-                # Run Global Production Clinical Pipeline Orchestrator (BioPortal, NLM, Triage, WHO ICD-11, etc.)
+                # Run Global Production Clinical Pipeline Orchestrator (BioPortal, NLM, Triage, WHO ICD-11, Care Recommendations, etc.)
                 from ai.disease_prediction.clinical_pipeline import clinical_pipeline
                 triage_res = clinical_pipeline.run_pipeline(
                     symptom_names=s_list_names,
@@ -4210,15 +4217,23 @@ if st.session_state["active_panel"] == "Health Assessment":
                         "details": u_ctx.get("details", ""),
                         "symptom_names": s_list_names,
                         "chief_condition": chief_name,
-                        "negative_findings": negative_findings
+                        "negative_findings": negative_findings,
+                        "lang_code": lang_code
                     },
                     chief_condition=chief_name,
                     run_bioportal=True,
-                    run_nlm=True
+                    run_nlm=True,
+                    run_care_recommendations=True
                 )
                 
                 st.session_state["p1_triage_results"] = triage_res
-                st.session_state["care_recommendations"] = None
+                care_plan = triage_res.get("care_plan") or triage_res.get("care_recommendations")
+                if care_plan and isinstance(care_plan, dict):
+                    care_plan["symptoms_key"] = str(sorted(s_list_names))
+                    ranked_conds_temp = triage_res.get("ranked_conditions", [])
+                    if ranked_conds_temp:
+                        care_plan["top_condition"] = ranked_conds_temp[0].get("name")
+                st.session_state["care_recommendations"] = care_plan
                 st.session_state["assessment_completed"] = True
                 status.update(label="Clinical Assessment & Triage Complete", state="complete", expanded=False)
                 st.rerun()
@@ -4231,14 +4246,23 @@ if st.session_state["active_panel"] == "Health Assessment":
         ranked_conds = t_res.get("ranked_conditions", [])
         top_disease_name = ranked_conds[0].get("name", "Acute Infection") if ranked_conds else "Acute Illness"
 
-        # Fetch / compute dynamic care recommendations (Cached for session to keep medicines & yoga consistent across language changes)
-        current_sym_key = str(sorted(st.session_state.get("selected_symptoms_list", [])))
+        # Reuse care recommendations produced by the single clinical_pipeline run (Correction 1)
         care_res = st.session_state.get("care_recommendations")
-        if (
-            not care_res
-            or care_res.get("top_condition") != top_disease_name
-            or care_res.get("symptoms_key") != current_sym_key
-        ):
+        if not care_res and t_res.get("care_plan"):
+            care_res = t_res.get("care_plan")
+            st.session_state["care_recommendations"] = care_res
+        elif not care_res and t_res.get("care_recommendations"):
+            care_res = t_res.get("care_recommendations")
+            st.session_state["care_recommendations"] = care_res
+
+        if care_res and care_res.get("lang_code") != lang_code:
+            # Language changed on existing assessment: localize text while locking medicines & yoga
+            care_res = localize_care_recommendations(care_res, lang_code)
+            if care_res and isinstance(care_res, dict):
+                care_res["top_condition"] = top_disease_name
+            st.session_state["care_recommendations"] = care_res
+        elif not care_res:
+            # Defensive fallback only if pipeline run omitted care recommendations
             care_res = get_dynamic_clinical_recommendations(
                 symptoms=st.session_state.get("selected_symptoms_list", []),
                 user_context=u_ctx,
@@ -4247,14 +4271,6 @@ if st.session_state["active_panel"] == "Health Assessment":
             )
             if care_res and isinstance(care_res, dict):
                 care_res["top_condition"] = top_disease_name
-                care_res["symptoms_key"] = current_sym_key
-            st.session_state["care_recommendations"] = care_res
-        elif care_res.get("lang_code") != lang_code:
-            # Language changed on existing assessment: localize text while locking medicines & yoga
-            care_res = localize_care_recommendations(care_res, lang_code)
-            if care_res and isinstance(care_res, dict):
-                care_res["top_condition"] = top_disease_name
-                care_res["symptoms_key"] = current_sym_key
             st.session_state["care_recommendations"] = care_res
 
         # Auto-persist complete clinical assessment record

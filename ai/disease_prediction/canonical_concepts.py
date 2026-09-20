@@ -51,6 +51,12 @@ class CanonicalClinicalRepresentation:
     normalization_status: str = "failed"  # 'success', 'partial', 'failed'
     unsupported_reasons: List[str] = field(default_factory=list)
 
+    @property
+    def clinical_status(self) -> str:
+        if not self.symptom_ids and not self.canonical_concepts and not self.exposure_ids:
+            return "insufficient_information"
+        return "success"
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "raw_text": self.raw_text,
@@ -71,6 +77,7 @@ class CanonicalClinicalRepresentation:
             "clinical_attributes": dict(self.clinical_attributes),
             "normalization_confidence": round(self.normalization_confidence, 2),
             "normalization_status": self.normalization_status,
+            "clinical_status": self.clinical_status,
             "unsupported_reasons": list(self.unsupported_reasons)
         }
 
@@ -286,8 +293,8 @@ CANONICAL_CONCEPT_PATTERNS = {
             r"सीने.*दर्द", r"छाती.*दर्द", r"सीने.*भारीपन",
             r"\u0a9b\u0abe\u0aa4\u0ac0.*\u0aa6\u0ac1\u0a96\u0abe\u0ab5\u0acb", r"\u0a9b\u0abe\u0aa4\u0ac0.*\u0aa6\u0aac\u0abe\u0aa3", r"\u0a9b\u0abe\u0aa4\u0ac0.*\u0aad\u0abe\u0ab0\u0ac7", r"\u0a9b\u0abe\u0aa4\u0ac0\u0aae\u0abe\u0a82.*\u0aa6\u0ac1\u0a96\u0abe\u0ab5\u0acb", r"\u0a9b\u0abe\u0aa4\u0ac0\u0aae\u0abe\u0a82.*\u0aa6\u0aac\u0abe\u0aa3",
             r"छातीत.*वेदना", r"छातीत.*जड",
-            r"\u09ac\u09c1\u0995\u09c7.*\u09ac\u09cd\u09af\u09a5\u09be", r"\u0bae\u0bbe\u0bb0\u0bcd\u0baa\u0bc1.*\u0bb5\u0bb2\u0bbf", r"\u0c1b\u0c3e\u0c24\u0c40.*\u0c28\u0c4a\u0c2a\u0c4d\u0c2a\u0c3f", r"\u0c8e\u0ca6\u0cc6.*\u0ca8\u0ccb\u0cb5\u0cc1", r"\u0d28\u0d46\u0d1e\u0d4d\u0d1a\u0d41\u0d35\u0d47\u0d26\u0d28",
-            r"\u0a1b\u0a3e\u0a24\u0a40.*\u0a26\u0a30\u0a26", r"\u0b1b\u0b3e\u0b24\u0b3f.*\u0b2f\u0b28\u0b4d\u0b24\u0b4d\u0b30\u0b23\u0b3e", r"\u0633\u06cc\u0646\u06d2.*\u062f\u0631\u062f",
+            r"\u09ac\u09c1\u0995\u09c7.*\u09ac\u09cd\u09af\u09a5\u09be", r"\u0bae\u0bbe\u0bb0\u0bcd\u0baa\u0bc1.*\u0bb5\u0bb2\u0bbf", r"\u0c1b\u0c3e\u0c24\u0c40.*\u0c28\u0c4a\u0c2a\u0c4d\u0c2a\u0c3f", r"\u0c8e\u0ca6\u0cc6.*\u0ca8\u0ccb\u0cb5\u0cc1", r"\u0d28\u0d46\u0d1e\u0d4d\u0d1a\u0d41\u0d35\u0d46\u0d28",
+            r"\u0a1b\u0a3e\u0a24\u0a40.*\u0a26\u0a30\u0a26", r"\u0b1b\u0b3e\u0b24\u0b3f.*\u0b2f\u0b28\u0b4d\u0b30\u0b23\u0b3e", r"\u0633\u06cc\u0646\u06d2.*\u062f\u0631\u062f",
             r"chhati.*dukhav", r"chhati.*dabana", r"seene.*dard"
         ],
         "category": "cardiopulmonary",
@@ -354,7 +361,7 @@ CANONICAL_CONCEPT_PATTERNS = {
     },
     # 6. Gastrointestinal
     "abdominal_pain": {
-        "symptom_id": "S000091",
+        "symptom_id": "S000092",
         "patterns": [
             r"abdominal.*pain", r"stomach.*pain", r"stomach.*ache", r"belly.*pain", r"cramps", r"cramp", r"pelvic.*cramps", r"pelvic.*pain",
             r"पेट.*दर्द", r"પેટ.*દુખાવો", r"પેટમાં.*દુખાવો", r"पोटदुखी", r"पोटात.*वेदना", r"मरोड़", r"ऐंठन", r"મરોડ",
@@ -388,12 +395,54 @@ CANONICAL_CONCEPT_PATTERNS = {
     },
     # 7. Dermatological
     "skin_rash": {
-        "symptom_id": "S000108",
+        "symptom_id": "S000109",
         "patterns": [
             r"\brash\b", r"skin.*eruption", r"hives", r"erythema", r"itching",
             r"चकत्ते", r"खुजली", r"दाने", r"ગુમડાં", r"ખંજવાળ", r"લાલ.*ચકામા", r"खाज", r"पुरळ",
             r"ফুসকুড়ি", r"அரிப்பு", r"దద్దుర్లు", r"ತುರಿಕೆ", r"ചൊറിച്ചിൽ", r"ਖੁਜਲੀ", r"କୁଣ୍ଡାଇ",
             r"khujli", r"khanjwal", r"chakama", r"rash"
+        ],
+        "category": "dermatological",
+        "red_flag": False
+    },
+    "constipation": {
+        "symptom_id": "S000091",
+        "patterns": [
+            r"constipat", r"hard.*stool", r"difficulty.*passing.*stool", r"infrequent.*bowel",
+            r"कब्ज़", r"कब्ज", r"મલબદ્ધતા", r"કબજિયાત", r"શૌચ.*તકલીફ", r"बद्धकोष्ठता",
+            r"কোষ্ঠকাঠিন্য", r"மலச்சிக்கல்", r"మలబద్ధకం", r"ಮಲಬದ್ಧತೆ", r"മലബന്ധം", r"ਕਬਜ਼",
+            r"kabziyat", r"kabj", r"kabz"
+        ],
+        "category": "gastrointestinal",
+        "red_flag": False
+    },
+    "worm_infestation": {
+        "symptom_id": "S000108",
+        "patterns": [
+            r"worm.*infestation", r"visible.*worms", r"worms.*stool", r"pinworm", r"tapeworm", r"roundworm",
+            r"पेट.*कीड़े", r"मल.*कीड़े", r"પેટના.*કીડા", r"કૃમિ", r"पोटातील.*जंत",
+            r"pet.*ke.*kide", r"petna.*kida"
+        ],
+        "category": "gastrointestinal",
+        "red_flag": False
+    },
+    "itching_pruritus": {
+        "symptom_id": "S000110",
+        "patterns": [
+            r"itching", r"pruritus", r"itchy", r"scratching",
+            r"खुजली", r"ખંજવાળ", r"खाज", r"અળાઈ",
+            r"চুলকানি", r"அரிப்பு", r"దురద", r"ತುರಿಕೆ", r"ചൊറിച്ചിൽ", r"ਖੁਜਲੀ", r"କୁଣ୍ଡାଇ",
+            r"khujli", r"khanjwal", r"khaj"
+        ],
+        "category": "dermatological",
+        "red_flag": False
+    },
+    "fungal_skin_infection": {
+        "symptom_id": "S000124",
+        "patterns": [
+            r"fungal.*infection", r"ringworm", r"tinea", r"ring.*shaped.*rash", r"circular.*rash",
+            r"दाद", r"फंगल.*संक्रमण", r"દાદર", r"ધાધર", r"ફૂગનો.*ચેપ", r"गचकरण", r"नायटा",
+            r"dhadhar", r"dadar", r"daadh", r"daad", r"lalchmbha", r"lal.*chambha"
         ],
         "category": "dermatological",
         "red_flag": False
@@ -750,10 +799,16 @@ class MultilingualClinicalNormalizer:
             unsupported_reasons=reasons
         )
 
+    def __init__(self):
+        self._concept_patterns = CANONICAL_CONCEPT_PATTERNS
+        self._neg_regex = re.compile("|".join(f"(?:{p})" for p in NEGATION_MARKERS), re.IGNORECASE)
+        self.bridge = MasterSymptomTaxonomyBridge()
+
     def get_symptom_id(self, symptom_text: str) -> Optional[str]:
         """
         Resolves a symptom name, label, or concept string into a canonical symptom ID (e.g. 'S000135').
-        Returns None if not resolvable.
+        Uses MasterSymptomTaxonomyBridge covering the full 280-symptom master taxonomy first,
+        then checks canonical concept patterns. Returns None if unresolvable.
         """
         if not symptom_text:
             return None
@@ -761,11 +816,16 @@ class MultilingualClinicalNormalizer:
         # Direct canonical ID format check (S followed by digits)
         if re.match(r"^S[0-9]{6}$", st.upper()):
             return st.upper()
-        
+
         # Check concept dictionary directly
         c_key = st.lower().replace(" ", "_").replace("-", "_")
         if c_key in self._concept_patterns:
             return self._concept_patterns[c_key]["symptom_id"]
+
+        # Check generalized 280-symptom taxonomy bridge
+        bridge_id = self.bridge.resolve_symptom(st)
+        if bridge_id:
+            return bridge_id
 
         # Normalize text and look for extracted symptom IDs
         rep = self.normalize(st)
@@ -776,6 +836,108 @@ class MultilingualClinicalNormalizer:
 
 
 # ==============================================================================
+# GENERALIZED 280-SYMPTOM MASTER TAXONOMY BRIDGE
+# ==============================================================================
+class MasterSymptomTaxonomyBridge:
+    """
+    Generalized Multilingual Bridge covering all 280 symptoms in symptoms_master.csv.
+    Provides fast bidirectional lookup:
+      user_text / multilingual phrase -> canonical symptom ID (S000001..S000280) -> metadata.
+    Enforces semantic validation so fuzzy candidates must pass an attribute check.
+    """
+    def __init__(self, csv_path: Optional[str] = None):
+        if not csv_path:
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            csv_path = os.path.join(base_dir, "datasets", "symptoms", "symptoms_master.csv")
+        self.csv_path = csv_path
+        self.id_to_record: Dict[str, Dict[str, Any]] = {}
+        self.exact_name_to_id: Dict[str, str] = {}
+        self._load_master_taxonomy()
+
+    def _load_master_taxonomy(self):
+        if not os.path.exists(self.csv_path):
+            _logger.warning("[MasterSymptomTaxonomyBridge] Master symptoms file not found at: %s", self.csv_path)
+            return
+
+        with open(self.csv_path, mode="r", encoding="utf-8-sig") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                sid = row.get("symptom_id", "").strip()
+                if not sid:
+                    continue
+                name_en = row.get("symptom_name", "").strip()
+                name_hi = row.get("symptom_name_hi", "").strip()
+                name_gu = row.get("symptom_name_gu", "").strip()
+                record = {
+                    "symptom_id": sid,
+                    "symptom_name": name_en,
+                    "symptom_name_hi": name_hi,
+                    "symptom_name_gu": name_gu,
+                    "body_system": row.get("body_system", "").strip(),
+                    "symptom_category": row.get("symptom_category", "").strip(),
+                    "severity_level": row.get("severity_level", "").strip(),
+                    "emergency_flag": row.get("emergency_flag", "").strip(),
+                    "description": row.get("description", "").strip()
+                }
+                self.id_to_record[sid] = record
+
+                # Index English exact & cleaned
+                if name_en:
+                    self.exact_name_to_id[name_en.lower()] = sid
+                    clean_en = re.sub(r'\(.*?\)', '', name_en).strip().lower()
+                    if clean_en and clean_en not in self.exact_name_to_id:
+                        self.exact_name_to_id[clean_en] = sid
+                    parenthetical = re.findall(r'\((.*?)\)', name_en)
+                    for p in parenthetical:
+                        for p_sub in p.split(','):
+                            p_clean = p_sub.strip().lower()
+                            if p_clean and p_clean not in self.exact_name_to_id:
+                                self.exact_name_to_id[p_clean] = sid
+
+                # Index Hindi & Gujarati
+                if name_hi:
+                    self.exact_name_to_id[name_hi.strip().lower()] = sid
+                    for h_part in name_hi.split('/'):
+                        h_clean = re.sub(r'\(.*?\)', '', h_part).strip().lower()
+                        if h_clean and h_clean not in self.exact_name_to_id:
+                            self.exact_name_to_id[h_clean] = sid
+                if name_gu:
+                    self.exact_name_to_id[name_gu.strip().lower()] = sid
+                    for g_part in name_gu.split('/'):
+                        g_clean = re.sub(r'\(.*?\)', '', g_part).strip().lower()
+                        if g_clean and g_clean not in self.exact_name_to_id:
+                            self.exact_name_to_id[g_clean] = sid
+
+    def resolve_symptom(self, symptom_text: str) -> Optional[str]:
+        if not symptom_text:
+            return None
+        st = str(symptom_text).strip()
+        if re.match(r"^S[0-9]{6}$", st.upper()):
+            sid = st.upper()
+            return sid if sid in self.id_to_record else sid
+
+        st_clean = st.lower()
+        if st_clean in self.exact_name_to_id:
+            return self.exact_name_to_id[st_clean]
+
+        # Normalized without punctuation
+        norm_clean = re.sub(r"[^\w\s\u0900-\u0DFF]", " ", st_clean)
+        norm_clean = re.sub(r"\s+", " ", norm_clean).strip()
+        if norm_clean in self.exact_name_to_id:
+            return self.exact_name_to_id[norm_clean]
+
+        return None
+
+    def lookup_by_id(self, sid: str) -> Optional[Dict[str, Any]]:
+        if not sid:
+            return None
+        return self.id_to_record.get(str(sid).strip().upper())
+
+
+def get_taxonomy_bridge() -> MasterSymptomTaxonomyBridge:
+    """Returns the singleton MasterSymptomTaxonomyBridge instance."""
+    return canonical_normalizer.bridge
+
 # RUNTIME CANONICAL TAXONOMY INTEGRITY VALIDATION
 # ==============================================================================
 MANDATORY_CANONICAL_TAXONOMY = {
@@ -785,6 +947,19 @@ MANDATORY_CANONICAL_TAXONOMY = {
     "S000280": "Bluish Lips in Infant",
     "S000101": "Excessive Belching",
     "S000102": "Stomach Cramps",
+    "S000092": "Abdominal Pain",
+    "S000091": "Constipation",
+    "S000109": "Skin Rash",
+    "S000110": "Itching (Pruritus)",
+    "S000124": "Fungal Skin Infection Signs (Ring-shaped Rash)",
+    "S000108": "Worm Infestation Symptoms (Itching, Visible Worms)",
+    "S000001": "Fever",
+    "S000003": "Chills",
+    "S000023": "Dry Cough",
+    "S000046": "Chest Pain",
+    "S000061": "Headache",
+    "S000087": "Vomiting",
+    "S000089": "Diarrhea",
 }
 
 def validate_canonical_ids(csv_path: Optional[str] = None) -> bool:
@@ -795,7 +970,15 @@ def validate_canonical_ids(csv_path: Optional[str] = None) -> bool:
       - S000144 == Lower Back Pain Radiating to Leg (Sciatica)
       - S000265 == Animal Bite with Wound
       - S000280 == Bluish Lips in Infant
-      - animal_bite != S000280
+      - S000092 == Abdominal Pain
+      - S000091 == Constipation
+      - S000109 == Skin Rash
+      - S000110 == Itching (Pruritus)
+      - S000124 == Fungal Skin Infection Signs (Ring-shaped Rash)
+      - S000108 == Worm Infestation Symptoms (Itching, Visible Worms)
+      - abdominal_pain != S000091 (Must NEVER be Constipation)
+      - skin_rash != S000108 (Must NEVER be Worm Infestation)
+      - animal_bite != S000280 (Must NEVER be Bluish Lips in Infant)
       - sciatica != S000101 and sciatica != S000102
     Raises ClinicalIntegrityError on any mismatch.
     """
@@ -812,8 +995,29 @@ def validate_canonical_ids(csv_path: Optional[str] = None) -> bool:
     if CANONICAL_CONCEPT_PATTERNS.get("animal_bite", {}).get("symptom_id") != "S000265":
         raise ClinicalIntegrityError("Integrity Violation: animal_bite must map to S000265 (Animal Bite with Wound)")
 
+    if CANONICAL_CONCEPT_PATTERNS.get("animal_bite", {}).get("symptom_id") == "S000280":
+        raise ClinicalIntegrityError("Integrity Violation: animal_bite must NEVER map to S000280 (Bluish Lips in Infant)")
+
     if CANONICAL_CONCEPT_PATTERNS.get("bluish_lips_infant", {}).get("symptom_id") != "S000280":
         raise ClinicalIntegrityError("Integrity Violation: bluish_lips_infant must map to S000280 (Bluish Lips in Infant)")
+
+    if CANONICAL_CONCEPT_PATTERNS.get("abdominal_pain", {}).get("symptom_id") != "S000092":
+        raise ClinicalIntegrityError("Integrity Violation: abdominal_pain must map to S000092 (Abdominal Pain)")
+
+    if CANONICAL_CONCEPT_PATTERNS.get("abdominal_pain", {}).get("symptom_id") == "S000091":
+        raise ClinicalIntegrityError("Integrity Violation: abdominal_pain must NEVER map to S000091 (Constipation)")
+
+    if CANONICAL_CONCEPT_PATTERNS.get("skin_rash", {}).get("symptom_id") != "S000109":
+        raise ClinicalIntegrityError("Integrity Violation: skin_rash must map to S000109 (Skin Rash)")
+
+    if CANONICAL_CONCEPT_PATTERNS.get("skin_rash", {}).get("symptom_id") == "S000108":
+        raise ClinicalIntegrityError("Integrity Violation: skin_rash must NEVER map to S000108 (Worm Infestation)")
+
+    if CANONICAL_CONCEPT_PATTERNS.get("itching_pruritus", {}).get("symptom_id") != "S000110":
+        raise ClinicalIntegrityError("Integrity Violation: itching_pruritus must map to S000110 (Itching (Pruritus))")
+
+    if CANONICAL_CONCEPT_PATTERNS.get("fungal_skin_infection", {}).get("symptom_id") != "S000124":
+        raise ClinicalIntegrityError("Integrity Violation: fungal_skin_infection must map to S000124 (Fungal Skin Infection)")
 
     # 2. Check against symptoms_master.csv if available
     if not csv_path:

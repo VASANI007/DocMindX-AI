@@ -224,7 +224,7 @@ def search_drug_openfda(drug_name: str) -> Optional[Dict[str, Any]]:
                 "purpose": "",
                 "indications": "",
                 "contraindications": "",
-                "warnings": "No FDA drug label found for this medication query.",
+                "warnings": "No official FDA drug label found for this medication query.",
                 "adverse_reactions": "",
                 "verified_label_dosage": "",
                 "dosage_instructions": "",
@@ -234,7 +234,7 @@ def search_drug_openfda(drug_name: str) -> Optional[Dict[str, Any]]:
                 "verification_status": "NOT_FOUND",
                 "is_live": True,
                 "fallback_used": False,
-                "fallback_reason": "No FDA label matching query",
+                "fallback_reason": "No relevant FDA label found (HTTP 404)",
                 "source": "OpenFDA Live API",
                 "retrieved_at": now_iso
             }
@@ -280,3 +280,40 @@ def search_drug_openfda(drug_name: str) -> Optional[Dict[str, Any]]:
         "source": "Local Clinical Reference (OpenFDA Unavailable)",
         "retrieved_at": now_iso
     }
+
+
+def is_openfda_verified(record: Optional[Dict[str, Any]]) -> bool:
+    """
+    Evaluates whether an OpenFDA drug record represents a genuinely verified FDA label.
+    Rules:
+    - Must not be None
+    - status == "SUCCESS"
+    - verification_status == "OPENFDA_VERIFIED" (or unset on successful mock/live)
+    - fallback_used is not True
+    - Must have substance / label content: at least one of dosage_forms, routes, indications, active_ingredients,
+      verified_strength, verified_route, verified_form, verified_label_dosage, or generic_name.
+    """
+    if not record or not isinstance(record, dict):
+        return False
+    if record.get("status") != "SUCCESS":
+        return False
+    v_stat = record.get("verification_status")
+    if v_stat and v_stat not in ("OPENFDA_VERIFIED", "SUCCESS"):
+        return False
+    if record.get("fallback_used") is True:
+        return False
+    has_substance = bool(
+        record.get("dosage_forms") or
+        record.get("routes") or
+        record.get("indications") or
+        record.get("active_ingredients") or
+        record.get("verified_strength") or
+        record.get("verified_route") or
+        record.get("verified_form") or
+        record.get("verified_label_dosage") or
+        record.get("generic_name") or
+        record.get("brand_name")
+    )
+    return has_substance
+
+

@@ -241,13 +241,28 @@ def condition_supports_topical(top_condition: str = "", symptoms: list = None) -
 
 
 
+KNOWN_ACTIVE_COMPOUNDS = {
+    "paracetamol", "acetaminophen", "ibuprofen", "aspirin", "amoxicillin",
+    "azithromycin", "ciprofloxacin", "cetirizine", "levocetirizine", "clotrimazole",
+    "terbinafine", "ketoconazole", "fluconazole", "diclofenac", "aceclofenac",
+    "tramadol", "metformin", "atorvastatin", "pantoprazole", "omeprazole",
+    "rabeprazole", "ranitidine", "losartan", "amlodipine", "salbutamol",
+    "montelukast", "dextromethorphan", "chlorpheniramine", "mupirocin"
+}
+
+
 def _extract_active_compound(name: str) -> str:
     """Extracts simplified active compound name for deduplication."""
-    clean = re.sub(r'\(.*?\)', '', name).lower()
+    name_lower = (name or "").lower()
+    for known in KNOWN_ACTIVE_COMPOUNDS:
+        if known in name_lower:
+            return known
+
+    clean = re.sub(r'\(.*?\)', '', name_lower)
     clean = re.sub(r'[0-9]+(\.[0-9]+)?\s*(mg|mcg|g|%|ml)', '', clean)
-    clean = re.sub(r' (inj|tablet|capsule|syrup|gel|cream|ointment|spray|drops|infusion|solution|oral) ', '', clean)
+    clean = re.sub(r'\b(inj|tablet|capsule|syrup|gel|cream|ointment|spray|drops|infusion|solution|oral)\b', '', clean)
     words = [w.strip() for w in clean.split() if len(w.strip()) > 2]
-    return words[0] if words else name.lower()[:8]
+    return words[0] if words else name_lower[:8]
 
 
 def get_medicine_gallery(
@@ -306,7 +321,7 @@ def get_medicine_gallery(
             continue
 
         # Active compound & route deduplication
-        compound = _extract_active_compound(candidate or display_name)
+        compound = _extract_active_compound(f"{display_name} {candidate}")
         route_lower = (spec_route or "").lower()
         if any(r in route_lower or r in name_lower for r in ["inject", "intravenous", "iv", "im", "subcutaneous", "infusion"]):
             route_key = "injectable"
@@ -347,22 +362,30 @@ def get_medicine_gallery(
         api_info = None
         fda_live = False
         dailymed_live = False
+        dailymed_name_match = False
         dailymed_info = []
 
         if candidate:
             try:
-                from api.openfda import search_drug_openfda
+                from api.openfda import search_drug_openfda, is_openfda_verified
                 api_info = search_drug_openfda(candidate)
-                if api_info and (api_info.get("is_live") or (api_info.get("status") == "SUCCESS" and api_info.get("brand_name"))):
+                if is_openfda_verified(api_info):
                     fda_live = True
             except Exception as exc:
                 _logger.warning("[CareRecommendations] OpenFDA verification notice for '%s': %s", candidate, exc)
 
             try:
-                from api.dailymed import search_dailymed_drugnames
-                dailymed_info = search_dailymed_drugnames(candidate)
-                if dailymed_info and len(dailymed_info) > 0:
+                from api.dailymed import get_dailymed_medicine_summary, is_dailymed_verified, search_dailymed_drugnames
+                spl_summary = get_dailymed_medicine_summary(candidate)
+                if is_dailymed_verified(spl_summary):
                     dailymed_live = True
+                    dailymed_info = spl_summary.get("ndcs", [])
+                else:
+                    # Check drugnames for existence only (Name match, NOT SPL label verification)
+                    name_matches = search_dailymed_drugnames(candidate)
+                    if name_matches and len(name_matches) > 0:
+                        dailymed_name_match = True
+                        dailymed_info = name_matches
             except Exception as exc:
                 _logger.warning("[CareRecommendations] DailyMed verification notice for '%s': %s", candidate, exc)
 
@@ -379,6 +402,10 @@ def get_medicine_gallery(
             verification_status = "DAILYMED_VERIFIED"
             provider = "DailyMed"
             api_source = f"{source_tag} [DailyMed Verified]"
+        elif dailymed_name_match:
+            verification_status = "DAILYMED_NAME_MATCH"
+            provider = "DailyMed (Name Match Only)"
+            api_source = f"{source_tag} [DailyMed Name Match]"
         else:
             verification_status = "CLINICAL_REFERENCE"
             provider = "DocMindX Clinical Reference"
@@ -387,22 +414,34 @@ def get_medicine_gallery(
         candidate_dosage = dosage
         verified_label_dosage = None
         verified_strength = None
-        verified_route = spec_route or route_key.capitalize()
-        verified_form = spec_form or ("Gel" if is_topical else "Tablet" if route_key == "oral" else route_key.capitalize())
+        verified_route = None
+        verified_form = None
 
-        if api_info and isinstance(api_info, dict):
-            if api_info.get("verified_label_dosage"):
-                verified_label_dosage = api_info.get("verified_label_dosage")
-            if api_info.get("verified_strength"):
-                verified_strength = api_info.get("verified_strength")
-            if api_info.get("verified_route"):
-                verified_route = api_info.get("verified_route")
-            if api_info.get("verified_form"):
-                verified_form = api_info.get("verified_form")
+        if fda_live and api_info and isinstance(api_info, dict):
+            verified_label_dosage = api_info.get("verified_label_dosage") or api_info.get("dosage_instructions") or None
+            raw_strengths = api_info.get("strengths") or api_info.get("verified_strength")
+            verified_strength = raw_strengths[0] if isinstance(raw_strengths, list) and raw_strengths else (raw_strengths or None)
+            raw_routes = api_info.get("routes") or api_info.get("verified_route")
+            verified_route = raw_routes[0] if isinstance(raw_routes, list) and raw_routes else (raw_routes or None)
+            raw_forms = api_info.get("dosage_forms") or api_info.get("verified_form")
+            verified_form = raw_forms[0] if isinstance(raw_forms, list) and raw_forms else (raw_forms or None)
+
+        # Clean dosage form - never permit "Tube" (tube is packaging, not a dosage form)
+        clean_spec_form = spec_form
+        if str(clean_spec_form).strip().lower() in ["tube", "bottle", "strip"]:
+            clean_spec_form = "Cream" if is_topical else "Tablet"
+        if str(verified_form).strip().lower() in ["tube", "bottle", "strip"]:
+            verified_form = "Cream" if is_topical else "Tablet"
+
+        resolved_form = verified_form or clean_spec_form or ("Cream" if is_topical else "Tablet" if route_key == "oral" else route_key.capitalize())
+        resolved_route = verified_route or spec_route or route_key.capitalize()
+
+        # Truthful dosage instruction display
+        dosage_display = candidate_dosage or "Consult healthcare practitioner for official clinical dosage."
 
         is_inj = (route_key == "injectable")
         is_hospital_protocol = is_inj
-        admin_setting = "Hospital / Clinic Administration by Healthcare Professional Only" if is_inj else "Self-administration / Oral as directed"
+        admin_setting = "Hospital / Clinic Administration by Healthcare Professional Only" if is_inj else ("External Application / Topical" if is_topical else "Self-administration / Oral as directed")
 
         search_query = f"{display_name} {candidate}".strip()
         image_path, is_fallback = resolve_image("medicine", search_query)
@@ -413,14 +452,14 @@ def get_medicine_gallery(
             "candidate_medication": display_name,
             "candidate_name": candidate,
             "candidate_dosage": candidate_dosage,
-            "dosage": dosage,
+            "dosage": dosage_display,
             "verified_label_dosage": verified_label_dosage,
             "verified_strength": verified_strength,
             "verified_route": verified_route,
             "verified_form": verified_form,
             "provider": provider,
             "verification_status": verification_status,
-            "is_live": bool(is_clinically_verified),
+            "is_live": bool(fda_live or dailymed_live or dailymed_name_match),
             "is_fallback": bool(not is_clinically_verified),
             "is_verified": bool(is_clinically_verified),
             "source": api_source,
@@ -431,9 +470,9 @@ def get_medicine_gallery(
             "warnings": warnings,
             "type": med_type,
             "openfda": api_info,
-            "dailymed": dailymed_info[:2] if dailymed_info else [],
-            "route": verified_route,
-            "dosage_form": verified_form,
+            "dailymed": dailymed_info[:2] if isinstance(dailymed_info, list) else [],
+            "route": resolved_route,
+            "dosage_form": resolved_form,
             "is_hospital_protocol": is_hospital_protocol,
             "administration_setting": admin_setting,
             "image": image_path,
@@ -489,6 +528,24 @@ def get_dynamic_clinical_recommendations(
 
     lang_instruction = "English" if lang_code == "en" else "Hindi (हिंदी)" if lang_code == "hi" else "Gujarati (ગુજરાતી)"
 
+    supports_topical = condition_supports_topical(top_condition, symptoms)
+    if supports_topical:
+        topical_prompt_directive = """
+   - DERMATOLOGICAL / TOPICAL FORMULATION MANDATE:
+     This patient presents with a localized cutaneous or dermatological condition.
+     First-line therapy MUST include an appropriate TOPICAL formulation (Cream, Ointment, or Gel — e.g. Clotrimazole 1% Cream, Terbinafine 1% Cream, Ketoconazole 2% Cream).
+     Second-line therapy MAY include an oral formulation if clinically indicated (e.g. Fluconazole tablet or Levocetirizine for severe pruritus).
+     Do NOT prescribe oral-only therapy for superficial fungal/skin infections.
+     Set "form": "Cream" / "Ointment" / "Gel" / "Tablet" (NEVER set form to "Tube").
+     Set "route": "Topical" / "Oral".
+"""
+    else:
+        topical_prompt_directive = """
+   - Prescribe appropriate oral or inhalation formulations.
+     Set "form": "Tablet" / "Capsule" / "Syrup" / "Sachet".
+     Set "route": "Oral".
+"""
+
     prompt = f"""
     You are DocMindX AI — an advanced clinical healthcare & triage AI.
 Perform an in-depth clinical analysis and prescribe a comprehensive, personalized care recommendation package for this patient across all relevant clinical care modalities.
@@ -525,16 +582,19 @@ CRITICAL CLINICAL INSTRUCTIONS:
    - "summary": A personalized 2-3 sentence clinical summary strictly tailored to {top_condition}, current season ({seasonal_data['season_name']}), and reported symptoms in {lang_instruction}. Use "Pattern compatible with..." language.
    - "recovery_duration": Realistic recovery timeline — use qualified language ("Recovery typically ranges from X to Y days depending on...") in {lang_instruction}.
 
-3. TIER 1: DYNAMIC ORAL MEDICINES:
+3. TIER 1: DYNAMIC MEDICINES:
+{topical_prompt_directive}
    - Prescribe ONLY the clinically indicated medications directly supported by evidence for this patient's exact symptoms, severity, and duration (return dynamic count: 0, 1, 2, 3, etc. - do NOT artificially target any fixed count).
    - For EACH medicine provide:
      - "name": Generic name with popular Indian brand in parentheses (e.g., "Paracetamol 650mg (Dolo 650 / Calpol)", "Pantoprazole 40mg (Pan 40)", "Oral Rehydration Salts (Electral / ORS)", "Azithromycin 500mg (Azee 500)", "Levocetirizine 5mg (Levocet)").
      - "indication": Specific symptom it treats in {lang_instruction}.
-     - "dosage": Exact clinical dosage (e.g., "1 Tablet thrice daily after meals", "1 Sachet dissolved in 1L boiled water").
+     - "dosage": Exact clinical dosage (e.g., "1 Tablet thrice daily after meals", "Apply thin layer twice daily").
      - "course_duration": Explicit course length in {lang_instruction} (e.g. "3 to 5 Days", "5 Days Full Course", "3 થી 5 દિવસ").
-     - "food_timing": Explicit food timing strictly in {lang_instruction} ("After Food", "Before Food (Empty Stomach)", "With Water").
+     - "food_timing": Explicit timing strictly in {lang_instruction} ("After Food", "Before Food (Empty Stomach)", "External Application").
      - "time_of_day": E.g. "Morning & Night (BD)", "Morning Empty Stomach", "SOS (When needed)", "Thrice Daily (TDS)".
      - "type": "OTC" or "Prescription".
+     - "form": "Cream" / "Ointment" / "Gel" / "Tablet" / "Capsule" / "Syrup" (never "Tube").
+     - "route": "Topical" / "Oral" / "Inhalation".
      - "warnings": Crucial safety precautions in {lang_instruction}.
 
 4. TIER 2: CLINICAL INJECTIONS & IV FLUIDS (CONDITIONAL & STRICT DURATION-GATED):
@@ -731,12 +791,24 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
         raw_meds = ai_data.get("medicines", [])
         for m in raw_meds:
             m["source"] = "Clinical AI Candidate (Gemini/Groq)"
-        med_gallery = get_medicine_gallery(raw_meds, max_items=12)
+        med_gallery = get_medicine_gallery(raw_meds, max_items=12, top_condition=top_condition, symptoms=symptoms)
 
         # Format Yoga / Physio with YouTube search URLs and images
         yoga_list = []
-        if is_emergency:
-            # EMERGENCY GATE: All routine yoga and exercises are strictly suspended
+        text_presentation = f"{top_condition} " + " ".join([str(s) for s in symptoms]).lower()
+        is_derm_condition = any(k in text_presentation for k in [
+            "fungal", "fungus", "tinea", "ringworm", "dhadhar", "dadar", "khujli", "pruritus", "skin rash", "itching",
+            "candidiasis", "athlete's foot", "jock itch"
+        ])
+        has_physical_indication = bool(
+            attrs.get("has_radicular_symptoms") or
+            attrs.get("has_musculoskeletal_symptoms") or
+            attrs.get("has_respiratory_symptoms") or
+            attrs.get("has_gastrointestinal_symptoms")
+        )
+
+        if is_emergency or (is_derm_condition and not has_physical_indication):
+            # EMERGENCY / DERMATOLOGICAL GATE: Routine yoga is not indicated for superficial fungal/skin infections
             yoga_list = []
         else:
             raw_yoga = ai_data.get("yoga_physio") or ai_data.get("yoga_recommendations") or ai_data.get("yoga") or []
@@ -763,7 +835,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 })
 
             # If LLM returned empty yoga list, populate safely from clinical attribute registry
-            if not yoga_list:
+            if not yoga_list and not is_derm_condition:
                 yoga_list = _get_condition_fallback_yoga(top_condition, symptoms, lang_code)
 
         foods_to_eat = ai_data.get("foods_to_eat") or []
@@ -958,6 +1030,26 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 "exercises": []
             }
 
+        # Dermatological Presentation Gate: Compresses and Physiotherapy are NOT indicated for fungal/superficial skin infections
+        if is_derm_condition and not attrs.get("has_musculoskeletal_symptoms"):
+            compress_data = {
+                "is_indicated": False,
+                "mode": "none",
+                "title": "Compress Not Indicated",
+                "instructions": "Warm fomentation or cold moisture is contraindicated for active cutaneous fungal lesions as heat/moisture promotes fungal growth.",
+                "duration": "",
+                "duration_and_frequency": "",
+                "cautions": "Keep the affected skin clean and completely dry.",
+                "precautions": "Keep the affected skin clean and completely dry."
+            }
+            physio_data = {
+                "is_indicated": False,
+                "clinical_rationale": "Non-musculoskeletal dermatological presentation",
+                "condition_target": "Dermatological Presentation",
+                "cautions": "Physical therapy exercises are not indicated for superficial cutaneous infections.",
+                "exercises": []
+            }
+
         # 4. Parse Specialized Clinical Therapies (Chemotherapy, Dialysis, Nebulization, etc.)
         specialized_data = ai_data.get("specialized_therapies") or ai_data.get("specialized_therapy") or {}
         if not isinstance(specialized_data, dict):
@@ -1023,6 +1115,8 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
             "total_medicines_recommended": len(med_gallery),
             "injections_and_iv": injections_data,
             "compress_guidance": compress_data,
+            "cold_warm_compress_mode": compress_data.get("mode", "none"),
+            "cold_warm_compress_indicated": compress_data.get("is_indicated", False),
             "physiotherapy_guidance": physio_data,
             "specialized_therapies": specialized_data,
             "yoga_recommendations": yoga_list,
@@ -1060,7 +1154,44 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
     ft_after = "After Food" if lang_code == "en" else "भोजन के बाद" if lang_code == "hi" else "જમ્યા પછી"
     ft_before = "Before Food (Empty Stomach)" if lang_code == "en" else "भोजन से पहले (खाली पेट)" if lang_code == "hi" else "જમ્યા પહેલા (ખાલી પેટે)"
 
-    # Look up in india_major_diseases.csv
+    # 1. Dermatological / Cutaneous Fungal Presentation (First-line topical antifungal + optional antipruritic)
+    is_derm_condition = any(k in cond_lower or k in sym_lower for k in [
+        "fungal", "tinea", "ringworm", "dhadhar", "dadar", "khujli", "pruritus", "skin rash", "itching", "dermatitis", "eczema", "athlete's foot", "jock itch"
+    ])
+    if is_derm_condition and condition_supports_topical(top_condition, symptoms):
+        parsed = []
+        parsed.append({
+            "name": "Clotrimazole 1% Cream (Candid / Canesten)",
+            "brand_examples": "Candid, Canesten",
+            "indication": "Topical antifungal treatment for superficial tinea, ringworm, and cutaneous fungal lesions." if lang_code == "en" else "दाद, खाज और त्वचा के फंगल संक्रमण के लिए सामयिक एंटीफंगल क्रीम।" if lang_code == "hi" else "દાદર અને ફંગલ ઇન્ફેક્શન માટે એન્ટિફંગલ ક્રીમ.",
+            "dosage": "Apply a thin layer twice daily to clean, dry affected skin for 2 to 4 weeks.",
+            "course_duration": "2 to 4 Weeks" if lang_code == "en" else "2 से 4 सप्ताह",
+            "food_timing": "External Application (बाहरी प्रयोग)",
+            "time_of_day": "Twice Daily (Morning & Evening)",
+            "type": "OTC",
+            "form": "Cream",
+            "route": "Topical",
+            "warnings": "For external application only. Continue use for 1-2 weeks after lesion clears to prevent relapse. Avoid contact with eyes or mucous membranes." if lang_code == "en" else "केवल बाहरी उपयोग के लिए। आंखों के संपर्क से बचें।",
+            "source": "Clinical Reference Guidelines (IDSA / IADVL)"
+        })
+        if any(w in sym_lower or w in cond_lower for w in ["itch", "khujli", "prurit", "rash", "allergy", "ખંજવાળ"]):
+            parsed.append({
+                "name": "Levocetirizine 5mg (Levocet / 1-AL)",
+                "brand_examples": "Levocet, 1-AL",
+                "indication": "Relieves intense itching, erythema, and allergic cutaneous flare." if lang_code == "en" else "तीव्र खुजली, लालिमा और त्वचा की जलन से राहत देता है।" if lang_code == "hi" else "તીવ્ર ખંજવાળ અને લાલાશમાં રાહત આપે છે.",
+                "dosage": "1 Tablet once daily at night / bedtime.",
+                "course_duration": "5 to 7 Days" if lang_code == "en" else "5 से 7 दिन",
+                "food_timing": ft_after,
+                "time_of_day": "Night / Bedtime",
+                "type": "OTC",
+                "form": "Tablet",
+                "route": "Oral",
+                "warnings": "May cause mild drowsiness. Avoid driving or operating machinery after consumption." if lang_code == "en" else "हल्की नींद आ सकती है। सावधानी बरतें।",
+                "source": "Clinical Reference Guidelines"
+            })
+        return parsed
+
+    # 2. Look up in india_major_diseases.csv with robust non-generic keyword matching
     try:
         import pandas as pd
         csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", "disease", "india_major_diseases.csv")
@@ -1068,8 +1199,20 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
             csv_path = "datasets/disease/india_major_diseases.csv"
         if os.path.exists(csv_path):
             df_major = pd.read_csv(csv_path)
-            cond_words = [w for w in re.findall(r'\b\w{4,}\b', cond_lower) if w not in ["disease", "syndrome", "acute", "chronic", "pain"]]
-            matched = df_major[df_major["disease_name"].str.lower().apply(lambda x: any(w in str(x).lower() for w in cond_words))] if cond_words else df_major.head(0)
+            generic_stopwords = {"disease", "syndrome", "acute", "chronic", "pain", "infection", "disorder", "condition", "fever", "major", "india", "type", "stage"}
+            cond_words = [w for w in re.findall(r'\b\w{4,}\b', cond_lower) if w not in generic_stopwords]
+            matched = df_major.head(0)
+            if cond_words:
+                exact_match = df_major[df_major["disease_name"].str.lower().apply(lambda x: cond_lower in str(x).lower() or str(x).lower() in cond_lower)]
+                if not exact_match.empty:
+                    matched = exact_match
+                else:
+                    def _overlap(row_name):
+                        r_clean = str(row_name).lower()
+                        hits = [w for w in cond_words if w in r_clean]
+                        return len(hits) >= min(len(cond_words), 2) and len(hits) > 0
+                    matched = df_major[df_major["disease_name"].apply(_overlap)]
+
             if not matched.empty:
                 row = matched.iloc[0]
                 meds_raw = str(row.get("medicines", "[]"))
@@ -1101,8 +1244,9 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
     except Exception as e:
         pass
 
-    # Symptom-driven dynamic fallback
+    # 3. Symptom-driven dynamic fallback
     parsed = []
+
     if any(f in sym_lower for f in ["fever", "pyrexia", "temperature", "बुखार", "તાવ"]):
         parsed.append({
             "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
@@ -1326,6 +1470,22 @@ def _get_condition_fallback_yoga(top_condition: str, symptoms: list, lang_code: 
     if attrs["has_emergency_red_flags"]:
         return []
 
+    # Dermatological / Superficial Skin Presentation Gate: Physical postures do not treat cutaneous / fungal infections
+    text_lower = f"{top_condition} " + " ".join([str(s) for s in (symptoms or [])]).lower()
+    is_dermatological = any(k in text_lower for k in [
+        "fungal", "fungus", "tinea", "ringworm", "dhadhar", "dadar", "khujli", "pruritus", "itching",
+        "rash", "skin", "eczema", "dermatitis", "psoriasis", "acne", "impetigo", "scabies", "urticaria",
+        "candidiasis", "athlete's foot", "jock itch"
+    ])
+    has_physical_indication = (
+        attrs["has_radicular_symptoms"] or
+        attrs["has_musculoskeletal_symptoms"] or
+        attrs["has_respiratory_symptoms"] or
+        attrs["has_gastrointestinal_symptoms"]
+    )
+    if is_dermatological and not has_physical_indication:
+        return []
+
     poses = []
     for posture in YOGA_POSTURE_REGISTRY:
         # GENERALIZED SAFETY RULE: Postures with significant spinal hyperextension
@@ -1355,14 +1515,14 @@ def _get_condition_fallback_yoga(top_condition: str, symptoms: list, lang_code: 
             matched = True
         elif attrs["has_gastrointestinal_symptoms"] and "digestive_distress" in suit:
             matched = True
-        elif "general_fatigue" in suit or "stress_reduction" in suit:
+        elif attrs["has_systemic_fatigue_or_fever"] and "general_fatigue" in suit and not is_dermatological:
             matched = True
 
         if matched:
             poses.append(posture)
 
-    # Fallback to safe universal restorative postures if no specific match
-    if not poses:
+    # Restorative postures only indicated if patient has systemic fatigue/fever and not dermatological
+    if not poses and attrs["has_systemic_fatigue_or_fever"] and not is_dermatological:
         poses = [p for p in YOGA_POSTURE_REGISTRY if p["sanskrit_name"] in ["Balasana", "Shavasana", "Anulom Vilom"]]
 
     yoga_list = []
@@ -1782,6 +1942,8 @@ def _build_local_dataset_fallback(
         "total_medicines_recommended": len(med_gallery),
         "injections_and_iv": fb_injections,
         "compress_guidance": compress_info,
+        "cold_warm_compress_mode": compress_info.get("mode", "none"),
+        "cold_warm_compress_indicated": compress_info.get("is_indicated", False),
         "physiotherapy_guidance": fb_physio,
         "specialized_therapies": fb_specialized,
         "yoga_recommendations": yoga_list,

@@ -14,40 +14,13 @@ WORKSPACE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath
 if WORKSPACE_ROOT not in sys.path:
     sys.path.insert(0, WORKSPACE_ROOT)
 
-from config.settings import GEMINI_API_KEY
+from config.settings import GEMINI_API_KEY, call_gemini_with_failover
 
 logger = logging.getLogger("GeminiSupplyExplainer")
-
-# Try importing google.generativeai safely
-try:
-    import google.generativeai as genai
-    _GENAI_AVAILABLE = True
-except ImportError:
-    _GENAI_AVAILABLE = False
 
 class GeminiSupplyExplainer:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or GEMINI_API_KEY
-        self.model = None
-        self._initialize_gemini()
-
-    def _initialize_gemini(self):
-        if _GENAI_AVAILABLE and self.api_key and len(self.api_key.strip()) > 5:
-            try:
-                genai.configure(api_key=self.api_key)
-                # Try models in order — gemini-3.6-flash is current stable
-                for _model_name in ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]:
-                    try:
-                        self.model = genai.GenerativeModel(_model_name)
-                        self._active_model_name = _model_name
-                        logger.info(f"Gemini Supply Explainer initialized successfully with {_model_name}.")
-                        break
-                    except Exception:
-                        self.model = None
-                        continue
-            except Exception as e:
-                logger.warning(f"Failed to configure Gemini model: {e}")
-                self.model = None
 
     def explain_supply_risk(self, facility_name: str, district: str, state: str,
                             medicine_name: str, current_stock: int, daily_burn: float,
@@ -96,13 +69,12 @@ Format your response in exactly 3 brief bullet points:
 
 {lang_instruction}
 """
-        if self.model is not None:
-            try:
-                response = self.model.generate_content(system_prompt)
-                if response and response.text:
-                    return response.text.strip()
-            except Exception as e:
-                logger.warning(f"Gemini API request failed: {e}. Falling back to deterministic template.")
+        try:
+            text, model_used, key_used = call_gemini_with_failover(system_prompt, timeout=10)
+            if text and text.strip():
+                return text.strip()
+        except Exception as e:
+            logger.warning(f"Gemini API request failed: {e}. Falling back to deterministic template.")
 
         # Deterministic Grounded Offline Fallback
         return self._generate_deterministic_explanation(facility_name, district, state, medicine_name, stock_val, burn_val, days_val, scenario_name, lang_code)
@@ -171,13 +143,12 @@ Format exactly in 3 bullet points:
 
 {lang_instruction}
 """
-        if self.model is not None:
-            try:
-                response = self.model.generate_content(prompt)
-                if response and response.text:
-                    return response.text.strip()
-            except Exception as e:
-                logger.warning(f"Gemini workforce risk explanation failed: {e}")
+        try:
+            text, model_used, key_used = call_gemini_with_failover(prompt, timeout=10)
+            if text and text.strip():
+                return text.strip()
+        except Exception as e:
+            logger.warning(f"Gemini workforce risk explanation failed: {e}")
 
         # Deterministic Grounded Fallback
         if lang_code == "hi":
@@ -200,9 +171,7 @@ Format exactly in 3 bullet points:
             )
 
     def answer_logistics_query(self, query: str, context_json: str = "{}", lang_code: str = "en") -> str:
-        """Answers public health supply queries grounded in supplied context."""
-        if self.model is not None:
-            prompt = f"""
+        prompt = f"""
 You are DocMindX AI's Indian Public Health Supply Chain Assistant.
 Answer the following logistics query concisely based ONLY on the supplied data context:
 Query: {query}
@@ -210,12 +179,12 @@ Context: {context_json}
 Language: {lang_code}
 Do not invent facts. If information is not in the context, clearly state so.
 """
-            try:
-                res = self.model.generate_content(prompt)
-                if res and res.text:
-                    return res.text.strip()
-            except Exception as e:
-                logger.warning(f"Gemini logistics query failed: {e}")
+        try:
+            res, model_used, key_used = call_gemini_with_failover(prompt, timeout=10)
+            if res and res.strip():
+                return res.strip()
+        except Exception as e:
+            logger.warning(f"Gemini logistics query failed: {e}")
 
         # Offline fallback
         return f"Verified operational data for query '{query}' processed based on National Command database (Language: {lang_code})."

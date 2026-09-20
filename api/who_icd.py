@@ -164,14 +164,22 @@ def search_who_icd11_structured(query: str) -> Dict[str, Any]:
                     "fallback_reason": ""
                 })
 
-            status = "SUCCESS" if results else "NO_RELEVANT_RESULT"
-            return {
-                "status": status,
-                "results": results,
-                "is_live": True,
-                "fallback_used": False,
-                "fallback_reason": ""
-            }
+            if results:
+                return {
+                    "status": "SUCCESS",
+                    "results": results,
+                    "is_live": True,
+                    "fallback_used": False,
+                    "fallback_reason": ""
+                }
+            else:
+                return {
+                    "status": "NO_RELEVANT_RESULT",
+                    "results": [],
+                    "is_live": False,
+                    "fallback_used": True,
+                    "fallback_reason": "No matching ICD-11 entity found"
+                }
 
         elif res.status_code == 401:
             _logger.warning("[WHO ICD-11] Authentication failed (401) for query: '%s'", query)
@@ -242,9 +250,24 @@ def validate_icd11_condition(condition_name: str) -> Dict[str, Any]:
     if cache_key in _validation_cache:
         return dict(_validation_cache[cache_key])
 
-    resp = search_who_icd11_structured(clean_name)
+    # Try sanitized query (strip parentheticals, slashes) first
+    sanitized_query = clean_name
+    if "(" in sanitized_query:
+        sanitized_query = re.sub(r'\(.*?\)', '', sanitized_query).strip()
+    if "/" in sanitized_query:
+        sanitized_query = sanitized_query.split("/")[0].strip()
+    sanitized_query = sanitized_query or clean_name
+
+    resp = search_who_icd11_structured(sanitized_query)
     status = resp.get("status", "NO_RELEVANT_RESULT")
     results = resp.get("results", [])
+
+    if (not results or status != "SUCCESS") and sanitized_query.lower() != clean_name.lower():
+        fallback_resp = search_who_icd11_structured(clean_name)
+        if fallback_resp.get("status") == "SUCCESS" and fallback_resp.get("results"):
+            resp = fallback_resp
+            status = resp.get("status")
+            results = resp.get("results", [])
 
     if status == "SUCCESS" and results:
         best = results[0]

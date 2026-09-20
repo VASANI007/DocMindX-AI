@@ -83,14 +83,22 @@ def search_dailymed_spls(drug_name: str, page_size: int = 5) -> Dict[str, Any]:
                     "setid": item.get("setid", ""),
                     "published_date": item.get("published_date", "")
                 })
-            status = "SUCCESS" if results else "NO_RELEVANT_RESULT"
-            return {
-                "status": status,
-                "results": results,
-                "is_live": True,
-                "fallback_used": False,
-                "fallback_reason": ""
-            }
+            if results:
+                return {
+                    "status": "SUCCESS",
+                    "results": results,
+                    "is_live": True,
+                    "fallback_used": False,
+                    "fallback_reason": ""
+                }
+            else:
+                return {
+                    "status": "NO_RELEVANT_RESULT",
+                    "results": [],
+                    "is_live": True,
+                    "fallback_used": False,
+                    "fallback_reason": "No Structured Product Label found in DailyMed"
+                }
         elif res.status_code == 429:
             return {"status": "RATE_LIMIT", "results": [], "is_live": False, "fallback_used": True, "fallback_reason": "DailyMed HTTP 429 Rate Limit"}
         else:
@@ -218,3 +226,24 @@ def get_dailymed_medicine_summary(drug_name: str) -> Optional[Dict[str, Any]]:
             "fallback_reason": spl_resp.get("fallback_reason", f"DailyMed status: {status}"),
             "retrieved_at": now_iso
         }
+
+
+def is_dailymed_verified(record: Optional[Dict[str, Any]]) -> bool:
+    """
+    Evaluates whether a DailyMed drug record represents a genuinely verified DailyMed SPL label.
+    Rules:
+    - Must not be None
+    - status == "SUCCESS"
+    - verification_status == "DAILYMED_VERIFIED"
+    - spl_setid is non-empty string
+    - fallback_used is not True
+    """
+    if not record or not isinstance(record, dict):
+        return False
+    return (
+        record.get("status") == "SUCCESS" and
+        record.get("verification_status") == "DAILYMED_VERIFIED" and
+        bool(record.get("spl_setid") and str(record.get("spl_setid")).strip()) and
+        record.get("fallback_used") is not True
+    )
+

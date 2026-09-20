@@ -29,12 +29,9 @@ try:
 except ImportError:
     _GCP_SPEECH_AVAILABLE = False
 
-# Check if google.generativeai is available
-try:
-    import google.generativeai as genai
-    _GENAI_AVAILABLE = True
-except ImportError:
-    _GENAI_AVAILABLE = False
+# Direct REST API used for Gemini Multimodal Audio
+import base64
+import requests
 
 def _extract_audio_bytes(audio_data: Union[str, bytes, BinaryIO]) -> bytes:
     """Extracts raw bytes from various audio input formats (bytes, file, BytesIO, UploadedFile)."""
@@ -87,34 +84,47 @@ def transcribe_audio(audio_data: Union[str, bytes, BinaryIO], language_code: str
     elif raw_bytes.startswith(b"OggS"):
         mime_type = "audio/ogg"
 
-    # 1. Primary: Gemini Multimodal Audio Transcription (Uses GEMINI_API_KEY)
-    if _GENAI_AVAILABLE and GEMINI_API_KEY and len(GEMINI_API_KEY.strip()) > 5:
+    # 1. Primary: Gemini Multimodal Audio Transcription via REST API (Uses GEMINI_API_KEY)
+    if GEMINI_API_KEY and len(GEMINI_API_KEY.strip()) > 5:
         try:
-            genai.configure(api_key=GEMINI_API_KEY.strip())
+            b64_audio = base64.b64encode(raw_bytes).decode("utf-8")
             prompt = (
                 f"You are a medical speech-to-text transcriber. "
                 f"Accurately transcribe the spoken clinical symptoms or operational notes in this audio into text. "
                 f"The spoken language is {normalized_lang} (Hindi, Gujarati, or English). "
                 f"Return ONLY the verbatim transcription text without any explanation, markdown headers, or quotes."
             )
-            audio_part = {
-                "mime_type": mime_type,
-                "data": raw_bytes
+            payload = {
+                "contents": [{
+                    "parts": [
+                        {"text": prompt},
+                        {
+                            "inlineData": {
+                                "mimeType": mime_type,
+                                "data": b64_audio
+                            }
+                        }
+                    ]
+                }]
             }
 
             # Primary: gemini-3.6-flash, with automatic resilient fallbacks
-            transcription_models = ["gemini-3.6-flash", "gemini-3.5-transcribe", "gemini-3.5-flash-lite"]
+            transcription_models = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
             for m_name in transcription_models:
                 try:
-                    model = genai.GenerativeModel(m_name)
-                    response = model.generate_content([prompt, audio_part])
-                    if response and response.text:
-                        text = response.text.strip().strip('"\'')
-                        if text:
-                            logger.info(f"Gemini ({m_name}) transcribed audio: {len(text)} chars ({normalized_lang}).")
-                            return text
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{m_name}:generateContent?key={GEMINI_API_KEY.strip()}"
+                    res = requests.post(url, json=payload, timeout=12)
+                    if res.status_code == 200:
+                        data = res.json()
+                        candidates = data.get("candidates", [])
+                        if candidates:
+                            parts = candidates[0].get("content", {}).get("parts", [])
+                            text = "".join(p.get("text", "") for p in parts).strip().strip('"\'')
+                            if text:
+                                logger.info(f"Gemini REST ({m_name}) transcribed audio: {len(text)} chars ({normalized_lang}).")
+                                return text
                 except Exception as m_err:
-                    logger.debug(f"Gemini model {m_name} attempt: {m_err}")
+                    logger.debug(f"Gemini REST model {m_name} attempt: {m_err}")
                     continue
         except Exception as e:
             logger.info(f"Gemini audio transcription notice: {e}. Trying Google Cloud Speech / SpeechRecognition fallback.")

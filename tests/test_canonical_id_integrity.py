@@ -111,6 +111,48 @@ class TestCanonicalIdIntegrity:
         assert "S000001" not in rep.symptom_ids, f"[{lang}] S000001 (Fever) falsely introduced!"
         assert "S000061" not in rep.symptom_ids, f"[{lang}] S000061 (Headache) falsely introduced!"
 
+    @pytest.mark.parametrize("input_text, lang", [
+        ("Severe stomach pain and cramps for 2 days", "en"),
+        ("मुझे पेट में तेज़ दर्द हो रहा है", "hi"),
+        ("મને પેટમાં સખત દુખાવો થાય છે", "gu"),
+        ("pet ma dukhava thay che", "gu_roman"),
+        ("stomach pain and belly ache", "en"),
+    ])
+    def test_abdominal_pain_regression(self, input_text, lang):
+        rep = canonical_normalizer.normalize(input_text)
+        assert "abdominal_pain" in rep.canonical_concepts, f"[{lang}] abdominal_pain concept missing"
+        assert "S000092" in rep.symptom_ids, f"[{lang}] S000092 (Abdominal Pain) missing"
+        # Hard negative check: Abdominal pain must NEVER be S000091 (Constipation)
+        assert "S000091" not in rep.symptom_ids, f"[{lang}] S000091 (Constipation) falsely assigned to stomach pain!"
+
+    @pytest.mark.parametrize("input_text, lang", [
+        ("I have a red skin rash on my chest", "en"),
+        ("त्वचा पर लाल चकत्ते और दाने हैं", "hi"),
+        ("ત્વચા પર લાલ ચકામા પડ્યા છે", "gu"),
+        ("skin rash and redness", "en"),
+        ("chakama padi gaya che", "gu_roman"),
+    ])
+    def test_skin_rash_regression(self, input_text, lang):
+        rep = canonical_normalizer.normalize(input_text)
+        assert "skin_rash" in rep.canonical_concepts, f"[{lang}] skin_rash concept missing"
+        assert "S000109" in rep.symptom_ids, f"[{lang}] S000109 (Skin Rash) missing"
+        # Hard negative check: Skin rash must NEVER be S000108 (Worm Infestation)
+        assert "S000108" not in rep.symptom_ids, f"[{lang}] S000108 (Worm Infestation) falsely assigned to skin rash!"
+
+    @pytest.mark.parametrize("input_text, lang", [
+        ("धाधर है लाल चकत्ते हैं", "hi"),
+        ("મને ધાધર થઈ છે અને લાલચમઠા પડ્યા છે", "gu"),
+        ("dhadhar thay chhe lalchmbha padiya chhe", "gu_roman"),
+        ("ringworm fungal infection with round rash", "en"),
+    ])
+    def test_dermatology_tinea_regression(self, input_text, lang):
+        rep = canonical_normalizer.normalize(input_text)
+        assert "fungal_skin_infection" in rep.canonical_concepts or "skin_rash" in rep.canonical_concepts, f"[{lang}] skin/fungal concept missing"
+        assert any(sid in rep.symptom_ids for sid in ["S000124", "S000109"]), f"[{lang}] Expected S000124 or S000109, got {rep.symptom_ids}"
+        # Hard negative checks: No worm infestation, no fabricated malaria/fever
+        assert "S000108" not in rep.symptom_ids, f"[{lang}] Worm Infestation falsely assigned!"
+        assert "S000001" not in rep.symptom_ids, f"[{lang}] Fever falsely fabricated!"
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

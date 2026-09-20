@@ -207,7 +207,13 @@ class ClinicalPipelineOrchestrator:
         input_text: Optional[str] = None,
         run_bioportal: bool = True,
         run_nlm: bool = True,
-        run_care_recommendations: bool = False
+        run_care_recommendations: bool = False,
+        raw_text: Optional[str] = None,
+        selected_symptoms: Optional[List[str]] = None,
+        age: Optional[Any] = None,
+        gender: Optional[str] = None,
+        lang_code: Optional[str] = None,
+        **kwargs
     ) -> dict:
         """
         Runs the full production API-first clinical intelligence pipeline.
@@ -224,7 +230,18 @@ class ClinicalPipelineOrchestrator:
         9. Structured clinical data object conforming to Section 57
         """
         t_start = time.time()
+        if raw_text and not input_text:
+            input_text = raw_text
+        if selected_symptoms and not symptom_names:
+            symptom_names = list(selected_symptoms)
         patient_context = dict(patient_context or {})
+        if age is not None:
+            patient_context["age"] = str(age)
+        if gender is not None:
+            patient_context["gender"] = str(gender)
+        if lang_code is not None:
+            patient_context["lang_code"] = str(lang_code)
+
         symptom_names = [str(s).strip() for s in (symptom_names or []) if str(s).strip()]
         selected_symptom_ids = [str(sid).strip() for sid in (selected_symptom_ids or []) if str(sid).strip()]
         negative_findings = [str(n).strip() for n in (negative_findings or []) if str(n).strip()]
@@ -246,21 +263,56 @@ class ClinicalPipelineOrchestrator:
             # Check for unresolvable input ("something feels strange in my body")
             if canonical_rep.clinical_status == "insufficient_information" and not symptom_names and not selected_symptom_ids:
                 _logger.info("[Pipeline] Input produced insufficient clinical information — returning safe prompt")
+                sys_status = self._build_system_status()
                 return {
                     "clinical_status": "insufficient_information",
                     "normalization_status": "failed",
                     "is_emergency": False,
                     "urgency_level": "Insufficient Information (Please Describe Symptoms)",
                     "ranked_conditions": [],
+                    "compatible_conditions": [],
                     "red_flags": [],
                     "positive_findings": [],
                     "negative_findings": [],
                     "symptom_names": [],
                     "symptom_ids": [],
                     "tests_to_discuss": [],
-                    "system_status": self._build_system_status(),
+                    "system_status": sys_status,
                     "fallback_warning": "",
-                    "message": "Insufficient clinical information to determine a differential pattern. Please describe your symptoms in more detail."
+                    "message": "Insufficient clinical information to determine a differential pattern. Please describe your symptoms in more detail.",
+                    "clinical_input": {
+                        "symptom_names": [],
+                        "symptom_ids": [],
+                        "positive_findings": [],
+                        "negative_findings": [],
+                        "canonical_concepts": {},
+                        "patient_context": patient_context
+                    },
+                    "clinical_evidence": {
+                        "bioportal_concepts": {},
+                        "nlm_conditions": [],
+                        "canonical_representation": canonical_rep.to_dict() if canonical_rep else None
+                    },
+                    "clinical_assessment": {
+                        "ranked_conditions": [],
+                        "compatible_conditions": [],
+                        "top_condition": "",
+                        "is_emergency": False,
+                        "red_flags": []
+                    },
+                    "care_plan": {
+                        "medicine_gallery": [],
+                        "yoga_recommendations": [],
+                        "physiotherapy_guidance": {"exercises": []},
+                        "cold_warm_compress_mode": "none",
+                        "cold_warm_compress_indicated": False
+                    },
+                    "provenance": {
+                        "status": "INSUFFICIENT_INFORMATION",
+                        "system_status": sys_status,
+                        "fallback_warning": "",
+                        "elapsed_ms": round((time.time() - t_start) * 1000, 1)
+                    }
                 }
 
             # Merge canonical findings
@@ -348,7 +400,9 @@ class ClinicalPipelineOrchestrator:
                     existing_conditions=patient_context.get("conditions", {}),
                     symptom_names=symptom_names,
                     chief_condition=chief_condition,
-                    negative_findings=negative_findings
+                    negative_findings=negative_findings,
+                    bioportal_concepts=bioportal_concepts,
+                    nlm_conditions=nlm_conditions
                 )
         except Exception as exc:
             _logger.error("[Pipeline] Core triage engine error: %s", exc)
@@ -367,6 +421,7 @@ class ClinicalPipelineOrchestrator:
             triage_result["ranked_conditions"] = ranked
 
         # Stage 6: Dynamic care recommendations (if requested)
+        care_res = None
         if run_care_recommendations:
             try:
                 from ai.utils.care_recommendations import get_dynamic_clinical_recommendations
@@ -378,12 +433,14 @@ class ClinicalPipelineOrchestrator:
                     lang_code=patient_context.get("lang_code", "en")
                 )
                 triage_result["care_recommendations"] = care_res
+                triage_result["care_plan"] = care_res
             except Exception as c_exc:
                 _logger.error("[Pipeline] Care recommendations error: %s", c_exc)
 
-        # Stage 7: Assemble system status, provenance and warnings
+        # Stage 7: Assemble system status, provenance, and authoritative contract
         system_status = self._build_system_status()
         fallback_warning = self._build_fallback_warning()
+        elapsed_ms = round((time.time() - t_start) * 1000, 1)
 
         triage_result["clinical_status"] = "success"
         triage_result["normalization_status"] = "complete" if canonical_rep else "partial"
@@ -396,13 +453,47 @@ class ClinicalPipelineOrchestrator:
         triage_result["pipeline_context"] = {
             "bioportal_concepts": bioportal_concepts,
             "nlm_conditions": nlm_conditions,
-            "elapsed_ms": round((time.time() - t_start) * 1000, 1),
+            "elapsed_ms": elapsed_ms,
             "canonical_representation": canonical_rep.to_dict() if canonical_rep else None
+        }
+
+        # Authoritative Clinical Contract Conforming to Section 10
+        triage_result["clinical_input"] = {
+            "symptom_names": symptom_names,
+            "symptom_ids": selected_symptom_ids,
+            "positive_findings": symptom_names,
+            "negative_findings": negative_findings,
+            "canonical_concepts": canonical_rep.to_dict() if canonical_rep else {},
+            "patient_context": patient_context,
+            "duration": patient_context.get("duration", "1-3 Days"),
+            "severity": patient_context.get("severity", "Moderate"),
+            "age_group": patient_context.get("age", patient_context.get("age_group", "21-30")),
+            "gender": patient_context.get("gender", "Male")
+        }
+        triage_result["clinical_evidence"] = {
+            "bioportal_concepts": bioportal_concepts,
+            "nlm_conditions": nlm_conditions,
+            "canonical_representation": canonical_rep.to_dict() if canonical_rep else None
+        }
+        triage_result["clinical_assessment"] = {
+            "ranked_conditions": ranked,
+            "compatible_conditions": ranked,
+            "top_condition": ranked[0].get("name") if ranked else "Acute Illness",
+            "is_emergency": triage_result.get("is_emergency", False),
+            "red_flags": triage_result.get("red_flags", []),
+            "urgency_level": triage_result.get("urgency_level", "Moderate Attention")
+        }
+        triage_result["care_plan"] = care_res
+        triage_result["provenance"] = {
+            "status": "SUCCESS",
+            "system_status": system_status,
+            "fallback_warning": fallback_warning,
+            "elapsed_ms": elapsed_ms
         }
 
         _logger.info(
             "[Pipeline] Run completed in %.1fms: %d conditions, %d red flags, emergency=%s",
-            (time.time() - t_start) * 1000,
+            elapsed_ms,
             len(ranked),
             len(triage_result.get("red_flags", [])),
             triage_result.get("is_emergency", False)

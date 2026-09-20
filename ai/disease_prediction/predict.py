@@ -427,13 +427,16 @@ Return only conditions genuinely supported by the reported symptoms.
         return None
 
     def evaluate_symptoms(self, selected_symptom_ids, age_group="21–30", gender="Male", duration="3–5 Days",
-                          existing_conditions=None, symptom_names=None, chief_condition=None, negative_findings=None):
+                          existing_conditions=None, symptom_names=None, chief_condition=None, negative_findings=None,
+                          bioportal_concepts=None, nlm_conditions=None):
         """
         Evaluates symptoms against India 100+ Major Diseases dataset and weighted bipartite
         knowledge graph. Returns evidence-grounded differential with full source metadata.
         """
         symptom_names = symptom_names or []
         existing_conditions = existing_conditions or {}
+        bioportal_concepts = bioportal_concepts or []
+        nlm_conditions = nlm_conditions or []
 
         # 0. Canonical normalization across provided symptom names and free text
         raw_text = " ".join([str(s) for s in symptom_names])
@@ -463,6 +466,19 @@ Return only conditions genuinely supported by the reported symptoms.
             if sid not in all_negative_findings and not any(sid == normalize_id(nf, "S") for nf in all_negative_findings)
         ]
 
+        # Ingest BioPortal-extracted concept IDs and NLM conditions into positive symptom tokens
+        for bc in bioportal_concepts:
+            if isinstance(bc, dict):
+                pref_name = bc.get("prefLabel") or bc.get("name") or ""
+                if pref_name:
+                    mapped_sid = canonical_normalizer.get_symptom_id(pref_name)
+                    if mapped_sid and mapped_sid not in positive_norm_ids and mapped_sid not in all_negative_findings:
+                        positive_norm_ids.append(mapped_sid)
+            elif isinstance(bc, str) and bc.strip():
+                mapped_sid = canonical_normalizer.get_symptom_id(bc)
+                if mapped_sid and mapped_sid not in positive_norm_ids and mapped_sid not in all_negative_findings:
+                    positive_norm_ids.append(mapped_sid)
+
         _logger.info("[TriageEngine] Evaluating %d positive symptoms (%d denied) for age=%s, gender=%s, duration=%s",
                      len(positive_norm_ids), len(all_negative_findings), age_group, gender, duration)
 
@@ -480,6 +496,16 @@ Return only conditions genuinely supported by the reported symptoms.
             input_tokens |= _tokenize(s)
         if canon_rep:
             input_tokens |= canon_rep.positive_tokens
+
+        # Merge BioPortal and NLM condition tokens
+        for bc in bioportal_concepts:
+            b_label = bc.get("prefLabel") or bc.get("name") if isinstance(bc, dict) else str(bc)
+            if b_label:
+                input_tokens |= _tokenize(b_label)
+        for nlm in nlm_conditions:
+            n_label = nlm.get("name") or nlm.get("title") if isinstance(nlm, dict) else str(nlm)
+            if n_label:
+                input_tokens |= _tokenize(n_label)
 
         # Purge denied tokens from input tokens to prevent contamination
         input_tokens -= denied_tokens
@@ -620,9 +646,10 @@ Return only conditions genuinely supported by the reported symptoms.
                     is_emergency = True
 
                 local_fallback_used = True
-                local_fallback_reason = "Local major disease dataset (primary source)"
+                local_fallback_reason = "Local clinical reference dataset (offline fallback)"
 
                 icd_raw_code = str(d_row.get("icd_code", "")).strip()
+                system_label = "ICD-10" if is_probable_icd10_code(icd_raw_code) else "ICD-11"
 
                 ranked_conditions.append({
                     "disease_id": d_id,
@@ -633,8 +660,8 @@ Return only conditions genuinely supported by the reported symptoms.
                     "icd_verified": False,  # Will be updated by WHO validation below
                     "icd_details": {
                         "code": icd_raw_code,
-                        "system": "ICD-11",
-                        "source": "Local Major Disease Dataset"
+                        "system": system_label,
+                        "source": "Local Clinical Reference Dataset"
                     },
                     "category": d_cat,
                     "category_icon": str(d_row.get("category_icon", "")),
