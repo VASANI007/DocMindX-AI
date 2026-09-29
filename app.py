@@ -21,6 +21,7 @@ import base64
 import html
 import json
 import re
+import time
 import uuid
 from datetime import datetime
 
@@ -33,6 +34,7 @@ import streamlit.components.v1 as components
 import components.admin_ui as admin_ui
 import components.auth_ui as auth_ui
 import components.family_ui as family_ui
+from components.popup_dialog import check_and_render_pending_popup
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
 import services.email_service as email_service
@@ -87,8 +89,10 @@ from services.places_service import (search_nearby_healthcare,
                                      search_nearby_hospitals)
 from services.routes_service import get_route
 
-# Seed sample records if database table is initially empty
-seed_sample_records_if_empty()
+# Seed sample records if database table is initially empty (run once per session)
+if "_db_seeded_once" not in st.session_state:
+    seed_sample_records_if_empty()
+    st.session_state["_db_seeded_once"] = True
 
 @st.cache_data
 def get_base64_image(image_path: str) -> str:
@@ -159,6 +163,8 @@ st.markdown(hide_streamlit_cloud_ui, unsafe_allow_html=True)
 # DocMindX AI — Startup Splash / Loading Screen (Cold start / browser refresh only)
 if st.query_params.get("reset") == "true":
     st.session_state.pop("_docmindx_startup_ready", None)
+if st.query_params.get("ready") == "1":
+    st.session_state["_docmindx_startup_ready"] = True
 
 if not st.session_state.get("_docmindx_startup_ready", False):
     from components.startup_splash import render_startup_splash_screen
@@ -169,7 +175,15 @@ qp_theme = st.query_params.get("theme", None)
 if qp_theme is not None:
     st.session_state["dark_mode"] = (qp_theme.lower() == "dark")
 
+qp_panel = st.query_params.get("panel", None)
+if qp_panel:
+    if qp_panel.lower() in ("auth", "login", "account", "authentication"):
+        st.session_state["active_panel"] = "Account / Authentication"
+    else:
+        st.session_state["active_panel"] = qp_panel
+
 # Session State Setup
+st.session_state["_turn_counter"] = st.session_state.get("_turn_counter", 0) + 1
 auth_ui.init_auth_session_state()
 if "session_scans" not in st.session_state:
     st.session_state["session_scans"] = []
@@ -462,6 +476,22 @@ def sync_theme_mode(source_key):
     new_mode = st.session_state.get(source_key, False)
     st.session_state["dark_mode"] = new_mode
 
+def toggle_app_theme():
+    """Toggle dark mode instantly via callback without double-reruns."""
+    st.session_state["dark_mode"] = not st.session_state.get("dark_mode", False)
+
+def switch_active_panel(target_panel, **extra_state):
+    """
+    High-performance instant panel switcher callback.
+    Executes before script rerun so active panel updates in a single render pass (<1s).
+    """
+    st.session_state["active_panel"] = target_panel
+    st.session_state["clinical_module_nav_radio"] = target_panel
+    st.session_state["mobile_nav_open"] = False
+    st.session_state["top_profile_open"] = False
+    for k, v in extra_state.items():
+        st.session_state[k] = v
+
 def toggle_floating_chat():
     st.session_state["floating_chat_open"] = not st.session_state.get("floating_chat_open", False)
 
@@ -731,19 +761,28 @@ dark_mode_js = f"""
         }});
     }}
 
-    var obs = new MutationObserver(function() {{
-        applyTheme(isDark);
-        runCountUp();
-    }});
-    obs.observe(document.body, {{ childList: true, subtree: true }});
-    setTimeout(function() {{ applyTheme(isDark); runCountUp(); }}, 100);
-    setTimeout(function() {{ applyTheme(isDark); runCountUp(); }}, 400);
-    setTimeout(function() {{ applyTheme(isDark); runCountUp(); }}, 900);
+    window._dmx_current_dark = isDark;
+    applyTheme(isDark);
 
-    // Listen for theme toggle messages from iframe component
+    if (!window._dmx_theme_obs_attached) {{
+        window._dmx_theme_obs_attached = true;
+        var _obsDebounce = null;
+        var obs = new MutationObserver(function() {{
+            if (_obsDebounce) clearTimeout(_obsDebounce);
+            _obsDebounce = setTimeout(function() {{
+                applyTheme(window._dmx_current_dark !== undefined ? window._dmx_current_dark : isDark);
+                runCountUp();
+            }}, 80);
+        }});
+        obs.observe(document.body, {{ childList: true, subtree: true }});
+    }}
+    setTimeout(function() {{ applyTheme(isDark); runCountUp(); }}, 50);
+
+    // Listen for theme toggle messages from iframe or external triggers
     window.addEventListener("message", function(e) {{
         if (e.data && e.data.type === "DocMindX_theme_toggle") {{
             var newDark = e.data.dark;
+            window._dmx_current_dark = newDark;
             applyTheme(newDark);
             try {{
                 var url = new URL(window.location.href);
@@ -758,26 +797,6 @@ dark_mode_js = f"""
 </script>
 """
 st.markdown(dark_mode_js, unsafe_allow_html=True)
-components.html(f"""<script>
-(function() {{
-    try {{
-        var isDark = {'true' if is_dark else 'false'};
-        var pDoc = window.parent.document;
-        if (pDoc) {{
-            var targets = [pDoc.documentElement, pDoc.body];
-            var stApp = pDoc.querySelector('.stApp');
-            if (stApp) targets.push(stApp);
-            targets.forEach(function(el) {{
-                if (el) {{
-                    el.setAttribute('data-theme', isDark ? 'dark' : 'light');
-                    el.setAttribute('data-dark-mode', isDark ? 'true' : 'false');
-                }}
-            }});
-        }}
-        window.parent.postMessage({{type: "DocMindX_theme_toggle", dark: isDark}}, "*");
-    }} catch(e) {{}}
-}})();
-</script>""", height=0, scrolling=False)
 
 # ----------------- SIDEBAR -----------------
 with st.sidebar:
@@ -930,9 +949,7 @@ with st.sidebar:
         if is_sb_admin:
             sb_c1, sb_c2 = st.columns([1, 1])
             with sb_c1:
-                if st.button(T.get("nav_admin", "Admin"), key="sb_btn_admin", use_container_width=True):
-                    st.session_state["active_panel"] = "Admin Panel"
-                    st.rerun()
+                st.button(T.get("nav_admin", "Admin"), key="sb_btn_admin", use_container_width=True, on_click=switch_active_panel, args=("Admin Panel",))
             with sb_c2:
                 if st.button(T.get("btn_logout", "Sign Out"), key="sb_btn_signout", use_container_width=True):
                     auth_ui.logout_user()
@@ -949,9 +966,7 @@ with st.sidebar:
             <div style="font-size: 0.71rem; color: #94A3B8; line-height: 1.35; margin-bottom: 8px;">{T.get("auth_sub", "Sign in to access your permanent health vault & family profiles.")}</div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button(T.get("btn_signin_register", "Sign In / Register"), key="sb_btn_signin", type="primary", use_container_width=True):
-            st.session_state["active_panel"] = "Account / Authentication"
-            st.rerun()
+        st.button(T.get("btn_signin_register", "Sign In / Register"), key="sb_btn_signin", type="primary", use_container_width=True, on_click=switch_active_panel, args=("Account / Authentication",))
 
     # 5. Safety & Privacy Card (Unified 12px Radius, Dark Mode Parity, No Emojis)
     st.markdown(f"""
@@ -1014,28 +1029,6 @@ panel_map = {
 
 active_p = st.session_state.get("active_panel", "Health Assessment")
 
-# Ensure DOM data-theme attribute is reliably synced for dark/light mode
-st.markdown(
-    f"""
-    <script>
-    (function() {{
-        try {{
-            var isDark = {'true' if is_dark else 'false'};
-            var doc = window.parent.document || document;
-            if (doc) {{
-                [doc.documentElement, doc.body, doc.querySelector('.stApp')].forEach(function(el) {{
-                    if (el) {{
-                        el.setAttribute('data-theme', isDark ? 'dark' : 'light');
-                        el.setAttribute('data-dark-mode', isDark ? 'true' : 'false');
-                    }}
-                }});
-            }}
-        }} catch(e) {{}}
-    }})();
-    </script>
-    """,
-    unsafe_allow_html=True
-)
 
 # Direct Dark Mode CSS Overrides - Guarantees High-Contrast Text & Background across all UI
 if is_dark:
@@ -2839,16 +2832,33 @@ div[data-testid="stVerticalBlock"] > div.stElementContainer:empty {
     }
 }
 
-/* ── Smooth Panel Animations & Micro-Interactions ── */
-@keyframes dmxFadeSlideIn {
-    from {
+/* ── Smooth Panel Animations & Micro-Interactions (<1s Instant Navigation) ── */
+@keyframes dmxPanelEntrance {
+    0% {
         opacity: 0;
-        transform: translateY(6px);
+        transform: translateY(12px) scale(0.997);
+        filter: blur(1.5px);
     }
-    to {
+    100% {
         opacity: 1;
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
+        filter: blur(0px);
     }
+}
+@keyframes dmxNavGlowPulse {
+    0% {
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45), 0 0 0 0 rgba(37, 99, 235, 0.40);
+    }
+    70% {
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45), 0 0 0 7px rgba(37, 99, 235, 0);
+    }
+    100% {
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.45), 0 0 0 0 rgba(37, 99, 235, 0);
+    }
+}
+@keyframes dmxShimmerSlide {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
 @keyframes dmxDrawerSlideDown {
     from {
@@ -2860,24 +2870,159 @@ div[data-testid="stVerticalBlock"] > div.stElementContainer:empty {
         transform: translateY(0);
     }
 }
+
+/* Panel Body & Top Header Entrance Animation */
 div[class*="st-key-mm_top_header_card_"],
-.mm-stepper {
-    animation: dmxFadeSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+div[class*="st-key-assessment_step_card"],
+div[class*="st-key-med_report_upload_card"],
+div[class*="st-key-med_report_ocr_card"],
+div[class*="st-key-gis_panel_"],
+div[class*="st-key-rec_card_"],
+div[class*="st-key-cmd_"],
+div[class*="st-key-auth_"],
+div[class*="st-key-family_"],
+div[class*="st-key-admin_"],
+.dmx-panel-entrance-view {
+    animation: dmxPanelEntrance 0.28s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    will-change: transform, opacity, filter;
 }
+
+.mm-stepper {
+    animation: dmxPanelEntrance 0.30s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .st-key-dmx_mobile_drawer_card {
     animation: dmxDrawerSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-.st-key-dmx_master_header_card button,
+
+/* Top Shimmer Loading Bar for Instant Click Feedback */
+#dmx-top-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    z-index: 9999999;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+#dmx-top-progress-bar.dmx-progress-active {
+    opacity: 1;
+    background: linear-gradient(90deg, #2563EB, #06B6D4, #3B82F6, #10B981, #2563EB);
+    background-size: 200% 100%;
+    animation: dmxShimmerSlide 0.75s linear infinite;
+}
+
+/* Active navigation button glowing state */
+.st-key-dmx_desktop_container button[kind="primary"],
+.st-key-dmx_mobile_drawer_card button[kind="primary"] {
+    animation: dmxNavGlowPulse 2.2s infinite ease-out !important;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.42) !important;
+    transform: translateY(-1px) !important;
+    transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    position: relative !important;
+}
+
+.st-key-dmx_desktop_container button,
 .st-key-dmx_mobile_drawer_card button {
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.st-key-dmx_desktop_container button:hover {
+    transform: translateY(-1px) !important;
+}
+
+.st-key-dmx_desktop_container button:active {
+    transform: scale(0.97) !important;
+}
+
+/* Zero-height script runners and hidden iframes to eliminate top white gap */
+.st-key-dmx_hidden_script_runner,
+div[class*="st-key-dmx_hidden_script_runner"],
+.stElementContainer:has([class*="st-key-dmx_hidden_script_runner"]),
+.element-container:has([class*="st-key-dmx_hidden_script_runner"]),
+div:has(> .st-key-dmx_hidden_script_runner),
+.st-key-dmx_gps_payload_container,
+div[class*="st-key-dmx_gps_payload_container"],
+.stElementContainer:has([class*="st-key-dmx_gps_payload_container"]),
+.element-container:has([class*="st-key-dmx_gps_payload_container"]),
+.st-key-dmx_hidden_gps_bridge,
+div[class*="st-key-dmx_hidden_gps_bridge"],
+.stElementContainer:has([class*="st-key-dmx_hidden_gps_bridge"]),
+.element-container:has([class*="st-key-dmx_hidden_gps_bridge"]) {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    top: -9999px !important;
+    left: -9999px !important;
+}
+.st-key-dmx_hidden_script_runner iframe,
+.st-key-dmx_hidden_script_runner .stIFrame,
+div[class*="st-key-dmx_hidden_script_runner"] iframe,
+.st-key-dmx_hidden_gps_bridge iframe,
+.st-key-dmx_hidden_gps_bridge .stIFrame,
+div[class*="st-key-dmx_hidden_gps_bridge"] iframe {
+    position: absolute !important;
+    width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    overflow: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    top: -9999px !important;
+    left: -9999px !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
+with st.container(key="dmx_hidden_script_runner"):
+    components.html("""
+<div id="dmx-top-progress-bar"></div>
+<script>
+(function() {
+    try {
+        var doc = window.parent.document || document;
+        var pBar = doc.getElementById('dmx-top-progress-bar');
+        if (!pBar) {
+            pBar = doc.createElement('div');
+            pBar.id = 'dmx-top-progress-bar';
+            doc.body.appendChild(pBar);
+        }
+        pBar.classList.remove('dmx-progress-active');
+
+        if (!window.parent._dmx_nav_listener_attached) {
+            window.parent._dmx_nav_listener_attached = true;
+            doc.addEventListener('click', function(e) {
+                var btn = e.target.closest('[class*="st-key-d_nav_btn_"] button, [class*="st-key-m_nav_btn_"] button, .st-key-top_auth_signin_btn button, .st-key-m_drawer_signin button, .st-key-d_dd_admin button, .st-key-d_dd_profile button, .st-key-d_dd_settings button');
+                if (btn) {
+                    var bar = doc.getElementById('dmx-top-progress-bar');
+                    if (bar) bar.classList.add('dmx-progress-active');
+                }
+            }, true);
+        }
+    } catch(e) {}
+})();
+</script>
+""", height=0, width=0)
+
+
 with st.container(key="dmx_master_header_card"):
-    # -------------------------------------------------------------
+    
     # 1. DESKTOP VIEW (Image 2 Design)
-    # -------------------------------------------------------------
+    
     with st.container(key="dmx_desktop_container"):
         d_cols = st.columns([1.35, 1.15, 1.05, 1.15, 1.05, 1.15, 0.78, 0.95, 0.38, 0.70], vertical_alignment="center")
 
@@ -2907,15 +3052,15 @@ with st.container(key="dmx_master_header_card"):
             with d_cols[idx]:
                 with st.container(key=f"d_nav_{idx}"):
                     is_active = (active_p == p_key)
-                    if st.button(
+                    st.button(
                         panel_map[p_key],
                         key=f"d_nav_btn_{idx}",
                         icon=_nav_icons[idx - 1],
                         type="primary" if is_active else "secondary",
-                        use_container_width=True
-                    ):
-                        st.session_state["active_panel"] = p_key
-                        st.rerun()
+                        use_container_width=True,
+                        on_click=switch_active_panel,
+                        args=(p_key,)
+                    )
 
         # Col 7: Language Selector with SVG Globe Icon
         with d_cols[7]:
@@ -2932,12 +3077,11 @@ with st.container(key="dmx_master_header_card"):
 
         # Col 8: Light/Dark Mode Icon (Pure Moon in light mode, Sun in dark mode)
         with d_cols[8]:
-            if st.button(
+            st.button(
                 "",
                 key="d_theme_toggle_btn",
-            ):
-                st.session_state["dark_mode"] = not is_dark
-                st.rerun()
+                on_click=toggle_app_theme
+            )
 
         # Col 9: Profile Avatar 'Dv ▾' or 'Sign In' Button
         with d_cols[9]:
@@ -2971,28 +3115,19 @@ with st.container(key="dmx_master_header_card"):
                             unsafe_allow_html=True
                         )
                         if _is_adm:
-                            if st.button("Admin Console", key="d_dd_admin", use_container_width=True):
-                                st.session_state.update({"active_panel": "Admin Panel", "top_profile_open": False})
-                                st.rerun()
+                            st.button("Admin Console", key="d_dd_admin", use_container_width=True, on_click=switch_active_panel, args=("Admin Panel",), kwargs={"top_profile_open": False})
                         else:
-                            if st.button("Profile", key="d_dd_profile", use_container_width=True):
-                                st.session_state.update({"active_panel": "Family Management", "top_profile_open": False, "family_settings_open": False})
-                                st.rerun()
-                            if st.button("Settings", key="d_dd_settings", use_container_width=True):
-                                st.session_state.update({"active_panel": "Family Management", "top_profile_open": False, "family_settings_open": True})
-                                st.rerun()
+                            st.button("Profile", key="d_dd_profile", use_container_width=True, on_click=switch_active_panel, args=("Family Management",), kwargs={"top_profile_open": False, "family_settings_open": False})
                         if st.button("Sign Out", key="d_prof_logout", use_container_width=True):
                             st.session_state["top_profile_open"] = False
                             auth_ui.logout_user()
                             st.rerun()
             else:
-                if st.button(T.get("btn_signin", "Sign In"), key="top_auth_signin_btn", use_container_width=True):
-                    st.session_state["active_panel"] = "Account / Authentication"
-                    st.rerun()
+                st.button(T.get("btn_signin", "Sign In"), key="top_auth_signin_btn", use_container_width=True, on_click=switch_active_panel, args=("Account / Authentication",))
 
-    # -------------------------------------------------------------
+    
     # 2. MOBILE VIEW (Image 3 Left Phone: Collapsed State)
-    # -------------------------------------------------------------
+    
     with st.container(key="dmx_mobile_container"):
         m_cols = st.columns([2.0, 1.10, 0.45, 0.45], vertical_alignment="center")
 
@@ -3021,12 +3156,11 @@ with st.container(key="dmx_master_header_card"):
                 )
 
         with m_cols[2]:
-            if st.button(
+            st.button(
                 "",
                 key="m_theme_toggle_btn",
-            ):
-                st.session_state["dark_mode"] = not is_dark
-                st.rerun()
+                on_click=toggle_app_theme
+            )
 
         with m_cols[3]:
             is_drawer_open = st.session_state.get("mobile_nav_open", False)
@@ -3041,9 +3175,9 @@ with st.container(key="dmx_master_header_card"):
                 st.session_state["mobile_nav_open"] = not is_drawer_open
                 st.rerun()
 
-    # -------------------------------------------------------------
+    
     # 3. MOBILE MENU DRAWER (Image 3 Right Phone: Expanded State)
-    # -------------------------------------------------------------
+    
     if st.session_state.get("mobile_nav_open", False):
         with st.container(key="dmx_mobile_drawer_card"):
             # Section A: Navigation
@@ -3064,16 +3198,15 @@ with st.container(key="dmx_master_header_card"):
             ]
             for m_idx, p_key in enumerate(panel_keys, start=1):
                 with st.container(key=f"m_nav_{m_idx}"):
-                    if st.button(
+                    st.button(
                         panel_map[p_key],
                         key=f"m_nav_btn_{m_idx}",
                         icon=_m_nav_icons[m_idx - 1],
                         type="primary" if active_p == p_key else "secondary",
-                        use_container_width=True
-                    ):
-                        st.session_state["active_panel"] = p_key
-                        st.session_state["mobile_nav_open"] = False
-                        st.rerun()
+                        use_container_width=True,
+                        on_click=switch_active_panel,
+                        args=(p_key,)
+                    )
 
 
 
@@ -3104,28 +3237,20 @@ with st.container(key="dmx_master_header_card"):
                 </div>
                 """, unsafe_allow_html=True)
                 if auth_svc.is_admin_session(top_auth_user):
-                    if st.button("Admin Console", key="m_dd_admin", use_container_width=True):
-                        st.session_state.update({"active_panel": "Admin Panel", "mobile_nav_open": False})
-                        st.rerun()
+                    st.button("Admin Console", key="m_dd_admin", use_container_width=True, on_click=switch_active_panel, args=("Admin Panel",), kwargs={"mobile_nav_open": False})
                 else:
-                    if st.button("Profile", key="m_nav_profile", use_container_width=True):
-                        st.session_state.update({"active_panel": "Family Management", "mobile_nav_open": False, "family_settings_open": False})
-                        st.rerun()
-                    if st.button("Settings", key="m_nav_settings", use_container_width=True):
-                        st.session_state.update({"active_panel": "Family Management", "mobile_nav_open": False, "family_settings_open": True})
-                        st.rerun()
+                    st.button("Profile", key="m_nav_profile", use_container_width=True, on_click=switch_active_panel, args=("Family Management",), kwargs={"mobile_nav_open": False, "family_settings_open": False})
                 if st.button("Sign Out", key="m_drawer_logout", use_container_width=True):
                     st.session_state["mobile_nav_open"] = False
                     auth_ui.logout_user()
                     st.rerun()
             else:
-                if st.button(T.get("btn_signin_register", "Sign In / Register"), key="m_drawer_signin", use_container_width=True):
-                    st.session_state["active_panel"] = "Account / Authentication"
-                    st.session_state["mobile_nav_open"] = False
-                    st.rerun()
+                st.button(T.get("btn_signin_register", "Sign In / Register"), key="m_drawer_signin", use_container_width=True, on_click=switch_active_panel, args=("Account / Authentication",), kwargs={"mobile_nav_open": False})
 
 
 # ----------------- MAIN CONTENT AREA -----------------
+# Render any pending modal dialog notifications
+check_and_render_pending_popup()
 
 # ==============================================================================
 # MODULE 1: AI HEALTH ASSESSMENT
@@ -3205,12 +3330,164 @@ if st.session_state["active_panel"] == "Health Assessment":
     if curr_auth_user and auth_ui.is_authenticated():
         p1_patient_ctx = family_ui.render_scan_patient_selector(curr_auth_user, key_prefix="p1_scan_selector")
         st.session_state["p1_patient_context"] = p1_patient_ctx
-        if p1_patient_ctx.get("mode") in ["PROFILE", "FAMILY_MEMBER"] and p1_patient_ctx.get("context"):
-            ctx_data = p1_patient_ctx["context"]
-            if ctx_data.get("existing_conditions"):
-                st.session_state["user_context"]["conditions"] = list(set(st.session_state["user_context"].get("conditions", []) + ctx_data["existing_conditions"]))
-            if ctx_data.get("current_medicines"):
-                st.session_state["user_context"]["medications"] = list(set(st.session_state["user_context"].get("medications", []) + ctx_data["current_medicines"]))
+
+        p1_curr_choice = st.session_state.get("p1_scan_selector_patient_choice")
+        p1_last_choice = st.session_state.get("_last_p1_patient_choice")
+
+        if p1_curr_choice != p1_last_choice:
+            st.session_state["_last_p1_patient_choice"] = p1_curr_choice
+
+            if p1_patient_ctx.get("mode") in ["PROFILE", "FAMILY_MEMBER"] and p1_patient_ctx.get("context"):
+                ctx_data = p1_patient_ctx["context"]
+
+                # 1. Autofill Age Group -> map to age_key
+                m_age = ctx_data.get("age")
+                if m_age is not None and str(m_age).strip() and str(m_age).strip() != "None":
+                    try:
+                        a_num = int(m_age)
+                        if a_num <= 15:
+                            ak = "10_15"
+                        elif a_num <= 20:
+                            ak = "16_20"
+                        elif a_num <= 25:
+                            ak = "21_25"
+                        elif a_num <= 30:
+                            ak = "26_30"
+                        elif a_num <= 35:
+                            ak = "31_35"
+                        elif a_num <= 40:
+                            ak = "36_40"
+                        elif a_num <= 45:
+                            ak = "41_45"
+                        elif a_num <= 50:
+                            ak = "46_50"
+                        elif a_num <= 55:
+                            ak = "51_55"
+                        elif a_num <= 60:
+                            ak = "56_60"
+                        elif a_num <= 65:
+                            ak = "61_65"
+                        elif a_num <= 70:
+                            ak = "66_70"
+                        elif a_num <= 75:
+                            ak = "71_75"
+                        elif a_num <= 80:
+                            ak = "76_80"
+                        else:
+                            ak = "80_plus"
+                        st.session_state["user_context"]["age_key"] = ak
+                        st.session_state["user_context"]["age"] = T.get(AGE_LABEL_MAP.get(ak, "select_age_prompt"), ak)
+                    except Exception:
+                        pass
+
+                # 2. Autofill Biological Gender -> map to gender_key
+                m_gen = str(ctx_data.get("gender") or "").strip().lower()
+                if m_gen in ["male", "m"]:
+                    st.session_state["user_context"]["gender_key"] = "male"
+                    st.session_state["user_context"]["gender"] = T.get("gender_male", "Male")
+                elif m_gen in ["female", "f"]:
+                    st.session_state["user_context"]["gender_key"] = "female"
+                    st.session_state["user_context"]["gender"] = T.get("gender_female", "Female")
+                elif m_gen in ["other", "non-binary"]:
+                    st.session_state["user_context"]["gender_key"] = "other"
+                    st.session_state["user_context"]["gender"] = T.get("gender_other", "Other")
+
+                # 3. Autofill State / Location
+                m_state = ctx_data.get("state")
+                if m_state and str(m_state).strip() in INDIAN_STATES:
+                    st.session_state["user_context"]["state"] = str(m_state).strip()
+                    st.session_state["user_context"]["location"] = str(m_state).strip()
+
+                # 4. Autofill Height (cm)
+                m_height = ctx_data.get("height")
+                if m_height and str(m_height).strip() and str(m_height).strip() != "None":
+                    st.session_state["user_context"]["height"] = str(m_height).strip()
+
+                # 5. Autofill Weight (kg)
+                m_weight = ctx_data.get("weight")
+                if m_weight and str(m_weight).strip() and str(m_weight).strip() != "None":
+                    st.session_state["user_context"]["weight"] = str(m_weight).strip()
+
+                # 6. Autofill Blood Group
+                m_bg = ctx_data.get("blood_group")
+                if m_bg and str(m_bg).strip() and str(m_bg).strip() != "None":
+                    st.session_state["user_context"]["blood_group"] = str(m_bg).strip()
+
+                # 7. Autofill Pre-existing Medical Conditions
+                COND_MAP = {
+                    "diabetes": "Diabetes (Type 1 or 2)",
+                    "sugar": "Diabetes (Type 1 or 2)",
+                    "hypertension": "Hypertension (High BP)",
+                    "blood pressure": "Hypertension (High BP)",
+                    "bp": "Hypertension (High BP)",
+                    "asthma": "Asthma / Respiratory",
+                    "respiratory": "Asthma / Respiratory",
+                    "heart": "Heart Disease",
+                    "cad": "Heart Disease",
+                    "cardiac": "Heart Disease",
+                    "thyroid": "Thyroid Disorder",
+                    "kidney": "Kidney Disease",
+                    "acidity": "Acidity / GERD",
+                    "gerd": "Acidity / GERD",
+                }
+                raw_conds = ctx_data.get("existing_conditions") or []
+                mapped_conds = []
+                for c in raw_conds:
+                    c_clean = str(c).strip()
+                    c_lower = c_clean.lower()
+                    matched = False
+                    for kw, std_opt in COND_MAP.items():
+                        if kw in c_lower:
+                            mapped_conds.append(std_opt)
+                            matched = True
+                            break
+                    if not matched and c_clean in ["Diabetes (Type 1 or 2)", "Hypertension (High BP)", "Asthma / Respiratory", "Heart Disease", "Thyroid Disorder", "Kidney Disease", "Acidity / GERD"]:
+                        mapped_conds.append(c_clean)
+
+                final_conds = list(dict.fromkeys(mapped_conds)) if mapped_conds else ["None"]
+                st.session_state["user_context"]["conditions"] = final_conds
+                st.session_state["selected_conditions_widget"] = final_conds
+                st.session_state["prev_selected_conditions"] = list(final_conds)
+
+                # 8. Autofill Current Ongoing Medications
+                raw_meds = ctx_data.get("current_medicines") or []
+                if raw_meds:
+                    clean_meds = [str(m).strip() for m in raw_meds if str(m).strip() and str(m).strip() != "None"]
+                    st.session_state["user_context"]["medications"] = ", ".join(clean_meds)
+
+                # 9. Autofill Known Food or Drug Allergies
+                raw_allergies = ctx_data.get("allergies") or ctx_data.get("notes") or ""
+                if raw_allergies and str(raw_allergies).strip() and str(raw_allergies).strip() != "None":
+                    st.session_state["user_context"]["allergies"] = str(raw_allergies).strip()
+
+                # 10. Autofill Relevant Family Medical History (Optional)
+                # Only autofill if explicitly provided by the user/profile, otherwise keep normal/empty
+                raw_fam_hist = ctx_data.get("family_history") or ctx_data.get("surgeries") or ""
+                if raw_fam_hist and str(raw_fam_hist).strip() and str(raw_fam_hist).strip() != "None":
+                    st.session_state["user_context"]["surgeries"] = str(raw_fam_hist).strip()
+                else:
+                    st.session_state["user_context"]["surgeries"] = ""
+
+                st.rerun()
+
+            elif p1_patient_ctx.get("mode") == "GENERAL" and p1_last_choice is not None:
+                # Reset if switched from a profile back to General
+                st.session_state["user_context"]["age_key"] = "select"
+                st.session_state["user_context"]["age"] = ""
+                st.session_state["user_context"]["gender_key"] = "select"
+                st.session_state["user_context"]["gender"] = ""
+                st.session_state["user_context"]["state"] = "-- Select State --"
+                st.session_state["user_context"]["location"] = "-- Select State --"
+                st.session_state["user_context"]["height"] = "None"
+                st.session_state["user_context"]["weight"] = "None"
+                st.session_state["user_context"]["blood_group"] = "None"
+                st.session_state["user_context"]["conditions"] = ["None"]
+                st.session_state["selected_conditions_widget"] = ["None"]
+                st.session_state["prev_selected_conditions"] = ["None"]
+                st.session_state["user_context"]["medications"] = ""
+                st.session_state["user_context"]["allergies"] = "None"
+                st.session_state["user_context"]["surgeries"] = ""
+                st.rerun()
     else:
         st.session_state["p1_patient_context"] = {"mode": "GENERAL", "member_id": None, "name": "General Patient"}
 
@@ -7494,96 +7771,249 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
             </div>
             """, unsafe_allow_html=True)
 
+            # Session State initialization for robust GPS Bridge
+            if "live_gps_coords" not in st.session_state:
+                st.session_state["live_gps_coords"] = None
+            if "live_gps_error" not in st.session_state:
+                st.session_state["live_gps_error"] = None
+            if "live_gps_requested" not in st.session_state:
+                st.session_state["live_gps_requested"] = False
+            if "gis_loc_source" not in st.session_state:
+                st.session_state["gis_loc_source"] = "Live Device GPS"
+
+            # Hidden bridge input element for receiving real-time coordinates from browser JS
+            with st.container(key="dmx_gps_payload_container"):
+                incoming_gps_json = st.text_input(
+                    "LIVE_GPS_BRIDGE",
+                    key="dmx_gps_payload_bridge",
+                    label_visibility="collapsed"
+                )
+
+            # Process incoming GPS JSON payload if available
+            if incoming_gps_json and incoming_gps_json.strip():
+                try:
+                    p_data = json.loads(incoming_gps_json.strip())
+                    if p_data.get("status") == "SUCCESS":
+                        p_lat = float(p_data["lat"])
+                        p_lon = float(p_data["lon"])
+                        p_acc = float(p_data.get("accuracy", 0))
+                        p_name = reverse_geocode(p_lat, p_lon)
+                        st.session_state["live_gps_coords"] = {
+                            "lat": p_lat,
+                            "lon": p_lon,
+                            "accuracy": p_acc,
+                            "name": p_name
+                        }
+                        st.session_state["live_gps_error"] = None
+                        st.session_state["live_gps_requested"] = False
+                    elif p_data.get("status") == "ERROR":
+                        st.session_state["live_gps_error"] = {
+                            "code": p_data.get("code", 1),
+                            "message": p_data.get("message", "Location error")
+                        }
+                        st.session_state["live_gps_requested"] = False
+                except Exception:
+                    pass
+
+            LOC_OPTIONS = [
+                "Live Device GPS",
+                "Auto-Detect via Network IP",
+                "Search Specific Indian City / Area"
+            ]
+            current_src = st.session_state.get("gis_loc_source", "Live Device GPS")
+            if current_src not in LOC_OPTIONS:
+                current_src = "Live Device GPS"
+            src_index = LOC_OPTIONS.index(current_src)
+
             loc_source = st.radio(
                 "Choose Location Source:",
-                [
-                    "Live Device GPS",
-                    "Auto-Detect via Network IP",
-                    "Search Specific Indian City / Area"
-                ],
-                index=2,
+                LOC_OPTIONS,
+                index=src_index,
+                key="gis_loc_source_radio",
                 label_visibility="collapsed"
             )
+            st.session_state["gis_loc_source"] = loc_source
 
-            selected_lat = 23.0225
-            selected_lon = 72.5714
-            loc_name = "Ahmedabad, Gujarat"
+            selected_lat = None
+            selected_lon = None
+            loc_name = ""
+            has_valid_location = False
+            facilities = []
 
-            if "Live Device GPS" in loc_source:
-                gps_status = st.query_params.get("gps_status", "")
-                if gps_status == "SUCCESS" and "gps_lat" in st.query_params and "gps_lon" in st.query_params:
-                    try:
-                        selected_lat = float(st.query_params["gps_lat"])
-                        selected_lon = float(st.query_params["gps_lon"])
-                        loc_name = reverse_geocode(selected_lat, selected_lon)
-                    except Exception:
-                        selected_lat, selected_lon, loc_name = 23.0225, 72.5714, "Ahmedabad, Gujarat"
-                elif gps_status == "ERROR":
-                    err_code = str(st.query_params.get("gps_err_code", "1"))
-                    if err_code == "1":
-                        st.warning("Location Permission Denied in browser.")
-                    elif err_code == "2":
-                        st.warning("Device GPS is Turned OFF.")
-                    else:
-                        st.warning("Location Request Timed Out.")
-                    selected_lat, selected_lon, loc_name = 23.0225, 72.5714, "Ahmedabad, Gujarat"
+            if loc_source == "Live Device GPS":
+                gps_coords = st.session_state.get("live_gps_coords")
+                gps_err = st.session_state.get("live_gps_error")
 
-                # Auto-requesting Geolocation JavaScript Bridge
-                gps_html = """
+                if gps_coords:
+                    selected_lat = gps_coords["lat"]
+                    selected_lon = gps_coords["lon"]
+                    loc_name = gps_coords.get("name") or reverse_geocode(selected_lat, selected_lon)
+                    has_valid_location = True
+                    acc_txt = f" • ±{gps_coords['accuracy']:.0f}m" if gps_coords.get("accuracy") else ""
+
+                    st.markdown(f"""
+                    <div style="background: rgba(16, 185, 129, 0.08); border: 1.5px solid #10B981; border-radius: 12px; padding: 12px 14px; margin-top: 10px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="width: 10px; height: 10px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
+                                <span style="font-size: 0.80rem; font-weight: 800; color: #065F46;">LIVE DEVICE GPS ACTIVE{acc_txt}</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.82rem; color: #1E293B; margin-top: 4px; font-weight: 700;">
+                            {html.escape(loc_name)}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    btn_c1, btn_c2 = st.columns([1, 1])
+                    with btn_c1:
+                        if st.button("Refresh GPS", key="btn_refresh_live_gps", use_container_width=True):
+                            st.session_state["live_gps_coords"] = None
+                            st.session_state["live_gps_error"] = None
+                            st.session_state["live_gps_requested"] = True
+                            st.rerun()
+                    with btn_c2:
+                        if st.button("Use Network IP", key="btn_switch_to_ip", use_container_width=True):
+                            st.session_state["gis_loc_source"] = "Auto-Detect via Network IP"
+                            st.rerun()
+
+                else:
+                    has_valid_location = False
+                    st.markdown("""
+                    <div style="background: rgba(37, 99, 235, 0.06); border: 1.5px solid #93C5FD; border-radius: 12px; padding: 12px 14px; margin-top: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.84rem; color: #1D4ED8;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polygon points="12 2 15 8 12 6 9 8 12 2"></polygon>
+                            </svg>
+                            <span>Live Device GPS Detection</span>
+                        </div>
+                        <div style="font-size: 0.76rem; color: #475569; margin-top: 4px; line-height: 1.35;">
+                            Click <b>Detect Live Location</b> below. If prompted by your browser, click <b>Allow</b>. (Ensure Windows Location Services are turned ON).
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                    if gps_err:
+                        err_code = gps_err.get("code", 1)
+                        if err_code == 1:
+                            err_msg = "Browser Location Permission Denied. Please click the lock or settings icon next to your URL bar, set Location to 'Allow', then click Detect again."
+                        elif err_code == 2:
+                            err_msg = "Device Location / Windows GPS is unavailable. Ensure 'Location services' is ON in Windows Settings, or switch to Network IP auto-detection."
+                        else:
+                            err_msg = "Location request timed out. Please click Detect again or use Network IP."
+                        st.warning(err_msg)
+
+                    act_c1, act_c2 = st.columns([1.2, 1.0])
+                    with act_c1:
+                        if st.button("Detect Live Location", key="btn_detect_live_gps", type="primary", use_container_width=True):
+                            st.session_state["live_gps_requested"] = True
+                            st.session_state["live_gps_error"] = None
+                            st.rerun()
+                    with act_c2:
+                        if st.button("Network IP", key="btn_fallback_ip_detect", use_container_width=True):
+                            st.session_state["gis_loc_source"] = "Auto-Detect via Network IP"
+                            st.rerun()
+
+                # JavaScript Geolocation Bridge
+                auto_req = "true" if (st.session_state.get("live_gps_requested", False) or not gps_coords) else "false"
+                gps_bridge_html = f"""
                 <script>
-                function autoRequestGPS() {
-                    if (!navigator.geolocation) {
-                        try {
-                            const url = new URL(window.parent.location.href);
-                            url.searchParams.set("gps_status", "ERROR");
-                            url.searchParams.set("gps_err_code", "1");
-                            window.parent.location.href = url.toString();
-                        } catch(e) {}
-                        return;
-                    }
-                    navigator.geolocation.getCurrentPosition(
-                        function(pos) {
-                            try {
-                                const url = new URL(window.parent.location.href);
-                                const lat = pos.coords.latitude.toFixed(6);
-                                const lon = pos.coords.longitude.toFixed(6);
-                                if (url.searchParams.get("gps_lat") !== lat || url.searchParams.get("gps_lon") !== lon) {
-                                    url.searchParams.set("gps_lat", lat);
-                                    url.searchParams.set("gps_lon", lon);
-                                    url.searchParams.set("gps_status", "SUCCESS");
-                                    url.searchParams.delete("gps_err_code");
-                                    window.parent.location.href = url.toString();
-                                }
-                            } catch(e) {
-                                console.error(e);
-                            }
-                        },
-                        function(err) {
-                            try {
-                                const url = new URL(window.parent.location.href);
-                                if (url.searchParams.get("gps_status") !== "ERROR" || url.searchParams.get("gps_err_code") !== String(err.code)) {
-                                    url.searchParams.set("gps_status", "ERROR");
-                                    url.searchParams.set("gps_err_code", String(err.code));
-                                    window.parent.location.href = url.toString();
-                                }
-                            } catch(e) {
-                                console.error(e);
-                            }
-                        },
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
-                }
-                autoRequestGPS();
+                (function() {{
+                    function sendPayload(payload) {{
+                        try {{
+                            var doc = window.parent.document || document;
+                            var input = doc.querySelector('.st-key-dmx_gps_payload_bridge input');
+                            if (input) {{
+                                var str = JSON.stringify(payload);
+                                if (input.value !== str) {{
+                                    var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                                    setter.call(input, str);
+                                    input.dispatchEvent(new Event('input', {{ bubbles: true }}));
+                                    input.dispatchEvent(new Event('change', {{ bubbles: true }}));
+                                }}
+                            }}
+                        }} catch(e) {{
+                            console.error('GPS Bridge dispatch error:', e);
+                        }}
+                    }}
+
+                    window._dmx_acquire_gps = function() {{
+                        if (!navigator.geolocation) {{
+                            sendPayload({{ status: 'ERROR', code: 2, message: 'Geolocation not supported' }});
+                            return;
+                        }}
+                        navigator.geolocation.getCurrentPosition(
+                            function(pos) {{
+                                sendPayload({{
+                                    status: 'SUCCESS',
+                                    lat: pos.coords.latitude,
+                                    lon: pos.coords.longitude,
+                                    accuracy: pos.coords.accuracy || 0
+                                }});
+                            }},
+                            function(err1) {{
+                                navigator.geolocation.getCurrentPosition(
+                                    function(pos2) {{
+                                        sendPayload({{
+                                            status: 'SUCCESS',
+                                            lat: pos2.coords.latitude,
+                                            lon: pos2.coords.longitude,
+                                            accuracy: pos2.coords.accuracy || 0
+                                        }});
+                                    }},
+                                    function(err2) {{
+                                        sendPayload({{
+                                            status: 'ERROR',
+                                            code: err2.code || err1.code,
+                                            message: err2.message || err1.message
+                                        }});
+                                    }},
+                                    {{ enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }}
+                                );
+                            }},
+                            {{ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }}
+                        );
+                    }};
+
+                    if ({auto_req}) {{
+                        window._dmx_acquire_gps();
+                    }}
+
+                    try {{
+                        var doc = window.parent.document || document;
+                        var btn = doc.querySelector('.st-key-btn_detect_live_gps button');
+                        if (btn && !btn._has_gps_listener) {{
+                            btn._has_gps_listener = true;
+                            btn.addEventListener('click', function() {{
+                                window._dmx_acquire_gps();
+                            }});
+                        }}
+                    }} catch(e) {{}}
+                }})();
                 </script>
                 """
-                components.html(gps_html, height=0)
+                with st.container(key="dmx_hidden_gps_bridge"):
+                    components.html(gps_bridge_html, height=0, width=0)
 
-            elif "Auto-Detect" in loc_source:
+            elif loc_source == "Auto-Detect via Network IP":
                 client_ip = get_client_ip()
                 auto_geo = detect_auto_location(client_ip=client_ip)
                 selected_lat = float(auto_geo.get("lat", 23.0225))
                 selected_lon = float(auto_geo.get("lon", 72.5714))
                 loc_name = auto_geo.get("formatted_address") or f"{auto_geo.get('city', 'Ahmedabad')}, {auto_geo.get('region', 'Gujarat')}"
+                has_valid_location = True
+
+                st.markdown(f"""
+                <div style="background: rgba(37, 99, 235, 0.06); border: 1.5px solid #BFDBFE; border-radius: 12px; padding: 10px 14px; margin-top: 10px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.80rem; font-weight: 800; color: #1D4ED8;">NETWORK IP LOCATION</span>
+                    </div>
+                    <div style="font-size: 0.78rem; color: #1E293B; margin-top: 2px; font-weight: 600;">
+                        {html.escape(loc_name)}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
             else:
                 search_addr = st.text_input("Enter City or District:", value="Ahmedabad, Gujarat", key="gis_city_search_input", label_visibility="collapsed")
@@ -7594,13 +8024,22 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                     loc_name = geo["formatted_address"]
                 else:
                     selected_lat, selected_lon, loc_name = geocode_city_district(search_addr)
+                has_valid_location = True
 
-            st.markdown(f"""
-            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #64748B; margin-top: 14px; font-weight: 500;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="#2563EB" style="flex-shrink: 0;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                <span><b style="color: var(--mm-text-primary);">Location:</b> {loc_name} ({selected_lat:.4f}, {selected_lon:.4f})</span>
-            </div>
-            """, unsafe_allow_html=True)
+            if has_valid_location and selected_lat is not None and selected_lon is not None:
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #64748B; margin-top: 12px; font-weight: 500;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="#2563EB" style="flex-shrink: 0;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    <span><b style="color: var(--mm-text-primary);">Location:</b> {html.escape(str(loc_name))} ({selected_lat:.4f}, {selected_lon:.4f})</span>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #DC2626; margin-top: 12px; font-weight: 600;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    <span>Awaiting live GPS coordinates...</span>
+                </div>
+                """, unsafe_allow_html=True)
 
     with gis_c2:
         with st.container(border=True, key="gis_panel_col_2"):
@@ -7697,157 +8136,174 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
             </div>
             """, unsafe_allow_html=True)
 
-    # Search nearby healthcare facilities
-    with st.spinner(f"Locating verified facilities near {loc_name}..."):
-        try:
-            facilities = search_nearby_healthcare(
-                selected_lat,
-                selected_lon,
-                facility_category=active_facility_key,
-                radius_meters=search_radius * 1000
-            )
-        except Exception as e:
-            print(f"Error querying healthcare: {e}")
-            facilities = []
+    if has_valid_location and selected_lat is not None and selected_lon is not None:
+        # Search nearby healthcare facilities
+        facilities = []
+        with st.spinner(f"Locating verified facilities near {loc_name}..."):
+            try:
+                facilities = search_nearby_healthcare(
+                    selected_lat,
+                    selected_lon,
+                    facility_category=active_facility_key,
+                    radius_meters=search_radius * 1000
+                )
+            except Exception as e:
+                print(f"Error querying healthcare: {e}")
+                facilities = []
 
-    facilities = facilities or []
+        facilities = facilities or []
 
-    # Sorting
-    if "Rating"in str(sort_by):
-        facilities.sort(key=lambda x: (float(x.get("rating") or 0.0), -float(x.get("distance_km") or 999.0)), reverse=True)
-    elif "Emergency"in str(sort_by):
-        facilities.sort(key=lambda x: (0 if ("24/7"in str(x.get("emergency", "")) or "Yes"in str(x.get("emergency", "")) or x.get("is_emergency")) else 1, float(x.get("distance_km") or 999.0)))
-    else:
-        facilities.sort(key=lambda x: float(x.get("distance_km") or 999.0))
+        # Sorting
+        if "Rating"in str(sort_by):
+            facilities.sort(key=lambda x: (float(x.get("rating") or 0.0), -float(x.get("distance_km") or 999.0)), reverse=True)
+        elif "Emergency"in str(sort_by):
+            facilities.sort(key=lambda x: (0 if ("24/7"in str(x.get("emergency", "")) or "Yes"in str(x.get("emergency", "")) or x.get("is_emergency")) else 1, float(x.get("distance_km") or 999.0)))
+        else:
+            facilities.sort(key=lambda x: float(x.get("distance_km") or 999.0))
 
-    active_fac_idx = st.session_state.get("selected_nav_fac_idx", None)
-    selected_fac = None
-    route_info = None
+        active_fac_idx = st.session_state.get("selected_nav_fac_idx", None)
+        selected_fac = None
+        route_info = None
 
-    if isinstance(active_fac_idx, int) and 0 <= active_fac_idx < len(facilities):
-        selected_fac = facilities[active_fac_idx]
-        try:
-            route_info = get_route(selected_lat, selected_lon, selected_fac['lat'], selected_fac['lon'], mode=mode_code)
-        except Exception:
-            route_info = None
+        if isinstance(active_fac_idx, int) and 0 <= active_fac_idx < len(facilities):
+            selected_fac = facilities[active_fac_idx]
+            try:
+                route_info = get_route(selected_lat, selected_lon, selected_fac['lat'], selected_fac['lon'], mode=mode_code)
+            except Exception:
+                route_info = None
 
-    if selected_fac is not None and route_info is not None:
-        r_c1, r_c2 = st.columns([4.2, 1.0])
-        with r_c1:
-            st.markdown(f"""
-            <div style="background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.4); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
-                <div style="font-size: 0.88rem; font-weight: 800; color: #06B6D4;">Active Route: {selected_fac['name']}</div>
-                <div style="font-size: 0.78rem; color: var(--mm-text-secondary);">Mode: <b>{travel_mode_choice}</b> · Distance: <b>{route_info.get('distance_km', selected_fac.get('distance_km'))} KM</b> · Est. Time: <b>~{route_info.get('duration', '10 mins')}</b></div>
-            </div>
-            """, unsafe_allow_html=True)
-        with r_c2:
-            if st.button(T.get("btn_clear_route", "Clear Route"), key="btn_clear_active_route", type="secondary", use_container_width=True):
-                st.session_state["selected_nav_fac_idx"] = None
-                st.rerun()
+        if selected_fac is not None and route_info is not None:
+            r_c1, r_c2 = st.columns([4.2, 1.0])
+            with r_c1:
+                st.markdown(f"""
+                <div style="background: rgba(37, 99, 235, 0.08); border: 1.5px solid rgba(37, 99, 235, 0.4); border-radius: 10px; padding: 10px 14px; margin-bottom: 10px;">
+                    <div style="font-size: 0.88rem; font-weight: 800; color: #06B6D4;">Active Route: {selected_fac['name']}</div>
+                    <div style="font-size: 0.78rem; color: var(--mm-text-secondary);">Mode: <b>{travel_mode_choice}</b> · Distance: <b>{route_info.get('distance_km', selected_fac.get('distance_km'))} KM</b> · Est. Time: <b>~{route_info.get('duration', '10 mins')}</b></div>
+                </div>
+                """, unsafe_allow_html=True)
+            with r_c2:
+                if st.button(T.get("btn_clear_route", "Clear Route"), key="btn_clear_active_route", type="secondary", use_container_width=True):
+                    st.session_state["selected_nav_fac_idx"] = None
+                    st.rerun()
 
-    # Map Component
-    map_html = generate_google_map_html(
-        user_lat=selected_lat,
-        user_lon=selected_lon,
-        facilities=facilities,
-        location_name=loc_name,
-        selected_facility=selected_fac,
-        route_data=route_info
-    )
-    components.html(map_html, height=450)
+        # Map Component
+        map_html = generate_google_map_html(
+            user_lat=selected_lat,
+            user_lon=selected_lon,
+            facilities=facilities,
+            location_name=loc_name,
+            selected_facility=selected_fac,
+            route_data=route_info
+        )
+        components.html(map_html, height=450)
 
-    st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px 0;">
-        <b style="font-size: 1.1rem; color: var(--mm-text-primary);">Verified Facilities ({len(facilities)} Found within {search_radius} KM)</b>
-    </div>
-    """, unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style="display: flex; justify-content: space-between; align-items: center; margin: 20px 0 10px 0;">
+            <b style="font-size: 1.1rem; color: var(--mm-text-primary);">Verified Facilities ({len(facilities)} Found within {search_radius} KM)</b>
+        </div>
+        """, unsafe_allow_html=True)
 
-    if not facilities:
-        st.info("No facilities found for this specific filter within the radius. Try increasing the search radius.")
-    else:
-        FAC_AVATARS = [
-            {"bg": "#EFF6FF", "border": "#BFDBFE", "fg": "#2563EB", "dark_bg": "rgba(37, 99, 235, 0.2)", "dark_border": "rgba(59, 130, 246, 0.4)", "dark_fg": "#60A5FA"},   # Blue
-            {"bg": "#ECFDF5", "border": "#A7F3D0", "fg": "#059669", "dark_bg": "rgba(5, 150, 105, 0.2)", "dark_border": "rgba(16, 185, 129, 0.4)", "dark_fg": "#34D399"},   # Green
-            {"bg": "#FEF2F2", "border": "#FECACA", "fg": "#DC2626", "dark_bg": "rgba(220, 38, 38, 0.2)", "dark_border": "rgba(239, 68, 68, 0.4)", "dark_fg": "#F87171"},   # Red
-            {"bg": "#F5F3FF", "border": "#DDD6FE", "fg": "#7C3AED", "dark_bg": "rgba(124, 58, 237, 0.2)", "dark_border": "rgba(139, 92, 246, 0.4)", "dark_fg": "#A78BFA"},  # Purple
-            {"bg": "#FFF7ED", "border": "#FED7AA", "fg": "#EA580C", "dark_bg": "rgba(234, 88, 12, 0.2)", "dark_border": "rgba(249, 115, 22, 0.4)", "dark_fg": "#FB923C"},   # Orange
-            {"bg": "#F0FDFA", "border": "#99F6E4", "fg": "#0D9488", "dark_bg": "rgba(13, 148, 136, 0.2)", "dark_border": "rgba(20, 184, 166, 0.4)", "dark_fg": "#2DD4BF"},  # Teal
-        ]
+        if not facilities:
+            st.info("No facilities found for this specific filter within the radius. Try increasing the search radius.")
+        else:
+            FAC_AVATARS = [
+                {"bg": "#EFF6FF", "border": "#BFDBFE", "fg": "#2563EB", "dark_bg": "rgba(37, 99, 235, 0.2)", "dark_border": "rgba(59, 130, 246, 0.4)", "dark_fg": "#60A5FA"},   # Blue
+                {"bg": "#ECFDF5", "border": "#A7F3D0", "fg": "#059669", "dark_bg": "rgba(5, 150, 105, 0.2)", "dark_border": "rgba(16, 185, 129, 0.4)", "dark_fg": "#34D399"},   # Green
+                {"bg": "#FEF2F2", "border": "#FECACA", "fg": "#DC2626", "dark_bg": "rgba(220, 38, 38, 0.2)", "dark_border": "rgba(239, 68, 68, 0.4)", "dark_fg": "#F87171"},   # Red
+                {"bg": "#F5F3FF", "border": "#DDD6FE", "fg": "#7C3AED", "dark_bg": "rgba(124, 58, 237, 0.2)", "dark_border": "rgba(139, 92, 246, 0.4)", "dark_fg": "#A78BFA"},  # Purple
+                {"bg": "#FFF7ED", "border": "#FED7AA", "fg": "#EA580C", "dark_bg": "rgba(234, 88, 12, 0.2)", "dark_border": "rgba(249, 115, 22, 0.4)", "dark_fg": "#FB923C"},   # Orange
+                {"bg": "#F0FDFA", "border": "#99F6E4", "fg": "#0D9488", "dark_bg": "rgba(13, 148, 136, 0.2)", "dark_border": "rgba(20, 184, 166, 0.4)", "dark_fg": "#2DD4BF"},  # Teal
+            ]
 
-        for row_start in range(0, len(facilities), 3):
-            row_facs = facilities[row_start:row_start + 3]
-            f_cols = st.columns(3)
-            for c_idx, fac in enumerate(row_facs):
-                i = row_start + c_idx
-                with f_cols[c_idx]:
-                    rating_val = fac.get("rating", 4.5)
-                    dist_val = fac.get("distance_km", 1.5)
-                    fac_name = fac.get("name", "Healthcare Facility")
-                    fac_type = fac.get("type", "Hospital")
-                    fac_address = fac.get("address", "Nearby Area")
-                    fac_phone = fac.get("phone", "108 / Reception Desk")
-                    fac_emergency = fac.get("emergency", "24/7 ACTIVE CARE")
+            for row_start in range(0, len(facilities), 3):
+                row_facs = facilities[row_start:row_start + 3]
+                f_cols = st.columns(3)
+                for c_idx, fac in enumerate(row_facs):
+                    i = row_start + c_idx
+                    with f_cols[c_idx]:
+                        rating_val = fac.get("rating", 4.5)
+                        dist_val = fac.get("distance_km", 1.5)
+                        fac_name = fac.get("name", "Healthcare Facility")
+                        fac_type = fac.get("type", "Hospital")
+                        fac_address = fac.get("address", "Nearby Area")
+                        fac_phone = fac.get("phone", "108 / Reception Desk")
+                        fac_emergency = fac.get("emergency", "24/7 ACTIVE CARE")
 
-                    is_dark = st.session_state.get("dark_mode", False)
-                    av = FAC_AVATARS[i % len(FAC_AVATARS)]
-                    av_bg = av["dark_bg"] if is_dark else av["bg"]
-                    av_border = av["dark_border"] if is_dark else av["border"]
-                    av_fg = av["dark_fg"] if is_dark else av["fg"]
+                        is_dark = st.session_state.get("dark_mode", False)
+                        av = FAC_AVATARS[i % len(FAC_AVATARS)]
+                        av_bg = av["dark_bg"] if is_dark else av["bg"]
+                        av_border = av["dark_border"] if is_dark else av["border"]
+                        av_fg = av["dark_fg"] if is_dark else av["fg"]
 
-                    with st.container():
-                        st.markdown(f"""
-                        <div class="mm-hospital-card">
-                            <div>
-                                <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px;">
-                                    <div style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0;">
-                                        <div style="width: 48px; height: 48px; min-width: 48px; border-radius: 12px; background: {av_bg}; border: 1.5px solid {av_border}; display: flex; align-items: center; justify-content: center; color: {av_fg}; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
-                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                        with st.container():
+                            st.markdown(f"""
+                            <div class="mm-hospital-card">
+                                <div>
+                                    <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px;">
+                                        <div style="display: flex; align-items: flex-start; gap: 12px; flex: 1; min-width: 0;">
+                                            <div style="width: 48px; height: 48px; min-width: 48px; border-radius: 12px; background: {av_bg}; border: 1.5px solid {av_border}; display: flex; align-items: center; justify-content: center; color: {av_fg}; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);">
+                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-2 10h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>
+                                            </div>
+                                            <b style="font-size: 0.98rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.32; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 42px;">{fac_name}</b>
                                         </div>
-                                        <b style="font-size: 0.98rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.32; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 42px;">{fac_name}</b>
+                                        <span class="mm-fac-dist-badge">
+                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#0284C7"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                            <span>{dist_val:.2f} KM</span>
+                                        </span>
                                     </div>
-                                    <span class="mm-fac-dist-badge">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="#0284C7"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                                        <span>{dist_val:.2f} KM</span>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 7px; font-size: 0.80rem; color: var(--mm-text-secondary); font-weight: 600;">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B; flex-shrink: 0;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
+                                            <span>{fac_type}</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 4px; font-size: 0.88rem; font-weight: 800; color: #EA580C;">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                            <span>{rating_val}</span>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.78rem; color: var(--mm-text-secondary); margin-bottom: 8px; line-height: 1.4; height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color: #64748B; flex-shrink: 0; margin-top: 1px;"><path d="M12 0C7.58 0 4 3.58 4 8c0 5.25 7 13 8 13s8-7.75 8-13c0-4.42-3.58-8-8-8zm0 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>
+                                        <span>{fac_address}</span>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--mm-text-secondary); margin-bottom: 10px;">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color: #64748B; flex-shrink: 0;"><path d="M6.62 10.79a15.053 15.053 0 0 0 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+                                        <span>{fac_phone}</span>
+                                    </div>
+                                </div>
+                                <div style="margin-top: auto;">
+                                    <span class="mm-fac-active-badge">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="#059669"><circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                        <span>{fac_emergency}</span>
                                     </span>
                                 </div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 7px; font-size: 0.80rem; color: var(--mm-text-secondary); font-weight: 600;">
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #64748B; flex-shrink: 0;"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>
-                                        <span>{fac_type}</span>
-                                    </div>
-                                    <div style="display: flex; align-items: center; gap: 4px; font-size: 0.88rem; font-weight: 800; color: #EA580C;">
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="#F59E0B" stroke="#F59E0B"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                                        <span>{rating_val}</span>
-                                    </div>
-                                </div>
-                                <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.78rem; color: var(--mm-text-secondary); margin-bottom: 8px; line-height: 1.4; height: 38px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color: #64748B; flex-shrink: 0; margin-top: 1px;"><path d="M12 0C7.58 0 4 3.58 4 8c0 5.25 7 13 8 13s8-7.75 8-13c0-4.42-3.58-8-8-8zm0 11c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z"/></svg>
-                                    <span>{fac_address}</span>
-                                </div>
-                                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.78rem; color: var(--mm-text-secondary); margin-bottom: 10px;">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color: #64748B; flex-shrink: 0;"><path d="M6.62 10.79a15.053 15.053 0 0 0 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
-                                    <span>{fac_phone}</span>
-                                </div>
                             </div>
-                            <div style="margin-top: auto;">
-                                <span class="mm-fac-active-badge">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="#059669"><circle cx="12" cy="12" r="10"/><polyline points="8 12 11 15 16 9" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                    <span>{fac_emergency}</span>
-                                </span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                            """, unsafe_allow_html=True)
 
-                        st.markdown("<div class='mm-gis-action-row'>", unsafe_allow_html=True)
-                        b_c1, b_c2 = st.columns(2)
-                        with b_c1:
-                            if st.button(T.get("btn_route", "Route"), key=f"fac_route_{i}", type="primary", icon=":material/near_me:", use_container_width=True):
-                                st.session_state["selected_nav_fac_idx"] = i
-                                st.rerun()
-                        with b_c2:
-                            direct_maps_url = fac.get("google_maps_uri") or f"https://www.google.com/maps/dir/?api=1&destination={fac['lat']},{fac['lon']}"
-                            st.link_button(T.get("btn_view_map", "View on Map"), direct_maps_url, icon=":material/map:", use_container_width=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
+                            st.markdown("<div class='mm-gis-action-row'>", unsafe_allow_html=True)
+                            b_c1, b_c2 = st.columns(2)
+                            with b_c1:
+                                if st.button(T.get("btn_route", "Route"), key=f"fac_route_{i}", type="primary", icon=":material/near_me:", use_container_width=True):
+                                    st.session_state["selected_nav_fac_idx"] = i
+                                    st.rerun()
+                            with b_c2:
+                                direct_maps_url = fac.get("google_maps_uri") or f"https://www.google.com/maps/dir/?api=1&destination={fac['lat']},{fac['lon']}"
+                                st.link_button(T.get("btn_view_map", "View on Map"), direct_maps_url, icon=":material/map:", use_container_width=True)
+                            st.markdown("</div>", unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background: var(--mm-bg-surface); border: 2px dashed #93C5FD; border-radius: 16px; padding: 48px 24px; text-align: center; margin-top: 22px; box-shadow: 0 4px 18px rgba(37,99,235,0.04);">
+            <div style="width: 60px; height: 60px; border-radius: 50%; background: #EFF6FF; border: 1.5px solid #BFDBFE; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto;">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polygon points="12 2 15 8 12 6 9 8 12 2"></polygon>
+                </svg>
+            </div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary);">Awaiting Live Device GPS Location</div>
+            <div style="font-size: 0.86rem; color: var(--mm-text-secondary); max-width: 520px; margin: 8px auto 0 auto; line-height: 1.5;">
+                Click <b>'Detect Live Location'</b> in Step 1 above and grant browser location access to discover 24/7 trauma centers, hospitals, and pharmacies in your immediate perimeter.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     st.markdown("<div style='height: 2.5px; background: linear-gradient(90deg, rgba(37, 99, 235, 0.05) 0%, #2563EB 50%, rgba(37, 99, 235, 0.05) 100%); margin: 24px 0 18px 0; border-radius: 99px;'></div>", unsafe_allow_html=True)
     st.markdown(render_footer_trust_bar(T), unsafe_allow_html=True)
 
@@ -8191,9 +8647,7 @@ elif st.session_state["active_panel"] == "Health Records":
                     <span style="color: var(--mm-text-secondary); font-size: 0.82rem;">Create a free clinical account to permanently encrypt and sync these scans across devices.</span>
                     """, unsafe_allow_html=True)
                 with c_btn:
-                    if st.button("Sign In / Register", key="btn_guest_save_sync", type="primary", use_container_width=True):
-                        st.session_state["active_panel"] = "Account / Authentication"
-                        st.rerun()
+                    st.button("Sign In / Register", key="btn_guest_save_sync", type="primary", use_container_width=True, on_click=switch_active_panel, args=("Account / Authentication",))
 
         else:
             # Polished empty state with actionable CTAs
@@ -8213,17 +8667,11 @@ elif st.session_state["active_panel"] == "Health Records":
 
             cta1, cta2, cta3 = st.columns(3)
             with cta1:
-                if st.button("Run Health Assessment", key="cta_guest_triage", type="primary", use_container_width=True):
-                    st.session_state["active_panel"] = "Health Assessment"
-                    st.rerun()
+                st.button("Run Health Assessment", key="cta_guest_triage", type="primary", use_container_width=True, on_click=switch_active_panel, args=("Health Assessment",))
             with cta2:
-                if st.button("Analyze Medical Report", key="cta_guest_report", type="secondary", use_container_width=True):
-                    st.session_state["active_panel"] = "Medical Report"
-                    st.rerun()
+                st.button("Analyze Medical Report", key="cta_guest_report", type="secondary", use_container_width=True, on_click=switch_active_panel, args=("Medical Report",))
             with cta3:
-                if st.button("Sign In / Register", key="cta_guest_auth", type="primary", use_container_width=True):
-                    st.session_state["active_panel"] = "Account / Authentication"
-                    st.rerun()
+                st.button("Sign In / Register", key="cta_guest_auth", type="primary", use_container_width=True, on_click=switch_active_panel, args=("Account / Authentication",))
 
             st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
             st.markdown("""
@@ -8521,9 +8969,10 @@ elif st.session_state["active_panel"] == "About":
             st.markdown("<div style='display: flex; justify-content: flex-end; align-items: center; height: 38px;'><span class='mm-badge mm-badge-success' style='height: 38px; line-height: 38px; padding: 0 16px; display: inline-flex; align-items: center;'>V2.0 PRODUCTION</span></div>", unsafe_allow_html=True)
 
     # Localized Content Dictionary for About (En / Hi / Gu)
-    ABOUT_TEXT = {
-        "en": {
-            "creator_badge": "Founder, Architect & Creator",
+    def _get_about_text():
+        return {
+            "en": {
+                "creator_badge": "Founder, Architect & Creator",
             "creator_name": "Developed by Daksh Vasani",
             "creator_sub": "M.Sc. Data Science Student | Python & Machine Learning Enthusiast · Gujarat, India",
             "mission_title": "Project Vision & Architecture",
@@ -8835,6 +9284,7 @@ elif st.session_state["active_panel"] == "About":
             "feat_6_desc": "10 કુટુંબ સભ્યો સુધીનો સંપૂર્ણ તબીબી ઇતિહાસ સંચાલિત કરો. રોગ, દવા, બ્લડ ગ્રૂપ અને આરોગ્ય ડેટા એક જ ખાતા હેઠળ સુરક્ષિત રીતે સ્ટોર કરો."
         }
     }
+    ABOUT_TEXT = _get_about_text()
     
     A = ABOUT_TEXT.get(lang_code)
     if not A:
@@ -8849,8 +9299,9 @@ elif st.session_state["active_panel"] == "About":
             A = ABOUT_TEXT["en"]
 
     # Multilingual labels for badges, tooltips and callout boxes
-    ABOUT_LABELS = {
-        "en": {
+    def _get_about_labels():
+        return {
+            "en": {
             "trained_val": "Trained & Validated",
             "time_series": "Time Series + ML",
             "risk_detect": "Risk Detection",
@@ -8968,6 +9419,7 @@ elif st.session_state["active_panel"] == "About":
             "trusted_data": "વિશ્વસનીય ડેટા, બહેતર સારવાર.",
         }
     }
+    ABOUT_LABELS = _get_about_labels()
     L = ABOUT_LABELS.get(lang_code, ABOUT_LABELS["en"])
 
     def _strip_num(s):
@@ -11634,8 +12086,9 @@ st.markdown(f"""
 </style>
 """, unsafe_allow_html=True)
 
-# Floating '+' Trigger Button
-st.button("＋", key="floating_ai_assistant", on_click=toggle_floating_chat, help="Open Clinical AI Assistant")
+# Floating '+' Trigger Button (Hidden on Authentication page)
+if st.session_state.get("active_panel") != "Account / Authentication":
+    st.button("＋", key="floating_ai_assistant", on_click=toggle_floating_chat, help="Open Clinical AI Assistant")
 
 # Dynamic Clinical Context for Real AI Inquiries
 current_context = {
@@ -12132,31 +12585,31 @@ if chat_is_open:
             <span>This AI provides general information only. Always consult a qualified doctor.</span>
         </div>
         """)
-# 6. Snappy Outside-Click Listener Script
-        components.html("""
+        # 6. Snappy Outside-Click Listener Script
+        st.markdown("""
         <script>
         (function() {
             try {
-                var parentDoc = window.parent.document;
-                var drawer = parentDoc.querySelector('.st-key-slide_chat_drawer');
-                var toggleBtn = parentDoc.querySelector('.st-key-floating_ai_assistant');
-                var closeBtn = parentDoc.querySelector('.st-key-drawer_close_x_btn button');
+                var doc = document;
+                var drawer = doc.querySelector('.st-key-slide_chat_drawer');
+                var toggleBtn = doc.querySelector('.st-key-floating_ai_assistant');
+                var closeBtn = doc.querySelector('.st-key-drawer_close_x_btn button');
                 
                 if (!drawer || !closeBtn) return;
                 
                 function handleOutsidePointer(e) {
                     if (!drawer.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
-                        parentDoc.removeEventListener('pointerdown', handleOutsidePointer, true);
+                        doc.removeEventListener('pointerdown', handleOutsidePointer, true);
                         closeBtn.click();
                     }
                 }
                 setTimeout(function() {
-                    parentDoc.addEventListener('pointerdown', handleOutsidePointer, true);
+                    doc.addEventListener('pointerdown', handleOutsidePointer, true);
                 }, 100);
             } catch(e) {}
         })();
         </script>
-        """, height=0)
+        """, unsafe_allow_html=True)
 
         if st.session_state.get("pending_chat_query"):
             q_to_process = st.session_state.pop("pending_chat_query")

@@ -46,9 +46,9 @@ def run_verification():
     print(f"\n{GREEN}{BOLD}Initializing DocMindX AI Machine Learning Audit Engine...{RESET}")
     time.sleep(0.5)
 
-    # --------------------------------------------------------------------------
+    -------------
     # 1. LOAD & INSPECT SERIALIZED MODEL
-    # --------------------------------------------------------------------------
+    -------------
     print_header("STEP 1: INSPECTING SERIALIZED MODEL (models/disease_model.pkl)")
     
     model_path = os.path.join(BASE_DIR, "models", "disease_model.pkl")
@@ -76,9 +76,9 @@ def run_verification():
     print(f"  • {BOLD}Total Symptom Features:{RESET} {len(symptom_features)} Binary Features")
     print(f"  • {BOLD}Total Disease Classes:{RESET}  {len(classes)} ICD-11 Aligned Classes")
 
-    # --------------------------------------------------------------------------
+    -------------
     # 2. TRAINING SET RESUBSTITUTION ACCURACY
-    # --------------------------------------------------------------------------
+    -------------
     print_header("STEP 2: TRAINING SET / TEXTBOOK BENCHMARK ACCURACY")
     
     X, y, _ = build_feature_matrix()
@@ -90,9 +90,9 @@ def run_verification():
     print(f"  • {BOLD}Training Set Accuracy:{RESET} {GREEN}{BOLD}{train_acc:.2f}%{RESET}")
     print(f"  {YELLOW}Note: This represents accuracy on ideal textbook symptom matrices.{RESET}")
 
-    # --------------------------------------------------------------------------
+    -------------
     # 3. REAL-WORLD PARTIAL SYMPTOM STRESS TEST (MONTE CARLO SIMULATION)
-    # --------------------------------------------------------------------------
+    -------------
     print_header("STEP 3: REAL-WORLD PARTIAL SYMPTOM STRESS TEST (1,000 CASES)")
     
     print("  Simulating realistic clinical patients where only 50% - 80% of symptoms are reported...")
@@ -150,9 +150,9 @@ def run_verification():
     print(f"  | Top-5 Differential Diagnosis Match          | {GREEN}{BOLD}{top5_acc:6.2f}%{RESET}          |")
     print(f"  +---------------------------------------------+-----------------+")
 
-    # --------------------------------------------------------------------------
+    -------------
     # 4. LIVE INFERENCE DEMONSTRATION
-    # --------------------------------------------------------------------------
+    -------------
     print_header("STEP 4: LIVE CLINICAL INFERENCE DEMO")
     
     test_symptoms = ["fever", "cough", "fatigue", "body pain"]

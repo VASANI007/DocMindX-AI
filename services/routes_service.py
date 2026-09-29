@@ -58,6 +58,9 @@ def _format_duration_string(minutes: int) -> str:
         return f"{hours} hr" if hours == 1 else f"{hours} hrs"
     return f"{hours} hr {rem_min} mins" if hours == 1 else f"{hours} hrs {rem_min} mins"
 
+import streamlit as st
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def get_route(origin_lat: float, origin_lng: float, dest_lat: float, dest_lng: float, mode: str = "car"):
     """
     Computes road route directions, true distance, and accurate mode-specific ETA.

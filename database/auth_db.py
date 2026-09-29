@@ -277,6 +277,37 @@ def add_family_member(user_id: int, member_data: dict) -> int:
     cursor = conn.cursor()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    clean_uid = int(user_id) if str(user_id).isdigit() else user_id
+    name_clean = member_data.get("name", "").strip()
+    raw_rel = member_data.get("relationship", "").strip()
+
+    def _normalize_role(r: str) -> str:
+        v = (r or "").strip().lower()
+        if v in ("mom", "mother"):
+            return "Mother"
+        if v in ("dad", "father"):
+            return "Father"
+        return (r or "").strip().title()
+
+    rel_clean = _normalize_role(raw_rel)
+
+    # 1. Strict Duplicate Name Validation: No multiple family members with the same name (case-insensitive)
+    cursor.execute(
+        "SELECT id FROM family_members WHERE user_id = ? AND LOWER(TRIM(name)) = LOWER(TRIM(?))",
+        (clean_uid, name_clean)
+    )
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError(f"A family member named '{name_clean}' already exists in your family vault.")
+
+    # 2. Strict Role Validation: Only Brother and Sister can be added multiple times (Mom, Dad, etc. only ONCE)
+    if rel_clean not in ("Brother", "Sister"):
+        cursor.execute("SELECT relationship FROM family_members WHERE user_id = ?", (clean_uid,))
+        existing_roles_list = [_normalize_role(row[0]) for row in cursor.fetchall() if row[0]]
+        if rel_clean in existing_roles_list:
+            conn.close()
+            raise ValueError(f"A family member with role '{raw_rel}' already exists. Only Brother and Sister can be added multiple times.")
+
     dob_val = str(member_data.get("dob", "") or "").strip()
     age_val = member_data.get("age")
     if dob_val:
@@ -293,9 +324,9 @@ def add_family_member(user_id: int, member_data: dict) -> int:
             user_id, name, relationship, age, dob, gender, blood_group, height, weight, state, notes, emergency_contact, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        int(user_id),
-        member_data.get("name", "").strip(),
-        member_data.get("relationship", "").strip(),
+        clean_uid,
+        name_clean,
+        rel_clean,
         age_val,
         dob_val,
         member_data.get("gender", ""),
@@ -401,6 +432,29 @@ def update_family_member(member_id: int, user_id: int, member_data: dict) -> boo
     conn = get_db_connection()
     cursor = conn.cursor()
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    clean_uid = int(user_id) if str(user_id).isdigit() else user_id
+    name_clean = member_data.get("name", "").strip()
+    rel_clean = member_data.get("relationship", "").strip()
+
+    # Prevent renaming to a name that already exists for another member of this user
+    cursor.execute(
+        "SELECT id FROM family_members WHERE user_id = ? AND id != ? AND LOWER(TRIM(name)) = LOWER(TRIM(?))",
+        (clean_uid, int(member_id), name_clean)
+    )
+    if cursor.fetchone():
+        conn.close()
+        raise ValueError(f"Another family member named '{name_clean}' already exists in your family vault.")
+
+    # Prevent changing role to a single-instance role that already exists for another member
+    if rel_clean and rel_clean not in ("Brother", "Sister"):
+        cursor.execute(
+            "SELECT id FROM family_members WHERE user_id = ? AND id != ? AND LOWER(TRIM(relationship)) = LOWER(TRIM(?))",
+            (clean_uid, int(member_id), rel_clean)
+        )
+        if cursor.fetchone():
+            conn.close()
+            raise ValueError(f"Another family member with role '{rel_clean}' already exists. Only Brother and Sister can be added multiple times.")
 
     dob_val = str(member_data.get("dob", "") or "").strip()
     age_val = member_data.get("age")

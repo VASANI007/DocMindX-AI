@@ -77,9 +77,9 @@ def render_admin_dashboard_view():
         "Admin Settings"
     ])
 
-    # -------------------------------------------------------------
+    
     # TAB 1: DYNAMIC REAL-TIME KPIS (MOCKUP IMAGE 2)
-    # -------------------------------------------------------------
+    
     with tab_dash:
         kpis = auth_db.admin_get_kpis()
 
@@ -289,9 +289,9 @@ def render_admin_dashboard_view():
         """, unsafe_allow_html=True)
 
 
-    # -------------------------------------------------------------
+    
     # TAB 2: USER MANAGEMENT
-    # -------------------------------------------------------------
+    
     with tab_users:
         st.markdown("""
         <div class="adm-portal-header">
@@ -706,9 +706,9 @@ def render_admin_dashboard_view():
                                                 st.rerun()
 
 
-    # -------------------------------------------------------------
+    
     # TAB 3: FAMILY RECORDS OVERVIEW
-    # -------------------------------------------------------------
+    
     with tab_fam:
         st.markdown("""
         <div class="adm-portal-header">
@@ -799,9 +799,9 @@ def render_admin_dashboard_view():
                         st.caption(f"Medications: {', '.join(meds)}")
 
 
-    # -------------------------------------------------------------
+    
     # TAB 4: MEDICAL SCANS
-    # -------------------------------------------------------------
+    
     with tab_scans:
         st.markdown("""
         <div class="adm-portal-header">
@@ -935,9 +935,9 @@ def render_admin_dashboard_view():
             </div>
             """, unsafe_allow_html=True)
 
-    # -------------------------------------------------------------
+    
     # TAB 5: SECURITY AUDIT LOGS (ZERO PLAINTEXT SECRETS)
-    # -------------------------------------------------------------
+    
     with tab_audit:
         st.markdown("""
         <div class="adm-portal-header">
@@ -1056,9 +1056,9 @@ def render_admin_dashboard_view():
             """, unsafe_allow_html=True)
 
 
-    # -------------------------------------------------------------
+    
     # TAB 6: ADMIN SETTINGS & LOGOUT
-    # -------------------------------------------------------------
+    
     with tab_settings:
         admin_email = user.get("email", "docmindxai@gmail.com") if user else "docmindxai@gmail.com"
         admin_initial = (admin_email[0] if admin_email else "D").upper()

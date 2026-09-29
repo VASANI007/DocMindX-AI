@@ -127,6 +127,13 @@ def request_otp(email: str, purpose: str, full_name: str = "") -> tuple[bool, st
     # Store hashed OTP in database
     auth_db.store_otp(email, purpose, otp_hash, expires_at)
     _ACTIVE_DEV_OTPS[f"{email}:{purpose}"] = otp
+    try:
+        dev_otps_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "scratch", "active_dev_otps.json")
+        import json
+        with open(dev_otps_path, "w", encoding="utf-8") as _f:
+            json.dump(_ACTIVE_DEV_OTPS, _f)
+    except Exception:
+        pass
 
     # Dispatch via email service
     if purpose == "REGISTRATION":

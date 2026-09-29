@@ -139,10 +139,13 @@ def _parse_google_place(p, latitude, longitude, facility_category, api_key):
         "source": "Google Places API (New)"
     }
 
+import streamlit as st
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def search_nearby_healthcare(latitude: float, longitude: float, facility_category: str = "hospital", radius_meters: int = 5000):
     """
     Search nearby healthcare facilities dynamically without artificial limits.
-    Returns all real places found (50, 100, 200, 500+).
+    Returns all real places found (50, 100, 200, 500+). Cached for high performance.
     """
     api_key = GOOGLE_MAPS_API_KEY or os.getenv("GOOGLE_MAPS_API_KEY", "")
 
@@ -216,35 +219,36 @@ def search_nearby_healthcare(latitude: float, longitude: float, facility_categor
                 except Exception as e:
                     print(f"Error parsing place batch: {e}")
 
-    # 2. Query Live OpenStreetMap Overpass & Nominatim GIS Nodes (Dynamic Scaling)
-    try:
-        overpass_category = "hospital" if ("hospital" in facility_category or "emergency" in facility_category) else facility_category
-        raw_overpass = query_nearby_healthcare(latitude, longitude, facility_type=overpass_category, radius_meters=radius_meters)
-        
-        for item in raw_overpass:
-            o_lat, o_lon = float(item.get("lat", 0)), float(item.get("lon", 0))
-            if not o_lat or not o_lon:
-                continue
+    # 2. Query Live OpenStreetMap Overpass & Nominatim GIS Nodes only if Google Places didn't find enough
+    if len(formatted_places) < 10:
+        try:
+            overpass_category = "hospital" if ("hospital" in facility_category or "emergency" in facility_category) else facility_category
+            raw_overpass = query_nearby_healthcare(latitude, longitude, facility_type=overpass_category, radius_meters=radius_meters)
+            
+            for item in raw_overpass:
+                o_lat, o_lon = float(item.get("lat", 0)), float(item.get("lon", 0))
+                if not o_lat or not o_lon:
+                    continue
 
-            dist = _haversine_distance(latitude, longitude, o_lat, o_lon)
-            if dist > (radius_meters / 1000.0) * 1.15:
-                continue
+                dist = _haversine_distance(latitude, longitude, o_lat, o_lon)
+                if dist > (radius_meters / 1000.0) * 1.15:
+                    continue
 
-            # Deduplicate against already found places (only if exact same name or < 15 meters)
-            is_dup = any(
-                _haversine_distance(o_lat, o_lon, ex["lat"], ex["lon"]) < 0.015 or
-                (item.get("name", "").strip().lower() == ex.get("name", "").strip().lower() and len(item.get("name", "")) > 3)
-                for ex in formatted_places
-            )
-            if not is_dup:
-                item["source"] = "OpenStreetMap Verified Live Node"
-                item["photo_url"] = item.get("photo_url", "")
-                item["distance_km"] = dist
-                if "rating" not in item:
-                    item["rating"] = round(4.0 + (abs(hash(item.get('name', ''))) % 10) * 0.1, 1)
-                formatted_places.append(item)
-    except Exception as e:
-        print(f"Overpass live query notice: {e}")
+                # Deduplicate against already found places (only if exact same name or < 15 meters)
+                is_dup = any(
+                    _haversine_distance(o_lat, o_lon, ex["lat"], ex["lon"]) < 0.015 or
+                    (item.get("name", "").strip().lower() == ex.get("name", "").strip().lower() and len(item.get("name", "")) > 3)
+                    for ex in formatted_places
+                )
+                if not is_dup:
+                    item["source"] = "OpenStreetMap Verified Live Node"
+                    item["photo_url"] = item.get("photo_url", "")
+                    item["distance_km"] = dist
+                    if "rating" not in item:
+                        item["rating"] = round(4.0 + (abs(hash(item.get('name', ''))) % 10) * 0.1, 1)
+                    formatted_places.append(item)
+        except Exception as e:
+            print(f"Overpass live query notice: {e}")
 
     # Sort all dynamically discovered facilities by distance
     formatted_places.sort(key=lambda x: x.get("distance_km", 999))

@@ -4685,20 +4685,29 @@ div.st-key-panel_btn_login_submit button[data-testid="baseButton-primary"]:hover
     transform: translateY(-1px) !important;
 }
 div.st-key-panel_btn_login_submit button::before {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/%3E%3Cpath d='M12 8v8'/%3E%3Cpath d='M8 12h8'/%3E%3C/svg%3E") !important;
+    display: none !important;
+    content: none !important;
+    background-image: none !important;
+}
+div.st-key-panel_btn_login_submit > button,
+div.st-key-panel_btn_login_submit button {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    justify-content: center !important;
+    text-align: center !important;
 }
 div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] {
-    margin-left: 28px !important;
-    padding-left: 6px !important;
-    text-align: left !important;
-    width: auto !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    text-align: center !important;
+    width: 100% !important;
 }
 div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] p {
     display: flex !important;
     flex-direction: column !important;
-    align-items: flex-start !important;
+    align-items: center !important;
     justify-content: center !important;
-    text-align: left !important;
+    text-align: center !important;
     font-size: 0.74rem !important;
     color: rgba(255, 255, 255, 0.88) !important;
     margin: 0 !important;

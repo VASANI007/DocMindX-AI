@@ -844,9 +844,9 @@ def render_startup_splash_screen() -> None:
     # Launch driver script inside helper component iframe (runs in parent DOM)
     components.html(get_animation_script_html(), height=0, width=0)
 
-    # -------------------------------------------------------------
+    
     # REAL BACKGROUND INITIALIZATION & PRE-WARMING (Executes while splash animates)
-    # -------------------------------------------------------------
+    
     t_start = time.time()
 
     # Stage 1: Seed database & load translations
@@ -901,5 +901,5 @@ def render_startup_splash_screen() -> None:
 
     # Mark ready and rerun to reveal the fully initialized application
     st.session_state["_docmindx_startup_ready"] = True
-    _logger.info("[Startup] DocMindX AI 100% warmed up & ready (elapsed: %.2fs)", time.time() - t_start)
+    _logger.info("[Startup] DocMindX AI 100%% warmed up & ready (elapsed: %.2fs)", time.time() - t_start)
     st.rerun()

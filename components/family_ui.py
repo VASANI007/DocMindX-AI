@@ -4,10 +4,12 @@ Enables management of family members, extensible structured medical conditions,
 medication logs, profile management, and dynamic scan context selection.
 """
 import streamlit as st
+import streamlit.components.v1 as components
 
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
 from config.language import get_text
+from components.popup_dialog import trigger_popup, check_and_render_pending_popup
 
 RELATIONSHIP_OPTIONS = [
     "Self", "Mother", "Father", "Spouse", "Son", "Daughter",
@@ -311,9 +313,14 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
                     "notes": member.get("notes", ""),
                     "emergency_contact": member.get("emergency_contact", "")
                 }
-                auth_db.update_family_member(m_id, user_id, updated_dict)
-                st.toast("Profile details updated successfully!")
-                st.rerun()
+                try:
+                    auth_db.update_family_member(m_id, user_id, updated_dict)
+                    st.toast("Profile details updated successfully!", icon="✅")
+                    st.rerun()
+                except ValueError as ve:
+                    st.error(str(ve))
+                except Exception as ex:
+                    st.error(f"Error updating profile: {str(ex)}")
 
     # TAB 2: MEDICAL CONDITIONS
     with tab_cond:
@@ -403,6 +410,9 @@ def render_family_management_view(user: dict):
         st.warning("Please sign in to view your family medical profiles.")
         return
 
+    # Check and render any pending status popup modals
+    check_and_render_pending_popup()
+
     user_id = user.get("id") or user.get("user_id")
     db_user = auth_db.get_user_by_id(user_id) or user
 
@@ -490,9 +500,62 @@ def render_family_management_view(user: dict):
         "Change Password"
     ])
 
-    # -------------------------------------------------------------
+    should_switch_to_add = (st.session_state.get("active_family_tab") == "add")
+    if should_switch_to_add:
+        st.session_state["active_family_tab"] = None
+
+    # Tab switcher script: handles both direct button clicks AND session_state triggers
+    components.html(f"""
+    <script>
+    (function() {{
+        const pDoc = window.parent.document || document;
+
+        function switchToAddTab() {{
+            try {{
+                const tabs = pDoc.querySelectorAll('button[data-baseweb="tab"], button[role="tab"]');
+                for (let i = 0; i < tabs.length; i++) {{
+                    const txt = (tabs[i].innerText || tabs[i].textContent || '').trim();
+                    if (txt.includes('Add Family Member') || txt.includes('Add New Family') || i === 1) {{
+                        tabs[i].click();
+                        return true;
+                    }}
+                }}
+            }} catch(e) {{
+                console.error('Error switching tab:', e);
+            }}
+            return false;
+        }}
+
+        // 1. If Python requested tab switch
+        const shouldSwitch = {'true' if should_switch_to_add else 'false'};
+        if (shouldSwitch) {{
+            switchToAddTab();
+            setTimeout(switchToAddTab, 50);
+            setTimeout(switchToAddTab, 150);
+            setTimeout(switchToAddTab, 300);
+        }}
+
+        // 2. Attach click handler to Add New Family Member button for 0ms instant tab switch
+        function attachBtnHook() {{
+            const btn = pDoc.querySelector('.st-key-btn_add_family_hero button');
+            if (btn && !btn._hasFamilyTabHook) {{
+                btn._hasFamilyTabHook = true;
+                btn.addEventListener('click', function(e) {{
+                    switchToAddTab();
+                }}, true);
+            }}
+        }}
+
+        attachBtnHook();
+        const intv = setInterval(attachBtnHook, 200);
+        setTimeout(function() {{ clearInterval(intv); }}, 6000);
+    }})();
+    </script>
+    """, height=0)
+
+    
     # TAB 1: MY FAMILY MEMBERS
-    # -------------------------------------------------------------
+    
     with tab_family:
         family_members = auth_db.get_family_members(user_id)
         
@@ -517,7 +580,7 @@ def render_family_management_view(user: dict):
             """, unsafe_allow_html=True)
         with col_fh2:
             st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
-            if st.button("+ Add New Family Member", key="btn_add_family_hero", use_container_width=True):
+            if st.button("Add New Family Member", key="btn_add_family_hero", use_container_width=True):
                 st.session_state["active_family_tab"] = "add"
                 st.rerun()
 
@@ -532,7 +595,7 @@ def render_family_management_view(user: dict):
                     </svg>
                 </div>
                 <div style="font-size: 0.88rem; color: var(--mm-text-primary, #1E293B); font-weight: 600; line-height: 1.4;">
-                    No family members added yet. Click <strong>'+ Add New Family Member'</strong> above to create a profile for your parents, children, or spouse.
+                    No family members added yet. Click <a href="javascript:void(0)" onclick="(function(){{try{{var d=window.parent.document||document,ts=d.querySelectorAll('button[data-baseweb=\\'tab\\'],button[role=\\'tab\\']');for(var i=0;i<ts.length;i++){{if((ts[i].innerText||ts[i].textContent||'').includes('Add Family')||i===1){{ts[i].click();return;}}}}}}catch(e){{}}}})()" style="color: #2563EB; font-weight: 800; text-decoration: underline; cursor: pointer;">'+ Add New Family Member'</a> above to create a profile for your parents, children, or spouse.
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -651,9 +714,9 @@ def render_family_management_view(user: dict):
 
         # Footer Trust Row (Image 2 Design)
 
-    # -------------------------------------------------------------
+    
     # TAB 2: ADD FAMILY MEMBER (IMAGE 2 DESIGN: 4 SUB-CARDS, FULL FORM)
-    # -------------------------------------------------------------
+    
     with tab_add:
         st.markdown("""
         <div class="account-settings-card" style="background: var(--mm-card-bg, #FFFFFF); border: 1.5px solid #E2E8F0; border-radius: 18px; padding: 24px 28px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);">
@@ -693,7 +756,35 @@ def render_family_management_view(user: dict):
             </div>
         """, unsafe_allow_html=True)
 
-        with st.form(key="add_family_member_form"):
+        # Fetch current family members to filter available roles and enforce unique names
+        fam_list = auth_db.get_family_members(user_id)
+
+        def normalize_role(r: str) -> str:
+            val = (r or "").strip().lower()
+            if val in ("mom", "mother"):
+                return "Mother"
+            if val in ("dad", "father"):
+                return "Father"
+            return (r or "").strip().title()
+
+        # Roles that can be added multiple times: strictly Brother and Sister
+        MULTI_ROLES = {"Brother", "Sister"}
+        existing_roles_normalized = {normalize_role(m.get("relationship", "")) for m in fam_list if m.get("relationship")}
+        existing_names_clean = {m.get("name", "").strip().lower() for m in fam_list if m.get("name")}
+
+        # Dynamic dropdown options:
+        # Mother, Father, Spouse, Self, etc. only allowed ONCE.
+        # If already added, excluded from the dropdown!
+        available_roles = [
+            r for r in RELATIONSHIP_OPTIONS 
+            if r in MULTI_ROLES or normalize_role(r) not in existing_roles_normalized
+        ]
+        if not available_roles:
+            available_roles = ["Brother", "Sister"]
+
+        # Form versioning to guarantee clearing all textboxes upon successful addition
+        form_ver = st.session_state.get("add_fam_form_ver", 0)
+        with st.form(key=f"add_family_member_form_{form_ver}", clear_on_submit=True):
             # Section 1: Personal Information Sub-Card
             st.markdown("""
             <div class="form-subcard">
@@ -715,14 +806,14 @@ def render_family_management_view(user: dict):
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     <span>Full Name <strong style="color: #DC2626;">*</strong></span>
                 </div>""", unsafe_allow_html=True)
-                fam_name = st.text_input("Full Name *", placeholder="e.g. Member Name*", label_visibility="collapsed")
+                fam_name = st.text_input("Full Name *", placeholder="e.g. Member Name*", key=f"fam_add_name_{form_ver}", label_visibility="collapsed")
 
                 # Relationship *
                 st.markdown("""<div style="display: flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 700; color: var(--mm-text-primary, #1E293B); margin-top: 10px; margin-bottom: 5px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     <span>Relationship <strong style="color: #DC2626;">*</strong></span>
                 </div>""", unsafe_allow_html=True)
-                fam_rel = st.selectbox("Relationship *", RELATIONSHIP_OPTIONS, index=1, label_visibility="collapsed")
+                fam_rel = st.selectbox("Relationship *", available_roles, index=0, key=f"fam_add_rel_{form_ver}", label_visibility="collapsed")
 
                 # Date of Birth (DOB) *
                 st.markdown("""<div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; margin-bottom: 5px;">
@@ -737,7 +828,7 @@ def render_family_management_view(user: dict):
                 fam_max_dob = datetime.date(fam_today.year - 10, fam_today.month, min(fam_today.day, 28))
                 fam_min_dob = datetime.date(fam_today.year - 120, 1, 1)
                 fam_default_dob = datetime.date(fam_today.year - 45, fam_today.month, min(fam_today.day, 28))
-                fam_dob = st.date_input("Date of Birth (DOB) *", value=fam_default_dob, min_value=fam_min_dob, max_value=fam_max_dob, label_visibility="collapsed")
+                fam_dob = st.date_input("Date of Birth (DOB) *", value=fam_default_dob, min_value=fam_min_dob, max_value=fam_max_dob, key=f"fam_add_dob_{form_ver}", label_visibility="collapsed")
                 fam_calc_age = auth_db.calculate_age_from_dob(fam_dob)
                 st.markdown(f"""<div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 2px; margin-bottom: 6px;">
                     <span style="font-size: 0.74rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 8px; border-radius: 12px;">
@@ -750,14 +841,14 @@ def render_family_management_view(user: dict):
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"></path></svg>
                     <span>Gender <strong style="color: #DC2626;">*</strong></span>
                 </div>""", unsafe_allow_html=True)
-                fam_gender = st.selectbox("Gender *", ["Female", "Male", "Other"], index=0, label_visibility="collapsed")
+                fam_gender = st.selectbox("Gender *", ["Female", "Male", "Other"], index=0, key=f"fam_add_gender_{form_ver}", label_visibility="collapsed")
 
                 # Blood Group
                 st.markdown("""<div style="display: flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 700; color: var(--mm-text-primary, #1E293B); margin-top: 10px; margin-bottom: 5px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="#DC2626"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
                     <span>Blood Group</span>
                 </div>""", unsafe_allow_html=True)
-                fam_bg = st.selectbox("Blood Group", BLOOD_GROUP_OPTIONS, index=3, label_visibility="collapsed")
+                fam_bg = st.selectbox("Blood Group", BLOOD_GROUP_OPTIONS, index=3, key=f"fam_add_bg_{form_ver}", label_visibility="collapsed")
 
             with c_f2:
                 # State / Region
@@ -765,28 +856,28 @@ def render_family_management_view(user: dict):
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                     <span>State / Region</span>
                 </div>""", unsafe_allow_html=True)
-                fam_state = st.selectbox("State / Region", INDIAN_STATES, index=0, label_visibility="collapsed")
+                fam_state = st.selectbox("State / Region", INDIAN_STATES, index=0, key=f"fam_add_state_{form_ver}", label_visibility="collapsed")
 
                 # Height (cm)
                 st.markdown("""<div style="display: flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 700; color: var(--mm-text-primary, #1E293B); margin-top: 10px; margin-bottom: 5px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path></svg>
                     <span>Height (cm)</span>
                 </div>""", unsafe_allow_html=True)
-                fam_height = st.text_input("Height (cm)", placeholder="165", label_visibility="collapsed")
+                fam_height = st.text_input("Height (cm)", placeholder="165", key=f"fam_add_height_{form_ver}", label_visibility="collapsed")
 
                 # Weight (kg)
                 st.markdown("""<div style="display: flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 700; color: var(--mm-text-primary, #1E293B); margin-top: 10px; margin-bottom: 5px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
                     <span>Weight (kg)</span>
                 </div>""", unsafe_allow_html=True)
-                fam_weight = st.text_input("Weight (kg)", placeholder="68", label_visibility="collapsed")
+                fam_weight = st.text_input("Weight (kg)", placeholder="68", key=f"fam_add_weight_{form_ver}", label_visibility="collapsed")
 
                 # Emergency Contact
                 st.markdown("""<div style="display: flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 700; color: var(--mm-text-primary, #1E293B); margin-top: 10px; margin-bottom: 5px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
                     <span>Emergency Contact</span>
                 </div>""", unsafe_allow_html=True)
-                fam_emg = st.text_input("Emergency Contact", placeholder="+91 98765 43210", label_visibility="collapsed")
+                fam_emg = st.text_input("Emergency Contact", placeholder="+91 98765 43210", key=f"fam_add_emg_{form_ver}", label_visibility="collapsed")
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -813,13 +904,13 @@ def render_family_management_view(user: dict):
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path><circle cx="20" cy="10" r="2"></circle></svg>
                     <span>Select known conditions</span>
                 </div>""", unsafe_allow_html=True)
-                selected_conds = st.multiselect("Select known conditions", COMMON_CONDITIONS, placeholder="Choose options", label_visibility="collapsed")
+                selected_conds = st.multiselect("Select known conditions", COMMON_CONDITIONS, default=[], placeholder="Choose options", key=f"fam_add_conds_{form_ver}", label_visibility="collapsed")
             with c_c2:
                 st.markdown("""<div style="display: flex; align-items: center; gap: 7px; font-size: 0.84rem; font-weight: 700; color: var(--mm-text-primary, #1E293B); margin-bottom: 5px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     <span>Other Custom Medical Condition (optional)</span>
                 </div>""", unsafe_allow_html=True)
-                custom_cond = st.text_input("Other Custom Medical Condition (optional)", placeholder="e.g. Migraine, Glaucoma", label_visibility="collapsed")
+                custom_cond = st.text_input("Other Custom Medical Condition (optional)", placeholder="e.g. Migraine, Glaucoma", key=f"fam_add_custom_cond_{form_ver}", label_visibility="collapsed")
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -841,7 +932,7 @@ def render_family_management_view(user: dict):
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 <span>Medications &amp; Dosages</span>
             </div>""", unsafe_allow_html=True)
-            fam_meds = st.text_area("Medications & Dosages", placeholder="e.g. Metformin 500mg (twice daily)\nAtorvastatin 10mg (night)", label_visibility="collapsed")
+            fam_meds = st.text_area("Medications & Dosages", placeholder="e.g. Metformin 500mg (twice daily)\nAtorvastatin 10mg (night)", key=f"fam_add_meds_{form_ver}", label_visibility="collapsed")
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -863,7 +954,7 @@ def render_family_management_view(user: dict):
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 <span>Allergies / Special Medical Notes</span>
             </div>""", unsafe_allow_html=True)
-            fam_notes = st.text_area("Allergies / Special Medical Notes", placeholder="e.g. Penicillin allergy, mild lactose intolerance", label_visibility="collapsed")
+            fam_notes = st.text_area("Allergies / Special Medical Notes", placeholder="e.g. Penicillin allergy, mild lactose intolerance", key=f"fam_add_notes_{form_ver}", label_visibility="collapsed")
 
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -871,10 +962,33 @@ def render_family_management_view(user: dict):
             btn_save_member = st.form_submit_button("Save Family Member Profile", type="primary", use_container_width=True)
 
             if btn_save_member:
-                if not fam_name or not fam_name.strip():
-                    st.error("Please enter the family member's name.")
+                clean_name = fam_name.strip() if fam_name else ""
+                norm_rel = normalize_role(fam_rel)
+
+                if not clean_name:
+                    trigger_popup("Full Name Required", "Please enter the family member's full name to proceed.", "warning")
+                    st.rerun()
+                elif clean_name.lower() in existing_names_clean:
+                    trigger_popup(
+                        "Duplicate Member Name",
+                        f"A family member named '{clean_name}' already exists in your family vault. Duplicate member names are not permitted. Please provide a distinct name.",
+                        "warning"
+                    )
+                    st.rerun()
+                elif norm_rel not in MULTI_ROLES and norm_rel in existing_roles_normalized:
+                    trigger_popup(
+                        "Role Already Added",
+                        f"The '{fam_rel}' role can only be added once. You already have a {fam_rel} in your family records. Only Brother and Sister can be added multiple times.",
+                        "warning"
+                    )
+                    st.rerun()
                 elif fam_calc_age is None or fam_calc_age < 10:
-                    st.warning("⚠️ DocMindX AI Clinical Protocol: Family member age must be at least 10 years for independent clinical assessment. Pediatric profiles (< 10 years) require direct in-person consultation with a certified pediatrician.")
+                    trigger_popup(
+                        "Age Restriction (Pediatric)",
+                        "⚠️ DocMindX AI Clinical Protocol: Family member age must be at least 10 years for independent clinical assessment. Pediatric profiles (< 10 years) require direct in-person consultation with a certified pediatrician.",
+                        "warning"
+                    )
+                    st.rerun()
                 else:
                     cond_list = list(selected_conds)
                     if custom_cond.strip():
@@ -884,24 +998,45 @@ def render_family_management_view(user: dict):
 
                     fam_dob_str = fam_dob.strftime("%Y-%m-%d") if fam_dob else ""
                     member_data = {
-                        "name": fam_name.strip(),
+                        "name": clean_name,
                         "relationship": fam_rel,
                         "age": fam_calc_age,
                         "dob": fam_dob_str,
                         "gender": fam_gender,
                         "blood_group": fam_bg,
-                        "height": fam_height,
-                        "weight": fam_weight,
+                        "height": fam_height.strip(),
+                        "weight": fam_weight.strip(),
                         "state": fam_state if fam_state != "Select State" else "",
-                        "notes": fam_notes,
-                        "emergency_contact": fam_emg,
+                        "notes": fam_notes.strip(),
+                        "emergency_contact": fam_emg.strip(),
                         "conditions": cond_list,
                         "medications": med_list
                     }
-                    new_id = auth_db.add_family_member(user_id, member_data)
-                    auth_db.log_security_event("FAMILY_MEMBER_ADDED", user_id=user_id, details=f"Added member: {fam_name} ({fam_rel})")
-                    st.success(f"Successfully added {fam_name} to your family profile!")
-                    st.rerun()
+                    try:
+                        new_id = auth_db.add_family_member(user_id, member_data)
+                        auth_db.log_security_event("FAMILY_MEMBER_ADDED", user_id=user_id, details=f"Added member: {clean_name} ({fam_rel})")
+                        # Clear form inputs by removing old keys from session_state and bumping version
+                        for k in [
+                            f"fam_add_name_{form_ver}", f"fam_add_rel_{form_ver}", f"fam_add_dob_{form_ver}",
+                            f"fam_add_gender_{form_ver}", f"fam_add_bg_{form_ver}", f"fam_add_state_{form_ver}",
+                            f"fam_add_height_{form_ver}", f"fam_add_weight_{form_ver}", f"fam_add_emg_{form_ver}",
+                            f"fam_add_conds_{form_ver}", f"fam_add_custom_cond_{form_ver}", f"fam_add_meds_{form_ver}",
+                            f"fam_add_notes_{form_ver}"
+                        ]:
+                            st.session_state.pop(k, None)
+                        st.session_state["add_fam_form_ver"] = form_ver + 1
+                        trigger_popup(
+                            "Family Member Added Successfully",
+                            f"🎉 Successfully added {clean_name} ({fam_rel}) to your family medical profiles! The form has been reset for new entries.",
+                            "success"
+                        )
+                        st.rerun()
+                    except ValueError as ve:
+                        trigger_popup("Validation Error", str(ve), "warning")
+                        st.rerun()
+                    except Exception as ex:
+                        trigger_popup("Error Adding Member", f"An unexpected error occurred: {str(ex)}", "error")
+                        st.rerun()
 
         # Bottom Trust Bar
         st.markdown("""
@@ -922,9 +1057,9 @@ def render_family_management_view(user: dict):
         </div>
         """, unsafe_allow_html=True)
 
-    # -------------------------------------------------------------
+    
     # TAB 3: ACCOUNT PROFILE (IMAGE 4 DESIGN: 2 COLUMNS, ICONS, LOGOUT)
-    # -------------------------------------------------------------
+    
     with tab_profile:
         # Card Header: Gear SVG + Title + Subtitle + DocMindX AI Branding
         st.markdown("""
@@ -1124,9 +1259,9 @@ def render_family_management_view(user: dict):
         # Bottom Copyright bar
 
 
-    # -------------------------------------------------------------
+    
     # TAB 4: CHANGE PASSWORD (IMAGE 4 DESIGN: ENHANCED CARD, CHECKLIST, TRUST)
-    # -------------------------------------------------------------
+    
     with tab_security:
         st.markdown("""
         <div class="account-settings-card" style="background: var(--mm-card-bg, #FFFFFF); border: 1.5px solid #E2E8F0; border-radius: 18px; padding: 24px 28px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);">
@@ -1316,15 +1451,18 @@ def render_scan_patient_selector(user: dict, key_prefix: str = "assessment") -> 
                 ctx_summary.append(f"Medicines: {', '.join(s_meds[:3])}")
 
         st.markdown(f"""
-        <div style="background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.35); border-left: 4px solid #3B82F6; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="background: rgba(37, 99, 235, 0.08); border: 1.5px solid #3B82F6; border-left: 5px solid #2563EB; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                 <div>
-                    <span style="color: #60A5FA; font-weight: 700; font-size: 0.84rem;">SELECTED PATIENT: {user.get('full_name', 'My Profile')}</span>
-                    <div style="font-size: 0.78rem; color: #94A3B8; margin-top: 2px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span style="color: #1D4ED8; font-weight: 800; font-size: 0.88rem; letter-spacing: 0.2px;">SELECTED PATIENT: {user.get('full_name', 'My Profile')}</span>
+                    </div>
+                    <div style="font-size: 0.82rem; color: #1E293B; font-weight: 600; margin-top: 4px; padding-left: 26px;">
                         {' &bull; '.join(ctx_summary) if ctx_summary else 'Personal Medical Profile'}
                     </div>
                 </div>
-                <span style="font-size: 0.72rem; background: rgba(59, 130, 246, 0.2); color: #60A5FA; padding: 2px 8px; border-radius: 10px; font-weight: 700;">Context Loaded</span>
+                <span style="font-size: 0.74rem; background: #2563EB; color: #FFFFFF; padding: 4px 12px; border-radius: 20px; font-weight: 800; box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);">Context Loaded</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1338,6 +1476,7 @@ def render_scan_patient_selector(user: dict, key_prefix: str = "assessment") -> 
             "blood_group": self_m.get("blood_group") if self_m else None,
             "height": self_m.get("height") if self_m else None,
             "weight": self_m.get("weight") if self_m else None,
+            "state": self_m.get("state") if self_m else None,
             "conditions": s_conds,
             "medications": s_meds,
             "raw_conditions": self_m.get("conditions", []) if self_m else [],
@@ -1351,6 +1490,9 @@ def render_scan_patient_selector(user: dict, key_prefix: str = "assessment") -> 
                 "blood_group": self_m.get("blood_group") if self_m else None,
                 "height": self_m.get("height") if self_m else None,
                 "weight": self_m.get("weight") if self_m else None,
+                "state": self_m.get("state") if self_m else None,
+                "allergies": (self_m.get("notes") or "") if self_m else "",
+                "notes": (self_m.get("notes") or "") if self_m else "",
                 "existing_conditions": s_conds,
                 "current_medicines": s_meds
             }
@@ -1376,21 +1518,26 @@ def render_scan_patient_selector(user: dict, key_prefix: str = "assessment") -> 
             ctx_summary.append(f"Height: {m['height']} cm")
         if m.get("weight") and str(m['weight']).strip():
             ctx_summary.append(f"Weight: {m['weight']} kg")
+        if m.get("state") and str(m['state']).strip():
+            ctx_summary.append(f"State: {m['state']}")
         if cond_names:
             ctx_summary.append(f"Conditions: {', '.join(cond_names[:3])}")
         if med_names:
             ctx_summary.append(f"Medicines: {', '.join(med_names[:3])}")
 
         st.markdown(f"""
-        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-left: 4px solid #10B981; border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="background: rgba(16, 185, 129, 0.12); border: 1.5px solid #10B981; border-left: 5px solid #059669; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                 <div>
-                    <span style="color: #34D399; font-weight: 700; font-size: 0.84rem;">SELECTED PATIENT / MEMBER: {m['name']} ({m['relationship']})</span>
-                    <div style="font-size: 0.78rem; color: #CBD5E1; margin-top: 2px;">
-                        {' &bull; '.join(ctx_summary) if ctx_summary else 'No prior conditions recorded'}
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span style="color: #047857; font-weight: 800; font-size: 0.88rem; letter-spacing: 0.2px;">SELECTED PATIENT / MEMBER: {m['name']} ({m['relationship']})</span>
+                    </div>
+                    <div style="font-size: 0.82rem; color: #1E293B; font-weight: 600; margin-top: 4px; padding-left: 26px;">
+                        {' &bull; '.join(ctx_summary) if ctx_summary else 'Active Family Medical Profile'}
                     </div>
                 </div>
-                <span style="font-size: 0.72rem; background: rgba(16, 185, 129, 0.2); color: #34D399; padding: 2px 8px; border-radius: 10px; font-weight: 700;">Context Loaded</span>
+                <span style="font-size: 0.74rem; background: #059669; color: #FFFFFF; padding: 4px 12px; border-radius: 20px; font-weight: 800; box-shadow: 0 1px 4px rgba(5, 150, 105, 0.3);">Context Loaded</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -1405,6 +1552,7 @@ def render_scan_patient_selector(user: dict, key_prefix: str = "assessment") -> 
             "blood_group": m.get("blood_group"),
             "height": m.get("height"),
             "weight": m.get("weight"),
+            "state": m.get("state"),
             "conditions": cond_names,
             "medications": med_names,
             "raw_conditions": m.get("conditions", []),
@@ -1417,6 +1565,9 @@ def render_scan_patient_selector(user: dict, key_prefix: str = "assessment") -> 
                 "blood_group": m.get("blood_group"),
                 "height": m.get("height"),
                 "weight": m.get("weight"),
+                "state": m.get("state"),
+                "allergies": m.get("notes") or "",
+                "notes": m.get("notes") or "",
                 "existing_conditions": cond_names,
                 "current_medicines": med_names
             }

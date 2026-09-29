@@ -2,15 +2,19 @@
 DocMindX AI — Authentication & Security Full Panel Component
 Provides a full-page clinical identity portal for Registration, 2FA Login,
 Recovery Password, Change Password, and Administrator Authentication.
-Zero popups/dialogs, zero emojis, clean clinical design system.
+Clean, modern, glassmorphic UI with full Dark & Light mode parity,
+responsive layout, Remember Me, and clean bottom navigation without clutter.
 """
+import base64
 import datetime
-
+import os
+import json
 import streamlit as st
+import streamlit.components.v1 as components
 
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
-from components.theme_toggle import theme_toggle_switch
+from components.popup_dialog import trigger_popup, check_and_render_pending_popup
 
 
 def init_auth_session_state():
@@ -23,26 +27,34 @@ def init_auth_session_state():
         st.session_state["auth_temp_email"] = ""
     if "auth_temp_name" not in st.session_state:
         st.session_state["auth_temp_name"] = ""
+    if "login_remember_me_val" not in st.session_state:
+        st.session_state["login_remember_me_val"] = True
+
 
 def is_authenticated() -> bool:
     """Returns True if the current user session is authenticated."""
     auth = st.session_state.get("user_auth")
     return bool(auth and auth.get("authenticated", False))
 
+
 def get_current_user() -> dict:
     """Returns current authenticated user dictionary or None."""
     return st.session_state.get("user_auth")
+
 
 def is_admin_authenticated() -> bool:
     """Returns True if the current user session is an authenticated Administrator."""
     auth = get_current_user()
     return bool(auth and auth.get("is_admin", False) and auth_svc.is_admin_session(auth))
 
+
 def logout_user():
     """Clears current authenticated session and redirects to Health Assessment."""
     st.session_state["user_auth"] = None
     st.session_state["auth_view"] = "LOGIN"
     st.session_state["active_panel"] = "Health Assessment"
+
+
 def compute_password_strength(password: str) -> tuple:
     """
     Computes dynamic password strength:
@@ -60,18 +72,18 @@ def compute_password_strength(password: str) -> tuple:
 
     score = sum([has_len8, has_letters, has_numbers, has_special, has_bonus])
     if score >= 4:
-        colors = ["#10B981" if i < score else "#E2E8F0" for i in range(5)]
+        colors = ["#10B981" if i < score else "#334155" for i in range(5)]
         return score, "Strong Password", "#10B981", colors
     elif score >= 2:
-        colors = ["#F59E0B" if i < score else "#E2E8F0" for i in range(5)]
+        colors = ["#F59E0B" if i < score else "#334155" for i in range(5)]
         return score, "Moderate Password", "#F59E0B", colors
     else:
-        colors = ["#EF4444" if i < 1 else "#E2E8F0" for i in range(5)]
+        colors = ["#EF4444" if i < 1 else "#334155" for i in range(5)]
         return score, "Weak Password", "#EF4444", colors
 
 
-def render_password_requirements_box(password: str = "") -> str:
-    """Renders clinical password requirements checklist box with live dynamic validation matching Image 2 & 4."""
+def render_password_requirements_box(password: str = "", is_dark: bool = False) -> str:
+    """Renders clinical password requirements checklist box with live dynamic validation."""
     p = password or ""
     has_len8 = len(p) >= 8
     has_numbers = any(c.isdigit() for c in p)
@@ -81,14 +93,15 @@ def render_password_requirements_box(password: str = "") -> str:
     def _get_req_icon(passed: bool) -> str:
         if passed:
             return (
-                '<svg width="15" height="15" viewBox="0 0 24 24" fill="#10B981" stroke="none" style="flex-shrink:0;">'
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="#10B981" stroke="none" style="flex-shrink:0;">'
                 '<circle cx="12" cy="12" r="10" fill="#10B981"/>'
                 '<polyline points="8 12 11 15 16 9" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
                 '</svg>'
             )
         else:
+            border_c = "#64748B" if is_dark else "#94A3B8"
             return (
-                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2" style="flex-shrink:0;">'
+                f'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{border_c}" stroke-width="2" style="flex-shrink:0;">'
                 '<circle cx="12" cy="12" r="10"/>'
                 '</svg>'
             )
@@ -98,73 +111,317 @@ def render_password_requirements_box(password: str = "") -> str:
     icon_let = _get_req_icon(has_letters)
     icon_spc = _get_req_icon(has_special)
 
-    color_len = "#059669" if has_len8 else "#64748B"
-    color_num = "#059669" if has_numbers else "#64748B"
-    color_let = "#059669" if has_letters else "#64748B"
-    color_spc = "#059669" if has_special else "#64748B"
+    passed_color = "#34D399" if is_dark else "#059669"
+    unpassed_color = "#94A3B8" if is_dark else "#64748B"
 
-    weight_len = "700" if has_len8 else "500"
-    weight_num = "700" if has_numbers else "500"
-    weight_let = "700" if has_letters else "500"
-    weight_spc = "700" if has_special else "500"
+    color_len = passed_color if has_len8 else unpassed_color
+    color_num = passed_color if has_numbers else unpassed_color
+    color_let = passed_color if has_letters else unpassed_color
+    color_spc = passed_color if has_special else unpassed_color
 
     all_met = has_len8 and has_numbers and has_letters and has_special
-    box_bg = "rgba(16, 185, 129, 0.06)" if all_met else "rgba(37, 99, 235, 0.04)"
-    box_border = "1px solid rgba(16, 185, 129, 0.4)" if all_met else "1px solid #DBEAFE"
-    icon_bg = "#10B981" if all_met else "#2563EB"
+    if is_dark:
+        box_bg = "rgba(16, 185, 129, 0.12)" if all_met else "rgba(30, 41, 59, 0.65)"
+        box_border = "1px solid rgba(16, 185, 129, 0.45)" if all_met else "1px solid rgba(51, 65, 85, 0.85)"
+        heading_color = "#38BDF8"
+    else:
+        box_bg = "rgba(16, 185, 129, 0.05)" if all_met else "rgba(37, 99, 235, 0.03)"
+        box_border = "1px solid rgba(16, 185, 129, 0.35)" if all_met else "1px solid rgba(219, 234, 254, 0.8)"
+        heading_color = "#1E40AF"
 
     return f"""
-    <div class="auth-pwd-req-box" style="background: {box_bg}; border: {box_border}; border-radius: 12px; padding: 12px 14px; margin-top: 10px;">
-        <div style="display: flex; align-items: flex-start; gap: 12px;">
-            <div style="width: 32px; height: 32px; border-radius: 9px; background: {icon_bg}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <polyline points="9 12 11 14 15 10"/>
-                </svg>
+    <div style="background: {box_bg}; border: {box_border}; border-radius: 12px; padding: 10px 14px; margin: 8px 0 12px 0;">
+        <div style="font-weight: 700; font-size: 0.78rem; color: {heading_color}; margin-bottom: 6px;">
+            Password Requirements:
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px;">
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: {color_len};">
+                {icon_len} <span>At least 8 chars</span>
             </div>
-            <div style="flex: 1; min-width: 0;">
-                <div style="font-weight: 800; font-size: 0.88rem; color: #1E40AF; margin-bottom: 8px;">
-                    Password Requirements:
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px;">
-                    <div style="display: flex; align-items: center; gap: 7px; font-size: 0.76rem; color: {color_len}; font-weight: {weight_len};">
-                        {icon_len} <span>At least 8 characters</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 7px; font-size: 0.76rem; color: {color_num}; font-weight: {weight_num};">
-                        {icon_num} <span>Include numbers (0-9)</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 7px; font-size: 0.76rem; color: {color_let}; font-weight: {weight_let};">
-                        {icon_let} <span>Include letters (A-Z, a-z)</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 7px; font-size: 0.76rem; color: {color_spc}; font-weight: {weight_spc};">
-                        {icon_spc} <span>Include a special character (e.g. ! @ # $)</span>
-                    </div>
-                </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: {color_num};">
+                {icon_num} <span>Include numbers</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: {color_let};">
+                {icon_let} <span>Include letters</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: {color_spc};">
+                {icon_spc} <span>Special symbol (!@#$)</span>
             </div>
         </div>
     </div>
     """
 
 
-def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS: list = None, sync_language = None):
+def get_auth_hero_svg(is_dark: bool = False) -> str:
     """
-    Renders the dedicated full-page Authentication & Clinical Identity Panel.
-    Zero popups, zero emojis, 100% compliant with the clinical design system.
+    Renders the modern 3D glowing shield centerpiece on a glass pedestal.
+    """
+    filter_opacity = "0.28" if is_dark else "0.16"
+    return f"""
+    <svg viewBox="0 0 460 260" style="width: 100%; max-width: 420px; height: auto; margin: 8px auto; display: block; filter: drop-shadow(0 12px 24px rgba(37, 99, 235, {filter_opacity}));" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <radialGradient id="centerGlow" cx="50%" cy="55%" r="45%">
+                <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.45"/>
+                <stop offset="60%" stop-color="#2563EB" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#2563EB" stop-opacity="0"/>
+            </radialGradient>
+            <linearGradient id="pedestalRim" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#38BDF8"/>
+                <stop offset="50%" stop-color="#60A5FA"/>
+                <stop offset="100%" stop-color="#0284C7"/>
+            </linearGradient>
+            <linearGradient id="pedestalBase" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#0284C7"/>
+                <stop offset="100%" stop-color="#0F172A"/>
+            </linearGradient>
+            <linearGradient id="pedestalTop" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#E0F2FE" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#7DD3FC" stop-opacity="0.7"/>
+            </linearGradient>
+            <linearGradient id="shieldGlass" x1="20%" y1="0%" x2="80%" y2="100%">
+                <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.95"/>
+                <stop offset="45%" stop-color="#2563EB" stop-opacity="0.92"/>
+                <stop offset="100%" stop-color="#1D4ED8" stop-opacity="0.98"/>
+            </linearGradient>
+            <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.95"/>
+                <stop offset="40%" stop-color="#BAE6FD" stop-opacity="0.8"/>
+                <stop offset="100%" stop-color="#38BDF8" stop-opacity="0.6"/>
+            </linearGradient>
+            <linearGradient id="shieldInnerGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.5"/>
+                <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="badgeGlass" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.92"/>
+                <stop offset="100%" stop-color="#E0F2FE" stop-opacity="0.80"/>
+            </linearGradient>
+            <filter id="neonShieldGlow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="7" result="blur1"/>
+                <feGaussianBlur stdDeviation="14" result="blur2"/>
+                <feMerge>
+                    <feMergeNode in="blur2"/>
+                    <feMergeNode in="blur1"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>            
+            <filter id="badgeShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#0284C7" flood-opacity="0.22"/>
+            </filter>
+        </defs>
+        <ellipse cx="230" cy="155" rx="145" ry="55" fill="url(#centerGlow)"/>
+        <ellipse cx="230" cy="155" rx="175" ry="44" fill="none" stroke="#38BDF8" stroke-width="1.8" stroke-dasharray="6 4" opacity="0.65"/>
+        <ellipse cx="230" cy="155" rx="160" ry="38" fill="none" stroke="#60A5FA" stroke-width="1" opacity="0.4"/>
+        <circle cx="95" cy="135" r="3" fill="#38BDF8" opacity="0.8"/>
+        <circle cx="360" cy="170" r="2.5" fill="#60A5FA" opacity="0.8"/>
+        <circle cx="140" cy="185" r="2" fill="#38BDF8" opacity="0.6"/>
+        <circle cx="330" cy="125" r="3.5" fill="#00E5FF" opacity="0.7"/>
+        <ellipse cx="230" cy="215" rx="120" ry="24" fill="#0C4A6E" opacity="0.25"/>
+        <path d="M125 200 C125 216 335 216 335 200 L335 210 C335 226 125 226 125 210 Z" fill="url(#pedestalBase)"/>
+        <ellipse cx="230" cy="200" rx="105" ry="19" fill="url(#pedestalRim)"/>
+        <path d="M145 188 C145 202 315 202 315 188 L315 194 C315 208 145 208 145 194 Z" fill="#0369A1"/>
+        <ellipse cx="230" cy="188" rx="85" ry="15" fill="url(#pedestalTop)"/>
+        <ellipse cx="230" cy="188" rx="72" ry="11" fill="#0284C7"/>
+        <ellipse cx="230" cy="188" rx="66" ry="9" fill="#38BDF8" opacity="0.9"/>
+        <ellipse cx="230" cy="188" rx="54" ry="7" fill="#FFFFFF" opacity="0.95"/>
+        <g filter="url(#neonShieldGlow)">
+            <path d="M230 45 L285 66 C285 122 258 158 230 172 C202 158 175 122 175 66 Z" 
+                  fill="url(#shieldGlass)" 
+                  stroke="url(#shieldBorder)" 
+                  stroke-width="3.5" 
+                  stroke-linejoin="round"/>
+            <path d="M230 52 L278 70 C278 118 254 150 230 163 C206 150 182 118 182 70 Z" 
+                  fill="none" 
+                  stroke="url(#shieldInnerGlow)" 
+                  stroke-width="1.8"/>
+            <path d="M222 84 H238 V98 H252 V114 H238 V128 H222 V114 H208 V98 H222 Z" 
+                  fill="#FFFFFF" 
+                  filter="drop-shadow(0 4px 8px rgba(30, 58, 138, 0.4))"/>
+        </g>
+        <!-- 4 Labeled Floating Glass Badges Matching Image 2 -->
+        <!-- 1. Top-Left: Health Data -->
+        <g class="auth-hero-badge-1" filter="url(#badgeShadow)">
+            <rect x="52" y="44" width="58" height="50" rx="14" fill="url(#badgeGlass)" stroke="#BAE6FD" stroke-width="1.4"/>
+            <path d="M66 65 H72 L76 57 L81 72 L86 62 L89 65 H95" stroke="#0284C7" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="81" y="84" text-anchor="middle" font-size="6.8" font-weight="800" fill="#0369A1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Health Data</text>
+        </g>
+        <!-- 2. Bottom-Left: Trusted Care -->
+        <g class="auth-hero-badge-2" filter="url(#badgeShadow)">
+            <rect x="48" y="145" width="60" height="50" rx="14" fill="url(#badgeGlass)" stroke="#BAE6FD" stroke-width="1.4"/>
+            <circle cx="72" cy="162" r="3.2" fill="#0284C7"/>
+            <path d="M66 174 c0 -3 2.5 -4.5 6 -4.5 s6 1.5 6 4.5" fill="#0284C7"/>
+            <circle cx="82" cy="163" r="2.6" fill="#38BDF8"/>
+            <path d="M78 174 c0 -2.2 1.8 -3.5 4.5 -3.5 s4.5 1.3 4.5 3.5" fill="#38BDF8"/>
+            <text x="78" y="186" text-anchor="middle" font-size="6.6" font-weight="800" fill="#0369A1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Trusted Care</text>
+        </g>
+        <!-- 3. Top-Right: Privacy -->
+        <g class="auth-hero-badge-3" filter="url(#badgeShadow)">
+            <rect x="348" y="44" width="56" height="50" rx="14" fill="url(#badgeGlass)" stroke="#BAE6FD" stroke-width="1.4"/>
+            <rect x="367" y="63" width="18" height="13" rx="3" fill="#0284C7"/>
+            <path d="M371 63 V58 A5 5 0 0 1 381 58 V63" stroke="#0284C7" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+            <circle cx="376" cy="69.5" r="1.6" fill="#FFFFFF"/>
+            <text x="376" y="84" text-anchor="middle" font-size="6.8" font-weight="800" fill="#0369A1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Privacy</text>
+        </g>
+        <!-- 4. Bottom-Right: Smart Reports -->
+        <g class="auth-hero-badge-4" filter="url(#badgeShadow)">
+            <rect x="345" y="145" width="64" height="50" rx="14" fill="url(#badgeGlass)" stroke="#BAE6FD" stroke-width="1.4"/>
+            <path d="M369 157 h12 l4 4 v13 a2 2 0 0 1 -2 2 h-14 a2 2 0 0 1 -2 -2 v-15 a2 2 0 0 1 2 -2 z" stroke="#0284C7" stroke-width="1.8" fill="#E0F2FE" fill-opacity="0.3"/>
+            <line x1="373" y1="165" x2="381" y2="165" stroke="#0284C7" stroke-width="1.8" stroke-linecap="round"/>
+            <line x1="373" y1="169" x2="383" y2="169" stroke="#0284C7" stroke-width="1.8" stroke-linecap="round"/>
+            <text x="377" y="186" text-anchor="middle" font-size="6.4" font-weight="800" fill="#0369A1" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">Smart Reports</text>
+        </g>
+    </svg>
+    """
+
+
+def render_auth_left_hero(view: str, T: dict = None, lang_code: str = "en", is_dark: bool = False) -> str:
+    """
+    Renders the unified, uncluttered Left Hero Showcase.
+    Clean typography, 3 trust badges, 3D glowing shield centerpiece, and trust quote.
+    """
+    T = T or {}
+
+    # View-specific contextual titles, typewriter dynamic words, and badges
+    if view in ("REGISTER", "REGISTER_OTP"):
+        h_prefix = "Create Your Encrypted"
+        h_words = ["Patient Vault", "Clinical ID", "Health Locker", "Digital Records"]
+        accent_color = "#38BDF8" if is_dark else "#2563EB"
+        h_sub = "Join DocMindX AI to manage verified clinical records, track diagnostics, and protect your family health with hospital-grade security."
+        pills = [
+            ("Vault", "Protected", "#10B981", "check"),
+            ("HIPAA / WHO", "Compliant", "#2563EB", "doc"),
+            ("Encrypted", "End-to-End", "#7C3AED", "lock"),
+        ]
+    elif view in ("RECOVERY", "RECOVERY_OTP"):
+        h_prefix = "Recover Your Secure"
+        h_words = ["Account Access", "Health Credentials", "Patient Vault"]
+        accent_color = "#38BDF8" if is_dark else "#2563EB"
+        h_sub = "Regain access to your health vault with verified cryptographic password recovery protocols."
+        pills = [
+            ("Safe", "Recovery", "#10B981", "check"),
+            ("Zero", "Plaintext", "#2563EB", "doc"),
+            ("Encrypted", "End-to-End", "#7C3AED", "lock"),
+        ]
+    elif view in ("ADMIN_LOGIN", "ADMIN_OTP"):
+        h_prefix = "National Command"
+        h_words = ["Security Console", "Oversight Portal", "Clinical Intelligence"]
+        accent_color = "#F87171" if is_dark else "#EF4444"
+        h_sub = "Restricted access for certified National Healthcare Command administrators and oversight officers. All actions are audited."
+        pills = [
+            ("Admin", "Restricted", "#EF4444", "lock"),
+            ("Audited", "Sessions", "#2563EB", "doc"),
+            ("TLS 1.3", "Strict", "#10B981", "check"),
+        ]
+    else:  # LOGIN or LOGIN_OTP
+        h_prefix = "Secure Access to Your"
+        h_words = ["Health Records", "Clinical Vault", "Medical Data", "Diagnostic Reports", "Patient Care"]
+        accent_color = "#38BDF8" if is_dark else "#2563EB"
+        h_sub = "Your health data, fully protected with enterprise-grade clinical security, patient privacy, and AI-powered care."
+        pills = [
+            ("2FA", "Secure Login", "#10B981", "check"),
+            ("HIPAA / WHO", "Compliant", "#2563EB", "doc"),
+            ("Encrypted", "End-to-End", "#7C3AED", "lock"),
+        ]
+
+    def _render_pill_icon(ptype: str, pcolor: str) -> str:
+        if ptype == "check":
+            return f'<svg width="15" height="15" viewBox="0 0 24 24" fill="{pcolor}"><circle cx="12" cy="12" r="10"/><path d="M8 12l2.5 2.5L16 9" stroke="#FFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>'
+        elif ptype == "lock":
+            return f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{pcolor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+        else:
+            return f'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{pcolor}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
+
+    pills_html = "".join([
+        f"""
+        <div class="auth-hero-pill">
+            {_render_pill_icon(p[3], p[2])}
+            <div>
+                <span class="auth-hero-pill-title">{p[0]}</span>
+                <span class="auth-hero-pill-sub">{p[1]}</span>
+            </div>
+        </div>
+        """
+        for p in pills
+    ])
+
+    title_color = "#F8FAFC" if is_dark else "#0F172A"
+    sub_color = "#94A3B8" if is_dark else "#475569"
+    hero_svg_html = get_auth_hero_svg(is_dark)
+
+    words_js_array = "[" + ", ".join(f"'{w}'" for w in h_words) + "]"
+    first_word = h_words[0]
+
+    hero_markup = f"""<div class="auth-left-hero-panel">
+    <div class="auth-priority-badge">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DB2777" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </svg>
+        <span><strong style="color: #DB2777;">Your Health,</strong> <span style="color: #9333EA;">Our Priority</span></span>
+    </div>
+    <h1 style="font-size: 2.35rem; font-weight: 900; line-height: 1.18; color: {title_color}; margin: 0 0 12px 0; letter-spacing: -0.03em; min-height: 2.4em;">
+        {h_prefix} <br/>
+        <span id="auth-typewriter-dynamic" class="auth-tw-accent">{first_word}</span><span id="auth-typewriter-cursor" class="auth-tw-cursor">|</span>
+    </h1>
+    <p style="font-size: 0.90rem; color: {sub_color}; line-height: 1.55; margin: 0 0 16px 0; max-width: 480px;">{h_sub}</p>
+    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px;">{pills_html}</div>
+    {hero_svg_html}
+    <div class="auth-hero-quote-card">
+        <div style="display: flex; align-items: flex-start; gap: 10px;">
+            <span style="font-size: 1.5rem; color: #2563EB; line-height: 1; font-weight: 900; font-family: Georgia, serif;">&ldquo;</span>
+            <div style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); line-height: 1.5; font-style: italic;">
+                Trusted by patients and clinical teams worldwide to keep diagnostic records encrypted, private, and immediately accessible.
+            </div>
+            <span style="font-size: 1.5rem; color: #2563EB; line-height: 1; font-weight: 900; font-family: Georgia, serif;">&rdquo;</span>
+        </div>
+    </div>
+</div>"""
+    return "\n".join(line.strip() for line in hero_markup.splitlines() if line.strip())
+
+
+def render_auth_bottom_nav(current_mode: str):
+    """
+    Renders clean, modern navigation buttons at the bottom of the card matching Image 2.
+    The currently open page's button is never shown.
+    """
+    modes = [
+        ("LOGIN", "Sign In"),
+        ("REGISTER", "Register"),
+        ("RECOVERY", "Recovery"),
+        ("ADMIN", "Admin"),
+    ]
+    # Filter out current active mode
+    visible_modes = [m for m in modes if m[0] != current_mode]
+
+    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+    st.markdown('<div class="auth-or-divider"><span>OR GO TO</span></div>', unsafe_allow_html=True)
+
+    cols = st.columns(len(visible_modes), gap="small")
+    for idx, (m_key, m_label) in enumerate(visible_modes):
+        with cols[idx]:
+            btn_key = f"auth_nav_dest_{m_key.lower()}"
+            if st.button(m_label, key=btn_key, use_container_width=True):
+                if m_key == "LOGIN":
+                    st.session_state["auth_view"] = "LOGIN"
+                elif m_key == "REGISTER":
+                    st.session_state["auth_view"] = "REGISTER"
+                elif m_key == "RECOVERY":
+                    st.session_state["auth_view"] = "RECOVERY"
+                elif m_key == "ADMIN":
+                    st.session_state["auth_view"] = "ADMIN_LOGIN"
+                st.rerun()
+
+
+def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS: list = None, sync_language=None):
+    """
+    Renders the dedicated modern Authentication & Clinical Identity Panel.
+    Fully implements clean, minimal, glassmorphic UI with Dark & Light mode parity,
+    clean bottom navigation without emojis, and uncluttered layout.
     """
     init_auth_session_state()
+    check_and_render_pending_popup()
     T = T or {}
     LANG_OPTIONS = LANG_OPTIONS or ["English", "हिन्दी (Hindi)", "ગુજરાતી (Gujarati)"]
-
-    # Keep one password visibility control: Streamlit's eye remains visible,
-    # while browser-native reveal buttons are disabled to avoid duplication.
-    st.markdown("""
-    <style>
-    input[type="password"]::-ms-reveal,
-    input[type="password"]::-ms-clear {
-        display: none !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    is_dark = bool(st.session_state.get("dark_mode", False))
 
     # Redirect already logged-in users directly to their designated panel
     curr_user = get_current_user()
@@ -175,830 +432,982 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
             st.session_state["active_panel"] = "Family Management"
         st.rerun()
 
-    # 1. Consistent Top Header Bar (identical to Modules 1-5)
-    auth_icon_html = (
-        '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(37, 99, 235, 0.08); '
-        'border: 1.5px solid #2563EB; display: flex; align-items: center; justify-content: center; '
-        'box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25); flex-shrink: 0;">'
-        '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
-        '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>'
-        '<path d="M7 11V7a5 5 0 0 1 10 0v4"/>'
-        '</svg></div>'
-    )
+    # Dynamic error highlight rules for empty required fields
+    err_rules = []
+    if st.session_state.get("auth_err_email"):
+        err_rules.append("div.st-key-panel_login_email div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_pass"):
+        err_rules.append("div.st-key-panel_login_password div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_reg_name"):
+        err_rules.append("div.st-key-panel_reg_name div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_reg_email"):
+        err_rules.append("div.st-key-panel_reg_email div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_reg_pass"):
+        err_rules.append("div.st-key-panel_reg_pass div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_reg_conf"):
+        err_rules.append("div.st-key-panel_reg_conf div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_rec_email"):
+        err_rules.append("div.st-key-panel_rec_email div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_adm_email"):
+        err_rules.append("div.st-key-panel_adm_email div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    if st.session_state.get("auth_err_adm_pass"):
+        err_rules.append("div.st-key-panel_adm_pass div[data-baseweb='input'] { border: 1.8px solid #EF4444 !important; box-shadow: 0 0 0 3.5px rgba(239, 68, 68, 0.25) !important; }")
+    err_css_str = "\n".join(err_rules)
 
-    with st.container(key="mm_top_header_card_auth"):
-        hdr_c1, hdr_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
-        with hdr_c1:
-            title_auth = T.get("auth_portal_title", "Clinical Security & Identity Portal")
-            sub_auth = T.get("auth_portal_sub", "Dual-factor identity verification, patient registration, and credential recovery.")
-            st.markdown(
-                f'<div style="display: flex; align-items: center; gap: 20px;">'
-                f'{auth_icon_html}'
-                f'<div style="min-width: 0; flex: 1;">'
-                f'<div style="margin: 0; font-size: 1.45rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.25;">{title_auth}</div>'
-                f'<div style="margin-top: 4px; font-size: 0.85rem; color: var(--mm-text-secondary); line-height: 1.35;">{sub_auth}</div>'
-                f'</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-        with hdr_c2:
-            st.markdown(
-                f'<div style="display: flex; justify-content: flex-end; align-items: center; height: 38px;">'
-                f'<span style="height: 36px; padding: 0 16px; border-radius: 20px; background: rgba(16, 185, 129, 0.10); border: 1px solid rgba(16, 185, 129, 0.3); color: #059669; font-weight: 700; font-size: 0.80rem; display: inline-flex; align-items: center; gap: 8px;">'
-                f'<span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; display: inline-block;"></span>'
-                f'{T.get("auth_2fa_active", "2FA SECURITY ACTIVE")}'
-                f'</span>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
+    # Inject Glassmorphism, Focus Animations, and Dark/Light Mode Styles
+    st.markdown(f"""
+    <style>
+    {err_css_str}
+    /* Prevent native password reveal icon clashes */
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {{
+        display: none !important;
+    }}
 
-    st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+    /* Hide floating AI assistant and pill buttons on Auth page */
+    .st-key-floating_ai_assistant,
+    .st-key-floating_chat_pill {{
+        display: none !important;
+    }}
+
+    /* Left Hero Panel */
+    .auth-left-hero-panel {{
+        padding: 10px 14px 10px 4px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 100%;
+    }}
+
+    /* Hero Trust Pills */
+    .auth-hero-pill {{
+        background: {'#111D3D' if is_dark else '#FFFFFF'};
+        border: 1px solid {'#1E2E4E' if is_dark else '#E2E8F0'};
+        border-radius: 12px;
+        padding: 6px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+        transition: transform 0.2s ease;
+    }}
+    .auth-hero-pill:hover {{
+        transform: translateY(-2px);
+    }}
+    .auth-hero-pill-title {{
+        font-size: 0.74rem;
+        font-weight: 800;
+        color: {'#F8FAFC' if is_dark else '#1E293B'};
+        display: block;
+        line-height: 1.15;
+    }}
+    .auth-hero-pill-sub {{
+        font-size: 0.68rem;
+        color: {'#94A3B8' if is_dark else '#64748B'};
+        display: block;
+        line-height: 1.15;
+    }}
+
+    /* Bottom Quote Card */
+    .auth-hero-quote-card {{
+        background: {'rgba(17, 29, 61, 0.75)' if is_dark else 'rgba(255, 255, 255, 0.85)'};
+        backdrop-filter: blur(16px);
+        border: 1px solid {'#1E2E4E' if is_dark else 'rgba(226, 232, 240, 0.95)'};
+        border-radius: 14px;
+        padding: 12px 18px;
+        margin-top: 14px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    }}
+
+    /* Background mesh & subtle dot grid matching Image 2 */
+    [data-testid="stAppViewContainer"] {{
+        background-color: {'#0B1120' if is_dark else '#F8FAFC'} !important;
+        background-image: 
+            radial-gradient(circle at 12% 18%, {'rgba(30, 58, 138, 0.35)' if is_dark else 'rgba(219, 234, 254, 0.70)'} 0%, transparent 45%),
+            radial-gradient(circle at 88% 22%, {'rgba(67, 56, 202, 0.25)' if is_dark else 'rgba(238, 242, 255, 0.75)'} 0%, transparent 45%),
+            radial-gradient(circle at 50% 85%, {'rgba(14, 116, 144, 0.25)' if is_dark else 'rgba(224, 242, 254, 0.60)'} 0%, transparent 50%),
+            radial-gradient({'#334155' if is_dark else '#CBD5E1'} 1px, transparent 1px) !important;
+        background-size: 100% 100%, 100% 100%, 100% 100%, 24px 24px !important;
+    }}
+
+    /* Top Priority Badge Pill */
+    .auth-priority-badge {{
+        background: {'rgba(219, 39, 119, 0.12)' if is_dark else '#FDF2F8'};
+        border: 1px solid {'rgba(244, 114, 182, 0.30)' if is_dark else '#FCE7F3'};
+        border-radius: 9999px;
+        padding: 5px 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 0.78rem;
+        box-shadow: 0 2px 6px rgba(219, 39, 119, 0.06);
+        margin-bottom: 12px;
+        width: fit-content;
+    }}
+
+    /* Typewriter Heading Two-Tone Gradient matching Image 2 */
+    .auth-tw-accent {{
+        background: {'linear-gradient(135deg, #38BDF8 0%, #2DD4BF 100%)' if is_dark else 'linear-gradient(135deg, #1D4ED8 0%, #06B6D4 100%)'};
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        display: inline-block;
+        font-weight: 900;
+    }}
+
+    /* Typewriter Blinking Cursor */
+    .auth-tw-cursor {{
+        display: inline-block;
+        color: #06B6D4;
+        font-weight: 900;
+        margin-left: 2px;
+        animation: authTwCursorBlink 0.8s infinite;
+    }}
+    @keyframes authTwCursorBlink {{
+        0%, 100% {{ opacity: 1; }}
+        50% {{ opacity: 0; }}
+    }}
+
+    /* Floating Badges Keyframes in SVG */
+    @keyframes badgeFloat1 {{
+        0%, 100% {{ transform: translateY(0); }}
+        50% {{ transform: translateY(-4px); }}
+    }}
+    @keyframes badgeFloat2 {{
+        0%, 100% {{ transform: translateY(0); }}
+        50% {{ transform: translateY(4px); }}
+    }}
+    .auth-hero-badge-1, .auth-hero-badge-4 {{
+        animation: badgeFloat1 3.5s ease-in-out infinite;
+    }}
+    .auth-hero-badge-2, .auth-hero-badge-3 {{
+        animation: badgeFloat2 3.8s ease-in-out infinite;
+    }}
+
+    /* Right Auth Form Transparent Card as requested */
+    div[data-testid="stVerticalBlockBorderWrapper"]:has(.auth-center-icon-badge),
+    .st-key-auth_right_main_card,
+    .st-key-auth_right_main_card [data-testid="stVerticalBlockBorderWrapper"] {{
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border-radius: 28px !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 24px 32px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        transition: all 0.3s ease !important;
+    }}
+
+    /* Center Icon Box at Top of Card matching Image 2 */
+    .auth-center-icon-badge {{
+        width: 56px;
+        height: 56px;
+        border-radius: 18px;
+        background: {'rgba(37, 99, 235, 0.15)' if is_dark else '#EFF6FF'};
+        border: 1.5px solid {'rgba(56, 189, 248, 0.35)' if is_dark else '#DBEAFE'};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 14px auto;
+        box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+    }}
+    .auth-center-icon-badge svg {{
+        color: #2563EB;
+        stroke: #2563EB;
+    }}
+
+    /* Form Title & Subtitle */
+    .auth-form-title {{
+        font-size: 1.65rem;
+        font-weight: 800;
+        color: {'#F8FAFC' if is_dark else '#0F172A'};
+        text-align: center;
+        margin: 0 0 6px 0;
+        letter-spacing: -0.01em;
+    }}
+    .auth-form-sub {{
+        font-size: 0.82rem;
+        color: {'#94A3B8' if is_dark else '#64748B'};
+        text-align: center;
+        margin: 0 auto 20px auto;
+        max-width: 480px;
+        line-height: 1.45;
+    }}
+
+    /* Input Field Labels */
+    .auth-clean-label {{
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: {'#E2E8F0' if is_dark else '#1E293B'};
+        margin-bottom: 5px;
+        margin-top: 6px;
+    }}
+    .auth-clean-label svg {{
+        color: #2563EB;
+        stroke: #2563EB;
+    }}
+
+    /* Fix: Remove any double border, outline, or square box on inner input */
+    div[class*="st-key-panel_"] input,
+    div[class*="st-key-panel_"] input:focus,
+    div[class*="st-key-panel_"] input:active,
+    div[class*="st-key-panel_"] div[data-baseweb="base-input"],
+    div[class*="st-key-panel_"] div[data-baseweb="input"] input,
+    div[class*="st-key-panel_"] div[data-baseweb="base-input"] input {{
+        border: none !important;
+        border-width: 0 !important;
+        border-style: none !important;
+        outline: none !important;
+        outline-width: 0 !important;
+        -webkit-appearance: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        border-radius: 12px !important;
+        padding: 9px 14px !important;
+        color: {'#F8FAFC' if is_dark else '#0F172A'} !important;
+        font-size: 0.90rem !important;
+        width: 100% !important;
+    }}
+    /* Trailing button (e.g. eye icon for password) */
+    div[class*="st-key-panel_"] div[data-baseweb="input"] > div {{
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }}
+    /* Single clean outer rounded border */
+    div[class*="st-key-panel_"] div[data-baseweb="input"] {{
+        background: {'#141D2E' if is_dark else '#FFFFFF'} !important;
+        border: 1.4px solid {'#1E293B' if is_dark else '#E2E8F0'} !important;
+        border-radius: 12px !important;
+        padding: 0 !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        overflow: hidden !important;
+    }}
+    /* Single clean active blue focus border on outer container */
+    div[class*="st-key-panel_"] div[data-baseweb="input"]:focus-within {{
+        border: 1.5px solid #2563EB !important;
+        border-color: #2563EB !important;
+        box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.20) !important;
+    }}
+    div[class*="st-key-panel_"] input::placeholder {{
+        color: {'#64748B' if is_dark else '#94A3B8'} !important;
+    }}
+
+    /* "Forgot Password?" Right-Aligned Link Button */
+    .st-key-btn_login_forgot_pwd button {{
+        background: transparent !important;
+        border: none !important;
+        color: #2563EB !important;
+        font-weight: 600 !important;
+        font-size: 0.82rem !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        height: auto !important;
+        box-shadow: none !important;
+        text-align: right !important;
+        justify-content: flex-end !important;
+        margin: 0 !important;
+    }}
+    .st-key-btn_login_forgot_pwd button:hover {{
+        text-decoration: underline !important;
+        color: #38BDF8 !important;
+        background: transparent !important;
+    }}
+
+    /* OR Divider Line */
+    .auth-or-divider {{
+        display: flex;
+        align-items: center;
+        margin: 18px 0;
+        text-align: center;
+    }}
+    .auth-or-divider::before,
+    .auth-or-divider::after {{
+        content: "";
+        flex: 1;
+        border-bottom: 1px solid {'#1E293B' if is_dark else '#E2E8F0'};
+    }}
+    .auth-or-divider span {{
+        padding: 0 12px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: {'#64748B' if is_dark else '#94A3B8'};
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+    }}
+
+    /* Primary CTA buttons matching Image 2 */
+    .st-key-panel_btn_login_submit button,
+    .st-key-panel_btn_verify_login button,
+    .st-key-panel_btn_submit_reg button,
+    .st-key-panel_btn_activate_now button,
+    .st-key-panel_btn_send_rec button,
+    .st-key-panel_btn_finish_rec button,
+    .st-key-panel_btn_adm_cred button,
+    .st-key-panel_btn_adm_auth button {{
+        background: linear-gradient(135deg, #0284C7 0%, #2563EB 50%, #1D4ED8 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 14px !important;
+        font-size: 0.94rem !important;
+        font-weight: 700 !important;
+        padding: 13px 24px !important;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35) !important;
+        transition: all 0.2s ease !important;
+        position: relative !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }}
+    /* Circular White Arrow Badge removed as per user instruction */
+    .st-key-panel_btn_login_submit button::after {{
+        display: none !important;
+        content: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }}
+    /* Strictly remove any pseudo-element shield icon */
+    .st-key-panel_btn_login_submit button::before,
+    div.st-key-panel_btn_login_submit button::before,
+    .st-key-panel_btn_verify_login button::before,
+    .st-key-panel_btn_submit_reg button::before,
+    .st-key-panel_btn_activate_now button::before,
+    .st-key-panel_btn_send_rec button::before,
+    .st-key-panel_btn_finish_rec button::before,
+    .st-key-panel_btn_adm_cred button::before,
+    .st-key-panel_btn_adm_auth button::before {{
+        display: none !important;
+        content: none !important;
+        background-image: none !important;
+        width: 0 !important;
+        height: 0 !important;
+    }}
+    div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] {{
+        margin-left: 0 !important;
+        padding-left: 0 !important;
+        text-align: center !important;
+        width: 100% !important;
+    }}
+    div.st-key-panel_btn_login_submit button div[data-testid="stMarkdownContainer"] p {{
+        align-items: center !important;
+        text-align: center !important;
+    }}
+    .st-key-panel_btn_adm_cred button,
+    .st-key-panel_btn_adm_auth button {{
+        background: linear-gradient(135deg, #EF4444 0%, #B91C1C 100%) !important;
+        box-shadow: 0 8px 24px rgba(239, 68, 68, 0.35) !important;
+    }}
+    .st-key-panel_btn_login_submit button:hover,
+    .st-key-panel_btn_verify_login button:hover,
+    .st-key-panel_btn_submit_reg button:hover,
+    .st-key-panel_btn_activate_now button:hover,
+    .st-key-panel_btn_send_rec button:hover,
+    .st-key-panel_btn_finish_rec button:hover {{
+        background: linear-gradient(135deg, #0284C7 0%, #1D4ED8 50%, #1E40AF 100%) !important;
+        box-shadow: 0 10px 28px rgba(37, 99, 235, 0.45) !important;
+        transform: translateY(-1px);
+    }}
+    .st-key-panel_btn_adm_cred button:hover,
+    .st-key-panel_btn_adm_auth button:hover {{
+        background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%) !important;
+        box-shadow: 0 10px 28px rgba(239, 68, 68, 0.45) !important;
+        transform: translateY(-1px);
+    }}
+
+    /* Bottom Navigation Buttons matching Image 2 */
+    div[class*="st-key-auth_nav_dest_"] button {{
+        background: {'#141D2E' if is_dark else '#FFFFFF'} !important;
+        border: 1.2px solid {'#283347' if is_dark else '#E2E8F0'} !important;
+        color: {'#F8FAFC' if is_dark else '#1E293B'} !important;
+        border-radius: 12px !important;
+        font-size: 0.84rem !important;
+        font-weight: 700 !important;
+        padding: 9px 14px !important;
+        min-height: 42px !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        transition: all 0.2s ease !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 7px !important;
+    }}
+    div[class*="st-key-auth_nav_dest_"] button p {{
+        color: {'#F8FAFC' if is_dark else '#1E293B'} !important;
+        font-weight: 700 !important;
+        margin: 0 !important;
+    }}
+    div[class*="st-key-auth_nav_dest_"] button:hover p {{
+        color: #2563EB !important;
+    }}
+    div[class*="st-key-auth_nav_dest_"] button:hover {{
+        border-color: #2563EB !important;
+        color: #2563EB !important;
+        background: {'rgba(37, 99, 235, 0.15)' if is_dark else '#EFF6FF'} !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12) !important;
+    }}
+    div[class*="st-key-auth_nav_dest_"] button::before {{
+        display: inline-block !important;
+        width: 15px !important;
+        height: 15px !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-size: contain !important;
+        content: "" !important;
+        flex-shrink: 0 !important;
+    }}
+    /* Vector user-plus icon for Register */
+    div.st-key-auth_nav_dest_register button::before {{
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cline x1='19' y1='8' x2='19' y2='14'/%3E%3Cline x1='16' y1='11' x2='22' y2='11'/%3E%3C/svg%3E") !important;
+    }}
+    /* Vector refresh-cw icon for Recovery */
+    div.st-key-auth_nav_dest_recovery button::before {{
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67'/%3E%3C/svg%3E") !important;
+    }}
+    /* Vector settings/cog icon for Admin */
+    div.st-key-auth_nav_dest_admin button::before {{
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z'/%3E%3C/svg%3E") !important;
+    }}
+    /* Vector log-in icon for Sign In */
+    div.st-key-auth_nav_dest_login button::before {{
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4'/%3E%3Cpolyline points='10 17 15 12 10 7'/%3E%3Cline x1='15' y1='12' x2='3' y2='12'/%3E%3C/svg%3E") !important;
+    }}
+
+    /* Footer TLS Notice */
+    .auth-card-footer {{
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 20px;
+        padding-top: 14px;
+        border-top: 1px solid {'#1E293B' if is_dark else '#F1F5F9'};
+        font-size: 0.74rem;
+        color: {'#94A3B8' if is_dark else '#64748B'};
+    }}
+
+    /* Responsive Mobile Media Queries */
+    @media (max-width: 768px) {{
+        .auth-left-hero-panel {{
+            padding: 8px 0 !important;
+            margin-bottom: 20px !important;
+        }}
+        .auth-hero-pill {{
+            padding: 4px 8px !important;
+        }}
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.auth-center-icon-badge),
+        .st-key-auth_right_main_card [data-testid="stVerticalBlockBorderWrapper"] {{
+            padding: 22px 18px !important;
+            border-radius: 20px !important;
+        }}
+    }}
+    </style>
+    """, unsafe_allow_html=True)
 
     view = st.session_state.get("auth_view", "LOGIN")
 
-    if view == "RECOVERY":
-        # Top banner for Recovery matching Image 4
-        st.markdown("""
-        <div class="auth-top-sub-banner" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-radius: 14px; margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <svg width="34" height="34" viewBox="0 0 24 24" fill="#2563EB">
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                    <polyline points="7 12 10 12 11.5 8 13.5 16 15 12 17 12" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <div style="text-align: left;">
-                    <div class="auth-card-title" style="font-weight: 800; font-size: 1.15rem; line-height: 1.1;">DocMindX AI</div>
-                    <div class="auth-card-subtitle" style="font-size: 0.65rem; font-weight: 600; letter-spacing: 0.02em;">Secure Health • Smarter Tomorrow</div>
+    # 2-Column Split Layout: balanced left hero & right login card matching Image 2
+    left_col, right_col = st.columns([0.98, 1.02], gap="large")
+
+    with left_col:
+        st.markdown(render_auth_left_hero(view=view, T=T, lang_code=lang_code, is_dark=is_dark), unsafe_allow_html=True)
+
+        # Dynamic Typewriter Animation matching Image 2
+        if view in ("REGISTER", "REGISTER_OTP"):
+            tw_words = ["Patient Vault", "Clinical ID", "Health Locker", "Digital Records"]
+        elif view in ("RECOVERY", "RECOVERY_OTP"):
+            tw_words = ["Account Access", "Health Credentials", "Patient Vault"]
+        elif view in ("ADMIN_LOGIN", "ADMIN_OTP"):
+            tw_words = ["Security Console", "Oversight Portal", "Clinical Intelligence"]
+        else:
+            tw_words = ["Health Records", "Clinical Vault", "Medical Data", "Patient Care"]
+
+        tw_script = f"""
+        <script>
+        (function() {{
+            const words = {json.dumps(tw_words)};
+            function startTypewriter() {{
+                try {{
+                    const doc = window.parent.document;
+                    const el = doc.getElementById('auth-typewriter-dynamic');
+                    if (!el) {{
+                        setTimeout(startTypewriter, 120);
+                        return;
+                    }}
+                    if (window.parent.__auth_tw_timer) {{
+                        clearTimeout(window.parent.__auth_tw_timer);
+                    }}
+
+                    let wordIdx = 0;
+                    let charIdx = el.textContent ? el.textContent.length : words[0].length;
+                    let isDeleting = true;
+
+                    function tick() {{
+                        const currentEl = doc.getElementById('auth-typewriter-dynamic');
+                        if (!currentEl) return;
+
+                        const word = words[wordIdx];
+                        if (isDeleting) {{
+                            charIdx--;
+                            currentEl.textContent = word.substring(0, charIdx);
+                        }} else {{
+                            charIdx++;
+                            currentEl.textContent = word.substring(0, charIdx);
+                        }}
+
+                        let delay = isDeleting ? 45 : 85;
+                        if (!isDeleting && charIdx === word.length) {{
+                            delay = 2300;
+                            isDeleting = true;
+                        }} else if (isDeleting && charIdx === 0) {{
+                            isDeleting = false;
+                            wordIdx = (wordIdx + 1) % words.length;
+                            delay = 350;
+                        }}
+
+                        window.parent.__auth_tw_timer = setTimeout(tick, delay);
+                    }}
+
+                    window.parent.__auth_tw_timer = setTimeout(tick, 2200);
+                }} catch (e) {{
+                    console.error("Typewriter error:", e);
+                }}
+            }}
+
+            function setupFocusNormalizers() {{ 
+                try {{
+                    const doc = window.parent.document;
+                    const inputs = doc.querySelectorAll('input');
+                    inputs.forEach(inp => {{
+                        if (!inp.__normListenerAttached) {{
+                            inp.__normListenerAttached = true;
+                            const normalize = () => {{
+                                const wrap = inp.closest('div[data-baseweb="input"]');
+                                if (wrap) {{
+                                    wrap.style.setProperty('border-color', '#2563EB', 'important');
+                                    wrap.style.setProperty('box-shadow', '0 0 0 3.5px rgba(37, 99, 235, 0.20)', 'important');
+                                }}
+                                inp.style.setProperty('border', 'none', 'important');
+                                inp.style.setProperty('outline', 'none', 'important');
+                                inp.style.setProperty('box-shadow', 'none', 'important');
+                            }};
+                            inp.addEventListener('focus', normalize);
+                            inp.addEventListener('click', normalize);
+                            inp.addEventListener('input', () => {{
+                                const wrap = inp.closest('div[data-baseweb="input"]') || inp;
+                                wrap.style.removeProperty('border-color');
+                                wrap.style.removeProperty('box-shadow');
+                            }});
+                        }}
+                    }});
+                }} catch (e) {{}}
+            }}
+
+            if (document.readyState === 'complete') {{
+                startTypewriter();
+                setupFocusNormalizers();
+            }} else {{
+                window.addEventListener('load', () => {{
+                    startTypewriter();
+                    setupFocusNormalizers();
+                }});
+            }}
+            setTimeout(setupFocusNormalizers, 200);
+            setTimeout(setupFocusNormalizers, 600);
+        }})();
+        </script>
+        """
+        components.html(tw_script, height=0)
+
+    with right_col:
+        with st.container(key="auth_right_main_card", border=False):
+
+            # -------------------------------------------------------------
+            # VIEW 1: PATIENT SIGN IN (LOGIN)
+            # -------------------------------------------------------------
+            if view == "LOGIN":
+                st.markdown("""
+                <div class="auth-center-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
                 </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="auth-safe-pill" style="width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="auth-form-title">Patient <span style="color: #2563EB;">Sign In</span></div>
+                <div class="auth-form-sub">Enter your verified email and password to access your health vault securely.</div>
+                """, unsafe_allow_html=True)
+
+                # Email Field
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                    <span>Registered Email Address</span>
+                </div>
+                """, unsafe_allow_html=True)
+                login_email = st.text_input("Registered Email Address", key="panel_login_email", placeholder="you@example.com", label_visibility="collapsed")
+
+                # Password Field
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>Account Password</span>
+                </div>
+                """, unsafe_allow_html=True)
+                login_password = st.text_input("Account Password", type="password", key="panel_login_password", placeholder="••••••••", label_visibility="collapsed")
+
+                # Remember Me & Forgot Password Row
+                r_c1, r_c2 = st.columns([0.60, 0.40])
+                with r_c1:
+                    st.checkbox("Remember me on this device", key="login_remember_me_val", value=st.session_state.get("login_remember_me_val", True))
+                with r_c2:
+                    if st.button("Recover Password?", key="btn_login_forgot_pwd", use_container_width=True):
+                        st.session_state["auth_view"] = "RECOVERY"
+                        st.rerun()
+
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+
+                # Primary CTA: Continue to 2FA Code
+                btn_c2fa = f"**{T.get('auth_btn_continue_2fa', 'Continue to 2FA Code →')}**  \n{T.get('auth_btn_continue_2fa_sub', 'Get verification code on your email')}"
+                if st.button(btn_c2fa, type="primary", use_container_width=True, key="panel_btn_login_submit"):
+                    clean_email = login_email.strip() if login_email else ""
+                    clean_pass = login_password.strip() if login_password else ""
+                    if not clean_email or not clean_pass:
+                        st.session_state["auth_err_email"] = not bool(clean_email)
+                        st.session_state["auth_err_pass"] = not bool(clean_pass)
+                        trigger_popup("Credentials Required", "Please enter both your registered email address and account password.", "warning")
+                        st.rerun()
+                    else:
+                        st.session_state.pop("auth_err_email", None)
+                        st.session_state.pop("auth_err_pass", None)
+                        with st.spinner("Verifying credentials & preparing 2FA token..."):
+                            ok, msg, user = auth_svc.authenticate_credentials(clean_email, clean_pass)
+                        if ok:
+                            st.session_state["auth_temp_email"] = clean_email.lower()
+                            st.session_state["auth_temp_name"] = user.get("full_name", "")
+                            auth_svc.send_login_verification_code(clean_email)
+                            trigger_popup(
+                                "Credentials Verified",
+                                f"Welcome back, {user.get('full_name', '')}! A 6-digit cryptographic verification code has been dispatched to {clean_email}.",
+                                "success"
+                            )
+                            st.session_state["auth_view"] = "LOGIN_OTP"
+                            st.rerun()
+                        else:
+                            if user and user.get("pending_activation"):
+                                trigger_popup(
+                                    "Account Pending Activation",
+                                    msg or "Your account requires email verification code before signing in.",
+                                    "warning"
+                                )
+                                st.session_state["auth_temp_email"] = clean_email
+                                st.session_state["auth_view"] = "REGISTER_OTP"
+                                st.rerun()
+                            else:
+                                trigger_popup(
+                                    "Login Failed",
+                                    msg or "Invalid email or password. Please verify your credentials and try again.",
+                                    "error"
+                                )
+                                st.rerun()
+
+                # Clean Bottom Navigation (No emojis, hides current view)
+                render_auth_bottom_nav("LOGIN")
+
+                # Footer TLS notice (without shield)
+                st.markdown("""
+                <div class="auth-card-footer">
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        <span>Encrypted with TLS 1.3 & AES-256 Patient Data Isolation</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # -------------------------------------------------------------
+            # VIEW 2: LOGIN 2FA OTP VERIFICATION
+            # -------------------------------------------------------------
+            elif view == "LOGIN_OTP":
+                email = st.session_state.get("auth_temp_email", "")
+                st.markdown(f"""
+                <div class="auth-center-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                         <polyline points="9 12 11 14 15 10"/>
                     </svg>
                 </div>
-                <div style="text-align: left;">
-                    <div class="auth-card-title" style="font-weight: 700; font-size: 0.82rem; line-height: 1.1;">Your Data is Safe</div>
-                    <div class="auth-card-subtitle" style="font-size: 0.68rem;">Encrypted & Protected</div>
-                </div>
-            </div>
+                <div class="auth-form-title">Two-Factor Authentication</div>
+                <div class="auth-form-sub">Enter the 6-digit cryptographic verification code sent to <strong>{email}</strong>.</div>
+                """, unsafe_allow_html=True)
 
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Main Grid Layout: Left Info Card + Right Authentication Form
-    left_col, right_col = st.columns([1, 1], gap="large")
-
-    with left_col:
-        with st.container(key="auth_left_vault_card", border=True):
-            if view == "RECOVERY":
                 st.markdown("""
-                <div style="display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 4px; height: 100%; justify-content: space-between;">
-                    <div>
-                        <!-- 3D Open Envelope with Lock and Checkmark -->
-                        <svg viewBox="0 0 260 200" style="width: 100%; max-width: 185px; height: auto;" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <defs>
-                                <radialGradient id="envGlow" cx="50%" cy="50%" r="50%">
-                                    <stop offset="0%" stop-color="#60A5FA" stop-opacity="0.35"/>
-                                    <stop offset="100%" stop-color="#60A5FA" stop-opacity="0"/>
-                                </radialGradient>
-                                <linearGradient id="envBody" x1="0%" y1="0%" x2="100%" y2="100%">
-                                    <stop offset="0%" stop-color="#3B82F6"/>
-                                    <stop offset="100%" stop-color="#1D4ED8"/>
-                                </linearGradient>
-                                <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" stop-color="#FFFFFF"/>
-                                    <stop offset="100%" stop-color="#F1F5F9"/>
-                                </linearGradient>
-                                <filter id="envShadow" x="-10%" y="-10%" width="130%" height="130%">
-                                    <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#1E3A8A" flood-opacity="0.2"/>
-                                </filter>
-                            </defs>
-                            <ellipse cx="130" cy="115" rx="80" ry="40" fill="url(#envGlow)"/>
-                            <!-- Envelope Back -->
-                            <rect x="55" y="75" width="150" height="95" rx="14" fill="#1E40AF"/>
-                            <!-- Card sliding out -->
-                            <rect x="75" y="40" width="110" height="75" rx="10" fill="url(#cardGrad)" filter="url(#envShadow)"/>
-                            <!-- Lock on Card -->
-                            <rect x="115" y="68" width="30" height="24" rx="4" fill="#2563EB"/>
-                            <path d="M122 68 V59 A8 8 0 0 1 138 59 V68" stroke="#2563EB" stroke-width="4" fill="none"/>
-                            <circle cx="130" cy="78" r="2.5" fill="#FFFFFF"/>
-                            <!-- Envelope Flaps -->
-                            <path d="M55 85 L130 140 L205 85 V155 C205 163 198 170 190 170 H70 C62 170 55 163 55 155 Z" fill="url(#envBody)" filter="url(#envShadow)"/>
-                            <path d="M55 170 L115 120" stroke="#1E40AF" stroke-width="1.5" opacity="0.4"/>
-                            <path d="M205 170 L145 120" stroke="#1E40AF" stroke-width="1.5" opacity="0.4"/>
-                            <!-- Floating Sparkles -->
-                            <circle cx="50" cy="55" r="3" fill="#60A5FA" opacity="0.7"/>
-                            <circle cx="210" cy="50" r="2.5" fill="#60A5FA" opacity="0.7"/>
-                            <line x1="205" y1="65" x2="215" y2="65" stroke="#60A5FA" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
-                            <!-- Green Check Badge -->
-                            <circle cx="190" cy="135" r="16" fill="#10B981" filter="url(#envShadow)"/>
-                            <polyline points="183 135 188 140 198 130" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <h3 class="auth-card-title" style="margin: 10px 0 4px 0; font-size: 1.30rem; font-weight: 800; color: #0F172A;">Account Recovery</h3>
-                        <p class="auth-card-subtitle" style="margin: 0 0 14px 0; font-size: 0.80rem; color: #64748B; max-width: 310px; line-height: 1.4;">
-                            We'll send a secure password recovery code to your registered email address.
-                        </p>
-                        <!-- Safe & Secure Box -->
-                        <div class="auth-recovery-safe-box" style="border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; width: 100%; max-width: 320px; margin: 0 auto 12px auto; text-align: left;">
-                            <div style="width: 34px; height: 34px; border-radius: 10px; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                    <polyline points="9 12 11 14 15 10"/>
-                                </svg>
-                            </div>
-                            <div>
-                                <strong class="auth-recovery-safe-title" style="font-size: 0.82rem; display: block;">Safe & Secure</strong>
-                                <span class="auth-recovery-safe-sub" style="font-size: 0.70rem; line-height: 1.35;">Your information is never shared with anyone and is fully encrypted.</span>
-                            </div>
-                        </div>
-                    </div>
-                    <!-- 3 Step Indicators (animated) -->
-                    <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding-top: 4px;">
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <span class="auth-step-dot-1"></span>
-                            <span class="auth-step-dot-2"></span>
-                            <span class="auth-step-dot-3"></span>
-                        </div>
-                        <span style="font-size: 0.74rem; color: #94A3B8; font-weight: 600;">Recover &bull; Verify &bull; Get Back</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
-                    <div style="width: 44px; height: 44px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <path d="M12 8v8"/>
-                            <path d="M8 12h8"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="auth-card-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.01em; color: #1E293B;">{T.get("auth_vault_title", "Enterprise Medical Vault")}</h3>
-                        <p class="auth-card-subtitle" style="margin: 2px 0 0 0; font-size: 0.80rem; color: #64748B; line-height: 1.45;">
-                            {T.get("auth_vault_sub", "DocMindX AI enforces bank-grade dual-factor cryptographic identity protocols. Your clinical health records, family profiles, and scan history remain strictly isolated and protected.")}
-                        </p>
-                    </div>
-                </div>
-            <div class="auth-left-middle-grid" style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 10px; align-items: center; margin-top: 8px;">
-                <!-- 4 Feature Cards -->
-                <div style="display: flex; flex-direction: column; gap: 7px;">
-                    <!-- 01 -->
-                    <div class="auth-feat-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 7px 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #D1FAE5; border: 1px solid #A7F3D0; display: flex; align-items: center; justify-content: center; color: #059669; font-size: 0.70rem; font-weight: 800; flex-shrink: 0;">01</div>
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #ECFDF5; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat1_title", "Mandatory Dual-Factor (2FA) OTP")}</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat1_sub", "Single-use cryptographic OTPs sent to your verified email.")}</span>
-                        </div>
-                    </div>
-                    <!-- 02 -->
-                    <div class="auth-feat-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 7px 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #DBEAFE; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; color: #2563EB; font-size: 0.70rem; font-weight: 800; flex-shrink: 0;">02</div>
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #EFF6FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v8"/><path d="M8 12h8"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat2_title", "Bcrypt 12-Round Password Encryption")}</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat2_sub", "Passwords and OTPs are never stored or logged in plaintext.")}</span>
-                        </div>
-                    </div>
-                    <!-- 03 -->
-                    <div class="auth-feat-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 7px 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #FEF3C7; border: 1px solid #FDE68A; display: flex; align-items: center; justify-content: center; color: #D97706; font-size: 0.70rem; font-weight: 800; flex-shrink: 0;">03</div>
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #FFFBEB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat3_title", "Relational Family Profiles")}</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat3_sub", "Attach scans and reports dynamically to individual family members.")}</span>
-                        </div>
-                    </div>
-                    <div class="auth-feat-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 7px 10px; display: flex; align-items: center; gap: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);">
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #EDE9FE; border: 1px solid #DDD6FE; display: flex; align-items: center; justify-content: center; color: #7C3AED; font-size: 0.70rem; font-weight: 800; flex-shrink: 0;">04</div>
-                        <div style="width: 22px; height: 22px; border-radius: 6px; background: #F5F3FF; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <strong class="auth-card-title" style="font-size: 0.80rem; color: #1E293B; display: block; line-height: 1.15;">{T.get("auth_feat4_title", "Parameterized SQL Defense")}</strong>
-                            <span class="auth-card-subtitle" style="font-size: 0.69rem; color: #64748B; line-height: 1.15;">{T.get("auth_feat4_sub", "100% prepared statements with absolute SQL injection immunity.")}</span>
-                        </div>
-                    </div>
-                </div>
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; margin: 4px 0;">
-                    <svg viewBox="0 0 260 210" style="width: 100%; max-width: 145px; height: auto;" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <radialGradient id="pedLight" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" stop-color="#38BDF8" stop-opacity="0.35"/>
-                                <stop offset="100%" stop-color="#38BDF8" stop-opacity="0"/>
-                            </radialGradient>
-                            <linearGradient id="shieldMain" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#38BDF8"/>
-                                <stop offset="50%" stop-color="#2563EB"/>
-                                <stop offset="100%" stop-color="#1D4ED8"/>
-                            </linearGradient>
-                            <linearGradient id="pedTopGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="#E0F2FE"/>
-                                <stop offset="100%" stop-color="#BAE6FD"/>
-                            </linearGradient>
-                            <linearGradient id="pedBaseGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stop-color="#0284C7"/>
-                                <stop offset="100%" stop-color="#0369A1"/>
-                            </linearGradient>
-                            <filter id="shieldGlow" x="-20%" y="-20%" width="140%" height="140%">
-                                <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#2563EB" flood-opacity="0.35"/>
-                            </filter>
-                        </defs>
-                        <ellipse cx="130" cy="146" rx="72" ry="24" fill="url(#pedLight)"/>
-                        <path d="M60 142 C60 152 200 152 200 142 L200 150 C200 160 60 160 60 150 Z" fill="#0C4A6E" opacity="0.6"/>
-                        <path d="M68 136 C68 146 192 146 192 136 L192 144 C192 154 68 154 68 144 Z" fill="url(#pedBaseGrad)"/>
-                        <ellipse cx="130" cy="136" rx="62" ry="14" fill="#38BDF8" opacity="0.8"/>
-                        <path d="M78 130 C78 138 182 138 182 130 L182 134 C182 142 78 142 78 134 Z" fill="#0284C7"/>
-                        <ellipse cx="130" cy="130" rx="52" ry="11" fill="url(#pedTopGrad)"/>
-                        <ellipse cx="130" cy="130" rx="44" ry="8" fill="#FFFFFF" opacity="0.9"/>
-                        <g filter="url(#shieldGlow)">
-                            <path d="M130 38 L166 54 C166 94 148 120 130 130 C112 120 94 94 94 54 Z" fill="url(#shieldMain)"/>
-                            <path d="M130 42 L162 56 C162 92 146 116 130 125 C114 116 98 92 98 56 Z" fill="none" stroke="#BAE6FD" stroke-width="1.5" opacity="0.7"/>
-                            <path d="M125 66 H135 V77 H146 V87 H135 V98 H125 V87 H114 V77 H125 Z" fill="#FFFFFF"/>
-                        </g>
-                        <g>
-                            <circle cx="72" cy="48" r="14" fill="#2563EB" filter="url(#shieldGlow)"/>
-                            <path d="M68 43 H74 L77 46 V53 H68 Z" fill="#FFFFFF"/>
-                            <line x1="70" y1="48" x2="75" y2="48" stroke="#2563EB" stroke-width="1"/>
-                            <line x1="70" y1="50" x2="74" y2="50" stroke="#2563EB" stroke-width="1"/>
-                        </g>
-                        <g>
-                            <circle cx="188" cy="54" r="14" fill="#2563EB" filter="url(#shieldGlow)"/>
-                            <rect x="183" y="51" width="10" height="7" rx="1" fill="#FFFFFF"/>
-                            <path d="M185 51 V48 A3 3 0 0 1 191 48 V51" stroke="#FFFFFF" stroke-width="1.5" fill="none"/>
-                        </g>
-                        <g>
-                            <circle cx="58" cy="108" r="14" fill="#0D9488" filter="url(#shieldGlow)"/>
-                            <circle cx="58" cy="105" r="3" fill="#FFFFFF"/>
-                            <path d="M53 113 C53 110 63 110 63 113" stroke="#FFFFFF" stroke-width="1.6" fill="none"/>
-                        </g>
-                        <g>
-                            <circle cx="196" cy="118" r="14" fill="#7C3AED" filter="url(#shieldGlow)"/>
-                            <ellipse cx="196" cy="114" rx="6" ry="2" fill="#FFFFFF"/>
-                            <path d="M190 114 V120 C190 122 202 122 202 120 V114" stroke="#FFFFFF" stroke-width="1.2" fill="none"/>
-                        </g>
-                    </svg>
-                    <div style="margin-top: 1px; font-family: 'Segoe Script', 'Comic Sans MS', cursive, sans-serif; font-size: 0.84rem; color: #1E40AF; font-weight: 700; transform: rotate(-3deg);">
-                        Your Health Data Our Priority
-                        <div style="height: 3px; background: #3B82F6; border-radius: 2px; width: 70%; margin: 2px auto 0 auto;"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="auth-alert-banner" style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #FEF2F2; border: 1px solid #FECACA; border-left: 4px solid #EF4444; border-radius: 9px; margin-top: 10px;">
-                <div style="width: 20px; height: 20px; border-radius: 50%; background: #EF4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #FFFFFF; font-weight: 900; font-size: 0.74rem;">
-                    !
-                </div>
-                <div style="font-size: 0.74rem; line-height: 1.35;">
-                    <strong style="color: #DC2626;">{T.get("auth_privacy_std", "Clinical Privacy Standard:")}</strong>
-                    <span style="color: #991B1B;">{T.get("auth_privacy_desc", "Compliant with HIPAA and WHO clinical health data security guidelines.")}</span>
-                </div>
-            </div>
-            <div class="auth-trust-grid" style="display: grid; grid-template-columns: repeat(4, minmax(72px, 1fr)); gap: 8px; margin-top: 12px; margin-bottom: 4px; width: 100%;">
-                <div class="auth-trust-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 8px; display: flex; align-items: flex-start; gap: 6px; min-height: 64px; box-sizing: border-box; overflow: visible;">
-                    <div style="width: 26px; height: 26px; border-radius: 6px; background: #DCFCE7; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 8v8"/><path d="M8 12h8"/>
-                        </svg>
-                    </div>
-                    <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_secure", "Secure")}</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_bank_grade", "Bank-Grade")}</div>
-                    </div>
-                </div>
-                <div class="auth-trust-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 8px; display: flex; align-items: flex-start; gap: 6px; min-height: 64px; box-sizing: border-box; overflow: visible;">
-                    <div style="width: 26px; height: 26px; border-radius: 6px; background: #DBEAFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                        </svg>
-                    </div>
-                    <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_private", "Private")}</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_control", "Your Control")}</div>
-                    </div>
-                </div>
-                <div class="auth-trust-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 8px; display: flex; align-items: flex-start; gap: 6px; min-height: 64px; box-sizing: border-box; overflow: visible;">
-                    <div style="width: 26px; height: 26px; border-radius: 6px; background: #EDE9FE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                        </svg>
-                    </div>
-                    <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_compliant", "Compliant")}</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_hipaa", "HIPAA / WHO")}</div>
-                    </div>
-                </div>
-                <div class="auth-trust-item" style="background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 9px; padding: 10px 8px; display: flex; align-items: flex-start; gap: 6px; min-height: 64px; box-sizing: border-box; overflow: visible;">
-                    <div style="width: 26px; height: 26px; border-radius: 6px; background: #FEF3C7; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                    </div>
-                    <div style="min-width: 0; flex: 1; word-break: break-word;">
-                        <div style="font-weight: 800; font-size: 0.76rem; color: #1E293B; line-height: 1.2;" class="auth-card-title">{T.get("auth_badge_trusted", "Trusted")}</div>
-                        <div style="font-size: 0.68rem; color: #64748B; line-height: 1.3; margin-top: 2px;" class="auth-card-subtitle">{T.get("auth_badge_health", "Healthcare")}</div>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    with right_col:
-        view = st.session_state.get("auth_view", "LOGIN")
-
-        with st.container(key="auth_right_signin_card", border=True):
-            # 1. SIGN IN VIEW
-            if view == "LOGIN":
-                st.markdown(f"""
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div class="auth-icon-badge" style="width: 44px; height: 44px; border-radius: 12px; background: var(--mm-icon-box-bg, #EFF6FF); border: 1px solid var(--mm-icon-box-border, #DBEAFE); display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="auth-card-title" style="margin: 0; font-size: 1.35rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">{T.get("auth_patient_signin", "Patient Sign In")}</h3>
-                            <p class="auth-card-subtitle" style="margin: 3px 0 0 0; font-size: 0.80rem; color: var(--mm-text-secondary, #64748B);">{T.get("auth_patient_signin_sub", "Enter your registered email and password to receive your 2FA verification code.")}</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <svg width="34" height="34" viewBox="0 0 24 24" fill="#2563EB">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                            <polyline points="7 12 10 12 11.5 8 13.5 16 15 12 17 12" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <div style="text-align: left;">
-                            <div class="auth-card-title" style="font-weight: 800; font-size: 1.15rem; color: #0F172A; line-height: 1.1;">DocMindX AI</div>
-                            <div class="auth-card-subtitle" style="font-size: 0.65rem; color: #64748B; font-weight: 600; letter-spacing: 0.02em;">{T.get("app_tagline", "Better Health. Brighter Tomorrow.")}</div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                st.markdown(f"""
-                <div class="auth-input-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                        <polyline points="22,6 12,13 2,6"/>
-                    </svg>
-                    <span>{T.get("auth_email_label", "Registered Email Address")}</span>
-                </div>
-                """, unsafe_allow_html=True)
-                login_email = st.text_input(T.get("auth_email_label", "Registered Email Address"), key="panel_login_email", placeholder="you@example.com", label_visibility="collapsed")
-
-                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                st.markdown(f"""
-                <div class="auth-input-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
-                    <span>{T.get("auth_pass_label", "Account Password")}</span>
+                    <span>6-Digit Verification Code</span>
                 </div>
                 """, unsafe_allow_html=True)
-
-                login_password = st.text_input(T.get("auth_pass_label", "Account Password"), type="password", key="panel_login_password", placeholder="••••••••", label_visibility="collapsed")
-
-                st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
-                c_btn1, c_btn2 = st.columns([1, 1], gap="medium")
-                with c_btn1:
-                    btn_c2fa = f"**{T.get('auth_btn_continue_2fa', 'Continue to 2FA Code →')}**  \n{T.get('auth_btn_continue_2fa_sub', 'Get verification code on your email')}"
-                    if st.button(
-                        btn_c2fa,
-                        type="primary",
-                        use_container_width=True,
-                        key="panel_btn_login_submit"
-                    ):
-                        if not login_email or not login_password:
-                            st.error("Please enter both email and password.")
-                        else:
-                            ok, msg, user = auth_svc.authenticate_credentials(login_email, login_password)
-                            if ok:
-                                st.session_state["auth_temp_email"] = login_email.strip().lower()
-                                st.session_state["auth_temp_name"] = user.get("full_name", "")
-                                auth_svc.send_login_verification_code(login_email)
-                                st.session_state["auth_view"] = "LOGIN_OTP"
-                                st.rerun()
-                            else:
-                                if user and user.get("pending_activation"):
-                                    st.warning(msg)
-                                    if st.button("Resend Activation Code", key="panel_btn_resend_act"):
-                                        auth_svc.request_otp(login_email, "REGISTRATION")
-                                        st.session_state["auth_temp_email"] = login_email
-                                        st.session_state["auth_view"] = "REGISTER_OTP"
-                                        st.rerun()
-                                else:
-                                    st.error(msg)
-                with c_btn2:
-                    btn_creg = f"**{T.get('auth_btn_create_acc', 'Create New Account')}**  \n{T.get('auth_btn_create_acc_sub', 'Join DocMindX AI')}"
-                    if st.button(
-                        btn_creg,
-                        use_container_width=True,
-                        key="panel_btn_goto_reg"
-                    ):
-                        st.session_state["auth_view"] = "REGISTER"
-                        st.rerun()
-
-                st.markdown(f'<div class="auth-or-divider"><span>{T.get("auth_or", "OR")}</span></div>', unsafe_allow_html=True)
-                opt_c1, opt_c2 = st.columns([1, 1], gap="medium")
-                with opt_c1:
-                    btn_crec = f"**{T.get('auth_btn_rec_pass', 'Recovery Password')}**  \n{T.get('auth_btn_rec_pass_sub', 'Reset your account password')}"
-                    if st.button(
-                        btn_crec,
-                        use_container_width=True,
-                        key="panel_btn_goto_rec"
-                    ):
-                        st.session_state["auth_view"] = "RECOVERY"
-                        st.rerun()
-                with opt_c2:
-                    btn_cadm = f"**{T.get('auth_btn_admin_access', 'Administrator Access')}**  \n{T.get('auth_btn_admin_access_sub', 'Authorized personnel only')}"
-                    if st.button(
-                        btn_cadm,
-                        use_container_width=True,
-                        key="panel_btn_goto_admin"
-                    ):
-                        st.session_state["auth_view"] = "ADMIN_LOGIN"
-                        st.rerun()
+                otp_input = st.text_input("6-Digit Code", max_chars=6, key="panel_login_otp_input", placeholder="123456", label_visibility="collapsed")
 
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                btn_cdash = f"**{T.get('auth_btn_return_dash', 'Return to Clinical Dashboard')}**  \n{T.get('auth_btn_return_dash_sub', 'Back to main application')}"
-                if st.button(
-                    btn_cdash,
-                    use_container_width=True,
-                    key="panel_btn_return_dashboard"
-                ):
-                    st.session_state["active_panel"] = "Health Assessment"
-                    st.rerun()
-
-                st.markdown("""
-                <div class="auth-card-footer">
-                    <div class="auth-footer-left">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                        <span>All communications are encrypted using industry-standard TLS 1.3</span>
-                    </div>
-                    <div>
-                        <span>Version 2.0.0</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # 2. LOGIN 2FA OTP VIEW
-            elif view == "LOGIN_OTP":
-                email = st.session_state.get("auth_temp_email", "")
-                st.markdown(f"""
-                    <div class="auth-login-otp-banner" style="border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-                        <div class="auth-login-otp-title" style="font-weight: 700; font-size: 1.0rem; margin-bottom: 4px;">Enter Dual-Factor Verification Code</div>
-                        <div class="auth-login-otp-sub" style="font-size: 0.84rem;">A 6-digit cryptographic verification code has been dispatched to <strong class="auth-login-otp-email">{email}</strong>.</div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-                otp_input = st.text_input("Enter 6-Digit Code", max_chars=6, key="panel_login_otp_input", placeholder="123456")
-
-                c_v1, c_v2 = st.columns([1, 1])
-                with c_v1:
-                    if st.button(T.get("btn_verify_signin", "Verify Code & Complete Sign In"), type="primary", use_container_width=True, key="panel_btn_verify_login"):
-                        if not otp_input or len(otp_input.strip()) < 6:
-                            st.error("Please enter the complete 6-digit code.")
-                        else:
-                            ok, msg, session_data = auth_svc.complete_login_with_otp(email, otp_input)
-                            if ok:
-                                st.session_state["user_auth"] = session_data
-                                if auth_svc.is_admin_session(session_data):
-                                    st.session_state["active_panel"] = "Admin Panel"
-                                else:
-                                    st.session_state["active_panel"] = "Family Management"
-                                st.session_state["auth_view"] = "LOGIN"
-                                st.success("Successfully authenticated!")
-                                st.rerun()
-                            else:
-                                st.error(msg)
-                with c_v2:
-                    if st.button(T.get("btn_resend_code", "Resend Verification Code"), use_container_width=True, key="panel_btn_resend_login"):
-                        ok, msg = auth_svc.send_login_verification_code(email)
-                        if ok:
-                            st.success(msg)
-                            st.rerun()
-                        else:
-                            st.warning(msg)
-
-                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                if st.button(T.get("btn_back_signin", "← Back to Sign In"), key="panel_btn_back_from_otp"):
-                    st.session_state["auth_view"] = "LOGIN"
-                    st.rerun()
-
-            # 3. REGISTRATION VIEW
-            elif view == "REGISTER":
-                # Header matching Image 2
-                st.markdown("""
-                <div class="auth-patient-card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
-                        <div class="auth-patient-hdr-icon" style="width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="#2563EB">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <circle cx="18" cy="11" r="5" fill="#2563EB"/>
-                                <line x1="18" y1="9" x2="18" y2="13" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
-                                <line x1="16" y1="11" x2="20" y2="11" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-                        <div style="min-width: 0;">
-                            <h2 class="auth-card-title" style="margin: 0; font-size: 1.45rem; font-weight: 800; color: #0F172A; line-height: 1.2;">
-                                Create Patient <span style="color: #2563EB;">Account</span>
-                            </h2>
-                            <p class="auth-card-subtitle" style="margin: 3px 0 0 0; font-size: 0.80rem; color: #64748B; line-height: 1.4;">
-                                Register to create your personal encrypted vault and manage family medical profiles.
-                            </p>
-                        </div>
-                    </div>
-                    <div style="text-align: right; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="#2563EB">
-                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                                <polyline points="7 12 10 12 11.5 8 13.5 16 15 12 17 12" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <div style="text-align: left;">
-                                <div class="auth-card-title" style="font-weight: 800; font-size: 1.05rem; color: #0F172A; line-height: 1.1;">DocMindX <span style="color: #2563EB;">AI</span></div>
-                                <div class="auth-card-subtitle" style="font-size: 0.62rem; color: #64748B; font-weight: 600; letter-spacing: 0.02em;">Secure Health • Smarter Tomorrow</div>
-                            </div>
-                        </div>
-                        <div style="margin-top: 6px; font-family: 'Segoe Script', 'Comic Sans MS', cursive, sans-serif; font-size: 0.78rem; color: #93C5FD; font-weight: 700; transform: rotate(-3deg);">
-                            Your Health Our Priority
-                            <div style="height: 2px; background: #3B82F6; border-radius: 1px; width: 60%; margin: 2px 0 0 auto;"></div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # 1. Full Name
-                st.markdown("""
-                <div class="auth-input-label" style="margin-bottom: 4px;">
-                    <span>Full Name</span> <span style="color: #EF4444; font-weight: bold;">*</span>
-                </div>
-                """, unsafe_allow_html=True)
-                c_fn1, c_fn2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_fn1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                            <circle cx="12" cy="7" r="4"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_fn2:
-                    reg_name = st.text_input("Full Name *", key="panel_reg_name", placeholder="e.g. Your Name*", label_visibility="collapsed")
-                st.markdown('<div class="auth-input-help">Enter your full name as per your valid identity.</div>', unsafe_allow_html=True)
-
-                # 2. Email Address
-                st.markdown("""
-                <div class="auth-input-label" style="margin-bottom: 4px;">
-                    <span>Email Address</span> <span style="color: #EF4444; font-weight: bold;">*</span>
-                </div>
-                """, unsafe_allow_html=True)
-                c_em1, c_em2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_em1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                            <polyline points="22,6 12,13 2,6"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_em2:
-                    reg_email = st.text_input("Email Address *", key="panel_reg_email", placeholder="you@example.com", label_visibility="collapsed")
-                st.markdown("<div class='auth-input-help'>We'll send a verification code to this email.</div>", unsafe_allow_html=True)
-
-                # 3. Date of Birth (DOB)
-                st.markdown("""
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <div class="auth-input-label" style="margin-bottom: 0;">
-                        <span>Date of Birth (DOB)</span> <span style="color: #EF4444; font-weight: bold;">*</span>
-                    </div>
-                    <div style="font-size: 0.72rem; color: #64748B;">Min 10 Years (Clinical Protocol)</div>
-                </div>
-                """, unsafe_allow_html=True)
-                c_dob1, c_dob2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_dob1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_dob2:
-                    today_d = datetime.date.today()
-                    max_d = datetime.date(today_d.year - 10, today_d.month, min(today_d.day, 28))
-                    min_d = datetime.date(today_d.year - 120, 1, 1)
-                    default_d = datetime.date(today_d.year - 25, today_d.month, min(today_d.day, 28))
-                    reg_dob_val = st.date_input("Date of Birth *", value=default_d, min_value=min_d, max_value=max_d, key="panel_reg_dob", label_visibility="collapsed")
-                
-                curr_calc_age = auth_db.calculate_age_from_dob(reg_dob_val)
-                st.markdown(f"""
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; margin-bottom: 8px;">
-                    <div class="auth-input-help" style="margin: 0;">Used to calculate your real-time age accurately.</div>
-                    <span class="auth-age-calc-badge" style="font-size: 0.74rem; font-weight: 700; padding: 2px 8px; border-radius: 12px;">
-                        Age: {curr_calc_age if curr_calc_age is not None else '--'} Years (Auto-updates)
-                    </span>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # 4. Password
-                st.markdown("""
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
-                    <div class="auth-input-label" style="margin-bottom: 0;">
-                        <span>Password</span> <span style="color: #EF4444; font-weight: bold;">*</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 4px; font-size: 0.74rem; color: #64748B;">
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                        </svg>
-                        <span>Create a strong password</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                c_pw1, c_pw2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_pw1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_pw2:
-                    reg_pass = st.text_input("Password *", type="password", key="panel_reg_pass", placeholder="••••••••", label_visibility="collapsed")
-
-                # Dynamic Password Strength Meter
-                _, str_label, str_color, str_bars = compute_password_strength(reg_pass)
-                st.markdown(f"""
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; margin-bottom: 8px;">
-                    <div style="display: flex; gap: 6px; flex: 1; max-width: 250px;">
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[0]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[1]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[2]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[3]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[4]};"></span>
-                    </div>
-                    <span style="font-size: 0.74rem; font-weight: 700; color: {str_color};">{str_label}</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-                # 5. Confirm Password
-                st.markdown("""
-                <div class="auth-input-label" style="margin-bottom: 4px;">
-                    <span>Confirm Password</span> <span style="color: #EF4444; font-weight: bold;">*</span>
-                </div>
-                """, unsafe_allow_html=True)
-                c_cp1, c_cp2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_cp1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_cp2:
-                    reg_conf = st.text_input("Confirm Password *", type="password", key="panel_reg_conf", placeholder="••••••••", label_visibility="collapsed")
-                st.markdown('<div class="auth-input-help">Re-enter the same password to confirm.</div>', unsafe_allow_html=True)
-
-                # Password Requirements Box
-                st.markdown(render_password_requirements_box(), unsafe_allow_html=True)
-
-                st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
-                if st.button(T.get("auth_btn_reg_submit", "Register & Send Activation Code →"), type="primary", use_container_width=True, key="panel_btn_submit_reg"):
-                    reg_dob_str = reg_dob_val.strftime("%Y-%m-%d") if reg_dob_val else ""
-                    ok, msg = auth_svc.register_user(reg_name, reg_email, reg_pass, reg_conf, dob=reg_dob_str)
-                    if ok:
-                        st.session_state["auth_temp_email"] = reg_email.strip().lower()
-                        st.session_state["auth_temp_name"] = reg_name.strip()
-                        st.session_state["auth_view"] = "REGISTER_OTP"
+                if st.button("Verify Code & Complete Sign In →", type="primary", use_container_width=True, key="panel_btn_verify_login"):
+                    if not otp_input or len(otp_input.strip()) < 6:
+                        trigger_popup("Verification Code Required", "Please enter the complete 6-digit verification code.", "warning")
                         st.rerun()
                     else:
-                        st.error(msg)
+                        with st.spinner("Validating 2FA token..."):
+                            ok, msg, session_data = auth_svc.complete_login_with_otp(email, otp_input)
+                        if ok:
+                            st.session_state["user_auth"] = session_data
+                            if auth_svc.is_admin_session(session_data):
+                                st.session_state["active_panel"] = "Admin Panel"
+                            else:
+                                st.session_state["active_panel"] = "Family Management"
+                            st.session_state["auth_view"] = "LOGIN"
+                            trigger_popup("Login Successful", f"Welcome back, {session_data.get('full_name', 'Patient')}! You have signed in successfully.", "success")
+                            st.rerun()
+                        else:
+                            trigger_popup("Login Failed", msg or "Invalid or expired verification code. Please try again.", "error")
+                            st.rerun()
 
-                st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-                if st.button(T.get("auth_btn_already_acc", "→ Already have an account? Sign In"), use_container_width=True, key="panel_btn_back_to_login"):
+                st.markdown('<div class="auth-or-divider"><span>OPTIONS</span></div>', unsafe_allow_html=True)
+
+                if st.button("Resend Verification Code", use_container_width=True, key="panel_btn_resend_login"):
+                    ok, msg = auth_svc.send_login_verification_code(email)
+                    if ok:
+                        trigger_popup("Code Dispatched", msg or "A new verification code has been dispatched to your email.", "success")
+                        st.rerun()
+                    else:
+                        trigger_popup("Dispatch Failed", msg or "Could not resend verification code. Please try again shortly.", "warning")
+                        st.rerun()
+
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                if st.button("Back to Sign In", key="panel_btn_back_from_otp", use_container_width=True):
                     st.session_state["auth_view"] = "LOGIN"
                     st.rerun()
 
-                st.markdown("<div style='height: 2px;'></div>", unsafe_allow_html=True)
-                if st.button(T.get("auth_btn_return_dash", "← Return to Clinical Dashboard"), use_container_width=True, key="panel_btn_reg_return_dash"):
-                    st.session_state["active_panel"] = "Health Assessment"
-                    st.rerun()
-
-                # Footer Trust Badges (Image 2)
+            # -------------------------------------------------------------
+            # VIEW 3: CREATE PATIENT ACCOUNT (REGISTER)
+            # -------------------------------------------------------------
+            elif view == "REGISTER":
                 st.markdown("""
-                <div class="auth-card-footer-trust" style="display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: #64748B; flex-wrap: wrap; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                        <span>Secure & Encrypted</span>
+                <div class="auth-center-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <line x1="19" y1="8" x2="19" y2="14"/>
+                        <line x1="16" y1="11" x2="22" y2="11"/>
+                    </svg>
+                </div>
+                <div class="auth-form-title">Create Patient Account</div>
+                <div class="auth-form-sub">Register to create your personal encrypted vault and manage verified clinical records.</div>
+                """, unsafe_allow_html=True)
+
+                # Full Name
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Full Legal Name</span>
+                </div>
+                """, unsafe_allow_html=True)
+                reg_name = st.text_input("Full Name", key="panel_reg_name", placeholder="e.g. Rahul Sharma", label_visibility="collapsed")
+
+                # Email Address
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <span>Email Address</span>
+                </div>
+                """, unsafe_allow_html=True)
+                reg_email = st.text_input("Email Address", key="panel_reg_email", placeholder="you@example.com", label_visibility="collapsed")
+
+                # DOB
+                today_d = datetime.date.today()
+                max_d = datetime.date(today_d.year - 10, today_d.month, min(today_d.day, 28))
+                min_d = datetime.date(today_d.year - 120, 1, 1)
+                default_d = datetime.date(today_d.year - 25, today_d.month, min(today_d.day, 28))
+
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Date of Birth (DOB)</span>
+                </div>
+                """, unsafe_allow_html=True)
+                reg_dob_val = st.date_input("Date of Birth", value=default_d, min_value=min_d, max_value=max_d, key="panel_reg_dob", label_visibility="collapsed")
+
+                # Password
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Password</span>
+                </div>
+                """, unsafe_allow_html=True)
+                reg_pass = st.text_input("Password", type="password", key="panel_reg_pass", placeholder="••••••••", label_visibility="collapsed")
+
+                # Live Strength Bar
+                _, str_label, str_color, str_bars = compute_password_strength(reg_pass)
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; margin-bottom: 6px;">
+                    <div style="display: flex; gap: 4px; flex: 1; max-width: 220px;">
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[0]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[1]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[2]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[3]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[4]};"></span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
-                        </svg>
-                        <span>HIPAA & WHO Compliant</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                        </svg>
-                        <span>Trusted Healthcare</span>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
-                        </svg>
-                        <span>Better Health, Brighter Tomorrow</span>
-                    </div>
+                    <span style="font-size: 0.72rem; font-weight: 700; color: {str_color};">{str_label}</span>
                 </div>
                 """, unsafe_allow_html=True)
 
-            # 4. REGISTRATION OTP ACTIVATION VIEW
+                # Confirm Password
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Confirm Password</span>
+                </div>
+                """, unsafe_allow_html=True)
+                reg_conf = st.text_input("Confirm Password", type="password", key="panel_reg_conf", placeholder="••••••••", label_visibility="collapsed")
+
+                # Password requirements checklist box
+                st.markdown(render_password_requirements_box(reg_pass, is_dark=is_dark), unsafe_allow_html=True)
+
+                if st.button("Create Account & Send Verification Code →", type="primary", use_container_width=True, key="panel_btn_submit_reg"):
+                    reg_dob_str = reg_dob_val.strftime("%Y-%m-%d") if reg_dob_val else ""
+                    has_err = False
+                    if not reg_name or not reg_name.strip():
+                        st.session_state["auth_err_reg_name"] = True
+                        has_err = True
+                    else:
+                        st.session_state.pop("auth_err_reg_name", None)
+
+                    if not reg_email or not reg_email.strip():
+                        st.session_state["auth_err_reg_email"] = True
+                        has_err = True
+                    else:
+                        st.session_state.pop("auth_err_reg_email", None)
+
+                    if not reg_pass:
+                        st.session_state["auth_err_reg_pass"] = True
+                        has_err = True
+                    else:
+                        st.session_state.pop("auth_err_reg_pass", None)
+
+                    if not reg_conf or reg_conf != reg_pass:
+                        st.session_state["auth_err_reg_conf"] = True
+                        has_err = True
+                    else:
+                        st.session_state.pop("auth_err_reg_conf", None)
+
+                    if has_err:
+                        trigger_popup("Fields Required", "Please fill in all required registration fields correctly.", "warning")
+                        st.rerun()
+                    else:
+                        with st.spinner("Registering vault and sending activation code..."):
+                            ok, msg = auth_svc.register_user(reg_name, reg_email, reg_pass, reg_conf, dob=reg_dob_str)
+                        if ok:
+                            st.session_state["auth_temp_email"] = reg_email.strip().lower()
+                            st.session_state["auth_temp_name"] = reg_name.strip()
+                            st.session_state["auth_view"] = "REGISTER_OTP"
+                            trigger_popup("Registration Successful", f"Account created for {reg_name.strip()}! A 6-digit activation code has been sent to {reg_email.strip()}.", "success")
+                            st.rerun()
+                        else:
+                            trigger_popup("Registration Failed", msg or "Could not complete registration. Please try again.", "error")
+                            st.rerun()
+
+                # Clean Bottom Navigation (No emojis, hides current view)
+                render_auth_bottom_nav("REGISTER")
+
+            # -------------------------------------------------------------
+            # VIEW 4: REGISTER ACTIVATION OTP
+            # -------------------------------------------------------------
             elif view == "REGISTER_OTP":
                 email = st.session_state.get("auth_temp_email", "")
                 name = st.session_state.get("auth_temp_name", "")
                 st.markdown(f"""
-                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-                    <div style="font-weight: 700; color: #34D399; font-size: 1.0rem; margin-bottom: 4px;">Activate Your Account</div>
-                    <div style="font-size: 0.84rem; color: #CBD5E1;">A single-use activation code was sent to <strong>{email}</strong>.</div>
+                <div class="auth-center-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <polyline points="9 12 11 14 15 10"/>
+                    </svg>
                 </div>
+                <div class="auth-form-title">Account Activation</div>
+                <div class="auth-form-sub">A single-use activation code has been sent to <strong>{email}</strong>.</div>
                 """, unsafe_allow_html=True)
 
-                reg_otp_code = st.text_input("Enter 6-Digit Activation Code", max_chars=6, key="panel_reg_otp_input", placeholder="123456")
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>6-Digit Activation Code</span>
+                </div>
+                """, unsafe_allow_html=True)
+                reg_otp_code = st.text_input("Activation Code", max_chars=6, key="panel_reg_otp_input", placeholder="123456", label_visibility="collapsed")
 
-                c_a1, c_a2 = st.columns([1, 1])
-                with c_a1:
-                    if st.button("Activate & Sign In", type="primary", use_container_width=True, key="panel_btn_activate_now"):
-                        ok, msg = auth_svc.activate_user_account(email, reg_otp_code)
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                if st.button("Activate & Sign In →", type="primary", use_container_width=True, key="panel_btn_activate_now"):
+                    if not reg_otp_code or len(reg_otp_code.strip()) < 6:
+                        trigger_popup("Activation Code Required", "Please enter the complete 6-digit activation code.", "warning")
+                        st.rerun()
+                    else:
+                        with st.spinner("Activating account..."):
+                            ok, msg = auth_svc.activate_user_account(email, reg_otp_code)
                         if ok:
-                            st.success(msg)
+                            trigger_popup("Account Activated", msg or "Your account has been successfully verified! You may now sign in.", "success")
                             st.session_state["auth_view"] = "LOGIN"
                             st.rerun()
                         else:
-                            st.error(msg)
-                with c_a2:
-                    if st.button("Resend Activation Code", use_container_width=True, key="panel_btn_resend_reg"):
-                        ok, msg = auth_svc.request_otp(email, "REGISTRATION", name)
-                        if ok:
-                            st.success(msg)
+                            trigger_popup("Activation Failed", msg or "Invalid or expired activation code.", "error")
                             st.rerun()
-                        else:
-                            st.warning(msg)
 
-                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                if st.button("← Back to Registration", key="panel_btn_back_to_reg"):
+                st.markdown('<div class="auth-or-divider"><span>OPTIONS</span></div>', unsafe_allow_html=True)
+
+                if st.button("Resend Activation Code", use_container_width=True, key="panel_btn_resend_reg"):
+                    ok, msg = auth_svc.request_otp(email, "REGISTRATION", name)
+                    if ok:
+                        trigger_popup("Code Dispatched", msg or "A new activation code has been dispatched to your email.", "success")
+                        st.rerun()
+                    else:
+                        trigger_popup("Dispatch Failed", msg or "Could not resend activation code.", "warning")
+                        st.rerun()
+
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                if st.button("Back to Registration", key="panel_btn_back_to_reg", use_container_width=True):
                     st.session_state["auth_view"] = "REGISTER"
                     st.rerun()
 
-            # 5. RECOVERY PASSWORD VIEW (NOT "FORGOT PASSWORD")
+            # -------------------------------------------------------------
+            # VIEW 5: RECOVERY PASSWORD
+            # -------------------------------------------------------------
             elif view == "RECOVERY":
                 st.markdown("""
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
-                    <div style="width: 44px; height: 44px; border-radius: 12px; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="auth-card-title" style="margin: 0; font-size: 1.35rem; font-weight: 800; color: #0F172A;">Recovery Password</h3>
-                        <p class="auth-card-subtitle" style="margin: 2px 0 0 0; font-size: 0.80rem; color: #64748B;">Enter your registered email address to receive a secure password recovery code.</p>
-                    </div>
+                <div class="auth-center-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
                 </div>
-                <div class="auth-or-divider" style="margin: 14px 0 16px 0;"><span>We'll send a verification code to your email</span></div>
-                <div class="auth-input-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <div class="auth-form-title">Password Recovery</div>
+                <div class="auth-form-sub">Enter your registered email address to receive a secure password recovery code.</div>
+                """, unsafe_allow_html=True)
+
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                         <polyline points="22,6 12,13 2,6"/>
                     </svg>
@@ -1007,380 +1416,219 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
                 """, unsafe_allow_html=True)
                 rec_email = st.text_input("Registered Email Address", key="panel_rec_email", placeholder="you@example.com", label_visibility="collapsed")
 
-                st.markdown("""
-                <div class="auth-info-callout">
-                    <div style="width: 20px; height: 20px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #FFFFFF; font-weight: 800; font-size: 0.75rem;">
-                        i
-                    </div>
-                    <div>
-                        Make sure to enter the email address you used during registration. Check your inbox (and spam folder) for the recovery code.
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 if st.button("Send Recovery Code →", type="primary", use_container_width=True, key="panel_btn_send_rec"):
-                    if not rec_email:
-                        st.error("Please enter your email address.")
-                    else:
-                        ok, msg = auth_svc.initiate_recovery_password(rec_email)
-                        st.session_state["auth_temp_email"] = rec_email.strip().lower()
-                        st.session_state["auth_view"] = "RECOVERY_OTP"
-                        st.success(msg)
+                    if not rec_email or not rec_email.strip():
+                        st.session_state["auth_err_rec_email"] = True
+                        trigger_popup("Email Required", "Please enter your registered email address.", "warning")
                         st.rerun()
+                    else:
+                        st.session_state.pop("auth_err_rec_email", None)
+                        with st.spinner("Dispatching cryptographic recovery code..."):
+                            ok, msg = auth_svc.initiate_recovery_password(rec_email)
+                        if ok:
+                            st.session_state["auth_temp_email"] = rec_email.strip().lower()
+                            st.session_state["auth_view"] = "RECOVERY_OTP"
+                            trigger_popup("Recovery Code Sent", msg or f"A 6-digit recovery code has been sent to {rec_email}.", "success")
+                            st.rerun()
+                        else:
+                            trigger_popup("Recovery Failed", msg or "Could not initiate password recovery.", "error")
+                            st.rerun()
 
-                st.markdown('<div class="auth-or-divider"><span>OR</span></div>', unsafe_allow_html=True)
+                # Clean Bottom Navigation (No emojis, hides current view)
+                render_auth_bottom_nav("RECOVERY")
 
-                if st.button("Back to Sign In", use_container_width=True, key="panel_btn_back_from_rec"):
-                    st.session_state["auth_view"] = "LOGIN"
-                    st.rerun()
-
-                st.markdown("""
-                <div class="auth-privacy-banner">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div style="width: 28px; height: 28px; border-radius: 50%; background: #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <strong style="color: #065F46; font-size: 0.82rem; display: block;">Your Privacy Matters</strong>
-                            <span style="color: #047857; font-size: 0.72rem;">We follow HIPAA and WHO clinical data security guidelines.</span>
-                        </div>
-                    </div>
-                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="1.2" opacity="0.35">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    </svg>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # 6. RECOVERY OTP & NEW PASSWORD VIEW
+            # -------------------------------------------------------------
+            # VIEW 6: RECOVERY OTP & SET NEW PASSWORD
+            # -------------------------------------------------------------
             elif view == "RECOVERY_OTP":
                 email = st.session_state.get("auth_temp_email", "")
-
-                # Header matching Image 4
-                st.markdown("""
-                <div class="auth-patient-card-header" style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px;">
-                    <div style="display: flex; align-items: center; gap: 14px; min-width: 0; flex: 1;">
-                        <div class="auth-patient-hdr-icon" style="width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                <path d="M12 14v4"/>
-                                <path d="M10 16a2 2 0 1 0 4 0"/>
-                            </svg>
-                        </div>
-                        <div style="min-width: 0;">
-                            <h2 class="auth-card-title" style="margin: 0; font-size: 1.45rem; font-weight: 800; color: #0F172A; line-height: 1.2;">
-                                Reset <span style="color: #2563EB;">Password</span>
-                            </h2>
-                            <p class="auth-card-subtitle" style="margin: 3px 0 0 0; font-size: 0.80rem; color: #64748B; line-height: 1.4;">
-                                Enter the recovery code sent to your registered email and configure your new password.
-                            </p>
-                        </div>
-                    </div>
-                    <div style="text-align: right; flex-shrink: 0; display: flex; align-items: center; gap: 14px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="#2563EB">
-                                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                                <polyline points="7 12 10 12 11.5 8 13.5 16 15 12 17 12" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <div style="text-align: left;">
-                                <div class="auth-card-title" style="font-weight: 800; font-size: 1.05rem; color: #0F172A; line-height: 1.1;">DocMindX <span style="color: #2563EB;">AI</span></div>
-                                <div class="auth-card-subtitle" style="font-size: 0.62rem; color: #64748B; font-weight: 600; letter-spacing: 0.02em;">CLINICAL AI HEALTHCARE SYSTEM</div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid #E2E8F0; padding-left: 12px;">
-                            <div class="auth-safe-pill-sm" style="width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                    <polyline points="9 12 11 14 15 10"/>
-                                </svg>
-                            </div>
-                            <div style="text-align: left;">
-                                <div class="auth-card-title" style="font-weight: 700; font-size: 0.76rem; color: #1E293B; line-height: 1.1;">Secure & Encrypted</div>
-                                <div class="auth-card-subtitle" style="font-size: 0.64rem; color: #64748B;">Your data is protected</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                dev_otp = auth_svc.get_dev_otp_fallback(email, "RECOVERY")
-                dev_badge = f'<div style="margin-top: 6px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 6px; background: rgba(37,99,235,0.08); border: 1px dashed #93C5FD; font-size: 0.72rem; color: #1E40AF;">Testing Fallback Notice: Recovery Code is: <strong style="color: #2563EB; font-family: monospace;">{dev_otp}</strong></div>' if dev_otp else ""
-
-                # Check Your Email card (Image 4)
-                email_target_display = email if email else "your registered email"
                 st.markdown(f"""
-                <div class="auth-check-email-card" style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
-                        <div style="width: 42px; height: 42px; border-radius: 12px; background: #DBEAFE; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                        </div>
-                        <div style="min-width: 0;">
-                            <div style="font-weight: 800; font-size: 0.95rem; color: #0369A1; line-height: 1.2;">Check Your Email</div>
-                            <div style="font-size: 0.78rem; color: #334155; margin: 2px 0;">
-                                We have sent a 6-digit recovery code to <strong style="color: #0284C7;">{email_target_display}</strong>.
-                            </div>
-                            <div style="font-size: 0.72rem; color: #64748B;">
-                                Didn't receive the code? Check your spam folder or request a new code.
-                            </div>
-                            {dev_badge}
-                        </div>
-                    </div>
-                    <div style="flex-shrink: 0;">
-                        <svg width="56" height="42" viewBox="0 0 64 48" fill="none">
-                            <path d="M6 24 H18" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M2 30 H14" stroke="#60A5FA" stroke-width="2" stroke-linecap="round"/>
-                            <path d="M8 36 H16" stroke="#93C5FD" stroke-width="1.5" stroke-linecap="round"/>
-                            <g transform="rotate(-8 36 24)">
-                                <rect x="20" y="10" width="38" height="26" rx="4" fill="#3B82F6" stroke="#2563EB" stroke-width="1.5"/>
-                                <path d="M20 12 L39 26 L58 12" stroke="#FFFFFF" stroke-width="1.8" fill="none"/>
-                                <path d="M20 36 L32 23" stroke="#1D4ED8" stroke-width="1.2" opacity="0.6"/>
-                                <path d="M58 36 L46 23" stroke="#1D4ED8" stroke-width="1.2" opacity="0.6"/>
-                            </g>
-                        </svg>
-                    </div>
+                <div class="auth-center-icon-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2l-2 2m-1.5 1.5L14 9a6 6 0 1 0 3 3l3.5-3.5m0 0l2 2m-2-2l2-2"/>
+                        <circle cx="8" cy="16" r="3"/>
+                    </svg>
                 </div>
+                <div class="auth-form-title">Set New Password</div>
+                <div class="auth-form-sub">Enter the recovery code sent to <strong>{email}</strong> and configure your new password.</div>
                 """, unsafe_allow_html=True)
 
-                # 1. 6-Digit Recovery Code
                 st.markdown("""
-                <div class="auth-input-label" style="margin-bottom: 4px;">
-                    <span>6-Digit Recovery Code</span> <span style="color: #EF4444; font-weight: bold;">*</span>
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-1.5 1.5L14 9a6 6 0 1 0 3 3l3.5-3.5m0 0l2 2m-2-2l2-2"/><circle cx="8" cy="16" r="3"/></svg>
+                    <span>6-Digit Recovery Code</span>
                 </div>
                 """, unsafe_allow_html=True)
-                c_rc1, c_rc2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_rc1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 2l-2 2m-1.5 1.5L14 9a6 6 0 1 0 3 3l3.5-3.5m0 0l2 2m-2-2l2-2"/>
-                            <circle cx="8" cy="16" r="3"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_rc2:
-                    rec_code = st.text_input("6-Digit Recovery Code *", max_chars=6, key="panel_rec_otp_input", placeholder="Enter 6-digit code", label_visibility="collapsed")
-                st.markdown('<div class="auth-input-help">e.g. 123456</div>', unsafe_allow_html=True)
+                rec_code = st.text_input("Recovery Code", max_chars=6, key="panel_rec_otp_input", placeholder="Enter 6-digit code", label_visibility="collapsed")
 
-                # 2. New Password
                 st.markdown("""
-                <div class="auth-input-label" style="margin-bottom: 4px;">
-                    <span>New Password</span> <span style="color: #EF4444; font-weight: bold;">*</span>
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>New Password</span>
                 </div>
                 """, unsafe_allow_html=True)
-                c_np1, c_np2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_np1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_np2:
-                    rec_p1 = st.text_input("New Password *", type="password", key="panel_rec_p1", placeholder="••••••••", label_visibility="collapsed")
+                rec_p1 = st.text_input("New Password", type="password", key="panel_rec_p1", placeholder="••••••••", label_visibility="collapsed")
 
-                # Dynamic Password Strength Meter
                 _, str_label, str_color, str_bars = compute_password_strength(rec_p1)
                 st.markdown(f"""
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 6px; margin-bottom: 8px;">
-                    <div style="display: flex; gap: 6px; flex: 1; max-width: 250px;">
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[0]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[1]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[2]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[3]};"></span>
-                        <span style="flex: 1; height: 5px; border-radius: 4px; background: {str_bars[4]};"></span>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px; margin-bottom: 6px;">
+                    <div style="display: flex; gap: 4px; flex: 1; max-width: 220px;">
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[0]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[1]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[2]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[3]};"></span>
+                        <span style="flex: 1; height: 4px; border-radius: 3px; background: {str_bars[4]};"></span>
                     </div>
-                    <span style="font-size: 0.74rem; font-weight: 700; color: {str_color};">{str_label}</span>
+                    <span style="font-size: 0.72rem; font-weight: 700; color: {str_color};">{str_label}</span>
                 </div>
                 """, unsafe_allow_html=True)
 
-                # 3. Confirm New Password
                 st.markdown("""
-                <div class="auth-input-label" style="margin-bottom: 4px;">
-                    <span>Confirm New Password</span> <span style="color: #EF4444; font-weight: bold;">*</span>
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Confirm New Password</span>
                 </div>
                 """, unsafe_allow_html=True)
-                c_cn1, c_cn2 = st.columns([0.11, 0.89], gap="small", vertical_alignment="center")
-                with c_cn1:
-                    st.markdown("""
-                    <div class="auth-input-icon-box">
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                            <polyline points="9 12 11 14 15 10"/>
-                        </svg>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with c_cn2:
-                    rec_p2 = st.text_input("Confirm New Password *", type="password", key="panel_rec_p2", placeholder="••••••••", label_visibility="collapsed")
-                st.markdown('<div class="auth-input-help">Re-enter the same password to confirm.</div>', unsafe_allow_html=True)
+                rec_p2 = st.text_input("Confirm New Password", type="password", key="panel_rec_p2", placeholder="••••••••", label_visibility="collapsed")
 
-                # Password Requirements Box
-                st.markdown(render_password_requirements_box(), unsafe_allow_html=True)
+                st.markdown(render_password_requirements_box(rec_p1, is_dark=is_dark), unsafe_allow_html=True)
 
-                st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
-                if st.button("↻ Reset Password & Save →", type="primary", use_container_width=True, key="panel_btn_finish_rec"):
-                    ok, msg = auth_svc.verify_recovery_otp_and_reset_password(email, rec_code, rec_p1, rec_p2)
-                    if ok:
-                        st.success(msg)
-                        st.session_state["auth_view"] = "LOGIN"
+                if st.button("Reset Password & Save →", type="primary", use_container_width=True, key="panel_btn_finish_rec"):
+                    if not rec_code or len(rec_code.strip()) < 6:
+                        trigger_popup("Recovery Code Required", "Please enter the complete 6-digit recovery code.", "warning")
+                        st.rerun()
+                    elif not rec_p1 or not rec_p2:
+                        trigger_popup("Password Required", "Please enter and confirm your new password.", "warning")
+                        st.rerun()
+                    elif rec_p1 != rec_p2:
+                        trigger_popup("Password Mismatch", "The passwords entered do not match. Please re-enter.", "warning")
                         st.rerun()
                     else:
-                        st.error(msg)
+                        with st.spinner("Securing new password hash..."):
+                            ok, msg = auth_svc.verify_recovery_otp_and_reset_password(email, rec_code, rec_p1, rec_p2)
+                        if ok:
+                            trigger_popup("Password Reset Successful", msg or "Your password has been reset successfully! You can now sign in with your new password.", "success")
+                            st.session_state["auth_view"] = "LOGIN"
+                            st.rerun()
+                        else:
+                            trigger_popup("Password Reset Failed", msg or "Invalid recovery code or password reset failed.", "error")
+                            st.rerun()
 
-                st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
-                if st.button("← Cancel Recovery", use_container_width=True, key="panel_btn_cancel_rec"):
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                if st.button("Cancel Recovery", use_container_width=True, key="panel_btn_cancel_rec"):
                     st.session_state["auth_view"] = "LOGIN"
                     st.rerun()
 
-                # Footer Trust Badges (Image 4)
-                st.markdown("""
-                <div class="auth-card-footer-trust" style="display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 0.72rem; color: #64748B; flex-wrap: wrap;">
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
-                        </svg>
-                        <span>HIPAA & WHO Compliant</span>
-                    </div>
-                    <span style="color: #CBD5E1;">|</span>
-                    <span>Trusted Healthcare</span>
-                    <span style="color: #CBD5E1;">|</span>
-                    <span>Better Health, Brighter Tomorrow</span>
-                </div>
-                """, unsafe_allow_html=True)
-
-            # 7. ADMIN LOGIN VIEW
+            # -------------------------------------------------------------
+            # VIEW 7: ADMINISTRATOR SIGN IN
+            # -------------------------------------------------------------
             elif view == "ADMIN_LOGIN":
                 st.markdown("""
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <div class="auth-admin-hdr-icon" style="width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                                <circle cx="9" cy="7" r="4"/>
-                                <circle cx="19" cy="11" r="2"/>
-                                <path d="M19 8v1M19 13v1M17 9.5l.8.5M20.2 12l.8.5M17 12.5l.8-.5M20.2 10l.8-.5"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="auth-card-title" style="margin: 0; font-size: 1.30rem; font-weight: 800; color: #0F172A;">National Administrator Console Sign-In</h3>
-                            <p class="auth-card-subtitle" style="margin: 2px 0 0 0; font-size: 0.80rem; color: #64748B;">Restricted access for certified National Command personnel.</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <svg width="34" height="34" viewBox="0 0 24 24" fill="#2563EB">
-                            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                            <polyline points="7 12 10 12 11.5 8 13.5 16 15 12 17 12" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        <div style="text-align: left;">
-                            <div class="auth-card-title" style="font-weight: 800; font-size: 1.15rem; color: #0F172A; line-height: 1.1;">DocMindX AI</div>
-                            <div class="auth-card-subtitle" style="font-size: 0.65rem; color: #64748B; font-weight: 600; letter-spacing: 0.02em;">Secure Health • Smarter Tomorrow</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="auth-admin-alert">
-                    <div class="auth-admin-alert-icon" style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <strong class="auth-admin-alert-title" style="font-size: 0.84rem; display: block;">Authorized Personnel Only</strong>
-                        <span class="auth-admin-alert-sub" style="font-size: 0.76rem; line-height: 1.35;">This console is restricted to verified National Command administrators. All access attempts are logged and monitored.</span>
-                    </div>
-                </div>
-                <div class="auth-input-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                <div class="auth-center-icon-badge" style="background: rgba(239, 68, 68, 0.10); border-color: rgba(239, 68, 68, 0.30);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <circle cx="12" cy="11" r="3"/>
                     </svg>
+                </div>
+                <div class="auth-form-title" style="color: #EF4444;">Administrator Console</div>
+                <div class="auth-form-sub">Restricted console for certified National Healthcare Command personnel. All sessions are cryptographically logged.</div>
+                """, unsafe_allow_html=True)
+
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <span>Administrator Identity</span>
                 </div>
                 """, unsafe_allow_html=True)
-                adm_email = st.text_input("Administrator Identity", placeholder="Enter administrator ID", key="panel_adm_email", label_visibility="collapsed")
+                adm_email = st.text_input("Administrator Identity", placeholder="e.g. docmindxai@gmail.com", key="panel_adm_email", label_visibility="collapsed")
 
-                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 st.markdown("""
-                <div class="auth-input-label">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    <span>Master Password</span>
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>Master Security Password</span>
                 </div>
                 """, unsafe_allow_html=True)
-                adm_pass = st.text_input("Master Password", type="password", key="panel_adm_pass", placeholder="Enter master password", label_visibility="collapsed")
+                adm_pass = st.text_input("Master Password", type="password", key="panel_adm_pass", placeholder="••••••••", label_visibility="collapsed")
 
-                st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
-                if st.button(
-                    "**Verify Credentials & Request Admin Key →**  \nAuthenticate and proceed to secure console",
-                    type="primary",
-                    use_container_width=True,
-                    key="panel_btn_adm_cred"
-                ):
-                    ok, msg = auth_svc.authenticate_admin_credentials(adm_email, adm_pass)
-                    if ok:
-                        st.session_state["auth_temp_email"] = adm_email.strip().lower()
-                        auth_svc.send_admin_login_otp_code(adm_email)
-                        st.session_state["auth_view"] = "ADMIN_OTP"
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                if st.button("Verify Credentials & Request Admin Key →", type="primary", use_container_width=True, key="panel_btn_adm_cred"):
+                    if not adm_email or not adm_email.strip() or not adm_pass:
+                        st.session_state["auth_err_adm_email"] = not bool(adm_email and adm_email.strip())
+                        st.session_state["auth_err_adm_pass"] = not bool(adm_pass)
+                        trigger_popup("Admin Credentials Required", "Please enter your administrator ID and master password.", "warning")
                         st.rerun()
                     else:
-                        st.error(msg)
+                        st.session_state.pop("auth_err_adm_email", None)
+                        st.session_state.pop("auth_err_adm_pass", None)
+                        with st.spinner("Authorizing admin credentials..."):
+                            ok, msg = auth_svc.authenticate_admin_credentials(adm_email, adm_pass)
+                        if ok:
+                            st.session_state["auth_temp_email"] = adm_email.strip().lower()
+                            auth_svc.send_admin_login_otp_code(adm_email)
+                            trigger_popup("Admin Credentials Verified", f"Security key dispatched to {adm_email}.", "success")
+                            st.session_state["auth_view"] = "ADMIN_OTP"
+                            st.rerun()
+                        else:
+                            trigger_popup("Admin Access Denied", msg or "Invalid administrator credentials.", "error")
+                            st.rerun()
 
-                st.markdown('<div class="auth-or-divider"><span>OR</span></div>', unsafe_allow_html=True)
+                # Clean Bottom Navigation (No emojis, hides current view)
+                render_auth_bottom_nav("ADMIN")
 
-                if st.button(
-                    "**Regular Patient Sign In**  \nReturn to patient portal",
-                    use_container_width=True,
-                    key="panel_btn_back_from_adm"
-                ):
-                    st.session_state["auth_view"] = "LOGIN"
-                    st.rerun()
-
-            # 8. ADMIN OTP VIEW
+            # -------------------------------------------------------------
+            # VIEW 8: ADMIN KEY OTP
+            # -------------------------------------------------------------
             elif view == "ADMIN_OTP":
                 email = st.session_state.get("auth_temp_email", "docmindxai@gmail.com")
                 st.markdown(f"""
-                <div class="auth-admin-otp-banner" style="border-radius: 10px; padding: 14px; margin-bottom: 16px;">
-                    <div class="auth-admin-otp-title" style="font-weight: 700; font-size: 1.0rem; margin-bottom: 4px;">Admin Dual-Factor Key Verification</div>
-                    <div class="auth-admin-otp-sub" style="font-size: 0.82rem;">High-security authorization key dispatched to <strong class="auth-admin-otp-email">{email}</strong>.</div>
+                <div class="auth-center-icon-badge" style="background: rgba(239, 68, 68, 0.10); border-color: rgba(239, 68, 68, 0.30);">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 2l-2 2m-1.5 1.5L14 9a6 6 0 1 0 3 3l3.5-3.5m0 0l2 2m-2-2l2-2"/>
+                        <circle cx="8" cy="16" r="3"/>
+                    </svg>
                 </div>
+                <div class="auth-form-title" style="color: #EF4444;">Admin Security Key</div>
+                <div class="auth-form-sub">High-security authorization key dispatched to <strong>{email}</strong>.</div>
                 """, unsafe_allow_html=True)
 
-                adm_otp_val = st.text_input("6-Digit Admin Key", max_chars=6, key="panel_adm_otp_val", placeholder="123456")
+                st.markdown("""
+                <div class="auth-clean-label">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    <span>6-Digit Admin Key</span>
+                </div>
+                """, unsafe_allow_html=True)
+                adm_otp_val = st.text_input("6-Digit Admin Key", max_chars=6, key="panel_adm_otp_val", placeholder="123456", label_visibility="collapsed")
 
-                c_ao1, c_ao2 = st.columns([1, 1])
-                with c_ao1:
-                    if st.button("Authenticate Admin Console", type="primary", use_container_width=True, key="panel_btn_adm_auth"):
-                        ok, msg, session_data = auth_svc.complete_admin_login(email, adm_otp_val)
+                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+                if st.button("Authenticate Admin Console →", type="primary", use_container_width=True, key="panel_btn_adm_auth"):
+                    if not adm_otp_val or len(adm_otp_val.strip()) < 6:
+                        trigger_popup("Admin Key Required", "Please enter the 6-digit admin security key.", "warning")
+                        st.rerun()
+                    else:
+                        with st.spinner("Granting elevated admin session..."):
+                            ok, msg, session_data = auth_svc.complete_admin_login(email, adm_otp_val)
                         if ok:
                             st.session_state["user_auth"] = session_data
                             st.session_state["active_panel"] = "Admin Panel"
-                            st.success("Admin access granted!")
+                            trigger_popup("Admin Access Granted", "Welcome to the National Command Administrative Console.", "success")
                             st.rerun()
                         else:
-                            st.error(msg)
-                with c_ao2:
-                    if st.button("Resend Key", use_container_width=True, key="panel_btn_resend_adm_key"):
-                        ok, msg = auth_svc.send_admin_login_otp_code(email)
-                        if ok:
-                            st.success(msg)
+                            trigger_popup("Authentication Failed", msg or "Invalid administrator key.", "error")
                             st.rerun()
-                        else:
-                            st.warning(msg)
 
-                st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
-                if st.button("← Cancel", key="panel_btn_cancel_adm"):
+                st.markdown('<div class="auth-or-divider"><span>OPTIONS</span></div>', unsafe_allow_html=True)
+
+                if st.button("Resend Admin Key", use_container_width=True, key="panel_btn_resend_adm_key"):
+                    ok, msg = auth_svc.send_admin_login_otp_code(email)
+                    if ok:
+                        trigger_popup("Admin Key Dispatched", msg or "A new security key has been dispatched.", "success")
+                        st.rerun()
+                    else:
+                        trigger_popup("Dispatch Failed", msg or "Could not resend admin key.", "warning")
+                        st.rerun()
+
+                st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+                if st.button("Cancel", key="panel_btn_cancel_adm", use_container_width=True):
                     st.session_state["auth_view"] = "LOGIN"
                     st.rerun()
-
-    if view == "RECOVERY":
-        st.markdown("""
-        <div style="text-align: center; margin-top: 24px; padding-top: 14px; font-size: 0.74rem; font-weight: 700; color: #94A3B8; letter-spacing: 0.14em;">
-            &mdash;&mdash;&mdash;&nbsp;&nbsp; BETTER HEALTH &bull; SAFER DATA &bull; BRIGHTER TOMORROW &nbsp;&nbsp;&mdash;&mdash;&mdash;
-        </div>
-        """, unsafe_allow_html=True)
