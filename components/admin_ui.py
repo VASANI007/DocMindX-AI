@@ -6,6 +6,7 @@ and security audit logs with strict server-side authorization enforcement.
 import streamlit as st
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
+from config.database import get_database_engine_name
 from datetime import datetime
 
 
@@ -246,7 +247,7 @@ def render_admin_dashboard_view():
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;font-size:0.82rem;">
                         <div style="display:flex;align-items:center;gap:10px;color:#F8FAFC;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60A5FA" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-                            <span>Database Engine: <strong style="color:#94A3B8;font-weight:600;">SQLite3 (Foreign Keys ON)</strong></span>
+                            <span>Database Engine: <strong style="color:#94A3B8;font-weight:600;">{get_database_engine_name()}</strong></span>
                         </div>
                         <span style="color:#34D399;font-weight:700;font-size:0.78rem;display:flex;align-items:center;gap:5px;"><span style="width:6px;height:6px;border-radius:50%;background:#34D399;display:inline-block;"></span> Online</span>
                     </div>

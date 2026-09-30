@@ -4,28 +4,23 @@ Strictly parameterized queries to completely eliminate SQL Injection vulnerabili
 Provides strict user data isolation and auditable administrative controls.
 """
 import os
-import sqlite3
 import json
 from datetime import datetime, date
+from config.database import get_db_connection as config_get_db_connection
 
 DB_DIR = os.path.dirname(__file__)
-DB_PATH = os.path.join(DB_DIR, "DocMindX.db")
-SCHEMA_PATH = os.path.join(DB_DIR, "schema.sql")
+SCHEMA_PG_PATH = os.path.join(DB_DIR, "schema_postgres.sql")
 
 def get_db_connection():
-    """Returns a SQLite connection with row factory and foreign keys enabled."""
-    os.makedirs(DB_DIR, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON;")
-    return conn
+    """Returns an active Supabase PostgreSQL database connection."""
+    return config_get_db_connection()
 
 def init_auth_tables():
-    """Ensures all authentication, family, medical history, scan, and audit tables exist."""
+    """Ensures all authentication, family, medical history, scan, and audit tables exist in Supabase."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    if os.path.exists(SCHEMA_PATH):
-        with open(SCHEMA_PATH, "r", encoding="utf-8") as f:
+    if os.path.exists(SCHEMA_PG_PATH):
+        with open(SCHEMA_PG_PATH, "r", encoding="utf-8") as f:
             cursor.executescript(f.read())
         conn.commit()
     # Migration: Ensure state column exists on family_members and users tables
@@ -751,7 +746,7 @@ def admin_get_kpis() -> dict:
     total_scans = cursor.fetchone()[0]
     
     today_str = date.today().strftime("%Y-%m-%d")
-    cursor.execute("SELECT COUNT(*) FROM medical_scans WHERE created_at LIKE ?", (f"{today_str}%",))
+    cursor.execute("SELECT COUNT(*) FROM medical_scans WHERE CAST(created_at AS TEXT) LIKE ?", (f"{today_str}%",))
     scans_today = cursor.fetchone()[0]
     
     cursor.execute("""
@@ -892,9 +887,9 @@ def admin_get_security_logs(event_type: str = None, search: str = None, limit: i
         query += " AND event_type = ?"
         params.append(event_type)
     if search:
-        query += " AND (email LIKE ? OR details LIKE ?)"
+        query += " AND (email LIKE ? OR details LIKE ? OR event_type LIKE ?)"
         term = f"%{search.strip()}%"
-        params.extend([term, term])
+        params.extend([term, term, term])
     query += " ORDER BY id DESC LIMIT ?"
     params.append(int(limit))
     

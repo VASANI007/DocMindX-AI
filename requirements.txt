@@ -38,6 +38,9 @@ google-cloud-bigquery>=3.20.0
 # --- Geospatial Mapping & GIS Telemetry ---
 folium>=0.16.0
 
+# --- Relational Database & Cloud Persistence (PostgreSQL / Supabase & SQLite) ---
+psycopg2-binary>=2.9.9
+
 # --- Network Communications & Environment Management ---
 requests>=2.31.0
 python-dotenv>=1.0.0

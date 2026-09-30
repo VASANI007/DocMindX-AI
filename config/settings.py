@@ -65,5 +65,6 @@ SUPPORTED_LANGUAGES = {
     "اردو (Urdu)": "ur"
 }
 
-# DB Path
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "database", "DocMindX.db")
+# Database Configuration (Supabase PostgreSQL Only)
+from config.database import get_database_engine_name
+DATABASE_ENGINE = get_database_engine_name()

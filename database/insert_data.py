@@ -1,20 +1,17 @@
 """
-    DocMindX AI - Database Data Insertion and Session Logging Helper
+DocMindX AI — Supabase PostgreSQL Data Insertion & Clinical Session Logging
 """
 import os
-import sqlite3
 import json
 import datetime
-
-DB_PATH = os.path.join(os.path.dirname(__file__), "DocMindX.db")
+from config.database import get_db_connection as config_get_db_connection
 
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Returns an active Supabase PostgreSQL database connection."""
+    return config_get_db_connection()
 
 def log_triage_session(session_data: dict) -> int:
-    """Inserts a completed triage session into triage_history table."""
+    """Inserts a completed triage session into Supabase triage_history table."""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -23,7 +20,7 @@ def log_triage_session(session_data: dict) -> int:
         session_id, age_group, gender, state, district, duration,
         symptoms_list, existing_conditions, current_medicines,
         urgency_level, possible_conditions_json, red_flag_alert
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """
     symptoms_str = json.dumps(session_data.get("symptoms", []))
     conditions_json = json.dumps(session_data.get("ranked_conditions", []))
@@ -49,14 +46,14 @@ def log_triage_session(session_data: dict) -> int:
     return inserted_id
 
 def log_report_analysis(report_name: str, report_type: str, extracted_text: str, summary: str, findings: list, abnormal_count: int = 0) -> int:
-    """Inserts a blood/lab report OCR analysis log."""
+    """Inserts a blood/lab report OCR analysis record into Supabase."""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     query = """
     INSERT INTO report_analysis_history (
         report_name, report_type, extracted_text, summary, abnormal_count, details_json
-    ) VALUES (?, ?, ?, ?, ?, ?)
+    ) VALUES (%s, %s, %s, %s, %s, %s)
     """
     
     cursor.execute(query, (
@@ -74,11 +71,11 @@ def log_report_analysis(report_name: str, report_type: str, extracted_text: str,
     return inserted_id
 
 def get_recent_triage_history(limit: int = 20) -> list:
-    """Fetches recent triage assessments from DocMindX.db."""
+    """Fetches recent triage assessments from Supabase PostgreSQL."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM triage_history ORDER BY id DESC LIMIT ?", (limit,))
+        cursor.execute("SELECT * FROM triage_history ORDER BY id DESC LIMIT %s", (limit,))
         rows = [dict(r) for r in cursor.fetchall()]
         conn.close()
         return rows
@@ -87,11 +84,11 @@ def get_recent_triage_history(limit: int = 20) -> list:
         return []
 
 def get_recent_report_history(limit: int = 20) -> list:
-    """Fetches recent report analyses from DocMindX.db."""
+    """Fetches recent report analyses from Supabase PostgreSQL."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM report_analysis_history ORDER BY id DESC LIMIT ?", (limit,))
+        cursor.execute("SELECT * FROM report_analysis_history ORDER BY id DESC LIMIT %s", (limit,))
         rows = [dict(r) for r in cursor.fetchall()]
         conn.close()
         return rows
@@ -100,7 +97,7 @@ def get_recent_report_history(limit: int = 20) -> list:
         return []
 
 def seed_sample_records_if_empty():
-    """Seeds starter sample records into DocMindX.db if empty."""
+    """Seeds starter sample records into Supabase PostgreSQL if empty."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -110,7 +107,7 @@ def seed_sample_records_if_empty():
         if count_reports == 0:
             cursor.execute("""
             INSERT INTO report_analysis_history (report_name, report_type, extracted_text, summary, abnormal_count, details_json)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """, (
                 "Complete Blood Count (CBC)",
                 "Pathology Lab Report",
@@ -121,7 +118,7 @@ def seed_sample_records_if_empty():
             ))
             cursor.execute("""
             INSERT INTO report_analysis_history (report_name, report_type, extracted_text, summary, abnormal_count, details_json)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """, (
                 "Lipid Profile Panel",
                 "Biochemistry Report",
