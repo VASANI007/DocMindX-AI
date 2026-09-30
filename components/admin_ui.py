@@ -4,11 +4,168 @@ Provides dynamic real-time KPIs, user management, family & scan oversight,
 and security audit logs with strict server-side authorization enforcement.
 """
 import streamlit as st
+import json
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
 from config.database import get_database_engine_name
 from datetime import datetime
 
+
+
+PAGE_SIZE = 20
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_kpis():
+    return auth_db.admin_get_kpis()
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_users_count(search: str = "", status_filter: str = "ALL"):
+    return auth_db.admin_get_users_count(search=search, status_filter=status_filter)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_users(search: str = "", status_filter: str = "ALL", limit: int = 20, offset: int = 0):
+    return auth_db.admin_get_users(search=search, status_filter=status_filter, limit=limit, offset=offset)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_family_overview_count(search: str = ""):
+    return auth_db.admin_get_family_overview_count(search=search)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_family_overview(search: str = "", limit: int = 20, offset: int = 0):
+    return auth_db.admin_get_family_overview(search=search, limit=limit, offset=offset)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_all_scans_count(search: str = "", scan_type: str = "ALL", scan_mode: str = "ALL"):
+    return auth_db.admin_get_all_scans_count(search=search, scan_type=scan_type, scan_mode=scan_mode)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_all_scans(search: str = "", scan_type: str = "ALL", scan_mode: str = "ALL", limit: int = 20, offset: int = 0):
+    return auth_db.admin_get_all_scans(search=search, scan_type=scan_type, scan_mode=scan_mode, limit=limit, offset=offset)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_security_logs_count(event_type: str = "ALL", search: str = ""):
+    return auth_db.admin_get_security_logs_count(event_type=event_type, search=search)
+
+@st.cache_data(ttl=25, show_spinner=False)
+def _cached_admin_security_logs(event_type: str = "ALL", search: str = "", limit: int = 20, offset: int = 0):
+    return auth_db.admin_get_security_logs(event_type=event_type, search=search, limit=limit, offset=offset)
+
+def _invalidate_admin_caches():
+    _cached_admin_kpis.clear()
+    _cached_admin_users_count.clear()
+    _cached_admin_users.clear()
+    _cached_admin_family_overview_count.clear()
+    _cached_admin_family_overview.clear()
+    _cached_admin_all_scans_count.clear()
+    _cached_admin_all_scans.clear()
+    _cached_admin_security_logs_count.clear()
+    _cached_admin_security_logs.clear()
+
+
+def render_pagination_toolbar(total_items: int, current_page_key: str, default_page_size: int = PAGE_SIZE) -> tuple[int, int, int]:
+    """
+    Renders the modern unified pagination toolbar card matching the UI design:
+    [ Showing 1-20 of 50 results ]   [ « ‹ 1 2 3 › » ]   [ Show [20 ▾] per page ]
+    
+    Returns:
+        (curr_page, page_size, offset)
+    """
+    page_size_key = f"{current_page_key}_size"
+    page_size = st.session_state.get(page_size_key, default_page_size)
+
+    total_pages = max(1, (total_items + page_size - 1) // page_size)
+    curr_page = st.session_state.get(current_page_key, 1)
+    if curr_page > total_pages:
+        curr_page = total_pages
+        st.session_state[current_page_key] = curr_page
+    if curr_page < 1:
+        curr_page = 1
+        st.session_state[current_page_key] = curr_page
+
+    offset = (curr_page - 1) * page_size
+    start_item = 0 if total_items == 0 else offset + 1
+    end_item = min(offset + page_size, total_items)
+
+    # Navigation button items: persistent « and ‹ (disabled when on page 1)
+    btn_items = [
+        ("«", 1 if curr_page > 1 else None, "First Page"),
+        ("‹", (curr_page - 1) if curr_page > 1 else None, "Previous Page"),
+    ]
+
+    # Smart ellipsis pagination (e.g. 1 2 3 or 1 2 3 4 ... 20)
+    if total_pages <= 5:
+        for p in range(1, total_pages + 1):
+            btn_items.append((str(p), p, f"Page {p}"))
+    else:
+        if curr_page <= 3:
+            for p in range(1, 5):
+                btn_items.append((str(p), p, f"Page {p}"))
+            btn_items.append(("...", None, "More Pages"))
+            btn_items.append((str(total_pages), total_pages, f"Page {total_pages}"))
+        elif curr_page >= total_pages - 2:
+            btn_items.append(("1", 1, "Page 1"))
+            btn_items.append(("...", None, "More Pages"))
+            for p in range(total_pages - 3, total_pages + 1):
+                btn_items.append((str(p), p, f"Page {p}"))
+        else:
+            btn_items.append(("1", 1, "Page 1"))
+            btn_items.append(("...", None, "More Pages"))
+            for p in range(curr_page - 1, curr_page + 2):
+                btn_items.append((str(p), p, f"Page {p}"))
+            btn_items.append(("...", None, "More Pages"))
+            btn_items.append((str(total_pages), total_pages, f"Page {total_pages}"))
+
+    # Persistent › and » (disabled when on last page)
+    btn_items.append(("›", (curr_page + 1) if curr_page < total_pages else None, "Next Page"))
+    btn_items.append(("»", total_pages if curr_page < total_pages else None, "Last Page"))
+
+    # Render Toolbar Card
+    with st.container(key=f"adm_pg_toolbar_{current_page_key}"):
+        col_l, col_c, col_r = st.columns([2.0, 5.8, 2.2], vertical_alignment="center")
+        
+        with col_l:
+            st.markdown(
+                f'<div class="adm-pg-showing-text">'
+                f'Showing <strong>{start_item}–{end_item}</strong> of <strong>{total_items}</strong> results'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+            
+        with col_c:
+            with st.container(key=f"adm_pg_btn_group_{current_page_key}"):
+                btn_cols = [0.1] + [1.0] * len(btn_items) + [0.1]
+                p_all_cols = st.columns(btn_cols, vertical_alignment="center")
+                p_cols = p_all_cols[1:1 + len(btn_items)]
+                for i, (label, target_page, tip) in enumerate(btn_items):
+                    with p_cols[i]:
+                        with st.container(key=f"wrap_pg_{current_page_key}_{i}"):
+                            if label == "...":
+                                st.button("...", key=f"pg_btn_{current_page_key}_dots_{i}", disabled=True)
+                            elif target_page is None:
+                                st.button(label, key=f"pg_btn_{current_page_key}_dis_{label}_{i}", disabled=True, help=tip)
+                            else:
+                                is_curr = (label == str(curr_page))
+                                if st.button(label, key=f"pg_btn_{current_page_key}_{label}_{i}", type="primary" if is_curr else "secondary", help=tip):
+                                    st.session_state[current_page_key] = target_page
+                                    st.rerun()
+                
+        with col_r:
+            with st.container(key=f"adm_pg_size_wrap_{current_page_key}"):
+                r_sp, r_c1, r_c2, r_c3 = st.columns([0.1, 0.6, 1.9, 1.1], vertical_alignment="center")
+                with r_c1:
+                    st.markdown('<div class="adm-pg-label-show">Show</div>', unsafe_allow_html=True)
+                with r_c2:
+                    sz_opts = [10, 20, 50, 100]
+                    sel_idx = sz_opts.index(page_size) if page_size in sz_opts else 1
+                    new_sz = st.selectbox("Page Size", sz_opts, index=sel_idx, key=f"adm_pg_sz_sel_{current_page_key}", label_visibility="collapsed")
+                    if new_sz != page_size:
+                        st.session_state[page_size_key] = new_sz
+                        st.session_state[current_page_key] = 1
+                        st.rerun()
+                with r_c3:
+                    st.markdown('<div class="adm-pg-label-perpage">per page</div>', unsafe_allow_html=True)
+
+    return curr_page, page_size, offset
 
 
 def render_admin_dashboard_view():
@@ -45,8 +202,7 @@ def render_admin_dashboard_view():
                 </div>
             </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-            <div style="color: #BAE6FD; font-size: 2.2rem; font-weight: 200; opacity: 0.4; line-height: 1; pointer-events: none; margin-right: -4px;">+</div>
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 36px; height: 36px; border-radius: 10px; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
@@ -82,7 +238,7 @@ def render_admin_dashboard_view():
     # TAB 1: DYNAMIC REAL-TIME KPIS (MOCKUP IMAGE 2)
     
     with tab_dash:
-        kpis = auth_db.admin_get_kpis()
+        kpis = _cached_admin_kpis()
 
         # 4 KPI Cards Matching Image 2
         k_col1, k_col2, k_col3, k_col4 = st.columns(4)
@@ -155,7 +311,7 @@ def render_admin_dashboard_view():
                     <div style="font-size: 0.68rem; font-weight: 700; color: #64748B; letter-spacing: 0.04em;">TOTAL MEDICAL SCANS</div>
                     <div style="display: flex; align-items: center; gap: 8px; margin: 2px 0;">
                         <span style="font-size: 1.75rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.1;">{kpis['total_scans']}</span>
-                        <span style="background: #ECFDF5; border: 1px solid #A7F3D0; color: #059669; font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 3px;">
+                        <span class="adm-portal-status-pill-green" style="font-size: 0.72rem; font-weight: 700; padding: 2px 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 3px;">
                             &uarr; +{kpis['scans_today']} Today
                         </span>
                     </div>
@@ -238,7 +394,7 @@ def render_admin_dashboard_view():
                         </svg>
                         <h4 style="margin:0;font-size:1.15rem;font-weight:800;color:var(--mm-text-primary);">Operational Status</h4>
                     </div>
-                    <div style="background:#ECFDF5;border:1px solid #A7F3D0;color:#059669;border-radius:20px;padding:3px 12px;font-size:0.74rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
+                    <div class="adm-portal-status-pill-green" style="border-radius:20px;padding:3px 12px;font-size:0.74rem;font-weight:700;display:inline-flex;align-items:center;gap:6px;">
                         <span style="width:7px;height:7px;border-radius:50%;background:#10B981;display:inline-block;"></span>
                         <span>All Systems Active</span>
                     </div>
@@ -281,9 +437,9 @@ def render_admin_dashboard_view():
                         </div>
                     </div>
                 </div>
-                <div style="background:#EFF6FF;border:1px solid #DBEAFE;border-radius:12px;padding:12px 16px;margin-top:14px;display:flex;align-items:center;gap:12px;">
+                <div class="adm-info-notice-banner" style="border-radius:12px;padding:12px 16px;margin-top:14px;display:flex;align-items:center;gap:12px;">
                     <div style="width:24px;height:24px;border-radius:50%;background:#2563EB;color:#FFFFFF;font-weight:800;font-size:0.78rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;">i</div>
-                    <div style="font-size:0.80rem;color:#1E40AF;line-height:1.35;font-weight:500;">National healthcare data is protected with enterprise-grade security and monitoring.</div>
+                    <div style="font-size:0.80rem;line-height:1.35;font-weight:600;">National healthcare data is protected with enterprise-grade security and monitoring.</div>
                 </div>
             </div>
         </div>
@@ -361,23 +517,20 @@ def render_admin_dashboard_view():
                             else:
                                 p_hash = auth_svc.hash_password(nu_pass)
                                 new_uid = auth_db.create_user(nu_name, nu_email, p_hash, account_status=nu_stat, email_verified=1 if nu_ver else 0)
+                                _invalidate_admin_caches()
                                 auth_db.log_security_event("USER_CREATED_BY_ADMIN", email=nu_email, user_id=new_uid, details=f"Admin created user: {nu_name}")
                                 st.success(f"User {nu_name} successfully created!")
                                 st.rerun()
 
-        # Fetch users
-        users = auth_db.admin_get_users(search=u_search, status_filter=u_status, limit=100)
-        st.markdown(f"""
-        <div class="adm-portal-counter-bar">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-                <span>Displaying <strong>{len(users)}</strong> user record(s)</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Reset page when search or status filter changes
+        u_filter_sig = f"{u_search}_{u_status}"
+        if st.session_state.get("last_u_filter_sig") != u_filter_sig:
+            st.session_state["last_u_filter_sig"] = u_filter_sig
+            st.session_state["adm_u_page"] = 1
+
+        total_users = _cached_admin_users_count(search=u_search, status_filter=u_status)
+        curr_u_page, u_page_size, u_offset = render_pagination_toolbar(total_users, "adm_u_page", PAGE_SIZE)
+        users = _cached_admin_users(search=u_search, status_filter=u_status, limit=u_page_size, offset=u_offset)
 
         for idx, u in enumerate(users):
             uid = u["id"]
@@ -452,11 +605,13 @@ def render_admin_dashboard_view():
                     if u["account_status"] == "ACTIVE":
                         if st.button("Disable", key=f"btn_dis_{uid}", use_container_width=True):
                             auth_db.admin_disable_user(uid)
+                            _invalidate_admin_caches()
                             auth_db.log_security_event("USER_DISABLED_BY_ADMIN", email=u["email"], user_id=uid)
                             st.rerun()
                     else:
                         if st.button("Enable", key=f"btn_en_{uid}", use_container_width=True):
                             auth_db.admin_enable_user(uid)
+                            _invalidate_admin_caches()
                             auth_db.log_security_event("USER_ENABLED_BY_ADMIN", email=u["email"], user_id=uid)
                             st.rerun()
 
@@ -469,6 +624,7 @@ def render_admin_dashboard_view():
                         if st.button("Save Changes", key=f"btn_save_eu_{uid}", type="primary"):
                             auth_db.update_user_profile(uid, eu_name)
                             auth_db.update_user_status(uid, eu_stat, 1 if eu_ver else 0)
+                            _invalidate_admin_caches()
                             auth_db.log_security_event("USER_MODIFIED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Updated status to {eu_stat}")
                             st.success("User updated!")
                             st.rerun()
@@ -480,6 +636,7 @@ def render_admin_dashboard_view():
                         del_perm = st.checkbox("Permanently Purge Records", key=f"perm_del_{uid}")
                         if st.button("Confirm Delete", key=f"btn_confirm_del_{uid}", type="primary"):
                             auth_db.admin_delete_user(uid, permanent=del_perm)
+                            _invalidate_admin_caches()
                             auth_db.log_security_event("USER_DELETED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Permanent: {del_perm}")
                             st.success("User deleted.")
                             st.rerun()
@@ -610,6 +767,7 @@ def render_admin_dashboard_view():
                                         "emergency_contact": afm_em.strip(),
                                         "notes": afm_notes.strip()
                                     })
+                                    _invalidate_admin_caches()
                                     auth_db.log_security_event("FAMILY_MEMBER_ADDED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin added {afm_name} ({afm_rel})")
                                     st.success(f"Family member '{afm_name}' added successfully!")
                                     st.rerun()
@@ -626,23 +784,22 @@ def render_admin_dashboard_view():
                                 with fm_c1:
                                     bg_badge = f'<span style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; margin-left: 6px;">{fm["blood_group"]}</span>' if fm.get("blood_group") else ''
                                     rel_badge = f'<span style="background: rgba(59, 130, 246, 0.15); color: #2563EB; border: 1px solid rgba(59, 130, 246, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">{fm["relationship"]}</span>'
-                                    st.markdown(f"""
-                                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
-                                        <div style="width: 38px; height: 38px; border-radius: 50%; background: #FFE4E6; border: 1.5px solid #FECDD3; color: #E11D48; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; flex-shrink: 0;">
-                                            {fm_init}
-                                        </div>
-                                        <div>
-                                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                                <strong style="font-size: 0.95rem; color: var(--mm-text-primary);">{fm['name']}</strong>
-                                                {rel_badge}
-                                                {bg_badge}
-                                            </div>
-                                            <div style="font-size: 0.78rem; color: #64748B; margin-top: 2px;">
-                                                Age: <strong>{fm.get('age') or 'N/A'}</strong> &bull; Gender: <strong>{fm.get('gender') or 'N/A'}</strong> &bull; Emergency Contact: <strong>{fm.get('emergency_contact') or 'None'}</strong>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    """, unsafe_allow_html=True)
+                                    fm_card_html = (
+                                        f'<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">'
+                                        f'<div style="width: 38px; height: 38px; border-radius: 50%; background: #FFE4E6; border: 1.5px solid #FECDD3; color: #E11D48; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.95rem; flex-shrink: 0;">{fm_init}</div>'
+                                        f'<div>'
+                                        f'<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">'
+                                        f'<strong style="font-size: 0.95rem; color: var(--mm-text-primary);">{fm["name"]}</strong>'
+                                        f'{rel_badge}'
+                                        f'{bg_badge}'
+                                        f'</div>'
+                                        f'<div style="font-size: 0.78rem; color: #64748B; margin-top: 2px;">'
+                                        f'Age: <strong>{fm.get("age") or "N/A"}</strong> &bull; Gender: <strong>{fm.get("gender") or "N/A"}</strong> &bull; Emergency Contact: <strong>{fm.get("emergency_contact") or "None"}</strong>'
+                                        f'</div>'
+                                        f'</div>'
+                                        f'</div>'
+                                    )
+                                    st.markdown(fm_card_html, unsafe_allow_html=True)
                                     if fm.get("notes"):
                                         st.markdown(f"<div style='font-size: 0.76rem; color: #64748B; margin-top: 2px;'><strong>Notes / Allergies:</strong> {fm['notes']}</div>", unsafe_allow_html=True)
                                     conds = [c["condition_name"] for c in fm.get("conditions", [])]
@@ -650,7 +807,7 @@ def render_admin_dashboard_view():
                                     if conds or meds:
                                         detail_text = []
                                         if conds:
-                                            detail_text.append(f"Conditions: {', '.join(conds)}")
+                                             detail_text.append(f"Conditions: {', '.join(conds)}")
                                         if meds:
                                             detail_text.append(f"Medications: {', '.join(meds)}")
                                         st.caption(" &bull; ".join(detail_text))
@@ -692,6 +849,7 @@ def render_admin_dashboard_view():
                                                         "emergency_contact": efm_em.strip(),
                                                         "notes": efm_notes.strip()
                                                     })
+                                                    _invalidate_admin_caches()
                                                     auth_db.log_security_event("FAMILY_MEMBER_MODIFIED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin updated member {efm_name}")
                                                     st.success("Family member updated successfully!")
                                                     st.rerun()
@@ -702,6 +860,7 @@ def render_admin_dashboard_view():
                                             st.caption("This action will remove this family profile permanently.")
                                             if st.button("Confirm", key=f"btn_del_fm_{fmid}", type="primary", use_container_width=True):
                                                 auth_db.delete_family_member(fmid, uid)
+                                                _invalidate_admin_caches()
                                                 auth_db.log_security_event("FAMILY_MEMBER_DELETED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin deleted member #{fmid}")
                                                 st.success("Family member deleted.")
                                                 st.rerun()
@@ -745,23 +904,15 @@ def render_admin_dashboard_view():
         with fam_search_col2:
             st.button("Search", key="btn_fam_search", type="primary", use_container_width=True)
 
-        target_users = auth_db.admin_get_users(search=sel_u_email, limit=50)
+        # Reset page when search filter changes
+        fam_filter_sig = f"{sel_u_email}"
+        if st.session_state.get("last_fam_filter_sig") != fam_filter_sig:
+            st.session_state["last_fam_filter_sig"] = fam_filter_sig
+            st.session_state["adm_fam_page"] = 1
 
-        st.markdown(f"""
-        <div class="adm-portal-counter-bar">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                </svg>
-                <span>Family Profiles (<strong>{len(target_users)}</strong> users)</span>
-            </div>
-            <div class="adm-portal-status-pill-green">
-                <span style="width: 7px; height: 7px; border-radius: 50%; background: #10B981; display: inline-block;"></span>
-                <span>All Profiles Loaded</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        total_fam_users = _cached_admin_family_overview_count(search=sel_u_email)
+        curr_fam_page, fam_page_size, fam_offset = render_pagination_toolbar(total_fam_users, "adm_fam_page", PAGE_SIZE)
+        target_users = _cached_admin_family_overview(search=sel_u_email, limit=fam_page_size, offset=fam_offset)
 
         for idx, tu in enumerate(target_users):
             t_uid = tu["id"]
@@ -773,24 +924,24 @@ def render_admin_dashboard_view():
             t_pal = palettes[idx % len(palettes)]
 
             with st.expander(f"{tu['full_name']} ({tu['email']}) — {tu['family_count']} Family Member(s)"):
-                fams = auth_db.get_family_members(t_uid)
+                fams = tu.get("family_members", [])
                 if not fams:
                     st.info("No family members registered for this user.")
                 for fm in fams:
+                    rel_badge = f'<span style="background: rgba(37, 99, 235, 0.12); color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.3); padding: 2px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">{fm.get("relationship", "Dependent")}</span>'
                     bg_badge = f'<span style="background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; margin-left: 6px;">{fm["blood_group"]}</span>' if fm.get("blood_group") else ''
-                    rel_badge = f'<span style="background: rgba(59, 130, 246, 0.15); color: #2563EB; border: 1px solid rgba(59, 130, 246, 0.3); padding: 2px 7px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">{fm["relationship"]}</span>'
-                    html_content = f"""
-                    <div style="background: rgba(30, 41, 59, 0.05); border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;">
-                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <strong style="font-size: 0.95rem; color: var(--mm-text-primary);">{fm['name']}</strong>
-                            {rel_badge}
-                            {bg_badge}
-                        </div>
-                        <div style="font-size: 0.78rem; color: #64748B; margin-top: 3px;">
-                            Age: <strong>{fm.get('age') or 'N/A'}</strong> &bull; Gender: <strong>{fm.get('gender') or 'N/A'}</strong> &bull; Emergency Contact: <strong>{fm.get('emergency_contact') or 'None'}</strong>
-                        </div>
-                    </div>
-                    """
+                    html_content = (
+                        f'<div style="background: rgba(30, 41, 59, 0.05); border: 1px solid #E2E8F0; border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;">'
+                        f'<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">'
+                        f'<strong style="font-size: 0.95rem; color: var(--mm-text-primary);">{fm["name"]}</strong>'
+                        f'{rel_badge}'
+                        f'{bg_badge}'
+                        f'</div>'
+                        f'<div style="font-size: 0.78rem; color: #64748B; margin-top: 3px;">'
+                        f'Age: <strong>{fm.get("age") or "N/A"}</strong> &bull; Gender: <strong>{fm.get("gender") or "N/A"}</strong> &bull; Emergency Contact: <strong>{fm.get("emergency_contact") or "None"}</strong>'
+                        f'</div>'
+                        f'</div>'
+                    )
                     st.markdown(html_content, unsafe_allow_html=True)
                     conds = [c["condition_name"] for c in fm.get("conditions", [])]
                     meds = [m["medicine_name"] for m in fm.get("medications", [])]
@@ -858,83 +1009,119 @@ def render_admin_dashboard_view():
             """, unsafe_allow_html=True)
             sc_mode = st.selectbox("Scan Mode", ["ALL", "PROFILE", "FAMILY_MEMBER", "GENERAL"], key="adm_sc_mode", label_visibility="collapsed")
 
-        all_scans = auth_db.admin_get_all_scans(search=sc_search, scan_type=sc_type, scan_mode=sc_mode, limit=50)
-        st.markdown(f"""
-        <div class="adm-portal-counter-bar">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <line x1="3" y1="9" x2="21" y2="9"/>
-                    <line x1="9" y1="21" x2="9" y2="9"/>
-                </svg>
-                <span>Displaying <strong>{len(all_scans)}</strong> scan record(s)</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Reset page when search filter changes
+        sc_filter_sig = f"{sc_search}_{sc_type}_{sc_mode}"
+        if st.session_state.get("last_sc_filter_sig") != sc_filter_sig:
+            st.session_state["last_sc_filter_sig"] = sc_filter_sig
+            st.session_state["adm_sc_page"] = 1
 
-        for s in all_scans:
-            is_fam = (s.get("scan_mode") == "FAMILY_MEMBER")
-            icon_bg = "#FAF5FF" if is_fam else "#EFF6FF"
-            icon_border = "#E9D5FF" if is_fam else "#BFDBFE"
-            icon_stroke = "#9333EA" if is_fam else "#2563EB"
-            
-            mode_badge = f'<span style="background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">{s.get("scan_mode")}</span>'
-            if is_fam:
-                mode_badge = f'<span style="background: rgba(147, 51, 234, 0.12); color: #9333EA; border: 1px solid rgba(147, 51, 234, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">FAMILY_MEMBER</span>'
+        total_scans = _cached_admin_all_scans_count(search=sc_search, scan_type=sc_type, scan_mode=sc_mode)
+        curr_sc_page, sc_page_size, sc_offset = render_pagination_toolbar(total_scans, "adm_sc_page", PAGE_SIZE)
+        all_scans = _cached_admin_all_scans(search=sc_search, scan_type=sc_type, scan_mode=sc_mode, limit=sc_page_size, offset=sc_offset)
 
-            st.markdown(f"""
-            <div class="adm-scan-row-card">
-                <!-- Left Details -->
-                <div style="display: flex; align-items: center; gap: 16px; flex: 1; min-width: 280px;">
-                    <div style="width: 48px; height: 48px; border-radius: 12px; background: {icon_bg}; border: 1.5px solid {icon_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{icon_stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="12" y1="18" x2="12" y2="12"/>
-                            <line x1="9" y1="15" x2="15" y2="15"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px;">
-                            {mode_badge}
-                        </div>
-                        <div style="font-size: 0.88rem; color: var(--mm-text-primary);">
-                            User: <strong>{s.get('user_name') or 'General Patient'}</strong> <span style="color: #64748B;">({s.get('user_email')})</span>
-                        </div>
-                        <div style="font-size: 0.78rem; color: #64748B; margin-top: 2px;">
-                            Summary: <span style="color: var(--mm-text-secondary);">{s.get('summary') or 'General prescription evaluation.'}</span>
-                        </div>
-                    </div>
-                </div>
-                <!-- Middle Date & Time -->
-                <div style="display: flex; align-items: center; gap: 10px; min-width: 170px;">
-                    <div style="width: 32px; height: 32px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                            <line x1="16" y1="2" x2="16" y2="6"/>
-                            <line x1="8" y1="2" x2="8" y2="6"/>
-                            <line x1="3" y1="10" x2="21" y2="10"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <div style="font-size: 0.68rem; color: #64748B; font-weight: 600;">Date &amp; Time</div>
-                        <div style="font-size: 0.84rem; font-weight: 700; color: var(--mm-text-primary);">{str(s.get('created_at'))[:16]}</div>
-                    </div>
-                </div>
-                <!-- Right Scan ID & Arrow -->
-                <div style="display: flex; align-items: center; gap: 14px;">
-                    <div class="adm-scan-id-badge">
-                        <span style="font-size: 0.66rem; color: #64748B; display: block; font-weight: 600;">Scan ID</span>
-                        <span style="font-size: 1.05rem; font-weight: 800; color: #2563EB;">#{s.get('id')}</span>
-                    </div>
-                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #F8FAFC; border: 1px solid #E2E8F0; display: flex; align-items: center; justify-content: center; color: #2563EB; font-weight: 800; font-size: 0.85rem;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="9 18 15 12 9 6"/>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        if not all_scans:
+            st.info("No medical scan records matched the selected filters.")
+        else:
+            for s in all_scans:
+                sid = s.get("id")
+                is_fam = (s.get("scan_mode") == "FAMILY_MEMBER")
+                icon_bg = "#FAF5FF" if is_fam else "#EFF6FF"
+                icon_border = "#E9D5FF" if is_fam else "#BFDBFE"
+                icon_stroke = "#9333EA" if is_fam else "#2563EB"
+                
+                mode_badge = f'<span style="background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">{s.get("scan_mode")}</span>'
+                if is_fam:
+                    mode_badge = f'<span style="background: rgba(147, 51, 234, 0.12); color: #9333EA; border: 1px solid rgba(147, 51, 234, 0.3); padding: 2px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700;">FAMILY_MEMBER</span>'
+
+                with st.container(border=True):
+                    sc_c1, sc_c2 = st.columns([4.2, 1.2], vertical_alignment="center")
+                    with sc_c1:
+                        date_str = str(s.get("created_at"))[:16]
+                        left_html = (
+                            f'<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">'
+                            f'<div style="width: 44px; height: 44px; border-radius: 12px; background: {icon_bg}; border: 1.5px solid {icon_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">'
+                            f'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="{icon_stroke}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+                            f'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+                            f'<polyline points="14 2 14 8 20 8"/>'
+                            f'<line x1="12" y1="18" x2="12" y2="12"/>'
+                            f'<line x1="9" y1="15" x2="15" y2="15"/>'
+                            f'</svg>'
+                            f'</div>'
+                            f'<div style="flex: 1; min-width: 220px;">'
+                            f'<div style="display: flex; align-items: center; gap: 8px; margin-bottom: 3px; flex-wrap: wrap;">'
+                            f'{mode_badge}'
+                            f'<span class="adm-chip-scantype">{s.get("scan_type") or "General"}</span>'
+                            f'<span style="color: #64748B; font-size: 0.74rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; margin-left: 4px;">'
+                            f'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+                            f'{date_str}'
+                            f'</span>'
+                            f'</div>'
+                            f'<div style="font-size: 0.88rem; color: var(--mm-text-primary);">'
+                            f'User: <strong>{s.get("user_name") or "General Patient"}</strong> <span style="color: #64748B; font-size: 0.80rem;">({s.get("user_email")})</span>'
+                            f'</div>'
+                            f'<div style="font-size: 0.78rem; color: #64748B; margin-top: 2px;">'
+                            f'Summary: <span style="color: var(--mm-text-secondary);">{s.get("summary") or "General clinical scan evaluation."}</span>'
+                            f'</div>'
+                            f'</div>'
+                            f'</div>'
+                        )
+                        st.markdown(left_html, unsafe_allow_html=True)
+                    
+                    with sc_c2:
+                        r_c1, r_c2 = st.columns([1.1, 0.9], vertical_alignment="center")
+                        with r_c1:
+                            st.markdown(f'<div style="text-align: right; padding-right: 4px;"><span style="font-size: 0.65rem; color: #64748B; display: block; font-weight: 700; text-transform: uppercase;">Scan ID</span><strong style="font-size: 0.96rem; color: #2563EB;">#{sid}</strong></div>', unsafe_allow_html=True)
+                        with r_c2:
+                            with st.container(key=f"wrap_sc_btn_{sid}"):
+                                with st.popover(" ›", help="Click to open scan report & inspection"):
+                                    st.markdown(f"#### Scan Inspection Record #{sid}")
+                                    st.caption(f"Recorded: **{s.get('created_at')}** &bull; Type: **{s.get('scan_type')}**")
+                                    st.markdown("---")
+                                
+                                    inf_c1, inf_c2 = st.columns(2)
+                                    with inf_c1:
+                                        st.markdown(f"**Patient Name:** {s.get('user_name') or 'N/A'}")
+                                        st.caption(f"Email: {s.get('user_email')}")
+                                    with inf_c2:
+                                        if is_fam:
+                                            st.markdown(f"**Family Member:** {s.get('family_name') or 'N/A'}")
+                                            st.caption(f"Relationship: {s.get('relationship') or 'Dependent'}")
+                                        else:
+                                            st.markdown("**Target Profile:** Self / Primary Account")
+                                            st.caption("Personal Clinical Record")
+
+                                    st.markdown("##### Clinical Summary")
+                                    st.info(s.get("summary") or "No detailed diagnosis summary available.")
+
+                                    if s.get("result_reference"):
+                                        st.markdown("##### Document / Reference")
+                                        st.code(s.get("result_reference"), language="text")
+
+                                    # Parse details_json safely
+                                    raw_details = s.get("details_json")
+                                    if raw_details:
+                                        try:
+                                            if isinstance(raw_details, str):
+                                                parsed_dt = json.loads(raw_details)
+                                            else:
+                                                parsed_dt = raw_details
+                                            if parsed_dt:
+                                                st.markdown("##### Extracted Biomarkers & Parameters")
+                                                st.json(parsed_dt)
+                                        except Exception:
+                                            st.markdown("##### Details")
+                                            st.text(str(raw_details))
+
+                                    st.markdown("---")
+                                    with st.popover(f"Delete Scan #{sid}", use_container_width=True):
+                                        st.warning(f"Are you sure you want to permanently delete Scan #{sid}?")
+                                        if st.button("Confirm Delete", key=f"btn_del_sc_{sid}", type="primary", use_container_width=True):
+                                            auth_db.admin_delete_scan(sid)
+                                            _invalidate_admin_caches()
+                                            auth_db.log_security_event("SCAN_DELETED_BY_ADMIN", email=s.get("user_email"), details=f"Admin deleted scan #{sid}")
+                                            st.success(f"Scan #{sid} deleted successfully!")
+                                            st.rerun()
+
 
     
     # TAB 5: SECURITY AUDIT LOGS (ZERO PLAINTEXT SECRETS)
@@ -987,24 +1174,15 @@ def render_admin_dashboard_view():
             """, unsafe_allow_html=True)
             log_ev = st.selectbox("Event Type Filter", ["ALL", "USER_REGISTERED", "USER_LOGGED_IN", "FAILED_LOGIN", "ADMIN_LOGGED_IN", "FAMILY_MEMBER_ADDED", "USER_DISABLED_BY_ADMIN"], key="adm_log_ev", label_visibility="collapsed")
 
-        logs = auth_db.admin_get_security_logs(event_type=log_ev, search=log_search, limit=50)
+        # Reset page when search filter changes
+        log_filter_sig = f"{log_ev}_{log_search}"
+        if st.session_state.get("last_log_filter_sig") != log_filter_sig:
+            st.session_state["last_log_filter_sig"] = log_filter_sig
+            st.session_state["adm_log_page"] = 1
 
-        r_col1, r_col2 = st.columns([4, 1])
-        with r_col1:
-            st.markdown(f"""
-            <div class="adm-portal-counter-bar" style="margin: 6px 0 14px 0;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                    </svg>
-                    <span>Displaying <strong>{len(logs)}</strong> audit log entries</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        with r_col2:
-            if st.button("Refresh", key="btn_refresh_audit", use_container_width=True):
-                st.rerun()
+        total_logs = _cached_admin_security_logs_count(event_type=log_ev, search=log_search)
+        curr_log_page, log_page_size, log_offset = render_pagination_toolbar(total_logs, "adm_log_page", PAGE_SIZE)
+        logs = _cached_admin_security_logs(event_type=log_ev, search=log_search, limit=log_page_size, offset=log_offset)
 
         for l in logs:
             st.markdown(f"""

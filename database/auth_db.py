@@ -371,7 +371,7 @@ def add_family_member(user_id: int, member_data: dict) -> int:
     return member_id
 
 def get_family_members(user_id: int) -> list:
-    """Fetches all family members belonging strictly to the authenticated user with real-time dynamic age calculation."""
+    """Fetches all family members belonging strictly to the authenticated user with batch-loaded conditions and medications."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -379,19 +379,37 @@ def get_family_members(user_id: int) -> list:
     """, (int(user_id),))
     rows = [dict(r) for r in cursor.fetchall()]
     
-    # Attach conditions, medications, and dynamic real-time age
+    if not rows:
+        conn.close()
+        return []
+
+    member_ids = [int(r["id"]) for r in rows]
+    placeholders = ",".join(["?"] * len(member_ids))
+    
+    cursor.execute(f"SELECT * FROM medical_conditions WHERE family_member_id IN ({placeholders})", tuple(member_ids))
+    all_conds = [dict(c) for c in cursor.fetchall()]
+    
+    cursor.execute(f"SELECT * FROM medications WHERE family_member_id IN ({placeholders})", tuple(member_ids))
+    all_meds = [dict(m) for m in cursor.fetchall()]
+    conn.close()
+
+    conds_by_member = {}
+    for c in all_conds:
+        conds_by_member.setdefault(c["family_member_id"], []).append(c)
+
+    meds_by_member = {}
+    for m in all_meds:
+        meds_by_member.setdefault(m["family_member_id"], []).append(m)
+
     for r in rows:
         if r.get("dob"):
             dyn_age = calculate_age_from_dob(r["dob"])
             if dyn_age is not None:
                 r["age"] = dyn_age
         m_id = r["id"]
-        cursor.execute("SELECT * FROM medical_conditions WHERE family_member_id = ?", (m_id,))
-        r["conditions"] = [dict(c) for c in cursor.fetchall()]
-        cursor.execute("SELECT * FROM medications WHERE family_member_id = ?", (m_id,))
-        r["medications"] = [dict(m) for m in cursor.fetchall()]
+        r["conditions"] = conds_by_member.get(m_id, [])
+        r["medications"] = meds_by_member.get(m_id, [])
 
-    conn.close()
     return rows
 
 def get_family_member_by_id(member_id: int, user_id: int = None) -> dict:
@@ -723,38 +741,40 @@ def get_user_profile_summary(user_id: int) -> dict:
 # ============================================================
 
 def admin_get_kpis() -> dict:
-    """Calculates all Admin KPIs dynamically from real database records."""
+    """Calculates all Admin KPIs dynamically in an ultra-fast combined query."""
     conn = get_db_connection()
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT COUNT(*) FROM users")
-    total_users = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM users WHERE email_verified = 1")
-    verified_users = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM users WHERE account_status = 'ACTIVE'")
-    active_users = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM users WHERE account_status = 'DISABLED'")
-    disabled_users = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM family_members")
-    total_family_members = cursor.fetchone()[0]
-    
-    cursor.execute("SELECT COUNT(*) FROM medical_scans")
-    total_scans = cursor.fetchone()[0]
-    
     today_str = date.today().strftime("%Y-%m-%d")
-    cursor.execute("SELECT COUNT(*) FROM medical_scans WHERE CAST(created_at AS TEXT) LIKE ?", (f"{today_str}%",))
-    scans_today = cursor.fetchone()[0]
     
+    cursor.execute("""
+        SELECT 
+            COUNT(*) as total_users,
+            SUM(CASE WHEN email_verified = 1 THEN 1 ELSE 0 END) as verified_users,
+            SUM(CASE WHEN account_status = 'ACTIVE' THEN 1 ELSE 0 END) as active_users,
+            SUM(CASE WHEN account_status = 'DISABLED' THEN 1 ELSE 0 END) as disabled_users,
+            (SELECT COUNT(*) FROM family_members) as total_family_members,
+            (SELECT COUNT(*) FROM medical_scans) as total_scans,
+            (SELECT COUNT(*) FROM medical_scans WHERE CAST(created_at AS TEXT) LIKE ?) as scans_today
+        FROM users
+    """, (f"{today_str}%",))
+    
+    row = cursor.fetchone()
+    if row:
+        total_users = int(row[0] or 0)
+        verified_users = int(row[1] or 0)
+        active_users = int(row[2] or 0)
+        disabled_users = int(row[3] or 0)
+        total_family_members = int(row[4] or 0)
+        total_scans = int(row[5] or 0)
+        scans_today = int(row[6] or 0)
+    else:
+        total_users = verified_users = active_users = disabled_users = total_family_members = total_scans = scans_today = 0
+
     cursor.execute("""
         SELECT * FROM security_audit_logs 
         ORDER BY id DESC LIMIT 8
     """)
     recent_activity = [dict(r) for r in cursor.fetchall()]
-    
     conn.close()
     return {
         "total_users": total_users,
@@ -767,15 +787,88 @@ def admin_get_kpis() -> dict:
         "recent_activity": recent_activity
     }
 
-def admin_get_users(search: str = None, status_filter: str = None, limit: int = 100, offset: int = 0) -> list:
-    """Admin query to list users with family count and scan count."""
+def admin_get_family_overview_count(search: str = None) -> int:
+    """Admin query to count users for family overview pagination."""
+    return admin_get_users_count(search=search, status_filter=None)
+
+def admin_get_family_overview(search: str = None, limit: int = 20, offset: int = 0) -> list:
+    """Batch-fetches users and their complete family hierarchy in 3 queries total for maximum performance."""
+    users = admin_get_users(search=search, limit=limit, offset=offset)
+    if not users:
+        return []
+        
+    u_ids = [int(u["id"]) for u in users]
+    placeholders = ",".join(["?"] * len(u_ids))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT * FROM family_members WHERE user_id IN ({placeholders}) ORDER BY id ASC", tuple(u_ids))
+    all_fams = [dict(f) for f in cursor.fetchall()]
+    
+    if all_fams:
+        fm_ids = [int(f["id"]) for f in all_fams]
+        fm_placeholders = ",".join(["?"] * len(fm_ids))
+        cursor.execute(f"SELECT * FROM medical_conditions WHERE family_member_id IN ({fm_placeholders})", tuple(fm_ids))
+        all_conds = [dict(c) for c in cursor.fetchall()]
+        cursor.execute(f"SELECT * FROM medications WHERE family_member_id IN ({fm_placeholders})", tuple(fm_ids))
+        all_meds = [dict(m) for m in cursor.fetchall()]
+    else:
+        all_conds = []
+        all_meds = []
+    conn.close()
+
+    conds_by_fm = {}
+    for c in all_conds:
+        conds_by_fm.setdefault(c["family_member_id"], []).append(c)
+
+    meds_by_fm = {}
+    for m in all_meds:
+        meds_by_fm.setdefault(m["family_member_id"], []).append(m)
+
+    fams_by_user = {}
+    for f in all_fams:
+        if f.get("dob"):
+            dyn_age = calculate_age_from_dob(f["dob"])
+            if dyn_age is not None:
+                f["age"] = dyn_age
+        f_id = f["id"]
+        f["conditions"] = conds_by_fm.get(f_id, [])
+        f["medications"] = meds_by_fm.get(f_id, [])
+        fams_by_user.setdefault(f["user_id"], []).append(f)
+
+    for u in users:
+        u["family_members"] = fams_by_user.get(u["id"], [])
+
+    return users
+
+def admin_get_users_count(search: str = None, status_filter: str = None) -> int:
+    """Admin query to count matching users for pagination."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT COUNT(*) FROM users u WHERE 1=1"
+    params = []
+    if search:
+        query += " AND (u.full_name LIKE ? OR u.email LIKE ?)"
+        like_term = f"%{search.strip()}%"
+        params.extend([like_term, like_term])
+    if status_filter and status_filter != "ALL":
+        query += " AND u.account_status = ?"
+        params.append(status_filter)
+    cursor.execute(query, tuple(params))
+    row = cursor.fetchone()
+    count = int(row[0]) if row else 0
+    conn.close()
+    return count
+
+def admin_get_users(search: str = None, status_filter: str = None, limit: int = 20, offset: int = 0) -> list:
+    """Admin query to list users with family count and scan count with pagination."""
     conn = get_db_connection()
     cursor = conn.cursor()
     query = """
         SELECT u.id, u.full_name, u.email, u.email_verified, u.account_status, u.role, 
-               u.created_at, u.last_login, u.last_password_change,
-               (SELECT COUNT(*) FROM family_members f WHERE f.user_id = u.id) as family_count,
-               (SELECT COUNT(*) FROM medical_scans s WHERE s.user_id = u.id) as scan_count
+                u.created_at, u.last_login, u.last_password_change,
+                (SELECT COUNT(*) FROM family_members f WHERE f.user_id = u.id) as family_count,
+                (SELECT COUNT(*) FROM medical_scans s WHERE s.user_id = u.id) as scan_count
         FROM users u
         WHERE 1=1
     """
@@ -820,7 +913,6 @@ def admin_delete_user(user_id: int, permanent: bool = False) -> bool:
     conn = get_db_connection()
     cursor = conn.cursor()
     if permanent:
-        # Purge scans, family members (foreign key will cascade), and user
         cursor.execute("DELETE FROM medical_scans WHERE user_id = ?", (int(user_id),))
         cursor.execute("DELETE FROM family_members WHERE user_id = ?", (int(user_id),))
         cursor.execute("DELETE FROM users WHERE id = ?", (int(user_id),))
@@ -845,8 +937,36 @@ def admin_get_user_hierarchy(user_id: int) -> dict:
         "scans": scans
     }
 
-def admin_get_all_scans(search: str = None, scan_type: str = None, scan_mode: str = None, limit: int = 100) -> list:
-    """Fetches all system scans with user and family details for admin view."""
+def admin_get_all_scans_count(search: str = None, scan_type: str = None, scan_mode: str = None) -> int:
+    """Admin query to count scans for pagination."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = """
+        SELECT COUNT(*)
+        FROM medical_scans s
+        JOIN users u ON s.user_id = u.id
+        LEFT JOIN family_members f ON s.family_member_id = f.id
+        WHERE 1=1
+    """
+    params = []
+    if search:
+        query += " AND (u.full_name LIKE ? OR u.email LIKE ? OR s.summary LIKE ?)"
+        term = f"%{search.strip()}%"
+        params.extend([term, term, term])
+    if scan_type and scan_type != "ALL":
+        query += " AND s.scan_type = ?"
+        params.append(scan_type)
+    if scan_mode and scan_mode != "ALL":
+        query += " AND s.scan_mode = ?"
+        params.append(scan_mode)
+    cursor.execute(query, tuple(params))
+    row = cursor.fetchone()
+    count = int(row[0]) if row else 0
+    conn.close()
+    return count
+
+def admin_get_all_scans(search: str = None, scan_type: str = None, scan_mode: str = None, limit: int = 20, offset: int = 0) -> list:
+    """Fetches paginated system scans with user and family details for admin view."""
     conn = get_db_connection()
     cursor = conn.cursor()
     query = """
@@ -869,16 +989,45 @@ def admin_get_all_scans(search: str = None, scan_type: str = None, scan_mode: st
         query += " AND s.scan_mode = ?"
         params.append(scan_mode)
         
-    query += " ORDER BY s.id DESC LIMIT ?"
-    params.append(int(limit))
+    query += " ORDER BY s.id DESC LIMIT ? OFFSET ?"
+    params.extend([int(limit), int(offset)])
     
     cursor.execute(query, tuple(params))
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     return rows
 
-def admin_get_security_logs(event_type: str = None, search: str = None, limit: int = 100) -> list:
-    """Fetches audit logs for the admin security console."""
+def admin_delete_scan(scan_id: int) -> bool:
+    """Deletes a specific medical scan record by scan ID (Admin action)."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM medical_scans WHERE id = ?", (int(scan_id),))
+    rows = cursor.rowcount
+    conn.commit()
+    conn.close()
+    return rows > 0
+
+def admin_get_security_logs_count(event_type: str = None, search: str = None) -> int:
+    """Admin query to count security audit logs for pagination."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT COUNT(*) FROM security_audit_logs WHERE 1=1"
+    params = []
+    if event_type and event_type != "ALL":
+        query += " AND event_type = ?"
+        params.append(event_type)
+    if search:
+        query += " AND (email LIKE ? OR details LIKE ? OR event_type LIKE ?)"
+        term = f"%{search.strip()}%"
+        params.extend([term, term, term])
+    cursor.execute(query, tuple(params))
+    row = cursor.fetchone()
+    count = int(row[0]) if row else 0
+    conn.close()
+    return count
+
+def admin_get_security_logs(event_type: str = None, search: str = None, limit: int = 20, offset: int = 0) -> list:
+    """Fetches paginated audit logs for the admin security console."""
     conn = get_db_connection()
     cursor = conn.cursor()
     query = "SELECT * FROM security_audit_logs WHERE 1=1"
@@ -890,8 +1039,8 @@ def admin_get_security_logs(event_type: str = None, search: str = None, limit: i
         query += " AND (email LIKE ? OR details LIKE ? OR event_type LIKE ?)"
         term = f"%{search.strip()}%"
         params.extend([term, term, term])
-    query += " ORDER BY id DESC LIMIT ?"
-    params.append(int(limit))
+    query += " ORDER BY id DESC LIMIT ? OFFSET ?"
+    params.extend([int(limit), int(offset)])
     
     cursor.execute(query, tuple(params))
     rows = [dict(r) for r in cursor.fetchall()]

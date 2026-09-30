@@ -534,9 +534,12 @@ def switch_active_panel(target_panel, **extra_state):
     Executes before script rerun so active panel updates in a single render pass (<1s).
     """
     st.session_state["active_panel"] = target_panel
-    st.session_state["clinical_module_nav_radio"] = target_panel
     st.session_state["mobile_nav_open"] = False
     st.session_state["top_profile_open"] = False
+    try:
+        st.session_state["clinical_module_nav_radio"] = target_panel
+    except Exception:
+        pass
     for k, v in extra_state.items():
         st.session_state[k] = v
 
@@ -1082,13 +1085,22 @@ active_p = st.session_state.get("active_panel", "Health Assessment")
 if is_dark:
     st.markdown("""
     <style>
-    /* ── High Contrast Dark Mode Foundation ── */
-    :root, [data-theme="dark"], .stApp[data-theme="dark"] {
-        --mm-card-bg: #111827;
-        --mm-border-color: #1E2E4E;
-        --mm-subbox-bg: #1E293B;
-        --mm-text-primary: #F8FAFC;
-        --mm-text-secondary: #94A3B8;
+    /* ── High Contrast Dark Mode Foundation & Tokens ── */
+    :root, [data-theme="dark"], .stApp[data-theme="dark"], .stApp {
+        --mm-bg-base: #0B1220 !important;
+        --mm-bg-surface: #0F172A !important;
+        --mm-card-bg: #0F172A !important;
+        --mm-subbox-bg: #1E293B !important;
+        --mm-bg-sidebar: #070C16 !important;
+        --mm-border-color: #1E2E4E !important;
+        --mm-border-light: #1E293B !important;
+        --mm-brand-border: #1E2E4E !important;
+        --mm-brand-subtle: #1E293B !important;
+        --mm-text-primary: #F8FAFC !important;
+        --mm-text-secondary: #94A3B8 !important;
+        --mm-text-muted: #64748B !important;
+        --mm-shadow-card: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+        --mm-shadow-subtle: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
         --mm-ocr-badge-bg: rgba(2, 132, 199, 0.15);
         --mm-ocr-badge-border: rgba(56, 189, 248, 0.4);
         --mm-ocr-badge-color: #38BDF8;
@@ -1098,10 +1110,560 @@ if is_dark:
         --mm-creator-avatar-bg: rgba(37, 99, 235, 0.18);
         --mm-creator-avatar-border: rgba(59, 130, 246, 0.4);
     }
-    html, body, .stApp {
+    html, body, .stApp, [class*="css"], .stMainBlockContainer, .main, section.main {
         background-color: #0B1220 !important;
         color: #F8FAFC !important;
     }
+
+    /* ── Universal Top Header Cards (Modules 1 to 6 & Admin Console) ── */
+    div[class*="st-key-mm_top_header_card"],
+    div[class*="st-key-mm_top_header_card_1"],
+    div[class*="st-key-mm_top_header_card_2"],
+    div[class*="st-key-mm_top_header_card_3"],
+    div[class*="st-key-mm_top_header_card_4"],
+    div[class*="st-key-mm_top_header_card_5"],
+    div[class*="st-key-mm_top_header_card_6"],
+    div[class*="st-key-mm_top_header_card_admin"] {
+        background: #0F172A !important;
+        background-color: #0F172A !important;
+        border: 1.5px solid #1E2E4E !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+        color: #F8FAFC !important;
+    }
+    div[class*="st-key-mm_top_header_card"] div[style*="font-size: 1.45rem"],
+    div[class*="st-key-mm_top_header_card"] h1,
+    div[class*="st-key-mm_top_header_card"] h2,
+    div[class*="st-key-mm_top_header_card"] h3,
+    div[class*="st-key-mm_top_header_card"] .mm-header-title {
+        color: #F8FAFC !important;
+    }
+    div[class*="st-key-mm_top_header_card"] div[style*="font-size: 0.85rem"],
+    div[class*="st-key-mm_top_header_card"] .mm-header-subtitle {
+        color: #94A3B8 !important;
+    }
+
+    /* ── Stepper Component (All Panels) ── */
+    .mm-stepper,
+    div.mm-stepper,
+    .mm-step-progress-indicator,
+    div[class*="mm-stepper"] {
+        background: #0F172A !important;
+        background-color: #0F172A !important;
+        border: 1.5px solid #1E2E4E !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+    }
+    .mm-step-num:not(.active):not(.done) {
+        background: #1E293B !important;
+        color: #94A3B8 !important;
+        border: 1.5px solid #334155 !important;
+    }
+    .mm-step-num.active {
+        background: linear-gradient(135deg, #2563EB 0%, #06B6D4 100%) !important;
+        color: #FFFFFF !important;
+        border-color: #38BDF8 !important;
+        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5) !important;
+    }
+    .mm-step-num.done {
+        background: #10B981 !important;
+        color: #FFFFFF !important;
+        border-color: #059669 !important;
+    }
+    .mm-step-text-title {
+        color: #F8FAFC !important;
+    }
+    .mm-step-text-title.active {
+        color: #60A5FA !important;
+    }
+    .mm-step-text-sub {
+        color: #64748B !important;
+    }
+    .mm-step-line {
+        background: #334155 !important;
+    }
+    .mm-step-arrow {
+        color: #64748B !important;
+    }
+
+    /* ── File Uploader & Dropzone (Dark Mode) ── */
+    [data-testid="stFileUploader"],
+    [data-testid="stFileUploaderDropzone"],
+    section[data-testid="stFileUploaderDropzone"],
+    div[data-testid="stFileUploaderDropzone"],
+    div[data-testid="stFileUploader"] > section {
+        background-color: #0F172A !important;
+        background: #0F172A !important;
+        border: 1.5px dashed #334155 !important;
+        color: #F8FAFC !important;
+        border-radius: 14px !important;
+    }
+    [data-testid="stFileUploaderDropzone"]:hover,
+    section[data-testid="stFileUploaderDropzone"]:hover {
+        border-color: #38BDF8 !important;
+        background-color: #141D2E !important;
+        background: #141D2E !important;
+    }
+    [data-testid="stFileUploaderDropzone"] span,
+    [data-testid="stFileUploaderDropzone"] small,
+    [data-testid="stFileUploaderDropzone"] div,
+    [data-testid="stFileUploaderDropzone"] p {
+        color: #CBD5E1 !important;
+        -webkit-text-fill-color: #CBD5E1 !important;
+    }
+    [data-testid="stFileUploaderDropzone"] svg {
+        fill: #38BDF8 !important;
+        color: #38BDF8 !important;
+        stroke: #38BDF8 !important;
+    }
+    [data-testid="stFileUploaderDropzone"] button,
+    [data-testid="stFileUploaderDropzone"] [data-testid="baseButton-secondary"] {
+        background: #1E293B !important;
+        background-color: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #F8FAFC !important;
+        font-weight: 700 !important;
+    }
+    [data-testid="stFileUploaderDropzone"] button:hover {
+        background: #2563EB !important;
+        border-color: #3B82F6 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* ── Radio Buttons & Checkboxes (Dark Mode) ── */
+    .stApp [data-testid="stRadio"] label,
+    .stApp [data-testid="stCheckbox"] label,
+    .stApp [data-testid="stRadio"] div[role="radiogroup"] label,
+    .stApp [data-testid="stRadio"] span,
+    .stApp [data-testid="stCheckbox"] span {
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+        font-weight: 600 !important;
+    }
+    .stApp [data-testid="stRadio"] [data-baseweb="radio"],
+    .stApp [data-testid="stCheckbox"] [data-baseweb="checkbox"] {
+        background: transparent !important;
+    }
+
+    /* ── Selectbox Dropdown Menu Popover (Dark Mode) ── */
+    ul[data-baseweb="menu"],
+    [data-baseweb="popover"] > div,
+    div[role="listbox"] {
+        background-color: #0F172A !important;
+        background: #0F172A !important;
+        border: 1.5px solid #1E2E4E !important;
+        border-radius: 10px !important;
+        color: #F8FAFC !important;
+        box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7) !important;
+    }
+    li[data-baseweb="menu-item"],
+    li[role="option"] {
+        background-color: transparent !important;
+        color: #F8FAFC !important;
+    }
+    li[data-baseweb="menu-item"]:hover,
+    li[role="option"]:hover,
+    li[aria-selected="true"] {
+        background-color: #1E293B !important;
+        color: #38BDF8 !important;
+    }
+
+    /* Admin Console Dark Mode Cards & Components */
+    .adm-top-header-card {
+        background: #0F172A !important;
+        border: 1.5px solid rgba(59, 130, 246, 0.3) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+    }
+    .adm-top-header-card h2,
+    .adm-top-header-card .adm-portal-title,
+    .adm-top-header-card .adm-session-title-brand {
+        color: #F8FAFC !important;
+    }
+    .adm-kpi-card {
+        background: #0F172A !important;
+        border: 1.5px solid #1E293B !important;
+    }
+    .adm-kpi-card:hover {
+        border-color: rgba(96, 165, 250, 0.5) !important;
+        background: #1E293B !important;
+    }
+    .adm-activity-card {
+        background: #0F172A !important;
+        border: 1px solid #1E293B !important;
+    }
+    .adm-user-row-card,
+    .adm-scan-row-card,
+    .adm-audit-row-card {
+        background: #0F172A !important;
+        border: 1px solid #1E293B !important;
+    }
+    .adm-user-details-box,
+    .adm-log-detail-box {
+        background: #1E293B !important;
+        border: 1px solid #334155 !important;
+    }
+
+    /* Admin Pagination Toolbar (Dark Mode) */
+    div[class*="st-key-adm_pg_toolbar_"] {
+        background: #0F172A !important;
+        background-color: #0F172A !important;
+        border: 1.5px solid #1E2E4E !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
+    }
+    .adm-pg-showing-text {
+        color: #94A3B8 !important;
+        font-size: 0.86rem !important;
+        white-space: nowrap !important;
+    }
+    .adm-pg-showing-text strong {
+        color: #F8FAFC !important;
+    }
+    .adm-pg-label-show,
+    .adm-pg-label-perpage {
+        color: #94A3B8 !important;
+        font-size: 0.86rem !important;
+        white-space: nowrap !important;
+    }
+    div[class*="st-key-adm_pg_toolbar_"] [data-testid="stSelectbox"] {
+        min-width: 95px !important;
+        max-width: 120px !important;
+        width: 105px !important;
+        height: 38px !important;
+    }
+    div[class*="st-key-adm_pg_toolbar_"] [data-testid="stSelectbox"] div[data-baseweb="select"] {
+        background-color: #1E293B !important;
+        border: 1.5px solid #334155 !important;
+        min-width: 95px !important;
+        max-width: 120px !important;
+        width: 105px !important;
+        height: 36px !important;
+        min-height: 36px !important;
+        border-radius: 8px !important;
+    }
+    div[class*="st-key-adm_pg_toolbar_"] [data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+        color: #F8FAFC !important;
+        padding: 0 6px 0 10px !important;
+        font-size: 0.88rem !important;
+        font-weight: 600 !important;
+        white-space: nowrap !important;
+    }
+    div[class*="st-key-adm_pg_btn_group_"] [data-testid="stHorizontalBlock"] {
+        gap: 6px !important;
+        justify-content: center !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+    }
+    div[class*="st-key-adm_pg_btn_group_"] [data-testid="stColumn"] {
+        min-width: 36px !important;
+        max-width: 44px !important;
+        padding: 0 1px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+    }
+    div[class*="st-key-adm_pg_btn_group_"] div[data-testid="stButton"],
+    div[class*="st-key-wrap_pg_"] div[data-testid="stButton"] {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        max-width: 42px !important;
+        max-height: 36px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-adm_pg_btn_group_"] button,
+    div[class*="st-key-wrap_pg_"] button,
+    div[class*="st-key-pg_btn_"] button {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        max-width: 42px !important;
+        max-height: 36px !important;
+        border-radius: 8px !important;
+        padding: 0 4px !important;
+        margin: 0 auto !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        font-size: 0.88rem !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+    div[class*="st-key-adm_pg_btn_group_"] button p,
+    div[class*="st-key-wrap_pg_"] button p,
+    div[class*="st-key-pg_btn_"] button p {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+        font-size: 0.88rem !important;
+        font-weight: 700 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    div[class*="st-key-adm_pg_btn_group_"] button[kind="secondary"],
+    div[class*="st-key-wrap_pg_"] button[kind="secondary"],
+    div[class*="st-key-pg_btn_"] button[kind="secondary"] {
+        background: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #CBD5E1 !important;
+    }
+    div[class*="st-key-adm_pg_btn_group_"] button[kind="primary"],
+    div[class*="st-key-wrap_pg_"] button[kind="primary"],
+    div[class*="st-key-pg_btn_"] button[kind="primary"] {
+        background: #2563EB !important;
+        border: 1.5px solid #3B82F6 !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Admin Chips, Status Pills & Badges (Dark Mode) */
+    .adm-chip-meta,
+    div.adm-chip-meta {
+        background: #1E293B !important;
+        background-color: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #CBD5E1 !important;
+        border-radius: 8px !important;
+    }
+    .adm-chip-meta span {
+        color: #CBD5E1 !important;
+    }
+    .adm-chip-meta svg {
+        stroke: #38BDF8 !important;
+        color: #38BDF8 !important;
+    }
+    .adm-chip-item,
+    span.adm-chip-item {
+        background: #1E293B !important;
+        background-color: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #CBD5E1 !important;
+    }
+    .adm-chip-scantype,
+    span.adm-chip-scantype {
+        background: #1E293B !important;
+        background-color: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #93C5FD !important;
+        padding: 2px 8px !important;
+        border-radius: 6px !important;
+        font-size: 0.70rem !important;
+        font-weight: 600 !important;
+    }
+    .adm-portal-status-pill-green,
+    div.adm-portal-status-pill-green,
+    span.adm-portal-status-pill-green {
+        background: rgba(16, 185, 129, 0.18) !important;
+        background-color: rgba(16, 185, 129, 0.18) !important;
+        border: 1px solid rgba(52, 211, 153, 0.4) !important;
+        color: #34D399 !important;
+    }
+    .adm-portal-status-pill-green span {
+        color: #34D399 !important;
+    }
+
+    /* Circular Scan Inspection Button (Centered Arrow) */
+    div[class*="st-key-wrap_sc_btn_"],
+    div[class*="st-key-pop_sc_btn_"] {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    div[class*="st-key-wrap_sc_btn_"] div[data-testid="stPopover"],
+    div[class*="st-key-pop_sc_btn_"] div[data-testid="stPopover"] {
+        width: 36px !important;
+        height: 36px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    div[class*="st-key-wrap_sc_btn_"] button,
+    div[class*="st-key-pop_sc_btn_"] button {
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        max-width: 36px !important;
+        max-height: 36px !important;
+        border-radius: 50% !important;
+        background: #1E293B !important;
+        border: 1.5px solid #334155 !important;
+        color: #38BDF8 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        margin: 0 auto !important;
+        box-sizing: border-box !important;
+    }
+    div[class*="st-key-wrap_sc_btn_"] button div[data-testid="stMarkdownContainer"],
+    div[class*="st-key-pop_sc_btn_"] button div[data-testid="stMarkdownContainer"],
+    div[class*="st-key-wrap_sc_btn_"] button p,
+    div[class*="st-key-pop_sc_btn_"] button p {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        font-size: 1.35rem !important;
+        font-weight: 800 !important;
+        line-height: 1 !important;
+        color: #38BDF8 !important;
+        width: 100% !important;
+        height: 100% !important;
+        transform: translateY(-1px) !important;
+    }
+    div[class*="st-key-wrap_sc_btn_"] button svg,
+    div[class*="st-key-pop_sc_btn_"] button svg,
+    div[class*="st-key-wrap_sc_btn_"] button [data-testid="stIconMaterial"],
+    div[class*="st-key-pop_sc_btn_"] button [data-testid="stIconMaterial"] {
+        display: none !important;
+    }
+    div[class*="st-key-wrap_sc_btn_"] button:hover,
+    div[class*="st-key-pop_sc_btn_"] button:hover {
+        background: #2563EB !important;
+        border-color: #3B82F6 !important;
+        color: #FFFFFF !important;
+        transform: scale(1.08) !important;
+    }
+
+    /* Administrator Session (Tab 6 Settings - Dark Mode) */
+    .adm-session-card,
+    div.adm-session-card {
+        background: #0F172A !important;
+        background-color: #0F172A !important;
+        border: 1.5px solid #1E2E4E !important;
+        border-radius: 18px !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+        color: #F8FAFC !important;
+    }
+    .adm-session-lock-box {
+        background: #1E293B !important;
+        border: 1.5px solid #334155 !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+    }
+    .adm-session-lock-box svg {
+        stroke: #38BDF8 !important;
+    }
+    .adm-session-title {
+        color: #F8FAFC !important;
+    }
+    .adm-session-title span {
+        color: #38BDF8 !important;
+    }
+    .adm-session-subtitle {
+        color: #94A3B8 !important;
+    }
+    .adm-session-cursive {
+        color: #38BDF8 !important;
+    }
+    .adm-session-banner {
+        background: #111827 !important;
+        border: 1.5px solid #1E2E4E !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    }
+    .adm-session-avatar {
+        background: linear-gradient(135deg, #2563EB 0%, #0284C7 100%) !important;
+        color: #FFFFFF !important;
+        border: 2px solid #38BDF8 !important;
+    }
+    .adm-session-crown-badge {
+        background: rgba(45, 212, 191, 0.15) !important;
+        border: 1px solid rgba(45, 212, 191, 0.4) !important;
+        color: #2DD4BF !important;
+    }
+    .adm-session-icon-box {
+        background: #1E293B !important;
+        border: 1px solid #334155 !important;
+    }
+    .adm-session-icon-box svg {
+        stroke: #38BDF8 !important;
+    }
+    .adm-session-status-pill {
+        background: rgba(16, 185, 129, 0.18) !important;
+        border: 1px solid rgba(52, 211, 153, 0.4) !important;
+        color: #34D399 !important;
+    }
+    .adm-session-notice {
+        background: rgba(30, 41, 59, 0.6) !important;
+        border: 1px solid #334155 !important;
+        color: #CBD5E1 !important;
+    }
+    .adm-session-notice div {
+        color: #CBD5E1 !important;
+    }
+
+    /* ── Top Header Profile Popover Button Alignment & Size (e.g. 'Sa ▾') ── */
+    div[class*="st-key-top_profile_wrap"],
+    .st-key-top_profile_wrap {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"],
+    .st-key-top_profile_wrap div[data-testid="stPopover"] {
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button,
+    .st-key-top_profile_wrap div[data-testid="stPopover"] > button {
+        width: 100% !important;
+        height: 38px !important;
+        min-height: 38px !important;
+        max-height: 38px !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 0 12px !important;
+        background: #1E293B !important;
+        border: 1px solid #334155 !important;
+        color: #F8FAFC !important;
+        box-sizing: border-box !important;
+        box-shadow: none !important;
+    }
+    div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button div[data-testid="stMarkdownContainer"],
+    div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button p {
+        margin: 0 !important;
+        padding: 0 !important;
+        line-height: 1 !important;
+        font-size: 0.80rem !important;
+        font-weight: 700 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        color: #F8FAFC !important;
+    }
+    div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button svg,
+    div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button [data-testid="stIconMaterial"] {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-size: 15px !important;
+        width: 15px !important;
+        height: 15px !important;
+        vertical-align: middle !important;
+        color: #94A3B8 !important;
+        fill: currentColor !important;
+        line-height: 1 !important;
+        position: relative !important;
+        top: 0 !important;
+    }
+
     .stApp p,
     .stApp label,
     .stApp [data-testid="stMarkdownContainer"] p,
@@ -1837,10 +2399,10 @@ st.markdown("""
     max-width: calc(100vw - 28px) !important;
     box-sizing: border-box !important;
     z-index: 999990 !important;
-    background: #FFFFFF !important;
-    border: 1px solid #DCE6F3 !important;
+    background: """ + ('#0F172A' if is_dark else '#FFFFFF') + """ !important;
+    border: 1px solid """ + ('#1E2E4E' if is_dark else '#DCE6F3') + """ !important;
     border-radius: 12px !important;
-    box-shadow: 0 4px 18px rgba(15, 23, 42, 0.08) !important;
+    box-shadow: """ + ('0 4px 20px rgba(0, 0, 0, 0.55)' if is_dark else '0 4px 18px rgba(15, 23, 42, 0.08)') + """ !important;
     padding: 6px 12px !important;
     backdrop-filter: blur(12px) !important;
 }
@@ -1882,7 +2444,7 @@ st.markdown("""
 .dmx-brand-title {
     font-size: 1.35rem;
     font-weight: 800;
-    color: #0F172A;
+    color: """ + ('#F8FAFC' if is_dark else '#0F172A') + """;
     white-space: nowrap;
     letter-spacing: -0.2px;
     overflow: hidden;
@@ -1893,7 +2455,7 @@ st.markdown("""
 }
 .dmx-brand-subtitle {
     font-size: 0.55rem;
-    color: #64748B;
+    color: """ + ('#94A3B8' if is_dark else '#64748B') + """;
     font-weight: 500;
     white-space: nowrap;
     margin-top: 1px;
@@ -2159,35 +2721,87 @@ st.markdown("""
     transition: transform 0.2s ease, filter 0.2s ease !important;
 }
 
-/* ── Profile Trigger Button ('Dv ▾' Avatar or 'Sign In') ── */
-.st-key-top_profile_trigger button {
-    background: #2563EB !important;
-    border: 1px solid #2563EB !important;
-    color: #FFFFFF !important;
-    border-radius: 20px !important;
-    font-weight: 800 !important;
-    font-size: 0.80rem !important;
+/* ── Profile Trigger Button ('Dv' / 'Sa' Popover or 'Sign In') ── */
+.st-key-top_profile_wrap,
+div.st-key-top_profile_wrap,
+div[class*="st-key-top_profile_wrap"] {
+    width: 100% !important;
+    min-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-top_profile_wrap div[data-testid="stPopover"],
+div.st-key-top_profile_wrap div[data-testid="stPopover"],
+div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] {
+    width: 100% !important;
+    min-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+.st-key-top_profile_wrap div[data-testid="stPopover"] > button,
+div.st-key-top_profile_wrap div[data-testid="stPopover"] > button,
+div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button {
+    width: 100% !important;
+    min-width: 100% !important;
     height: 38px !important;
     min-height: 38px !important;
-    padding: 0 12px !important;
-    letter-spacing: 0.5px !important;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25) !important;
+    max-height: 38px !important;
+    border-radius: 8px !important;
+    border: 1.5px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
+    background: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
+    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    padding: 0 10px !important;
+    font-size: 0.80rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    box-shadow: none !important;
 }
-.st-key-top_profile_trigger button p,
-.st-key-top_profile_trigger button span {
-    color: #FFFFFF !important;
-    font-weight: 800 !important;
+.st-key-top_profile_wrap div[data-testid="stPopover"] > button:hover,
+div.st-key-top_profile_wrap div[data-testid="stPopover"] > button:hover {
+    border-color: #2563EB !important;
+    color: """ + ('#93C5FD' if is_dark else '#1D4ED8') + """ !important;
+    background: """ + ('#25334E' if is_dark else '#F0F7FF') + """ !important;
 }
-.st-key-top_profile_trigger button:hover {
-    background: #1D4ED8 !important;
-    border-color: #1D4ED8 !important;
-    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35) !important;
+.st-key-top_profile_wrap div[data-testid="stPopover"] > button div[data-testid="stMarkdownContainer"],
+.st-key-top_profile_wrap div[data-testid="stPopover"] > button p {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1 !important;
+    font-size: 0.80rem !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+}
+.st-key-top_profile_wrap div[data-testid="stPopover"] > button svg,
+.st-key-top_profile_wrap div[data-testid="stPopover"] > button [data-testid="stIconMaterial"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 15px !important;
+    width: 15px !important;
+    height: 15px !important;
+    vertical-align: middle !important;
+    color: """ + ('#94A3B8' if is_dark else '#64748B') + """ !important;
+    fill: currentColor !important;
+    line-height: 1 !important;
+    position: relative !important;
+    top: 0 !important;
 }
 .st-key-top_auth_signin_btn button {
     background: #2563EB !important;
     border: 1px solid #2563EB !important;
     color: #FFFFFF !important;
-    border-radius: 20px !important;
+    border-radius: 8px !important;
     font-weight: 700 !important;
     font-size: 0.80rem !important;
     height: 38px !important;
@@ -2202,20 +2816,6 @@ st.markdown("""
 .st-key-top_auth_signin_btn button:hover {
     background: #1D4ED8 !important;
     border-color: #1D4ED8 !important;
-}
-
-/* ── Profile Dropdown Box ── */
-.st-key-top_profile_dropdown_box {
-    position: absolute !important;
-    top: 48px !important;
-    right: 0 !important;
-    width: 250px !important;
-    padding: 12px !important;
-    background: #FFFFFF !important;
-    border: 1px solid #DCE6F3 !important;
-    border-radius: 12px !important;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.16) !important;
-    z-index: 1000000 !important;
 }
 
 /* ── Mobile Header Single-Row Layout & Controls ── */
@@ -2992,32 +3592,45 @@ div[class*="st-key-dmx_hidden_gps_bridge"] iframe {
 """, unsafe_allow_html=True)
 
 with st.container(key="dmx_hidden_script_runner"):
-    components.html("""
+    components.html(f"""
 <div id="dmx-top-progress-bar"></div>
 <script>
-(function() {
-    try {
+(function() {{
+    try {{
         var doc = window.parent.document || document;
+        var isDark = {"true" if is_dark else "false"};
+        if (isDark) {{
+            doc.documentElement.setAttribute('data-theme', 'dark');
+            if (doc.body) doc.body.setAttribute('data-theme', 'dark');
+            var stApp = doc.querySelector('.stApp');
+            if (stApp) stApp.setAttribute('data-theme', 'dark');
+        }} else {{
+            doc.documentElement.removeAttribute('data-theme');
+            if (doc.body) doc.body.removeAttribute('data-theme');
+            var stApp = doc.querySelector('.stApp');
+            if (stApp) stApp.removeAttribute('data-theme');
+        }}
+
         var pBar = doc.getElementById('dmx-top-progress-bar');
-        if (!pBar) {
+        if (!pBar) {{
             pBar = doc.createElement('div');
             pBar.id = 'dmx-top-progress-bar';
             doc.body.appendChild(pBar);
-        }
+        }}
         pBar.classList.remove('dmx-progress-active');
 
-        if (!window.parent._dmx_nav_listener_attached) {
+        if (!window.parent._dmx_nav_listener_attached) {{
             window.parent._dmx_nav_listener_attached = true;
-            doc.addEventListener('click', function(e) {
+            doc.addEventListener('click', function(e) {{
                 var btn = e.target.closest('[class*="st-key-d_nav_btn_"] button, [class*="st-key-m_nav_btn_"] button, .st-key-top_auth_signin_btn button, .st-key-m_drawer_signin button, .st-key-d_dd_admin button, .st-key-d_dd_profile button, .st-key-d_dd_settings button');
-                if (btn) {
+                if (btn) {{
                     var bar = doc.getElementById('dmx-top-progress-bar');
                     if (bar) bar.classList.add('dmx-progress-active');
-                }
-            }, true);
-        }
-    } catch(e) {}
-})();
+                }}
+            }}, true);
+        }}
+    }} catch(e) {{}}
+}})();
 </script>
 """, height=0, width=0)
 
@@ -3087,7 +3700,7 @@ with st.container(key="dmx_master_header_card"):
                 on_click=toggle_app_theme
             )
 
-        # Col 9: Profile Avatar 'Dv ▾' or 'Sign In' Button
+        # Col 9: Profile Avatar 'Dv' or 'Sign In' Button
         with d_cols[9]:
             if is_logged_in:
                 _pname = str(top_auth_user.get("full_name", "User")).strip() or "User"
@@ -3100,30 +3713,25 @@ with st.container(key="dmx_master_header_card"):
                 else:
                     _ini = "Dv"
 
-                if st.button(f"{_ini} ▾", key="top_profile_trigger", use_container_width=True, help=f"{_pname} account menu"):
-                    st.session_state["top_profile_open"] = not st.session_state.get("top_profile_open", False)
-                    st.rerun()
-
-                if st.session_state.get("top_profile_open", False):
-                    with st.container(key="top_profile_dropdown_box"):
+                with st.container(key="top_profile_wrap"):
+                    with st.popover(f"{_ini}", help=f"{_pname} account menu", use_container_width=True):
                         _is_adm   = auth_svc.is_admin_session(top_auth_user)
                         _role_lbl = "ADMINISTRATOR" if _is_adm else "PATIENT"
-                        _rc       = "#DC2626" if _is_adm else "#2563EB"
+                        _rc       = "#EF4444" if _is_adm else "#2563EB"
                         st.markdown(
-                            f'<div style="padding-bottom:9px;border-bottom:1px solid rgba(148,163,184,0.2);margin-bottom:8px;">'
-                            f'<div style="font-weight:800;font-size:0.88rem;color:var(--mm-text-primary);">{html.escape(_pname)}</div>'
-                            f'<div style="font-size:0.72rem;color:var(--mm-text-secondary);margin-top:2px;overflow-wrap:anywhere;">{html.escape(_pemail)}</div>'
-                            f'<span style="display:inline-block;margin-top:6px;font-size:0.65rem;font-weight:800;'
-                            f'padding:2px 8px;border-radius:99px;background:{_rc}18;color:{_rc};border:1px solid {_rc}40;">'
+                            f'<div style="padding-bottom:10px;border-bottom:1px solid rgba(148,163,184,0.25);margin-bottom:10px;min-width:190px;">'
+                            f'<div style="font-weight:800;font-size:0.92rem;color:var(--mm-text-primary);">{html.escape(_pname)}</div>'
+                            f'<div style="font-size:0.75rem;color:var(--mm-text-secondary);margin-top:2px;overflow-wrap:anywhere;">{html.escape(_pemail)}</div>'
+                            f'<span style="display:inline-block;margin-top:6px;font-size:0.68rem;font-weight:800;'
+                            f'padding:2px 8px;border-radius:99px;background:{_rc}22;color:{_rc};border:1px solid {_rc}55;">'
                             f'{_role_lbl}</span></div>',
                             unsafe_allow_html=True
                         )
                         if _is_adm:
-                            st.button("Admin Console", key="d_dd_admin", use_container_width=True, on_click=switch_active_panel, args=("Admin Panel",), kwargs={"top_profile_open": False})
+                            st.button("Admin Console", key="d_dd_admin", use_container_width=True, on_click=switch_active_panel, args=("Admin Panel",))
                         else:
-                            st.button("Profile", key="d_dd_profile", use_container_width=True, on_click=switch_active_panel, args=("Family Management",), kwargs={"top_profile_open": False, "family_settings_open": False})
+                            st.button("Profile", key="d_dd_profile", use_container_width=True, on_click=switch_active_panel, args=("Family Management",), kwargs={"family_settings_open": False})
                         if st.button("Sign Out", key="d_prof_logout", use_container_width=True):
-                            st.session_state["top_profile_open"] = False
                             auth_ui.logout_user()
                             st.rerun()
             else:
