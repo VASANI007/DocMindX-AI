@@ -102,6 +102,19 @@ def hash_otp_code(email: str, purpose: str, otp: str) -> str:
     data = f"{email.strip().lower()}:{purpose}:{otp}"
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
+def _parse_timestamp(val) -> datetime:
+    """Safely converts string or datetime (from PostgreSQL/SQLite) to a naive datetime."""
+    if isinstance(val, datetime):
+        return val.replace(tzinfo=None) if val.tzinfo else val
+    if isinstance(val, str):
+        val_clean = val.split("+")[0].split("Z")[0].strip()
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(val_clean, fmt)
+            except Exception:
+                pass
+    return datetime.now()
+
 def request_otp(email: str, purpose: str, full_name: str = "") -> tuple[bool, str]:
     """
     Generates, stores, and dispatches a secure OTP for the specified purpose.
@@ -114,7 +127,7 @@ def request_otp(email: str, purpose: str, full_name: str = "") -> tuple[bool, st
     # Check resend cooldown
     latest_record = auth_db.get_active_otp_record(email, purpose)
     if latest_record:
-        created_time = datetime.strptime(latest_record["created_at"], "%Y-%m-%d %H:%M:%S")
+        created_time = _parse_timestamp(latest_record.get("created_at"))
         elapsed_seconds = (datetime.now() - created_time).total_seconds()
         if elapsed_seconds < OTP_RESEND_COOLDOWN_SECONDS:
             wait_remaining = int(OTP_RESEND_COOLDOWN_SECONDS - elapsed_seconds)
@@ -155,7 +168,7 @@ def verify_otp_code(email: str, purpose: str, entered_otp: str) -> tuple[bool, s
         return False, "No active verification code found. Please request a new code."
 
     # Check expiration
-    expires_at = datetime.strptime(record["expires_at"], "%Y-%m-%d %H:%M:%S")
+    expires_at = _parse_timestamp(record.get("expires_at"))
     if datetime.now() > expires_at:
         return False, "Verification code has expired. Please request a new code."
 
