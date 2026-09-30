@@ -22,13 +22,11 @@ load_dotenv()
 
 _logger = logging.getLogger("DocMindX.GeminiManager")
 
-# Default model chain in priority order
+# Default model chain in priority order (fastest high-availability models first)
 DEFAULT_GEMINI_MODELS = [
-    "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
+    "gemini-3.6-flash",
     "gemini-3.7-flash",
-    "gemini-2.5-flash",
-    "gemini-flash-latest"
 ]
 COOLDOWN_SECONDS = 180  # 3-minute cooldown for rate-limited (429) keys
 
@@ -36,12 +34,13 @@ COOLDOWN_SECONDS = 180  # 3-minute cooldown for rate-limited (429) keys
 class GeminiKeyPoolManager:
     """
     Thread-safe manager for multiple Gemini API keys.
-    Maintains active key list, health state, and automatic rotation.
+    Maintains active key list, health state, permanent denial state, and automatic rotation.
     """
 
     def __init__(self):
         self._lock = threading.Lock()
         self._exhausted_keys: Dict[str, float] = {}  # key -> timestamp when cooldown ends
+        self._permanently_disabled_keys: Dict[str, str] = {}  # key -> reason/error
         self._current_index = 0
 
     def get_all_keys(self) -> List[str]:
@@ -84,8 +83,8 @@ class GeminiKeyPoolManager:
 
     def get_active_keys(self) -> List[str]:
         """
-        Returns keys that are currently healthy (cooldown has expired).
-        If all keys are on cooldown, returns all keys sorted by earliest cooldown expiry.
+        Returns keys that are currently healthy (not permanently disabled and cooldown has expired).
+        If all healthy keys are on cooldown, returns them sorted by earliest cooldown expiry.
         """
         all_keys = self.get_all_keys()
         if not all_keys:
@@ -98,23 +97,41 @@ class GeminiKeyPoolManager:
                 k: exp for k, exp in self._exhausted_keys.items() if exp > now
             }
 
-            healthy = [k for k in all_keys if k not in self._exhausted_keys]
+            # Filter out permanently disabled keys completely
+            non_disabled = [k for k in all_keys if k not in self._permanently_disabled_keys]
+            if not non_disabled:
+                _logger.error("[GeminiManager] All %d configured Gemini keys are permanently disabled.", len(all_keys))
+                return []
+
+            healthy = [k for k in non_disabled if k not in self._exhausted_keys]
             if healthy:
                 return healthy
 
-            # If all are exhausted, sort by cooldown expiry (earliest first)
-            _logger.warning("[GeminiManager] All %d Gemini keys are on temporary cooldown. Trying earliest expiring key.", len(all_keys))
-            return sorted(all_keys, key=lambda k: self._exhausted_keys.get(k, 0))
+            # If all non-disabled keys are exhausted, sort by cooldown expiry (earliest first)
+            _logger.warning("[GeminiManager] All %d active Gemini keys are on temporary cooldown. Trying earliest expiring key.", len(non_disabled))
+            return sorted(non_disabled, key=lambda k: self._exhausted_keys.get(k, 0))
 
     def mark_key_exhausted(self, key: str, reason: str = "quota_exceeded", cooldown: float = COOLDOWN_SECONDS):
-        """Marks a key as exhausted for the cooldown duration."""
+        """Marks a key as temporarily exhausted for the cooldown duration (transient 429)."""
         with self._lock:
             now = time.time()
             self._exhausted_keys[key] = now + cooldown
             masked = key[:6] + "..." + key[-4:] if len(key) > 10 else "***"
             _logger.warning(
-                "[GeminiManager] Key %s marked exhausted (%s) for %ds. Cooldown ends at %.0f",
+                "[GeminiManager] Key %s marked temporarily exhausted (%s) for %ds. Cooldown ends at %.0f",
                 masked, reason, cooldown, self._exhausted_keys[key]
+            )
+
+    def mark_key_permanently_disabled(self, key: str, reason: str = "auth_denied"):
+        """Marks a key as permanently disabled for this process lifetime (403 denied / invalid project)."""
+        with self._lock:
+            self._permanently_disabled_keys[key] = reason
+            if key in self._exhausted_keys:
+                del self._exhausted_keys[key]
+            masked = key[:6] + "..." + key[-4:] if len(key) > 10 else "***"
+            _logger.error(
+                "[GeminiManager] KEY PERMANENTLY DISABLED (%s): %s. Key has been retired from active rotation.",
+                masked, reason
             )
 
     def mark_key_success(self, key: str):
@@ -133,18 +150,26 @@ class GeminiKeyPoolManager:
         all_keys = self.get_all_keys()
         now = time.time()
         with self._lock:
-            active = [k for k in all_keys if self._exhausted_keys.get(k, 0) <= now]
+            active = [k for k in all_keys if k not in self._permanently_disabled_keys and self._exhausted_keys.get(k, 0) <= now]
             exhausted = [
                 {
                     "key_masked": k[:6] + "..." + k[-4:] if len(k) > 10 else "***",
                     "cooldown_remaining_sec": round(self._exhausted_keys[k] - now, 1)
                 }
-                for k in all_keys if self._exhausted_keys.get(k, 0) > now
+                for k in all_keys if k not in self._permanently_disabled_keys and self._exhausted_keys.get(k, 0) > now
+            ]
+            disabled = [
+                {
+                    "key_masked": k[:6] + "..." + k[-4:] if len(k) > 10 else "***",
+                    "reason": reason
+                }
+                for k, reason in self._permanently_disabled_keys.items()
             ]
         return {
             "total_keys_configured": len(all_keys),
             "active_healthy_keys": len(active),
-            "exhausted_keys": exhausted
+            "exhausted_keys": exhausted,
+            "permanently_disabled_keys": disabled
         }
 
     def execute_with_failover(
@@ -155,12 +180,13 @@ class GeminiKeyPoolManager:
     ) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[str]]:
         """
         Executes a Gemini API request with automatic multi-key failover.
-        If Key 1 returns 429 / 403, immediately shifts to Key 2, then Key 3, etc.
-        Returns: (response_json, model_used, key_used) or (None, None, None) on complete exhaustion.
+        - Rate limits (429) put the key on short cooldown and shift to next key.
+        - Permanent auth errors (403/401/400 project denied) permanently disable the key.
+        - Returns: (response_json, model_used, key_used) or (None, None, None) on complete exhaustion.
         """
         keys = self.get_active_keys()
         if not keys:
-            _logger.error("[GeminiManager] No Gemini API keys configured in pool.")
+            _logger.error("[GeminiManager] No active Gemini API keys available in pool.")
             return None, None, None
 
         models_to_try = models or DEFAULT_GEMINI_MODELS
@@ -180,22 +206,30 @@ class GeminiKeyPoolManager:
                         return res.json(), model, key
 
                     elif res.status_code == 429:
-                        # Rate limit / Quota Exceeded -> Mark key exhausted and shift to next key immediately
+                        # Rate limit / Quota Exceeded -> Mark key on temporary cooldown and shift to next key immediately
                         last_error = f"HTTP 429 Quota Exceeded on {masked_key}"
                         _logger.warning("[GeminiManager] Key %d/%d (%s) hit 429 Quota Exceeded. Shifting to next key...", key_idx + 1, len(keys), masked_key)
                         self.mark_key_exhausted(key, reason="quota_exceeded", cooldown=COOLDOWN_SECONDS)
                         break  # Break out of models loop to immediately try the NEXT KEY
 
                     elif res.status_code in (400, 401, 403):
-                        # Auth / Permission error on this key -> Mark exhausted and shift
-                        last_error = f"HTTP {res.status_code} Auth Error on {masked_key}: {res.text[:120]}"
-                        _logger.warning("[GeminiManager] Key %d/%d (%s) auth error (%d). Shifting to next key...", key_idx + 1, len(keys), masked_key, res.status_code)
-                        self.mark_key_exhausted(key, reason="auth_error", cooldown=600)
+                        res_text = res.text.lower()
+                        is_permanent = any(w in res_text for w in [
+                            "denied access", "contact support", "permission_denied", "api_key_invalid",
+                            "consumer_suspended", "billing_disabled", "project has been denied"
+                        ]) or res.status_code in (401, 403)
+
+                        if is_permanent:
+                            last_error = f"HTTP {res.status_code} Permanent Auth Error on {masked_key}: {res.text[:120]}"
+                            self.mark_key_permanently_disabled(key, reason=f"HTTP {res.status_code}: {res.text[:100]}")
+                        else:
+                            last_error = f"HTTP {res.status_code} on {masked_key}: {res.text[:120]}"
+                            self.mark_key_exhausted(key, reason=f"HTTP_{res.status_code}", cooldown=600)
                         break  # Break out of models loop to immediately try NEXT KEY
 
-                    elif res.status_code == 404:
-                        # Model not found on this model name -> Try next model with same key
-                        _logger.debug("[GeminiManager] Model %s returned 404 with key %s, trying next model...", model, masked_key)
+                    elif res.status_code in (404, 503):
+                        # Model unavailable/503 on this specific model -> Try next model in chain
+                        _logger.debug("[GeminiManager] Model %s returned HTTP %d with key %s, trying next model...", model, res.status_code, masked_key)
                         continue
 
                     else:

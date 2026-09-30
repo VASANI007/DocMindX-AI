@@ -82,18 +82,18 @@ DocMindX AI bridges the gap between rural community health centers and specialis
 
 | Feature / Capability | **DocMindX AI (Our Platform)** | WebMD | Ada Health | Babylon Health | Practo | Google Health |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Dual ML + LLM Differential Triage** | ✅ **Yes (97.58% Top-3 Acc)** | ❌ Rule-only | ⚠️ Probabilistic | ⚠️ Chat-only | ❌ Booking app | ⚠️ Search-only |
-| **Multilingual Indic NLP (HI, GU, MR, etc.)** | ✅ **Native Indic Support** | ❌ English only | ⚠️ Limited | ❌ English only | ⚠️ Limited | ⚠️ Search-level |
-| **Handwritten Prescription OCR** | ✅ **Gemini Vision OCR** | ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Cloud API only |
-| **Lab & Radiology Report Analyzer** | ✅ **CBC, LFT, X-Ray, CT, MRI** | ❌ None | ❌ None | ❌ None | ⚠️ Upload only | ⚠️ Research |
-| **Real DailyMed Packaging Photos** | ✅ **Live NIH API** | ❌ Stock vectors | ❌ None | ❌ None | ⚠️ Pharmacy catalog | ❌ None |
-| **Holistic Care (Diet, Yoga, Compresses)** | ✅ **Integrated** | ⚠️ Generic articles| ❌ None | ❌ None | ❌ Doctor appointment| ⚠️ General search |
-| **Emergency Red Flag Detection** | ✅ **Automated Triage** | ⚠️ Static notice | ✅ Basic | ✅ Basic | ❌ None | ⚠️ Warning card |
-| **Nearby Hospital Radar & Routing** | ✅ **Overpass + Google Maps** | ⚠️ Directory only | ❌ None | ❌ None | ✅ Paid listings | ✅ Maps |
+| **Dual ML + LLM Differential Triage** | ✅ **Yes (97.58% Top-3 Acc)** | ❌ Rule-only |  Probabilistic |  Chat-only | ❌ Booking app |  Search-only |
+| **Multilingual Indic NLP (HI, GU, MR, etc.)** | ✅ **Native Indic Support** | ❌ English only |  Limited | ❌ English only |  Limited |  Search-level |
+| **Handwritten Prescription OCR** | ✅ **Gemini Vision OCR** | ❌ None | ❌ None | ❌ None | ❌ None |  Cloud API only |
+| **Lab & Radiology Report Analyzer** | ✅ **CBC, LFT, X-Ray, CT, MRI** | ❌ None | ❌ None | ❌ None |  Upload only |  Research |
+| **Real DailyMed Packaging Photos** | ✅ **Live NIH API** | ❌ Stock vectors | ❌ None | ❌ None |  Pharmacy catalog | ❌ None |
+| **Holistic Care (Diet, Yoga, Compresses)** | ✅ **Integrated** |  Generic articles| ❌ None | ❌ None | ❌ Doctor appointment|  General search |
+| **Emergency Red Flag Detection** | ✅ **Automated Triage** |  Static notice | ✅ Basic | ✅ Basic | ❌ None |  Warning card |
+| **Nearby Hospital Radar & Routing** | ✅ **Overpass + Google Maps** |  Directory only | ❌ None | ❌ None | ✅ Paid listings | ✅ Maps |
 | **Public Health Supply Chain Resilience**| ✅ **NLEM 2022 Command Center**| ❌ None | ❌ None | ❌ None | ❌ None | ❌ None |
-| **Epidemic Predictive Demand Forecasting**| ✅ **Multi-Factor Time-Series**| ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Research |
+| **Epidemic Predictive Demand Forecasting**| ✅ **Multi-Factor Time-Series**| ❌ None | ❌ None | ❌ None | ❌ None |  Research |
 | **Cross-District Redistribution Optimizer**| ✅ **Two-Stage Transit Solver**| ❌ None | ❌ None | ❌ None | ❌ None | ❌ None |
-| **Cost to Citizen** | 🆓 **100% Free & Open** | ⚠️ Ad-supported | ⚠️ Freemium | 💳 Subscription | 💳 Consultation fee | 🆓 Free Search |
+| **Cost to Citizen** | 🆓 **100% Free & Open** |  Ad-supported |  Freemium | 💳 Subscription | 💳 Consultation fee | 🆓 Free Search |
 
 ---
 

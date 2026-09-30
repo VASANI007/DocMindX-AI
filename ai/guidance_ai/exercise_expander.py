@@ -12,7 +12,7 @@ import pandas as pd
 import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS, DEFAULT_GEMINI_MODELS
 
 WORKSPACE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 VIDEO_LINKS_CSV = os.path.join(WORKSPACE_ROOT, "datasets", "media", "trusted_video_links.csv")
@@ -52,10 +52,12 @@ def get_curated_video_link(exercise_id: str, exercise_name: str = "") -> dict | 
                 "verified_by": str(row.get("verified_by", "Clinical Review Board"))
             }
 
-    # 2. Match by exercise name
+    # 2. Match by exercise name with exact / scored matching
     if exercise_name and "exercise_name" in df.columns:
+        ex_clean = exercise_name.strip().lower()
         for _, row in df.iterrows():
-            if str(row["exercise_name"]).lower() in exercise_name.lower() or exercise_name.lower() in str(row["exercise_name"]).lower():
+            row_clean = str(row["exercise_name"]).strip().lower()
+            if row_clean == ex_clean or (len(row_clean) >= 6 and (row_clean in ex_clean or ex_clean in row_clean)):
                 return {
                     "video_url": str(row.get("video_url", "")),
                     "channel_source": str(row.get("channel_source", "Verified Health Institution")),
@@ -119,27 +121,28 @@ Do NOT prescribe this as a medical cure. Do NOT output anything outside the JSON
                 except Exception:
                     pass
 
-    # 3. Try Groq (Llama 3.1)
+    # 3. Try Groq AI Fallback
     if GROQ_API_KEY:
-        try:
-            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-            body = {
-                "model": "llama-3.1-8b-instant",
-                "messages": [
-                    {"role": "system", "content": "You are a clinical wellness communicator. Output valid JSON only."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.3,
-                "response_format": {"type": "json_object"}
-            }
-            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=5)
-            if res.status_code == 200:
-                content = res.json()["choices"][0]["message"]["content"]
-                parsed = json.loads(content)
-                if isinstance(parsed, dict) and "steps" in parsed:
-                    return parsed
-        except Exception:
-            pass
+        for groq_model in GROQ_MODELS:
+            try:
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+                body = {
+                    "model": groq_model,
+                    "messages": [
+                        {"role": "system", "content": "You are a clinical wellness communicator. Output valid JSON only."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "response_format": {"type": "json_object"}
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=5)
+                if res.status_code == 200:
+                    content = res.json()["choices"][0]["message"]["content"]
+                    parsed = json.loads(content)
+                    if isinstance(parsed, dict) and "steps" in parsed:
+                        return parsed
+            except Exception:
+                pass
 
     # 4. Deterministic Local Fallback (Guaranteed Safe)
     return {

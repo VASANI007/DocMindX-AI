@@ -159,44 +159,41 @@ def get_seasonal_health_context(state: str, month: int = None, lang_code: str = 
     is_south = any(k in clean_state.lower() for k in ["kerala", "tamil nadu", "karnataka", "andhra", "telangana"])
     is_hilly = any(k in clean_state.lower() for k in ["himachal", "uttarakhand", "jammu", "kashmir", "ladakh", "sikkim"])
 
-    # Localized Alerts
+    # Localized Alerts (Framed strictly as general climatic educational reference — Section 18)
     if season_id == "monsoon":
         if lang_code == "gu":
-            alert_title = f"ચોમાસું રોગચાળો ચેતવણી — {clean_state}"
+            alert_title = f"ચોમાસુ ઋતુ આરોગ્ય માર્ગદર્શિકા — {clean_state}"
             alert_text = (
-                f"{clean_state} માં હાલ ચોમાસાની ઋતુ સક્રિય છે. ભેજવાળા વાતાવરણ અને પાણી ભરાવાના કારણે "
-                f"ડેન્ગ્યુ, મેલેરિયા, ટાઈફોઈડ, ચિકનગુનિયા અને વાયરલ ફીવરનો ફેલાવો ઝડપથી થાય છે. "
-                f"તાવ સાથે શરીરમાં દુખાવો, માથાનો દુખાવો કે ઉલ્ટી હોય તો તુરંત સીબીસી/પ્લેટલેટ્સ ટેસ્ટ કરાવો."
+                f"{clean_state} માં આ સમયગાળામાં સામાન્ય રીતે ચોમાસાની ઋતુ રહે છે. ભેજવાળા વાતાવરણમાં મચ્છરજન્ય અને જળજન્ય બીમારીઓ અંગે સાવચેતી રાખવી હિતાવહ છે. "
+                f"આ સામાન્ય શૈક્ષણિક માહિતી છે અને ચોક્કસ નિદાન માટે તબીબી સલાહ લેવી."
             )
             checklist = [
                 "ઘરની આસપાસ પાણી જમા ન થવા દો અને મચ્છરદાની/રીપેલન્ટનો ઉપયોગ કરો.",
                 "હંમેશા ઉકાળેલું અથવા ફિલ્ટર કરેલું શુદ્ધ પાણી જ પીવો.",
-                "તાવમાં જાતે એન્ટિબાયોટિક કે પેઇનકિલર ન લો; સાદું પેરાસિટામોલ અને વધુ પ્રવાહી લો."
+                "કોઈપણ દવા લેતા પહેલા ડૉક્ટરની સલાહ લો."
             ]
         elif lang_code == "hi":
-            alert_title = f"मानसून मौसमी रोग चेतावनी — {clean_state}"
+            alert_title = f"मानसून मौसमी स्वास्थ्य संदर्भ — {clean_state}"
             alert_text = (
-                f"{clean_state} में वर्तमान में मानसून (बारिश का मौसम) सक्रिय है। जलभराव और मच्छरों के प्रजनन के कारण "
-                f"डेंगू, मलेरिया, चिकनगुनिया, टाइफाइड और वायरल बुखार का संक्रमण चरम पर रहता है। "
-                f"यदि बुखार के साथ सिरदर्द, जोड़ों में दर्द या कमजोरी है तो डॉक्टर से परामर्श लें और सीबीसी प्लेटलेट्स की जांच कराएं।"
+                f"{clean_state} में वर्ष के इस समय में मानसूनी जलवायु सक्रिय रहती है। जलभराव और मच्छरों से बचाव के सामान्य स्वास्थ्य उपाय रखें। "
+                f"यह सामान्य स्वास्थ्य शिक्षा संदर्भ है और इसे किसी व्यक्ति के लिए सक्रिय प्रकोप या निदान न मानें।"
             )
             checklist = [
                 "घरों और गमलों के आसपास पानी जमा न होने दें, मच्छरदानी का प्रयोग करें।",
-                "उबला हुआ या सुरक्षित फ़िल्टर पानी पिएं और बाहर के खुले खाद्य पदार्थों से बचें।",
-                "तेज बुखार में माथे पर ठंडे पानी की पट्टी (Cold Sponging) रखें और ओआरएस/तरल पदार्थ लें।"
+                "उबला हुआ या सुरक्षित फ़िल्टर पानी पिएं और स्वच्छता बनाए रखें।",
+                "लक्षण होने पर योग्य चिकित्सक से परामर्श लें।"
             ]
         else:
-            alert_title = f"Active Monsoon Seasonal Risk Alert — {clean_state}"
+            alert_title = f"Seasonal Climate Health Advisory (Reference) — {clean_state}"
             alert_text = (
-                f"Monsoon rainy conditions are currently active in {clean_state}. High humidity and waterlogging "
-                f"significantly amplify transmission of vector-borne and waterborne illnesses including Dengue, "
-                f"Malaria, Chikungunya, Typhoid, and Acute Viral Fevers. Patients presenting with fever, severe body ache, "
-                f"or nausea require prompt clinical evaluation and complete blood count (CBC) monitoring."
+                f"Monsoon season climatic characteristics for {clean_state} involve increased humidity and precipitation. "
+                f"Standard public health precautions regarding vector control and water hygiene are recommended. "
+                f"This is general seasonal health education and does not represent an active outbreak confirmation or diagnostic finding."
             )
             checklist = [
-                "Eliminate stagnant water around living spaces and use insect repellents / bed nets.",
-                "Consume boiled or purified drinking water to prevent enteric typhoid and gastroenteritis.",
-                "Avoid unprescribed NSAIDs/painkillers during fever; prioritize hydration (ORS) and medical triage."
+                "Eliminate stagnant water around living spaces and use insect repellents.",
+                "Consume boiled or purified drinking water.",
+                "Consult a healthcare professional for individual medical evaluation."
             ]
 
     elif season_id == "winter":

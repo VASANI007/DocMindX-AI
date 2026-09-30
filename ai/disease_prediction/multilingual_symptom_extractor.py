@@ -19,24 +19,15 @@ import ast
 import requests
 import pandas as pd
 from typing import Dict, Any, List, Optional
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS, DEFAULT_GEMINI_MODELS
 from ai.disease_prediction.canonical_concepts import canonical_normalizer, CanonicalClinicalRepresentation
 
 DATASETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "datasets")
 _logger = logging.getLogger("DocMindX.TriageEngine.SymptomExtractor")
 
-# Valid Gemini models (ordered by preference: fastest lite → standard → pro)
-_GEMINI_MODELS = [
-    "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-3.7-flash",
-]
-
-# Valid Groq models
-_GROQ_MODELS = [
-    "llama-3.3-70b-versatile",
-    "mixtral-8x7b-32768",
-]
+# Valid model chains centralized from config.settings
+_GEMINI_MODELS = list(DEFAULT_GEMINI_MODELS)
+_GROQ_MODELS = list(GROQ_MODELS)
 
 
 def _safe_parse_json(text: str) -> Optional[dict]:
@@ -165,10 +156,18 @@ class MultilingualSymptomExtractor:
         if clean_name in self.id_lookup:
             return self.id_lookup[clean_name], concept_name
 
+        # Use canonical normalizer taxonomy resolution first
+        resolved_id = canonical_normalizer.get_symptom_id(clean_name)
+        if resolved_id:
+            rec = canonical_normalizer.bridge.lookup_by_id(resolved_id)
+            official = rec.get("symptom_name", concept_name) if rec else concept_name
+            return resolved_id, official
+
         if not self.symptoms_df.empty:
-            match = self.symptoms_df[self.symptoms_df["symptom_name"].str.lower().str.contains(clean_name, na=False)]
-            if not match.empty:
-                return match.iloc[0]["symptom_id"], match.iloc[0]["symptom_name"]
+            # Exact match check
+            exact_match = self.symptoms_df[self.symptoms_df["symptom_name"].str.lower() == clean_name]
+            if not exact_match.empty:
+                return exact_match.iloc[0]["symptom_id"], exact_match.iloc[0]["symptom_name"]
 
         return fallback_id or None, concept_name
 
@@ -379,6 +378,8 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                 "detected_symptoms": [],
                 "symptom_ids": [],
                 "symptom_labels": [],
+                "normalized_symptoms": [],
+                "duration_days": None,
                 "recommended_medicines": [],
                 "is_emergency": False,
                 "summary_text": "",
@@ -388,6 +389,12 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                 "fallback_reason": "No input text"
             }
 
+        # 1. Generic Multilingual Normalization & Dataset Matching
+        norm_symptoms = normalize_user_symptoms(user_text, patient_context={"lang_code": user_lang})
+        
+        # Extract duration days
+        dur_label, dur_days = canonical_normalizer._extract_duration(user_text)
+
         # 1. Canonical Semantic Normalization (Language-Independent)
         canonical_res = canonical_normalizer.normalize(user_text, user_context={"lang": user_lang})
 
@@ -395,14 +402,12 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
         llm_result = self._extract_via_llm(user_text, user_lang=user_lang)
         if llm_result and (llm_result.get("detected_symptoms") or llm_result.get("detected_disease")):
             # ANTI-HALLUCINATION & NEGATION ENFORCEMENT:
-            # Strip any symptom from LLM output that the patient explicitly negated
             filtered_syms = []
             filtered_ids = []
             filtered_labels = []
             neg_set = set(canonical_res.negative_findings)
             for s in llm_result.get("detected_symptoms", []):
                 concept_lower = s.get("concept", "").lower()
-                # Check if concept overlaps with any negated finding
                 if any(neg in concept_lower for neg in neg_set):
                     continue
                 filtered_syms.append(s)
@@ -411,9 +416,21 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                 if s.get("official_name") and s["official_name"] not in filtered_labels:
                     filtered_labels.append(s["official_name"])
 
+            # Merge matched items from norm_symptoms
+            for ns in norm_symptoms:
+                if ns.get("dataset_match") and ns.get("symptom_id"):
+                    sid = ns["symptom_id"]
+                    sname = ns.get("dataset_name") or ns["normalized_english"]
+                    if sid not in filtered_ids:
+                        filtered_ids.append(sid)
+                    if sname not in filtered_labels:
+                        filtered_labels.append(sname)
+
             llm_result["detected_symptoms"] = filtered_syms
             llm_result["symptom_ids"] = filtered_ids
             llm_result["symptom_labels"] = filtered_labels
+            llm_result["normalized_symptoms"] = norm_symptoms
+            llm_result["duration_days"] = dur_days
             llm_result["negative_findings"] = canonical_res.negative_findings
             llm_result["canonical_representation"] = canonical_res.to_dict()
             if canonical_res.clinical_attributes.get("has_emergency_red_flags") or canonical_res.clinical_attributes.get("bite_exposure"):
@@ -422,13 +439,15 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
 
         # 3. Canonical & Knowledge Base Fallback
         _logger.info("[SymptomExtractor] Using canonical normalization fallback (LOCAL)")
-        if canonical_res.normalization_status == "failed" and not canonical_res.canonical_concepts and not canonical_res.exposure_ids:
+        if canonical_res.normalization_status == "failed" and not canonical_res.canonical_concepts and not canonical_res.exposure_ids and not norm_symptoms:
             return {
                 "clinical_status": "insufficient_information",
                 "detected_disease": None,
                 "detected_symptoms": [],
                 "symptom_ids": [],
                 "symptom_labels": [],
+                "normalized_symptoms": [],
+                "duration_days": dur_days,
                 "recommended_medicines": [],
                 "is_emergency": False,
                 "summary_text": "Insufficient clinical information to determine a differential pattern. Please describe your symptoms in more detail.",
@@ -440,30 +459,47 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                 "negative_findings": canonical_res.negative_findings
             }
 
-        # Build detected items from canonical concepts
+        # Build detected items from canonical concepts and norm_symptoms
         detected_items = []
         matched_symptom_ids = list(canonical_res.symptom_ids)
         matched_symptom_labels = []
 
+        for ns in norm_symptoms:
+            if ns.get("dataset_match") and ns.get("symptom_id"):
+                sid = ns["symptom_id"]
+                sname = ns.get("dataset_name") or ns["normalized_english"]
+                if sid not in matched_symptom_ids:
+                    matched_symptom_ids.append(sid)
+                if sname not in matched_symptom_labels:
+                    matched_symptom_labels.append(sname)
+                detected_items.append({
+                    "concept": sname,
+                    "icon": "",
+                    "symptom_id": sid,
+                    "official_name": sname,
+                    "display_name": sname,
+                    "category": "Clinical Symptom"
+                })
+
         for concept in canonical_res.canonical_concepts:
             label = concept.replace("_", " ").title()
-            matched_symptom_labels.append(label)
+            if label not in matched_symptom_labels:
+                matched_symptom_labels.append(label)
             sid = self.id_lookup.get(label.lower()) or self.id_lookup.get(concept.lower())
-            if not sid and not self.symptoms_df.empty:
-                m = self.symptoms_df[self.symptoms_df["symptom_name"].str.lower().str.contains(label.lower(), na=False)]
-                if not m.empty:
-                    sid = str(m.iloc[0]["symptom_id"])
+            if not sid:
+                sid = canonical_normalizer.get_symptom_id(label) or canonical_normalizer.get_symptom_id(concept)
             if sid and sid not in matched_symptom_ids:
                 matched_symptom_ids.append(sid)
 
-            detected_items.append({
-                "concept": label,
-                "icon": "",
-                "symptom_id": sid or "",
-                "official_name": label,
-                "display_name": label,
-                "category": "Clinical Finding"
-            })
+            if not any(d.get("official_name") == label for d in detected_items):
+                detected_items.append({
+                    "concept": label,
+                    "icon": "",
+                    "symptom_id": sid or "",
+                    "official_name": label,
+                    "display_name": label,
+                    "category": "Clinical Finding"
+                })
 
         is_emergency = bool(
             canonical_res.clinical_attributes.get("has_emergency_red_flags")
@@ -489,6 +525,8 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
             "detected_symptoms": detected_items,
             "symptom_ids": matched_symptom_ids,
             "symptom_labels": matched_symptom_labels,
+            "normalized_symptoms": norm_symptoms,
+            "duration_days": dur_days,
             "recommended_medicines": [],
             "is_emergency": is_emergency,
             "summary_text": summary_text,
@@ -498,6 +536,181 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
             "fallback_reason": "AI providers unavailable; canonical normalization used",
             "canonical_representation": canonical_res.to_dict()
         }
+
+
+_symptom_norm_cache: Dict[str, List[Dict[str, Any]]] = {}
+
+
+def normalize_user_symptoms(user_text: str, patient_context: Optional[dict] = None) -> List[Dict[str, Any]]:
+    """
+    Centralized Generic Multilingual Symptom Normalization & Dataset Matching Layer.
+    Converts natural-language patient phrases across ALL supported languages into
+    normalized English clinical symptom concepts, validating against symptoms_master.csv.
+
+    Output format:
+    [
+        {
+            "user_phrase": "tav aave chhe",
+            "normalized_english": "Fever",
+            "dataset_match": True,
+            "dataset_name": "Fever",
+            "match_type": "ALIAS MATCH",
+            "match_status": "Matched",
+            "symptom_id": "S000001"
+        },
+        ...
+    ]
+    """
+    if not user_text or not isinstance(user_text, str) or not user_text.strip():
+        return []
+
+    clean_key = user_text.strip().lower()
+    if clean_key in _symptom_norm_cache:
+        return [dict(x) for x in _symptom_norm_cache[clean_key]]
+
+    patient_context = patient_context or {}
+    user_lang = patient_context.get("lang_code") or patient_context.get("lang", "en")
+
+    canonical_res = canonical_normalizer.normalize(user_text, user_context={"lang": user_lang})
+    neg_set = {n.lower().replace("_", " ") for n in canonical_res.negative_findings}
+
+    prompt = f"""You are DocMindX AI, an expert clinical symptom normalization system.
+Analyze this patient text (which may be in English, Hindi, Gujarati, Roman Gujarati, Hinglish, Marathi, or mixed vernacular):
+"{user_text}"
+
+CRITICAL RULES:
+1. Extract ALL distinct symptom phrases explicitly described by the patient. Do NOT stop at the first symptom.
+2. For each symptom, output:
+   - "user_phrase": exact phrase used by the patient in their text (e.g. "tav aave chhe", "galu bale chhe", "pag ma dukhe chhe", "chakar aave chhe", "नाक से पानी गिर रहा है").
+   - "english_name": concise, human-readable English clinical symptom name (e.g. "Fever", "Burning Throat", "Leg Pain", "Dizziness", "Runny Nose", "Cough", "Abdominal Bloating").
+3. DO NOT output a diagnosis, disease name, or medication as the symptom english_name. Normalization is not diagnosis.
+4. If a symptom was explicitly stated as absent (negated, e.g. "no fever", "ताव નથી"), DO NOT include it as a symptom.
+5. If the patient mentions a duration, extract duration_days as an integer (e.g. "2 divas thi" -> 2, "since yesterday" -> 1, "for two weeks" -> 14), else null.
+
+Respond strictly in valid JSON:
+{{
+  "duration_days": 2,
+  "symptoms": [
+    {{
+      "user_phrase": "tav aave chhe",
+      "english_name": "Fever"
+    }},
+    {{
+      "user_phrase": "galu bale chhe",
+      "english_name": "Burning Throat"
+    }}
+  ]
+}}"""
+
+    extracted_symptoms_raw = []
+
+    # Primary: Gemini Multi-Key Failover Pool
+    if gemini_pool.get_active_keys():
+        gem_body = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {"temperature": 0.05, "responseMimeType": "application/json"}
+        }
+        res_g_data, model_used, _ = gemini_pool.execute_with_failover(
+            payload=gem_body,
+            models=_GEMINI_MODELS,
+            timeout=10
+        )
+        if res_g_data:
+            candidates = res_g_data.get("candidates", [])
+            if candidates:
+                raw_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                parsed = _safe_parse_json(raw_text)
+                if parsed and isinstance(parsed.get("symptoms"), list) and parsed["symptoms"]:
+                    extracted_symptoms_raw = parsed["symptoms"]
+
+    # Secondary: Groq LLM
+    if not extracted_symptoms_raw and GROQ_API_KEY:
+        for groq_model in _GROQ_MODELS:
+            try:
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+                body = {
+                    "model": groq_model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.05
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=7)
+                if res.status_code == 200:
+                    content = res.json()["choices"][0]["message"]["content"]
+                    parsed = _safe_parse_json(content)
+                    if parsed and isinstance(parsed.get("symptoms"), list) and parsed["symptoms"]:
+                        extracted_symptoms_raw = parsed["symptoms"]
+                        break
+            except Exception:
+                pass
+
+    # Tertiary: Canonical Local Fallback
+    if not extracted_symptoms_raw:
+        split_pattern = r"[,;.\n।!?]|(?:\b(?:and|aur|ane|aani|तथा|એક|અને|આણિ|आणि)\b)"
+        clauses = [c.strip() for c in re.split(split_pattern, user_text, flags=re.IGNORECASE) if len(c.strip()) >= 2]
+        if canonical_res.canonical_concepts:
+            for concept in canonical_res.canonical_concepts:
+                label = concept.replace("_", " ").title()
+                extracted_symptoms_raw.append({
+                    "user_phrase": user_text,
+                    "english_name": label
+                })
+        elif clauses:
+            for clause in clauses:
+                match_det = canonical_normalizer.bridge.match_symptom_detailed(clause)
+                if match_det.get("dataset_match"):
+                    extracted_symptoms_raw.append({
+                        "user_phrase": clause,
+                        "english_name": match_det.get("dataset_name") or clause.title()
+                    })
+                else:
+                    extracted_symptoms_raw.append({
+                        "user_phrase": clause,
+                        "english_name": clause.strip().title()
+                    })
+
+    normalized_list = []
+    seen_english = set()
+
+    for item in extracted_symptoms_raw:
+        if not isinstance(item, dict):
+            continue
+        user_phrase = str(item.get("user_phrase") or "").strip()
+        english_name = str(item.get("english_name") or item.get("concept") or user_phrase).strip()
+        if not english_name:
+            continue
+
+        if any(neg in english_name.lower() or (user_phrase and neg in user_phrase.lower()) for neg in neg_set):
+            continue
+
+        match_info = canonical_normalizer.bridge.match_symptom_detailed(english_name)
+        if not match_info.get("dataset_match") and user_phrase:
+            match_phrase = canonical_normalizer.bridge.match_symptom_detailed(user_phrase)
+            if match_phrase.get("dataset_match"):
+                match_info = match_phrase
+
+        is_matched = bool(match_info.get("dataset_match"))
+        dataset_name = match_info.get("dataset_name") if is_matched else None
+        match_type = match_info.get("match_type", "UNMATCHED")
+        match_status = "Matched" if is_matched else "Not Matched"
+        symptom_id = match_info.get("symptom_id") if is_matched else None
+
+        dedup_key = (english_name.lower(), user_phrase.lower())
+        if dedup_key in seen_english:
+            continue
+        seen_english.add(dedup_key)
+
+        normalized_list.append({
+            "user_phrase": user_phrase or english_name,
+            "normalized_english": english_name,
+            "dataset_match": is_matched,
+            "dataset_name": dataset_name,
+            "match_type": match_type,
+            "match_status": match_status,
+            "symptom_id": symptom_id
+        })
+
+    _symptom_norm_cache[clean_key] = normalized_list
+    return [dict(x) for x in normalized_list]
 
 
 # Global singleton instance

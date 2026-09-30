@@ -138,6 +138,9 @@ NLEM_FORMULARY = [
     {"id": "MED_ART_COMB", "name": "Artesunate + SP Combi-pack", "category": "Antimalarial", "unit": "Packs", "standard_pack": 100, "critical_threshold_days": 3, "warning_threshold_days": 10, "unit_cost_inr": 45.00}
 ]
 
+# Fast O(1) Threshold Lookup Cache
+NLEM_THRESHOLDS = {m["id"]: (m["critical_threshold_days"], m["warning_threshold_days"]) for m in NLEM_FORMULARY}
+
 class PHCDataEngine:
     def __init__(self):
         self.workspace_root = WORKSPACE_ROOT
@@ -240,7 +243,8 @@ class PHCDataEngine:
 
     def get_facilities(self, state: str = "All India", district: str = "All Districts",
                        fac_type: str = "All Types", scenario_key: str = "baseline") -> List[Dict[str, Any]]:
-        """Returns list of facilities with scenario-adjusted inventory telemetry."""
+        """Returns list of facilities with scenario-adjusted inventory telemetry (optimized O(1) path)."""
+        is_baseline = (scenario_key == "baseline")
         scenario = SURGE_SCENARIOS.get(scenario_key, SURGE_SCENARIOS["baseline"])
         scenario_mults = scenario.get("multipliers", {})
         affected_regions = scenario.get("affected_regions", [])
@@ -254,38 +258,40 @@ class PHCDataEngine:
             if fac_type and fac_type != "All Types" and f["type"] != fac_type:
                 continue
 
-            f_copy = copy.deepcopy(f)
+            if is_baseline:
+                results.append(f)
+                continue
 
-            # Apply scenario surge multiplier if facility state in affected regions or scenario applies to ALL
             is_affected = (f["state"] in affected_regions) or (not affected_regions and scenario_key != "baseline")
+            if not is_affected:
+                results.append(f)
+                continue
 
-            for med_id, inv in f_copy["inventory"].items():
-                mult = 1.0
-                if is_affected:
-                    mult = scenario_mults.get(med_id, scenario_mults.get("ALL", 1.0))
-
+            # Lightweight shallow copy of facility container with modified inventory
+            f_copy = dict(f)
+            inv_copy = {}
+            for med_id, inv in f["inventory"].items():
+                mult = scenario_mults.get(med_id, scenario_mults.get("ALL", 1.0))
                 adj_burn = round(inv["baseline_daily_burn"] * mult, 1)
-                inv["adjusted_daily_burn"] = adj_burn
-                inv["days_remaining"] = round(inv["stock"] / max(0.1, adj_burn), 1)
+                days_rem = round(inv["stock"] / max(0.1, adj_burn), 1)
+                crit_thr, warn_thr = NLEM_THRESHOLDS.get(med_id, (3, 10))
 
-                crit_thr = 3
-                warn_thr = 10
-                for m in NLEM_FORMULARY:
-                    if m["id"] == med_id:
-                        crit_thr = m["critical_threshold_days"]
-                        warn_thr = m["warning_threshold_days"]
-                        break
-
-                if inv["days_remaining"] <= crit_thr:
-                    inv["status"] = "CRITICAL"
-                elif inv["days_remaining"] <= warn_thr:
-                    inv["status"] = "WARNING"
+                if days_rem <= crit_thr:
+                    status = "CRITICAL"
+                elif days_rem <= warn_thr:
+                    status = "WARNING"
                 else:
-                    inv["status"] = "ADEQUATE"
+                    status = "ADEQUATE"
 
-                if scenario_key != "baseline" and mult > 1.0:
-                    inv["provenance"] = PROVENANCE_SIMULATED
-
+                prov = PROVENANCE_SIMULATED if mult > 1.0 else inv["provenance"]
+                inv_copy[med_id] = {
+                    **inv,
+                    "adjusted_daily_burn": adj_burn,
+                    "days_remaining": days_rem,
+                    "status": status,
+                    "provenance": prov
+                }
+            f_copy["inventory"] = inv_copy
             results.append(f_copy)
 
         return results

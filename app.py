@@ -35,6 +35,7 @@ import components.admin_ui as admin_ui
 import components.auth_ui as auth_ui
 import components.family_ui as family_ui
 from components.popup_dialog import check_and_render_pending_popup
+from components.gps_detector import render_gps_detector
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
 import services.email_service as email_service
@@ -71,7 +72,7 @@ from api.nlm_clinical import search_nlm_conditions
 from api.nominatim import geocode_city_district
 from api.openfda import search_drug_openfda
 from api.overpass import query_nearby_healthcare
-from api.who_icd import search_who_icd11
+from api.who_icd import search_who_icd11, is_probable_icd10_code, validate_icd11_condition
 from components.command_center_view import render_command_center_dashboard
 from components.diagnostic_results_view import \
     render_diagnostic_evaluation_view
@@ -201,6 +202,44 @@ if "floating_chat_open" not in st.session_state:
     st.session_state["floating_chat_open"] = False
 if "floating_chat_history" not in st.session_state:
     st.session_state["floating_chat_history"] = []
+
+# ==============================================================================
+# GPS Query Param Bridge - reads real device GPS from URL query params
+# The JS runs in the parent page context (not an iframe), so it can access
+# the actual device GPS sensor (not just IP-based network location)
+# ==============================================================================
+_qp = st.query_params
+_gps_lat = _qp.get("_gps_lat")
+_gps_lon = _qp.get("_gps_lon")
+_gps_acc = _qp.get("_gps_acc")
+_gps_err = _qp.get("_gps_err")
+
+if _gps_lat and _gps_lon:
+    try:
+        _lat_v = float(_gps_lat)
+        _lon_v = float(_gps_lon)
+        _acc_v = float(_gps_acc or 0)
+        if -90 <= _lat_v <= 90 and -180 <= _lon_v <= 180:
+            _name_v = reverse_geocode(_lat_v, _lon_v)
+            st.session_state["live_gps_coords"] = {
+                "lat": _lat_v,
+                "lon": _lon_v,
+                "accuracy": _acc_v,
+                "name": _name_v
+            }
+            st.session_state["live_gps_error"] = None
+            st.session_state["live_gps_requested"] = False
+            # Clear GPS params so it doesn't loop
+            st.query_params.clear()
+    except Exception:
+        pass
+elif _gps_err:
+    try:
+        st.session_state["live_gps_error"] = {"code": int(_gps_err), "message": "GPS error from device"}
+        st.session_state["live_gps_requested"] = False
+        st.query_params.clear()
+    except Exception:
+        pass
 
 # Apply Clinical Red Enterprise Styling
 apply_theme(st.session_state.get("dark_mode", False))
@@ -354,8 +393,8 @@ if "triage_result"not in st.session_state:
     st.session_state["triage_result"] = None
 if "selected_symptoms_list"not in st.session_state:
     st.session_state["selected_symptoms_list"] = []
-if "user_location_cache"not in st.session_state:
-    st.session_state["user_location_cache"] = {"lat": 23.0225, "lon": 72.5714, "name": "Ahmedabad, Gujarat"}
+if "user_location_cache" not in st.session_state:
+    st.session_state["user_location_cache"] = None
 if "user_context"not in st.session_state:
     st.session_state["user_context"] = {
         "age": "",
@@ -3812,6 +3851,22 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 st.session_state["selected_symptoms_list"].append(sname)
                                 new_added += 1
                         
+                        if extracted_nlp.get("normalized_symptoms"):
+                            st.session_state["p1_normalized_symptoms"] = extracted_nlp["normalized_symptoms"]
+                        if extracted_nlp.get("duration_days"):
+                            st.session_state["user_context"]["duration_days"] = extracted_nlp["duration_days"]
+                            d_days = extracted_nlp["duration_days"]
+                            if d_days <= 1:
+                                st.session_state["user_context"]["duration_key"] = "today"
+                            elif d_days <= 3:
+                                st.session_state["user_context"]["duration_key"] = "1_3"
+                            elif d_days <= 7:
+                                st.session_state["user_context"]["duration_key"] = "4_7"
+                            elif d_days <= 14:
+                                st.session_state["user_context"]["duration_key"] = "1_2_weeks"
+                            else:
+                                st.session_state["user_context"]["duration_key"] = "over_2_weeks"
+
                         if extracted_nlp.get("detected_disease"):
                             st.session_state["detected_chief_condition"] = extracted_nlp["detected_disease"]
                         
@@ -3855,6 +3910,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                                     if sname not in st.session_state["selected_symptoms_list"]:
                                         st.session_state["selected_symptoms_list"].append(sname)
                                         v_added += 1
+                                if extracted_voice.get("normalized_symptoms"):
+                                    st.session_state["p1_normalized_symptoms"] = extracted_voice["normalized_symptoms"]
+                                if extracted_voice.get("duration_days"):
+                                    st.session_state["user_context"]["duration_days"] = extracted_voice["duration_days"]
                                 if extracted_voice.get("detected_disease"):
                                     st.session_state["detected_chief_condition"] = extracted_voice["detected_disease"]
                                 st.session_state["p1_nlp_msg"] = f"Voice Transcribed: \"{transcribed_text}\" — Mapped {v_added} clinical symptoms!"
@@ -3868,6 +3927,25 @@ if st.session_state["active_panel"] == "Health Assessment":
 
                 if st.session_state.get("p1_nlp_msg"):
                     st.success(st.session_state["p1_nlp_msg"])
+
+                # Transparent Match Display (Part 6): Display detected symptoms with user phrase & dataset match status (zero internal IDs)
+                norm_syms_disp = st.session_state.get("p1_normalized_symptoms", [])
+                if norm_syms_disp:
+                    items_html = []
+                    for ns in norm_syms_disp:
+                        u_phr = html.escape(str(ns.get("user_phrase", "")))
+                        eng_nm = html.escape(str(ns.get("dataset_name") or ns.get("normalized_english", "Symptom")))
+                        is_m = ns.get("dataset_match", False)
+                        icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M20 6L9 17l-5-5"/></svg>' if is_m else '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+                        badge_style = "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.35);" if is_m else "background: rgba(245, 158, 11, 0.15); color: #D97706; border: 1px solid rgba(245, 158, 11, 0.35);"
+                        badge_txt = "Dataset: Matched" if is_m else "Dataset: Not Matched"
+                        items_html.append(
+                            f'<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid var(--mm-border-color, #E2E8F0); border-radius: 8px; margin-bottom: 5px;">'
+                            f'  <div><b>{icon}{eng_nm}</b> <span style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-left: 6px;">User phrase: "{u_phr}"</span></div>'
+                            f'  <span style="border-radius: 999px; padding: 2px 8px; font-size: 0.70rem; font-weight: 700; {badge_style}">{badge_txt}</span>'
+                            f'</div>'
+                        )
+                    st.markdown(f'<div style="margin-top: 8px; margin-bottom: 10px;"><div style="font-size: 0.80rem; font-weight: 700; color: var(--mm-text-secondary); margin-bottom: 4px;">Detected Symptoms:</div>{"".join(items_html)}</div>', unsafe_allow_html=True)
 
             st.markdown(f"""
             <div style='display: flex; align-items: center; gap: 8px; font-size: 0.84rem; font-weight: 800; color: var(--mm-text-primary); margin: 14px 0 8px 0;'>
@@ -3929,6 +4007,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                         st.session_state["selected_symptoms_list"] = []
                         st.session_state["detected_chief_condition"] = None
                         st.session_state["p1_nlp_msg"] = None
+                        st.session_state["p1_normalized_symptoms"] = []
                         st.rerun()
             else:
                 st.markdown(f"<div style='font-size: 0.82rem; color: var(--mm-text-secondary); margin-top: 4px; margin-bottom: 14px;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Type to search or select common symptoms above.')}</div>", unsafe_allow_html=True)
@@ -3991,8 +4070,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 c_nm = c_d.get("name") or c_d.get("disease_name") or c_d.get("name_hi") or c_d.get("name_gu")
                 if c_nm:
                     step2_syms = [c_nm]
-            if step2_syms:
-                active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <span style="font-size: 0.70rem; opacity: 0.75;">✕</span></span>' for s in step2_syms])
+                active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.75;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>' for s in step2_syms])
             else:
                 active_s_html = f"<span style='font-size: 0.80rem; color: var(--mm-text-muted); font-style: italic;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Return to Step 1 to add symptoms.')}</span>"
             safe_markdown(f"<div style='margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px;'>{active_s_html}</div>")
@@ -5210,8 +5288,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                     st.session_state["pending_chat_query"] = system_exec_q
                     st.rerun()
             with btn_c2:
-                close_btn_label = {"en": "✕ Close Profile", "hi": "✕ बंद करें", "gu": "✕ બંધ કરો"}.get(lang_code, "✕ Close Profile")
-                if st.button(close_btn_label, key=f"btn_close_med_{modal_key_id}", type="secondary", use_container_width=True):
+                close_btn_label = {"en": "Close Profile", "hi": "बंद करें", "gu": "બંધ કરો"}.get(lang_code, "Close Profile")
+                if st.button(close_btn_label, icon=":material/close:", key=f"btn_close_med_{modal_key_id}", type="secondary", use_container_width=True):
                     st.rerun()
 
         
@@ -5273,26 +5351,65 @@ if st.session_state["active_panel"] == "Health Assessment":
         # Emergency Red Flag (if active)
         red_flags_list = t_res.get("emergency_red_flags") or t_res.get("red_flags") or []
         if red_flags_list:
-            rf_items_html = "<br/>".join([f"• {x}" for x in red_flags_list if str(x).strip()])
+            rf_formatted_items = []
+            for rf in red_flags_list:
+                if isinstance(rf, dict):
+                    sym_name = rf.get("symptom_name") or rf.get("name") or "Critical Finding"
+                    protocol = rf.get("immediate_action_protocol") or rf.get("action") or "Seek prompt emergency medical evaluation."
+                    risk_cat = rf.get("risk_category")
+                    cat_badge = f" <span style='font-size: 0.72rem; background: rgba(220,38,38,0.15); padding: 1px 6px; border-radius: 4px; font-weight: 600;'>{risk_cat}</span>" if risk_cat else ""
+                    rf_formatted_items.append(f"• <b>{sym_name}</b>{cat_badge} — {protocol}")
+                elif str(rf).strip():
+                    rf_formatted_items.append(f"• {rf}")
+            rf_items_html = "<br/>".join(rf_formatted_items)
             st.markdown(f"""
             <div style="background: rgba(239, 68, 68, 0.08); border: 1.2px solid #EF4444; border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="#DC2626"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
                     <b style="color: #DC2626; font-size: 0.88rem; text-transform: uppercase;">EMERGENCY RED FLAG DETECTED — IMMEDIATE MEDICAL EVALUATION REQUIRED</b>
                 </div>
-                <div style="font-size: 0.82rem; color: #DC2626; line-height: 1.45; padding-left: 26px; font-weight: 500;">
+                <div style="font-size: 0.82rem; color: #DC2626; line-height: 1.55; padding-left: 26px; font-weight: 500;">
                     {rf_items_html}
                 </div>
             </div>
             """, unsafe_allow_html=True)
 
-        # 1. Fallback Warning Badge (If offline dataset was used)
-        if care_res.get("is_fallback"):
+        # 1. Truthful Multi-Stage Provenance & Fallback Warning Badge
+        triage_sys = t_res.get("system_status") or {}
+        triage_is_live = bool(
+            triage_sys.get("live_api_available") or
+            t_res.get("source") == "AI Clinical Reasoning" or
+            any(c.get("is_live") or c.get("source") == "AI Clinical Reasoning" for c in (t_res.get("ranked_conditions") or []))
+        )
+        care_is_live = not bool(care_res.get("is_fallback", False))
+
+        if not triage_is_live and not care_is_live:
+            # Full Offline Fallback
             st.markdown(f"""
             <div style="background: rgba(234, 88, 12, 0.12); border: 1.5px solid #F97316; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
                 <div>
                     <b style="color: #EA580C; font-size: 0.90rem;">{T.get("offline_fallback_badge", "Offline Clinical Dataset Fallback Active")}</b>
-                    <p style="color: var(--mm-text-primary); font-size: 0.82rem; margin: 2px 0 0 0;">{care_res.get("fallback_warning", T.get("offline_fallback_warning", "Live API could not be reached. Showing standardized local dataset."))}</p>
+                    <p style="color: var(--mm-text-primary); font-size: 0.82rem; margin: 2px 0 0 0;">{T.get("offline_fallback_warning", "Both clinical assessment and supportive care guidance are running on standardized local datasets due to live service unavailability.")}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        elif triage_is_live and not care_is_live:
+            # Triage Live + Care Fallback
+            st.markdown(f"""
+            <div style="background: rgba(234, 88, 12, 0.08); border: 1.5px solid #FB923C; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                <div>
+                    <b style="color: #EA580C; font-size: 0.90rem;">{T.get("hybrid_care_fallback_badge", "Clinical Assessment: Live AI | Supportive Care: Local Reference")}</b>
+                    <p style="color: var(--mm-text-primary); font-size: 0.82rem; margin: 2px 0 0 0;">{care_res.get("fallback_warning", "Clinical assessment & differential diagnosis were generated live via AI; supportive medication, diet, and lifestyle recommendations are sourced from standardized local clinical datasets.")}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        elif not triage_is_live and care_is_live:
+            # Triage Fallback + Care Live
+            st.markdown(f"""
+            <div style="background: rgba(59, 130, 246, 0.08); border: 1.5px solid #60A5FA; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px;">
+                <div>
+                    <b style="color: #2563EB; font-size: 0.90rem;">{T.get("hybrid_triage_fallback_badge", "Clinical Assessment: Local Reference | Supportive Care: Live AI")}</b>
+                    <p style="color: var(--mm-text-primary); font-size: 0.82rem; margin: 2px 0 0 0;">{t_res.get("fallback_warning", "Clinical assessment is based on local reference datasets; supportive care and medication guidance were dynamically generated via live AI.")}</p>
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -5523,6 +5640,25 @@ if st.session_state["active_panel"] == "Health Assessment":
                                     show_medicine_modal(med)
             
                 st.markdown(f"<div style='font-size: 0.72rem; color: var(--mm-text-muted); margin: 6px 0 18px 0; font-style: italic;'>{T.get('medicine_gallery_disclaimer', 'Always confirm dosage with a physician or pharmacist.')}</div>", unsafe_allow_html=True)
+        else:
+            with st.container(border=True):
+                st.markdown(f"""
+                <div class="mm-section-header-card" style="margin-bottom: 0;">
+                    <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
+                        <div class="mm-section-header-avatar" style="background: rgba(148, 163, 184, 0.15); color: #64748B;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.12rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.25;">
+                                {T.get('verified_med_title', 'Verified Medical & Pharmaceutical Guidance')}
+                            </div>
+                            <div style="font-size: 0.84rem; color: var(--mm-text-secondary); margin-top: 3px;">
+                                {T.get('no_meds_offline_note', 'No independently verified over-the-counter medicine data is available offline for this specific condition. Please consult a qualified clinician for prescription guidance.')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
         # 4.5. Clinical Injections & IV Infusions (Strictly Conditional)
         inj_data = care_res.get("injections_and_iv", {})
@@ -5630,46 +5766,61 @@ if st.session_state["active_panel"] == "Health Assessment":
                             y_ben = y_item.get('benefits', 'Restorative stretching and clinical recovery posture.').strip()
                             ben_text = (y_ben + ' ' + y_item.get('instructions', '') + ' ' + name_raw).lower()
 
-                            # Dynamic 3 Benefits extraction
-                            # 1. Improves
-                            if any(k in ben_text for k in ["digest", "stomach", "pet", "gastric", "acidity", "kabz", "ulcer", "paachan"]):
-                                imp_val = T.get("yoga_imp_digestion", "Digestion")
-                            elif any(k in ben_text for k in ["breath", "lung", "oxygen", "pranayama", "shwas", "respirat", "asthma"]):
-                                imp_val = T.get("yoga_imp_resp", "Respiratory Vitality")
-                            elif any(k in ben_text for k in ["circulat", "blood", "heart", "rakt"]):
-                                imp_val = T.get("yoga_imp_circ", "Blood Circulation")
-                            elif any(k in ben_text for k in ["postur", "align", "balance", "santulan"]):
-                                imp_val = T.get("yoga_imp_posture", "Body Posture")
-                            elif any(k in ben_text for k in ["flexib", "stretch", "lacheelapan"]):
-                                imp_val = T.get("yoga_imp_flex", "Flexibility")
-                            else:
-                                imp_val = T.get("yoga_imp_vitality", "Vitality & Recovery")
+                            # Static Pose-Specific Invariant Benefit Attributes
+                            static_yoga_map = {
+                                "corpse": ("Vitality & Recovery", "Restorative Alignment", "Stress & Fatigue"),
+                                "savasana": ("Vitality & Recovery", "Restorative Alignment", "Stress & Fatigue"),
+                                "shavasana": ("Vitality & Recovery", "Restorative Alignment", "Stress & Fatigue"),
+                                "easy seated": ("Respiratory Vitality", "Spine & Back", "Stress & Fatigue"),
+                                "sukhasana": ("Respiratory Vitality", "Spine & Back", "Stress & Fatigue"),
+                                "cobra": ("Flexibility", "Spine & Back", "Muscle Stiffness"),
+                                "bhujanga": ("Flexibility", "Spine & Back", "Muscle Stiffness"),
+                                "cat-cow": ("Body Posture", "Spine & Back", "Back & Joint Stiffness"),
+                                "marjaryasana": ("Body Posture", "Spine & Back", "Back & Joint Stiffness"),
+                                "thunderbolt": ("Digestion", "Core & Pelvis", "Gastric Discomfort"),
+                                "vajrasana": ("Digestion", "Core & Pelvis", "Gastric Discomfort"),
+                                "frog": ("Digestion", "Abdominal Muscles", "Digestive Discomfort"),
+                                "mandukasana": ("Digestion", "Abdominal Muscles", "Digestive Discomfort"),
+                                "humming bee": ("Respiratory Vitality", "Neurological Calm", "Mental Tension"),
+                                "bhramari": ("Respiratory Vitality", "Neurological Calm", "Mental Tension"),
+                                "anulom": ("Respiratory Vitality", "Pulmonary Capacity", "Stress & Fatigue"),
+                                "pranayama": ("Respiratory Vitality", "Pulmonary Capacity", "Stress & Fatigue"),
+                                "child": ("Flexibility", "Spine & Back", "Mental Tension"),
+                                "balasana": ("Flexibility", "Spine & Back", "Mental Tension"),
+                                "bridge": ("Blood Circulation", "Spine & Back", "Body & Joint Pain"),
+                                "setu bandha": ("Blood Circulation", "Spine & Back", "Body & Joint Pain"),
+                            }
+                            pose_lookup_key = (main_name + " " + sans_raw).lower()
+                            matched_static = None
+                            for p_key, p_vals in static_yoga_map.items():
+                                if p_key in pose_lookup_key:
+                                    matched_static = p_vals
+                                    break
 
-                            # 2. Strengthens
-                            if any(k in ben_text for k in ["abdomin", "belly", "core", "abs"]):
-                                str_val = T.get("yoga_str_abs", "Abdominal Muscles")
-                            elif any(k in ben_text for k in ["spine", "back", "reedh", "peeth"]):
-                                str_val = T.get("yoga_str_spine", "Spine & Back")
-                            elif any(k in ben_text for k in ["chest", "shoulder", "chaati", "kandha"]):
-                                str_val = T.get("yoga_str_chest", "Chest & Shoulders")
-                            elif any(k in ben_text for k in ["leg", "hamstring", "knee", "taang", "ghutna", "joint"]):
-                                str_val = T.get("yoga_str_legs", "Legs & Joints")
-                            elif any(k in ben_text for k in ["neck", "gardan", "cervical"]):
-                                str_val = T.get("yoga_str_neck", "Neck & Shoulders")
+                            if matched_static:
+                                imp_val, str_val, rel_val = matched_static
                             else:
-                                str_val = T.get("yoga_str_core", "Core & Spine")
+                                # Fallback based on pose instruction keywords
+                                if any(k in ben_text for k in ["digest", "stomach", "gastric", "acidity"]):
+                                    imp_val = "Digestion"
+                                elif any(k in ben_text for k in ["breath", "lung", "respirat"]):
+                                    imp_val = "Respiratory Vitality"
+                                else:
+                                    imp_val = "Vitality & Recovery"
 
-                            # 3. Relieves
-                            if any(k in ben_text for k in ["stress", "fatigue", "tension", "calm", "thaan", "tanaav", "mental"]):
-                                rel_val = T.get("yoga_rel_stress", "Stress & Fatigue")
-                            elif any(k in ben_text for k in ["pain", "ache", "dard"]):
-                                rel_val = T.get("yoga_rel_pain", "Body & Joint Pain")
-                            elif any(k in ben_text for k in ["stiff", "tight"]):
-                                rel_val = T.get("yoga_rel_stiff", "Muscle Stiffness")
-                            elif any(k in ben_text for k in ["anxiety", "nervous", "chinta", "headache", "sir dard"]):
-                                rel_val = T.get("yoga_rel_anxiety", "Mental Tension")
-                            else:
-                                rel_val = T.get("yoga_rel_stress", "Stress & Fatigue")
+                                if any(k in ben_text for k in ["abdomin", "core"]):
+                                    str_val = "Abdominal Muscles"
+                                elif any(k in ben_text for k in ["spine", "back"]):
+                                    str_val = "Spine & Back"
+                                else:
+                                    str_val = "Core & Spine"
+
+                                if any(k in ben_text for k in ["pain", "ache", "dard"]):
+                                    rel_val = "Body & Joint Pain"
+                                elif any(k in ben_text for k in ["stiff", "tight"]):
+                                    rel_val = "Muscle Stiffness"
+                                else:
+                                    rel_val = "Stress & Fatigue"
 
                             # Dynamic Theme Colors
                             card_bg = "#111827" if is_dark else "#FFFFFF"
@@ -5971,8 +6122,8 @@ if st.session_state["active_panel"] == "Health Assessment":
         _fallback_used = t_res.get("system_status", {}).get("fallback_used", False) or (care_res.get("fallback_used", False) if care_res else False)
         if _fw or _fallback_used:
             st.warning(
-                _fw or "⚠️ Live clinical data services are unavailable. Results are based on local clinical reference data and should be verified by a qualified healthcare professional.",
-                icon="⚠️"
+                _fw or "Live clinical data services are unavailable. Results are based on local clinical reference data and should be verified by a qualified healthcare professional.",
+                icon=":material/warning:"
             )
 
         if conditions_list:
@@ -5999,42 +6150,60 @@ if st.session_state["active_panel"] == "Health Assessment":
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                res_cols = st.columns(min(len(conditions_list), 4))
-                for idx, cond in enumerate(conditions_list[:4]):
-                    with res_cols[idx]:
-                        prob_pct = cond.get("match_percentage", 65)
-                        urgency = "HIGH" if prob_pct > 70 else ("MODERATE" if prob_pct > 45 else "LOW")
-                        badge_class = "mm-badge-critical" if urgency == "HIGH" else ("mm-badge-warning" if urgency == "MODERATE" else "mm-badge-success")
-                        c_name = cond.get("name_gu") if lang_code == "gu" and cond.get("name_gu") else (cond.get("name_hi") if lang_code == "hi" and cond.get("name_hi") else cond.get("name", "Condition"))
-                        priority_str = "Very High Priority" if prob_pct > 75 else ("High Priority" if prob_pct > 60 else "Medium Priority")
-                        c_desc = cond.get("mohfw_note") or f"Official National Priority Condition ({priority_str}) under MoHFW guidelines."
-                        c_icd = cond.get("icd_code") or cond.get("icd11_code") or "N/A"
-                        cond_icon_html = get_condition_avatar_svg(c_name)
+                num_conds = len(conditions_list)
+                for chunk_start in range(0, num_conds, 4):
+                    cond_chunk = conditions_list[chunk_start:chunk_start+4]
+                    res_cols = st.columns(len(cond_chunk))
+                    for idx, cond in enumerate(cond_chunk):
+                        with res_cols[idx]:
+                            prob_pct = cond.get("match_percentage", 65)
+                            urgency = "HIGH" if prob_pct > 70 else ("MODERATE" if prob_pct > 45 else "LOW")
+                            badge_class = "mm-badge-critical" if urgency == "HIGH" else ("mm-badge-warning" if urgency == "MODERATE" else "mm-badge-success")
+                            c_name = cond.get("name_gu") if lang_code == "gu" and cond.get("name_gu") else (cond.get("name_hi") if lang_code == "hi" and cond.get("name_hi") else cond.get("name", "Condition"))
+                            priority_str = "Very High Priority" if prob_pct > 75 else ("High Priority" if prob_pct > 60 else "Medium Priority")
+                            c_desc = cond.get("mohfw_note") or f"Official National Priority Condition ({priority_str}) under MoHFW guidelines."
+                            
+                            c_icd = cond.get("icd_code") or cond.get("icd11_code") or ""
+                            is_ver = bool(cond.get("icd_verified", False))
+                            icd_details = cond.get("icd_details", {})
+                            icd_sys = icd_details.get("system", "") if isinstance(icd_details, dict) else ""
+                            is_i10 = (icd_sys == "ICD-10") or is_probable_icd10_code(c_icd)
 
-                        st.markdown(f"""
-                        <div class="mm-cond-card">
-                            <div>
-                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
-                                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
-                                        {cond_icon_html}
-                                        <b style="font-size: 0.94rem; color: var(--mm-text-primary); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{c_name}</b>
+                            if not c_icd or str(c_icd).upper() in ["N/A", "NONE", "UNSPECIFIED", ""]:
+                                icd_badge_text = "ICD: Clinical Reference"
+                            elif is_i10:
+                                icd_badge_text = f"ICD-10 Ref: {c_icd}"
+                            elif is_ver:
+                                icd_badge_text = f"ICD-11 (Verified): {c_icd}"
+                            else:
+                                icd_badge_text = f"ICD-11 (Ref): {c_icd}"
+
+                            cond_icon_html = get_condition_avatar_svg(c_name)
+
+                            st.markdown(f"""
+                            <div class="mm-cond-card">
+                                <div>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;">
+                                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                                            {cond_icon_html}
+                                            <b style="font-size: 0.94rem; color: var(--mm-text-primary); line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{c_name}</b>
+                                        </div>
+                                        <span class="mm-badge {badge_class}" style="border-radius: 999px; padding: 3px 10px; font-size: 0.70rem; font-weight: 800; text-transform: uppercase; flex-shrink: 0;">{urgency}</span>
                                     </div>
-                                    <span class="mm-badge {badge_class}" style="border-radius: 999px; padding: 3px 10px; font-size: 0.70rem; font-weight: 800; text-transform: uppercase; flex-shrink: 0;">{urgency}</span>
+                                    <div style="font-size: 0.76rem; color: var(--mm-text-secondary); margin-bottom: 6px;">
+                                        Confidence Score: <b style="color: #2563EB;">{prob_pct}/100</b> · {icd_badge_text}
+                                    </div>
                                 </div>
-                                <div style="font-size: 0.76rem; color: var(--mm-text-secondary); margin-bottom: 6px;">
-                                    Confidence Score: <b style="color: #2563EB;">{prob_pct}/100</b> · ICD-11: {c_icd}
+                                <div style="border-top: 1px solid var(--mm-border-color); padding-top: 8px; margin-top: 6px; display: flex; align-items: flex-start; gap: 10px;">
+                                    <div style="width: 26px; height: 26px; min-width: 26px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.25); display: flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; margin-top: 1px;">
+                                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 9" stroke="#2563EB" stroke-width="2.3"/></svg>
+                                    </div>
+                                    <div style="font-size: 0.76rem; color: var(--mm-text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 32px;">
+                                        {c_desc}
+                                    </div>
                                 </div>
                             </div>
-                            <div style="border-top: 1px solid var(--mm-border-color); padding-top: 8px; margin-top: 6px; display: flex; align-items: flex-start; gap: 10px;">
-                                <div style="width: 26px; height: 26px; min-width: 26px; border-radius: 50%; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(37, 99, 235, 0.25); display: flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0; margin-top: 1px;">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 9" stroke="#2563EB" stroke-width="2.3"/></svg>
-                                </div>
-                                <div style="font-size: 0.76rem; color: var(--mm-text-secondary); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 32px;">
-                                    {c_desc}
-                                </div>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                            """, unsafe_allow_html=True)
 
 
         # 7.5. Recommended Clinical Diagnostic Laboratory Tests
@@ -6347,7 +6516,17 @@ if st.session_state["active_panel"] == "Health Assessment":
 
         # 8.5. Emergency Red-Flag Alert Banner (Positioned at the bottom before Action Bar)
         if t_res.get("is_emergency") and t_res.get("red_flags"):
-            rf_items_html = "".join([f"<li style='margin-bottom: 4px;'><b>{rf.get('symptom_name', 'Critical Symptom')}:</b> {rf.get('immediate_action_protocol', 'Seek prompt emergency medical evaluation.')}</li>" for rf in t_res.get("red_flags", [])])
+            rf_items_list = []
+            for rf in t_res.get("red_flags", []):
+                if isinstance(rf, dict):
+                    sym_name = rf.get('symptom_name') or rf.get('name') or 'Critical Finding'
+                    protocol = rf.get('immediate_action_protocol') or rf.get('action') or 'Seek prompt emergency medical evaluation.'
+                    risk_cat = rf.get('risk_category')
+                    cat_badge = f" <span style='font-size: 0.72rem; background: rgba(220,38,38,0.15); padding: 1px 6px; border-radius: 4px; font-weight: 600;'>{risk_cat}</span>" if risk_cat else ""
+                    rf_items_list.append(f"<li style='margin-bottom: 6px;'><b>{sym_name}</b>{cat_badge} — {protocol}</li>")
+                elif str(rf).strip():
+                    rf_items_list.append(f"<li style='margin-bottom: 6px;'>{rf}</li>")
+            rf_items_html = "".join(rf_items_list)
             st.markdown(f"""
             <div style="background: rgba(220, 38, 38, 0.12); border: 1.5px solid #EF4444; border-left: 5px solid #DC2626; border-radius: 12px; padding: 14px 18px; margin-top: 16px; margin-bottom: 8px;">
                 <b style="color: #EF4444; font-size: 0.98rem; display: flex; align-items: center; gap: 8px;">
@@ -7771,7 +7950,7 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
             </div>
             """, unsafe_allow_html=True)
 
-            # Session State initialization for robust GPS Bridge
+            # Session State initialization for GPS
             if "live_gps_coords" not in st.session_state:
                 st.session_state["live_gps_coords"] = None
             if "live_gps_error" not in st.session_state:
@@ -7781,39 +7960,57 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
             if "gis_loc_source" not in st.session_state:
                 st.session_state["gis_loc_source"] = "Live Device GPS"
 
-            # Hidden bridge input element for receiving real-time coordinates from browser JS
-            with st.container(key="dmx_gps_payload_container"):
-                incoming_gps_json = st.text_input(
-                    "LIVE_GPS_BRIDGE",
-                    key="dmx_gps_payload_bridge",
-                    label_visibility="collapsed"
-                )
+            # --- GPS via top-level page script (NOT iframe) ---
+            # This script runs in the parent browser window context, so it can
+            # access the real device GPS chip, not just IP/network location.
+            # Coordinates are passed back via URL query params which Streamlit reads.
+            _auto_trigger = "true" if st.session_state.get("live_gps_requested", False) else "false"
+            _gps_page_script = f"""
+            <script>
+            (function() {{
+                if (window._dmx_gps_injected) return;
+                window._dmx_gps_injected = true;
 
-            # Process incoming GPS JSON payload if available
-            if incoming_gps_json and incoming_gps_json.strip():
-                try:
-                    p_data = json.loads(incoming_gps_json.strip())
-                    if p_data.get("status") == "SUCCESS":
-                        p_lat = float(p_data["lat"])
-                        p_lon = float(p_data["lon"])
-                        p_acc = float(p_data.get("accuracy", 0))
-                        p_name = reverse_geocode(p_lat, p_lon)
-                        st.session_state["live_gps_coords"] = {
-                            "lat": p_lat,
-                            "lon": p_lon,
-                            "accuracy": p_acc,
-                            "name": p_name
-                        }
-                        st.session_state["live_gps_error"] = None
-                        st.session_state["live_gps_requested"] = False
-                    elif p_data.get("status") == "ERROR":
-                        st.session_state["live_gps_error"] = {
-                            "code": p_data.get("code", 1),
-                            "message": p_data.get("message", "Location error")
-                        }
-                        st.session_state["live_gps_requested"] = False
-                except Exception:
-                    pass
+                function _dmx_send_gps(lat, lon, acc) {{
+                    // Use top/parent to navigate the real Streamlit app URL, not the inner iframe
+                    var win = window.top || window.parent || window;
+                    var base = win.location.href.split('?')[0].split('#')[0];
+                    win.location.href = base + '?_gps_lat=' + lat + '&_gps_lon=' + lon + '&_gps_acc=' + (acc || 0);
+                }}
+
+                function _dmx_send_err(code) {{
+                    var win = window.top || window.parent || window;
+                    var base = win.location.href.split('?')[0].split('#')[0];
+                    win.location.href = base + '?_gps_err=' + code;
+                }}
+
+                window._dmx_acquire_gps = function() {{
+                    if (!navigator.geolocation) {{ _dmx_send_err(2); return; }}
+                    navigator.geolocation.getCurrentPosition(
+                        function(pos) {{
+                            _dmx_send_gps(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+                        }},
+                        function(err) {{
+                            navigator.geolocation.getCurrentPosition(
+                                function(pos2) {{
+                                    _dmx_send_gps(pos2.coords.latitude, pos2.coords.longitude, pos2.coords.accuracy);
+                                }},
+                                function(err2) {{ _dmx_send_err(err2.code || err.code); }},
+                                {{ enableHighAccuracy: false, timeout: 12000, maximumAge: 0 }}
+                            );
+                        }},
+                        {{ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }}
+                    );
+                }};
+
+                // Auto-trigger if requested
+                if ({_auto_trigger}) {{
+                    window._dmx_acquire_gps();
+                }}
+            }})();
+            </script>
+            """
+            st.markdown(_gps_page_script, unsafe_allow_html=True)
 
             LOC_OPTIONS = [
                 "Live Device GPS",
@@ -7865,6 +8062,28 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                     </div>
                     """, unsafe_allow_html=True)
 
+                    # Quick Home City / Area Override for Desktop broadband users where Windows IP defaults to Ahmedabad
+                    with st.expander("Change / Enter Exact Home Area", expanded=False):
+                        c_in, c_btn = st.columns([2.2, 1])
+                        with c_in:
+                            home_loc_input = st.text_input("Home City / Area / Pincode", placeholder="e.g. Surat, Rajkot, Vadodara...", key="live_gps_manual_adjust_in", label_visibility="collapsed")
+                        with c_btn:
+                            if st.button("Set Location", key="btn_apply_manual_home", type="primary", use_container_width=True):
+                                if home_loc_input and home_loc_input.strip():
+                                    g_res = geocode_address(home_loc_input.strip())
+                                    if not g_res:
+                                        lat_f, lon_f, name_f = geocode_city_district(home_loc_input.strip())
+                                        if lat_f:
+                                            g_res = {"latitude": lat_f, "longitude": lon_f, "formatted_address": name_f}
+                                    if g_res:
+                                        st.session_state["live_gps_coords"] = {
+                                            "lat": g_res["latitude"],
+                                            "lon": g_res["longitude"],
+                                            "accuracy": 10,
+                                            "name": g_res["formatted_address"]
+                                        }
+                                        st.rerun()
+
                     btn_c1, btn_c2 = st.columns([1, 1])
                     with btn_c1:
                         if st.button("Refresh GPS", key="btn_refresh_live_gps", use_container_width=True):
@@ -7873,8 +8092,8 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                             st.session_state["live_gps_requested"] = True
                             st.rerun()
                     with btn_c2:
-                        if st.button("Use Network IP", key="btn_switch_to_ip", use_container_width=True):
-                            st.session_state["gis_loc_source"] = "Auto-Detect via Network IP"
+                        if st.button("Search City", key="btn_switch_to_search", use_container_width=True):
+                            st.session_state["gis_loc_source"] = "Search Specific Indian City / Area"
                             st.rerun()
 
                 else:
@@ -7906,95 +8125,31 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
 
                     act_c1, act_c2 = st.columns([1.2, 1.0])
                     with act_c1:
-                        if st.button("Detect Live Location", key="btn_detect_live_gps", type="primary", use_container_width=True):
-                            st.session_state["live_gps_requested"] = True
-                            st.session_state["live_gps_error"] = None
-                            st.rerun()
+                        gps_payload = render_gps_detector(key="dmx_live_gps_detector_btn")
+                        if gps_payload:
+                            if gps_payload.get("status") == "SUCCESS":
+                                _lat = float(gps_payload["lat"])
+                                _lon = float(gps_payload["lon"])
+                                _acc = float(gps_payload.get("accuracy", 0))
+                                _name = reverse_geocode(_lat, _lon)
+                                st.session_state["live_gps_coords"] = {
+                                    "lat": _lat,
+                                    "lon": _lon,
+                                    "accuracy": _acc,
+                                    "name": _name
+                                }
+                                st.session_state["live_gps_error"] = None
+                                st.rerun()
+                            elif gps_payload.get("status") == "ERROR":
+                                st.session_state["live_gps_error"] = {
+                                    "code": gps_payload.get("code", 1),
+                                    "message": gps_payload.get("message", "Location error")
+                                }
+                                st.rerun()
                     with act_c2:
-                        if st.button("Network IP", key="btn_fallback_ip_detect", use_container_width=True):
-                            st.session_state["gis_loc_source"] = "Auto-Detect via Network IP"
+                        if st.button("Search City", key="btn_fallback_search_detect", use_container_width=True):
+                            st.session_state["gis_loc_source"] = "Search Specific Indian City / Area"
                             st.rerun()
-
-                # JavaScript Geolocation Bridge
-                auto_req = "true" if (st.session_state.get("live_gps_requested", False) or not gps_coords) else "false"
-                gps_bridge_html = f"""
-                <script>
-                (function() {{
-                    function sendPayload(payload) {{
-                        try {{
-                            var doc = window.parent.document || document;
-                            var input = doc.querySelector('.st-key-dmx_gps_payload_bridge input');
-                            if (input) {{
-                                var str = JSON.stringify(payload);
-                                if (input.value !== str) {{
-                                    var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
-                                    setter.call(input, str);
-                                    input.dispatchEvent(new Event('input', {{ bubbles: true }}));
-                                    input.dispatchEvent(new Event('change', {{ bubbles: true }}));
-                                }}
-                            }}
-                        }} catch(e) {{
-                            console.error('GPS Bridge dispatch error:', e);
-                        }}
-                    }}
-
-                    window._dmx_acquire_gps = function() {{
-                        if (!navigator.geolocation) {{
-                            sendPayload({{ status: 'ERROR', code: 2, message: 'Geolocation not supported' }});
-                            return;
-                        }}
-                        navigator.geolocation.getCurrentPosition(
-                            function(pos) {{
-                                sendPayload({{
-                                    status: 'SUCCESS',
-                                    lat: pos.coords.latitude,
-                                    lon: pos.coords.longitude,
-                                    accuracy: pos.coords.accuracy || 0
-                                }});
-                            }},
-                            function(err1) {{
-                                navigator.geolocation.getCurrentPosition(
-                                    function(pos2) {{
-                                        sendPayload({{
-                                            status: 'SUCCESS',
-                                            lat: pos2.coords.latitude,
-                                            lon: pos2.coords.longitude,
-                                            accuracy: pos2.coords.accuracy || 0
-                                        }});
-                                    }},
-                                    function(err2) {{
-                                        sendPayload({{
-                                            status: 'ERROR',
-                                            code: err2.code || err1.code,
-                                            message: err2.message || err1.message
-                                        }});
-                                    }},
-                                    {{ enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }}
-                                );
-                            }},
-                            {{ enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }}
-                        );
-                    }};
-
-                    if ({auto_req}) {{
-                        window._dmx_acquire_gps();
-                    }}
-
-                    try {{
-                        var doc = window.parent.document || document;
-                        var btn = doc.querySelector('.st-key-btn_detect_live_gps button');
-                        if (btn && !btn._has_gps_listener) {{
-                            btn._has_gps_listener = true;
-                            btn.addEventListener('click', function() {{
-                                window._dmx_acquire_gps();
-                            }});
-                        }}
-                    }} catch(e) {{}}
-                }})();
-                </script>
-                """
-                with st.container(key="dmx_hidden_gps_bridge"):
-                    components.html(gps_bridge_html, height=0, width=0)
 
             elif loc_source == "Auto-Detect via Network IP":
                 client_ip = get_client_ip()
@@ -8016,15 +8171,22 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                 """, unsafe_allow_html=True)
 
             else:
-                search_addr = st.text_input("Enter City or District:", value="Ahmedabad, Gujarat", key="gis_city_search_input", label_visibility="collapsed")
-                geo = geocode_address(search_addr)
-                if geo:
-                    selected_lat = geo["latitude"]
-                    selected_lon = geo["longitude"]
-                    loc_name = geo["formatted_address"]
+                search_addr = st.text_input("Enter City, Town, or District:", placeholder="e.g. Surat, Rajkot, Vadodara, Bhavnagar...", key="gis_city_search_input", label_visibility="collapsed")
+                if search_addr and search_addr.strip():
+                    geo = geocode_address(search_addr.strip())
+                    if geo:
+                        selected_lat = geo["latitude"]
+                        selected_lon = geo["longitude"]
+                        loc_name = geo["formatted_address"]
+                        has_valid_location = True
+                    else:
+                        selected_lat, selected_lon, loc_name = geocode_city_district(search_addr.strip())
+                        has_valid_location = True if selected_lat else False
                 else:
-                    selected_lat, selected_lon, loc_name = geocode_city_district(search_addr)
-                has_valid_location = True
+                    has_valid_location = False
+                    selected_lat = None
+                    selected_lon = None
+                    loc_name = ""
 
             if has_valid_location and selected_lat is not None and selected_lon is not None:
                 st.markdown(f"""
@@ -12132,7 +12294,7 @@ if chat_is_open:
                         DocMindX AI Clinical Assistant
                     </div>
                     <div style="font-size: 0.70rem; color: #E0E7FF; font-weight: 500; margin-top: 1px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-                        <span style="color: #4ADE80; font-size: 0.60rem;">🟢</span> Online • Triage & Medical Guidance
+                        <span style="display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 6px #4ADE80; margin-right: 2px;"></span> Online • Triage & Medical Guidance
                     </div>
                 </div>
             </div>
@@ -12340,7 +12502,7 @@ if chat_is_open:
                     "title": T.get("qa_sym_title", "Symptoms"),
                     "query": f"मेरे लक्षणों ({_sym_s}) का सरल अर्थ और संभावित कारण समझाएं।" if lang_code == "hi" else (
                         f"મારા લક્ષણો ({_sym_s}) નો સરળ અર્થ અને સંભવિત કારણ સમજાવો." if lang_code == "gu" else
-                        translate_dynamic_text(f"Explain the meaning and possible clinical causes of my symptoms ({_sym_s}) in simple terms.", lang_code)
+                        f"Explain the meaning and possible clinical causes of my symptoms ({_sym_s}) in simple terms."
                     )
                 },
                 {
@@ -12348,7 +12510,7 @@ if chat_is_open:
                     "title": T.get("qa_med_title", "Medicines"),
                     "query": f"{_med_s} की खुराक, सही समय और जरूरी सावधानियां बताएं।" if lang_code == "hi" else (
                         f"{_med_s} ની માત્રા, સાચો સમય અને જરૂરી સાવચેતી સમજાવો." if lang_code == "gu" else
-                        translate_dynamic_text(f"Explain the therapeutic purpose, precautions, and timing for taking {_med_s}.", lang_code)
+                        f"Explain the therapeutic purpose, precautions, and timing for taking {_med_s}."
                     )
                 },
                 {
@@ -12356,7 +12518,7 @@ if chat_is_open:
                     "title": T.get("qa_dos_title", "Dosage"),
                     "query": f"{_med_s} और {_dis_s} के लिए सही dosage और भोजन का समय समझाएं।" if lang_code == "hi" else (
                         f"{_med_s} અને {_dis_s} માટે યોગ્ય માત્રા અને જમવાનો સમય સમજાવો." if lang_code == "gu" else
-                        translate_dynamic_text(f"Explain safe dosage guidelines, food timing, and administration instructions for {_med_s}.", lang_code)
+                        f"Explain safe dosage guidelines, food timing, and administration instructions for {_med_s}."
                     )
                 },
                 {
@@ -12364,7 +12526,7 @@ if chat_is_open:
                     "title": T.get("qa_sef_title", "Side Effects"),
                     "query": f"{_med_s} के संभावित दुष्प्रभाव और किन red flags पर डॉक्टर से तुरंत मिलना चाहिए?" if lang_code == "hi" else (
                         f"{_med_s} ની કઈ આડઅસર જણાય તો તરત ડોક્ટરનો સંપર્ક કરવો?" if lang_code == "gu" else
-                        translate_dynamic_text(f"What common and serious adverse effects should I monitor with {_med_s}?", lang_code)
+                        f"What common and serious adverse effects should I monitor with {_med_s}?"
                     )
                 },
                 {
@@ -12372,7 +12534,7 @@ if chat_is_open:
                     "title": T.get("qa_fdt_title", "Food & Diet"),
                     "query": f"{_dis_s} में कौन सा पौष्टिक भोजन खाना चाहिए और किन चीजों से परहेज करें?" if lang_code == "hi" else (
                         f"{_dis_s} માં કયો ખોરાક લેવો હિતાવહ છે અને કઈ વસ્તુઓનો પરહેજ કરવો?" if lang_code == "gu" else
-                        translate_dynamic_text(f"What foods are clinically recommended for {_dis_s}, and what items should be avoided?", lang_code)
+                        f"What foods are clinically recommended for {_dis_s}, and what items should be avoided?"
                     )
                 },
                 {
@@ -12380,7 +12542,7 @@ if chat_is_open:
                     "title": T.get("qa_dis_title", "Disease Info"),
                     "query": f"{_dis_s} की स्थिति, इसके मुख्य कारण और रोग नियंत्रण के उपाय बताएं।" if lang_code == "hi" else (
                         f"{_dis_s} સ્થિતિ, તેના મુખ્ય કારણો અને નિયંત્રણના પગલાં જણાવો." if lang_code == "gu" else
-                        translate_dynamic_text(f"Explain {_dis_s} in detail, including its clinical pathology, triggers, and outlook.", lang_code)
+                        f"Explain {_dis_s} in detail, including its clinical pathology, triggers, and outlook."
                     )
                 },
                 {
@@ -12388,7 +12550,7 @@ if chat_is_open:
                     "title": T.get("qa_lab_title", "Lab Tests"),
                     "query": f"{_dis_s} और {_sym_s} के लिए कौन से जरूरी लैब टेस्ट डॉक्टर से डिस्कस करने चाहिए?" if lang_code == "hi" else (
                         f"{_dis_s} અને {_sym_s} માટે કયા લેબ ટેસ્ટ અંગે ડોક્ટર સાથે વાત કરવી?" if lang_code == "gu" else
-                        translate_dynamic_text(f"Which diagnostic lab tests and reports should I discuss with my physician for {_dis_s} and {_sym_s}?", lang_code)
+                        f"Which diagnostic lab tests and reports should I discuss with my physician for {_dis_s} and {_sym_s}?"
                     )
                 },
                 {
@@ -12396,7 +12558,7 @@ if chat_is_open:
                     "title": T.get("qa_trt_title", "Treatment"),
                     "query": f"{_dis_s} के लिए सामान्यतः क्या इलाज विकल्प और रिकवरी टाइमलाइन होती है?" if lang_code == "hi" else (
                         f"{_dis_s} માટે સારવારના વિકલ્પો અને રિકવરી સમય જણાવો." if lang_code == "gu" else
-                        translate_dynamic_text(f"What clinical treatment options and expected recovery timeline apply to {_dis_s}?", lang_code)
+                        f"What clinical treatment options and expected recovery timeline apply to {_dis_s}?"
                     )
                 },
                 {
@@ -12404,7 +12566,7 @@ if chat_is_open:
                     "title": T.get("qa_yog_title", "Yoga & Wellness"),
                     "query": f"{_dis_s} में कौन से सुरक्षित योगासन, प्राणायाम और जीवनशैली सुझाव लाभकारी हैं?" if lang_code == "hi" else (
                         f"{_dis_s} માટે સલામત યોગાસન, પ્રાણાયામ અને જીવનશૈલી સૂચનો આપો." if lang_code == "gu" else
-                        translate_dynamic_text(f"Suggest safe yoga postures, breathing routines, and lifestyle modifications for {_dis_s}.", lang_code)
+                        f"Suggest safe yoga postures, breathing routines, and lifestyle modifications for {_dis_s}."
                     )
                 },
                 {
@@ -12412,7 +12574,7 @@ if chat_is_open:
                     "title": T.get("qa_chd_title", "Pediatric Care"),
                     "query": f"बच्चों में {_sym_s} होने पर क्या विशेष बाल रोग सावधानियां बरतनी चाहिए?" if lang_code == "hi" else (
                         f"બાળકોમાં {_sym_s} જણાય ત્યારે કઈ પીડિયાટ્રિક સાવચેતી રાખવી?" if lang_code == "gu" else
-                        translate_dynamic_text(f"What pediatric considerations and warning signs apply if a child experiences {_sym_s}?", lang_code)
+                        f"What pediatric considerations and warning signs apply if a child experiences {_sym_s}?"
                     )
                 },
                 {
@@ -12420,7 +12582,7 @@ if chat_is_open:
                     "title": T.get("qa_eld_title", "Elderly Care"),
                     "query": f"बुजुर्ग मरीजों में {_dis_s} और {_med_s} के साथ क्या सुरक्षा सावधानियां जरूरी हैं?" if lang_code == "hi" else (
                         f"વૃદ્ધ દર્દીઓ માટે {_dis_s} અને {_med_s} અંગે કઈ સાવચેતી જરૂરી છે?" if lang_code == "gu" else
-                        translate_dynamic_text(f"What geriatric care, medication timing, and monitoring are vital for senior citizens with {_dis_s}?", lang_code)
+                        f"What geriatric care, medication timing, and monitoring are vital for senior citizens with {_dis_s}?"
                     )
                 },
                 {
@@ -12428,7 +12590,7 @@ if chat_is_open:
                     "title": T.get("qa_ask_title", "Ask Question"),
                     "query": f"DocMindX AI, मेरी वर्तमान स्वास्थ्य स्थिति ({_dis_s}, {_sym_s}) पर आपका क्या सुझाव है?" if lang_code == "hi" else (
                         f"DocMindX AI, મારી વર્તમાન સ્થિતિ ({_dis_s}, {_sym_s}) અંગે તમારું માર્ગદર્શન આપો." if lang_code == "gu" else
-                        translate_dynamic_text(f"Hello DocMindX AI, please give me a clinical assessment and guidance for {_dis_s} and {_sym_s}.", lang_code)
+                        f"Hello DocMindX AI, please give me a clinical assessment and guidance for {_dis_s} and {_sym_s}."
                     )
                 }
             ]
@@ -12506,18 +12668,31 @@ if chat_is_open:
 
             # D. Dynamic Chat history messages
             if st.session_state["floating_chat_history"]:
-                st.markdown("<div style='border-top: 1px dashed var(--mm-border-color); margin: 14px 0 12px 0;'></div>", unsafe_allow_html=True)
+                st.markdown("""
+                <div style="display: flex; align-items: center; justify-content: center; margin: 20px 0 16px 0; gap: 10px;">
+                    <div style="flex: 1; height: 1px; background: linear-gradient(90deg, transparent, var(--mm-border-color));"></div>
+                    <span style="font-size: 0.68rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.6px; background: rgba(37,99,235,0.06); padding: 2px 10px; border-radius: 99px; border: 1px solid rgba(37,99,235,0.12);">
+                        Conversation History
+                    </span>
+                    <div style="flex: 1; height: 1px; background: linear-gradient(90deg, var(--mm-border-color), transparent);"></div>
+                </div>
+                """, unsafe_allow_html=True)
                 for msg_idx, msg in enumerate(st.session_state["floating_chat_history"]):
                     if msg["role"] == "user":
+                        raw_u_text = msg.get("content", "")
+                        clean_u_text = html.escape(raw_u_text) if isinstance(raw_u_text, str) else str(raw_u_text)
                         st.markdown(f"""
-                        <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
-                            <div style="background: #2563EB; color: #FFFFFF; border-radius: 14px 14px 2px 14px; padding: 8px 13px; max-width: 86%; font-size: 0.82rem; line-height: 1.35; word-break: break-word; box-shadow: 0 2px 6px rgba(37, 99, 235,0.3);">
-                                {msg['content']}
+                        <div style="display: flex; flex-direction: column; align-items: flex-end; margin-top: 18px; margin-bottom: 18px;">
+                            <div style="font-size: 0.68rem; font-weight: 700; color: #64748B; margin-bottom: 4px; margin-right: 4px; display: flex; align-items: center; gap: 4px;">
+                                <span>You</span>
+                            </div>
+                            <div style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); color: #FFFFFF; border-radius: 16px 16px 4px 16px; padding: 10px 15px; max-width: 86%; font-size: 0.83rem; line-height: 1.45; word-break: break-word; box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28); border: 1px solid rgba(255, 255, 255, 0.12);">
+                                {clean_u_text}
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
                     else:
-                        ai_bubble_bg = "#1A2540" if is_dark else "rgba(255,255,255,0.9)"
+                        ai_bubble_bg = "#1A2540" if is_dark else "#FFFFFF"
                         ai_bubble_border = "#1E293B" if is_dark else "var(--mm-border-color)"
                         ai_bubble_text = "#E2E8F0" if is_dark else "var(--mm-text-primary)"
                         raw_ai_text = msg.get("content", "")
@@ -12527,8 +12702,8 @@ if chat_is_open:
                             clean_ai_html = raw_ai_text.replace("\n", "<br/>")
 
                         st.markdown(f"""
-                        <div style="display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px;">
-                            <div style="width: 28px; height: 28px; border-radius: 50%; background: #0B1E3D; border: 1.5px solid #06B6D4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+                        <div style="display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; margin-bottom: 18px;">
+                            <div style="width: 30px; height: 30px; border-radius: 50%; background: #0B1E3D; border: 1.5px solid #06B6D4; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; box-shadow: 0 2px 8px rgba(6, 182, 212, 0.35);">
                                 <svg viewBox="0 0 36 36" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="18" cy="4.5" r="2.2" fill="#FFFFFF"/>
                                     <path d="M18 6.7V9.5" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
@@ -12541,15 +12716,21 @@ if chat_is_open:
                                     <path d="M14.5 22C16 23.2 20 23.2 21.5 22" stroke="#38BDF8" stroke-width="1.6" stroke-linecap="round"/>
                                 </svg>
                             </div>
-                            <div class="mm-ai-chat-bubble" style="background: {ai_bubble_bg}; color: {ai_bubble_text}; border-radius: 14px 14px 14px 2px; padding: 10px 12px; max-width: calc(100% - 38px); font-size: 0.82rem; line-height: 1.45; border: 1.2px solid {ai_bubble_border}; word-break: break-word; overflow-x: auto; box-sizing: border-box;">
-                                {clean_ai_html}
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 0.69rem; font-weight: 800; color: #0284C7; margin-bottom: 4px; margin-left: 2px; display: flex; align-items: center; gap: 5px;">
+                                    <span>DocMindX AI</span>
+                                    <span style="font-size: 0.60rem; color: #059669; background: rgba(16, 185, 129, 0.1); padding: 1px 6px; border-radius: 99px; font-weight: 700;">Clinical Copilot</span>
+                                </div>
+                                <div class="mm-ai-chat-bubble" style="background: {ai_bubble_bg}; color: {ai_bubble_text}; border-radius: 4px 16px 16px 16px; padding: 12px 15px; font-size: 0.83rem; line-height: 1.5; border: 1.2px solid {ai_bubble_border}; word-break: break-word; overflow-x: auto; box-sizing: border-box; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);">
+                                    {clean_ai_html}
+                                </div>
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
 
                         action = detect_redirect_action(msg.get("content", ""), lang_code)
                         if action:
-                            st.markdown("<div style='margin: -2px 0 8px 36px;'>", unsafe_allow_html=True)
+                            st.markdown("<div style='margin: 8px 0 16px 40px;'>", unsafe_allow_html=True)
                             if st.button(f" {action['label']}", key=f"nav_action_btn_{msg_idx}", use_container_width=True):
                                 st.session_state["active_panel"] = action["panel"]
                                 st.session_state["floating_chat_open"] = False

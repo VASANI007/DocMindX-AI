@@ -7,7 +7,7 @@ import json
 
 import requests
 
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS, DEFAULT_GEMINI_MODELS
 
 
 def generate_deep_explanation(
@@ -193,22 +193,25 @@ INSTRUCTIONS:
                     return txt.strip()
 
     if GROQ_API_KEY:
-        try:
-            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-            body = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": f"You are DocMindX AI. Answer patient questions clinically in {lang_name}."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.2,
-                "max_tokens": 1000
-            }
-            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
-            if res.status_code == 200:
-                return res.json()["choices"][0]["message"]["content"].strip()
-        except Exception as e:
-            print(f"Q&A Groq notice: {e}")
+        for groq_model in GROQ_MODELS:
+            try:
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+                body = {
+                    "model": groq_model,
+                    "messages": [
+                        {"role": "system", "content": f"You are DocMindX AI. Answer patient questions clinically in {lang_name}."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 1000
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
+                if res.status_code == 200:
+                    ans = res.json()["choices"][0]["message"]["content"].strip()
+                    if ans:
+                        return ans
+            except Exception as e:
+                print(f"Q&A Groq notice ({groq_model}): {e}")
 
     return f"Based on your assessment for {top_condition}, please follow the prescribed dosage and food timing instructions carefully. If symptoms persist or cause discomfort, consult a doctor immediately."
 
@@ -309,7 +312,7 @@ Explain next steps, which specialist physician to consult, and highlight danger 
 
     # 2. Groq AI (Fallback)
     if GROQ_API_KEY:
-        for model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
+        for model in GROQ_MODELS:
             try:
                 headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
                 body = {

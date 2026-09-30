@@ -176,9 +176,9 @@ def search_who_icd11_structured(query: str) -> Dict[str, Any]:
                 return {
                     "status": "NO_RELEVANT_RESULT",
                     "results": [],
-                    "is_live": False,
-                    "fallback_used": True,
-                    "fallback_reason": "No matching ICD-11 entity found"
+                    "is_live": True,
+                    "fallback_used": False,
+                    "fallback_reason": ""
                 }
 
         elif res.status_code == 401:
@@ -240,9 +240,9 @@ def validate_icd11_condition(condition_name: str) -> Dict[str, Any]:
             "verification_status": "UNVERIFIED",
             "validated": False,
             "provider_status": "NO_RELEVANT_RESULT",
-            "is_live": False,
-            "fallback_used": True,
-            "fallback_reason": "Empty condition name"
+            "is_live": True,
+            "fallback_used": False,
+            "fallback_reason": ""
         }
 
     clean_name = str(condition_name).strip()
@@ -268,6 +268,9 @@ def validate_icd11_condition(condition_name: str) -> Dict[str, Any]:
             resp = fallback_resp
             status = resp.get("status")
             results = resp.get("results", [])
+        elif fallback_resp.get("status") == "NO_RELEVANT_RESULT":
+            resp = fallback_resp
+            status = resp.get("status")
 
     if status == "SUCCESS" and results:
         best = results[0]
@@ -290,8 +293,24 @@ def validate_icd11_condition(condition_name: str) -> Dict[str, Any]:
         }
         _validation_cache[cache_key] = res
         return res
+    elif status == "NO_RELEVANT_RESULT":
+        res = {
+            "code": "",
+            "icd_code": "",
+            "system": "ICD-11",
+            "title": clean_name,
+            "source": "WHO",
+            "verification_status": "UNVERIFIED",
+            "validated": False,
+            "provider_status": "NO_RELEVANT_RESULT",
+            "is_live": True,
+            "fallback_used": False,
+            "fallback_reason": ""
+        }
+        _validation_cache[cache_key] = res
+        return res
     else:
-        # Unverified outcome (WHO API failed, not configured, or returned 0 matches)
+        # Unverified outcome due to real API failure / not configured
         res = {
             "code": "",
             "icd_code": "",
@@ -303,7 +322,7 @@ def validate_icd11_condition(condition_name: str) -> Dict[str, Any]:
             "provider_status": status,
             "is_live": False,
             "fallback_used": True,
-            "fallback_reason": resp.get("fallback_reason", "No verified WHO ICD-11 entity found")
+            "fallback_reason": resp.get("fallback_reason", f"WHO ICD-11 live service {status}")
         }
         _validation_cache[cache_key] = res
         return res

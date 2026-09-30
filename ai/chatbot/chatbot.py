@@ -9,7 +9,7 @@ import re
 
 import requests
 
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS
 
 
 def generate_dynamic_patient_questions(clinical_context: dict = None, lang_code: str = "en") -> list:
@@ -256,7 +256,7 @@ CRITICAL RULES & OPERATIONAL INSTRUCTIONS:
                 groq_messages.append({"role": role, "content": content})
         groq_messages.append({"role": "user", "content": user_message})
 
-        for groq_model in ["qwen/qwen3.6-27b", "llama-3.3-70b-versatile"]:
+        for groq_model in GROQ_MODELS:
             try:
                 headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
                 body = {

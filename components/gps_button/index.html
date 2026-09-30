@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocMindX Live GPS Detector</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    background: transparent;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    overflow: hidden;
+    user-select: none;
+  }
+  .container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    padding: 2px 0;
+  }
+  .btn-gps {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    height: 42px;
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28);
+    transition: all 0.18s ease-in-out;
+    outline: none;
+  }
+  .btn-gps:hover {
+    background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.38);
+    transform: translateY(-1px);
+  }
+  .btn-gps:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+  }
+  .btn-gps:disabled {
+    opacity: 0.75;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2.2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: #FFFFFF;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .status-msg {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    line-height: 1.35;
+    font-weight: 600;
+    padding: 4px 2px;
+    border-radius: 6px;
+  }
+  .status-info { color: #1D4ED8; }
+  .status-success { color: #059669; }
+  .status-error { color: #DC2626; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <button id="gps-btn" class="btn-gps" onclick="handleDetectClick()">
+      <svg id="icon-compass" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <polygon points="12 2 15 8 12 6 9 8 12 2"></polygon>
+      </svg>
+      <span id="spinner" class="spinner" style="display:none;"></span>
+      <span id="btn-text">Detect Live Location</span>
+    </button>
+    <div id="status-box" class="status-msg" style="display:none;"></div>
+  </div>
+
+  <script>
+    function sendValue(val) {
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: "streamlit:setComponentValue",
+        value: val
+      }, "*");
+    }
+
+    function setFrameHeight(h) {
+      window.parent.postMessage({
+        isStreamlitMessage: true,
+        type: "streamlit:setFrameHeight",
+        height: h
+      }, "*");
+    }
+
+    // Ready handshake
+    window.parent.postMessage({
+      isStreamlitMessage: true,
+      type: "streamlit:componentReady",
+      apiVersion: 1
+    }, "*");
+
+    setFrameHeight(46);
+
+    function updateUI(state, text, statusClass) {
+      var btn = document.getElementById("gps-btn");
+      var btnText = document.getElementById("btn-text");
+      var compass = document.getElementById("icon-compass");
+      var spinner = document.getElementById("spinner");
+      var statusBox = document.getElementById("status-box");
+
+      if (state === "loading") {
+        btn.disabled = true;
+        compass.style.display = "none";
+        spinner.style.display = "inline-block";
+        btnText.innerText = "Detecting Device GPS...";
+        statusBox.style.display = "flex";
+        statusBox.className = "status-msg status-info";
+        statusBox.innerHTML = "Requesting browser location permission...";
+        setFrameHeight(76);
+      } else if (state === "success") {
+        btn.disabled = false;
+        compass.style.display = "inline-block";
+        spinner.style.display = "none";
+        btnText.innerText = "Location Detected!";
+        btn.style.background = "linear-gradient(135deg, #059669 0%, #047857 100%)";
+        statusBox.style.display = "flex";
+        statusBox.className = "status-msg status-success";
+        statusBox.innerHTML = "Live GPS lock acquired! Loading map...";
+        setFrameHeight(76);
+      } else if (state === "error") {
+        btn.disabled = false;
+        compass.style.display = "inline-block";
+        spinner.style.display = "none";
+        btnText.innerText = "Try Detect Again";
+        btn.style.background = "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)";
+        statusBox.style.display = "flex";
+        statusBox.className = "status-msg status-error";
+        statusBox.innerHTML = text || "Location error";
+        setFrameHeight(76);
+      } else {
+        btn.disabled = false;
+        compass.style.display = "inline-block";
+        spinner.style.display = "none";
+        btnText.innerText = "Detect Live Location";
+        btn.style.background = "linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)";
+        statusBox.style.display = "none";
+        setFrameHeight(46);
+      }
+    }
+
+    function handleDetectClick() {
+      updateUI("loading");
+
+      if (!navigator.geolocation) {
+        updateUI("error", "Geolocation is not supported by your browser.");
+        sendValue({status: "ERROR", code: 2, message: "Geolocation not supported"});
+        return;
+      }
+
+      var geoOptionsHigh = {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 0
+      };
+
+      var geoOptionsLow = {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 0
+      };
+
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          updateUI("success");
+          sendValue({
+            status: "SUCCESS",
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+            accuracy: pos.coords.accuracy || 0,
+            timestamp: pos.timestamp || Date.now()
+          });
+        },
+        function(err) {
+          console.warn("High accuracy GPS failed, falling back to standard accuracy...", err);
+          navigator.geolocation.getCurrentPosition(
+            function(pos2) {
+              updateUI("success");
+              sendValue({
+                status: "SUCCESS",
+                lat: pos2.coords.latitude,
+                lon: pos2.coords.longitude,
+                accuracy: pos2.coords.accuracy || 0,
+                timestamp: pos2.timestamp || Date.now()
+              });
+            },
+            function(err2) {
+              var code = err2.code || err.code || 1;
+              var errMsg = "Location request timed out. Please click again.";
+              if (code === 1) {
+                errMsg = "Permission denied. Click URL lock icon to Allow location.";
+              } else if (code === 2) {
+                errMsg = "GPS unavailable. Ensure Windows Location is ON.";
+              }
+              updateUI("error", errMsg);
+              sendValue({status: "ERROR", code: code, message: errMsg});
+            },
+            geoOptionsLow
+          );
+        },
+        geoOptionsHigh
+      );
+    }
+  </script>
+</body>
+</html>

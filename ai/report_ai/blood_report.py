@@ -8,7 +8,7 @@ import json
 import requests
 import pandas as pd
 
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS
 from ai.report_ai.medical_verifier import verify_medical_document
 
 DATASETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "datasets")
@@ -122,7 +122,7 @@ Return strictly a valid JSON object matching this schema:
 
         # Try Groq API
         if GROQ_API_KEY:
-            for model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]:
+            for model in GROQ_MODELS:
                 try:
                     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
                     body = {

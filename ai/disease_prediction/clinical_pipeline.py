@@ -43,6 +43,15 @@ class ProviderStatus:
         self.fallback_reason = ""
         self.latency_ms = latency_ms
 
+    def record_no_relevant_result(self, reason: str = "No matching entity found", latency_ms: float = 0.0):
+        self.attempted = True
+        self.success = True
+        self.is_live = True
+        self.fallback_used = False
+        self.failure_type = None
+        self.fallback_reason = ""
+        self.latency_ms = latency_ms
+
     def record_failure(self, failure_type: str, fallback_reason: str = "", latency_ms: float = 0.0):
         self.attempted = True
         self.success = False
@@ -97,21 +106,107 @@ class ClinicalPipelineOrchestrator:
             "Groq": ProviderStatus("Groq LLM"),
         }
 
+    def _get_searchable_english_symptoms(
+        self,
+        symptom_names: List[str],
+        selected_symptom_ids: Optional[List[str]] = None,
+        canonical_rep: Optional[Any] = None
+    ) -> List[str]:
+        """
+        Translates raw / multilingual / romanized symptom strings into canonical English clinical terms
+        suitable for querying biomedical terminology services (NLM Clinical Tables, BioPortal, WHO ICD-11).
+        Guarantees zero untranslated regional Indic phrases reach biomedical APIs.
+        """
+        import re
+        from ai.disease_prediction.canonical_concepts import canonical_normalizer
+        searchable = []
+        seen = set()
+
+        def _add(term: str):
+            if not term or not str(term).strip():
+                return
+            clean = re.sub(r'\(.*?\)', '', str(term)).strip()
+            clean = re.sub(r'\s+', ' ', clean)
+            if clean and clean.lower() not in seen:
+                seen.add(clean.lower())
+                searchable.append(clean)
+
+        # 1. Add resolved symptom names from explicit IDs
+        for sid in (selected_symptom_ids or []):
+            rec = canonical_normalizer.bridge.lookup_by_id(sid)
+            if rec and rec.get("symptom_name"):
+                _add(rec["symptom_name"])
+
+        if canonical_rep:
+            for c in getattr(canonical_rep, "canonical_concepts", []):
+                _add(c.replace("_", " ").title())
+            for sid in getattr(canonical_rep, "symptom_ids", []):
+                rec = canonical_normalizer.bridge.lookup_by_id(sid)
+                if rec and rec.get("symptom_name"):
+                    _add(rec["symptom_name"])
+
+        # 2. For each symptom name, attempt resolution to English canonical term
+        for s in (symptom_names or []):
+            s_str = str(s).strip()
+            if not s_str:
+                continue
+
+            sid = canonical_normalizer.get_symptom_id(s_str)
+            if sid:
+                rec = canonical_normalizer.bridge.lookup_by_id(sid)
+                if rec and rec.get("symptom_name"):
+                    _add(rec["symptom_name"])
+                    continue
+
+            sub_norm = canonical_normalizer.normalize(s_str)
+            if sub_norm.symptom_ids:
+                for sid in sub_norm.symptom_ids:
+                    rec = canonical_normalizer.bridge.lookup_by_id(sid)
+                    if rec and rec.get("symptom_name"):
+                        _add(rec["symptom_name"])
+                if sub_norm.canonical_concepts:
+                    for c in sub_norm.canonical_concepts:
+                        _add(c.replace("_", " ").title())
+                continue
+            elif sub_norm.canonical_concepts:
+                for c in sub_norm.canonical_concepts:
+                    _add(c.replace("_", " ").title())
+                continue
+
+            # Indic transliteration stopwords & particles filter
+            indic_stopwords = {
+                "chhe", "che", "cgge", "aave", "aavi", "bale", "dukhe", "dukh", "dukhav", "pani",
+                "karad", "aani", "hot", "ahe", "irukku", "noppi", "hai", "rahi", "wali", "waliye",
+                "hota", "thay", "ma", "pn", "thi", "se", "me", "ko", "ne", "pela", "padiya", "par",
+                "adiye", "khup", "ekdam", "ghana", "khari"
+            }
+            tokens = set(re.findall(r'\b\w+\b', s_str.lower()))
+            is_indic_romanized = bool(tokens & indic_stopwords)
+
+            # Clean English symptom term (only if not an Indic transliteration)
+            if all(ord(ch) < 128 for ch in s_str) and len(s_str) >= 3 and not is_indic_romanized:
+                _add(s_str)
+
+        return searchable
+
     def _get_bioportal_concepts(self, symptom_names: List[str]) -> List[dict]:
         """Resolves clinical concepts via BioPortal for the reported symptoms."""
         concepts = []
         try:
             from api.bioportal import search_bioportal_concept
             t0 = time.time()
-            for sym in symptom_names[:5]:  # Limit API calls — resolve primary symptoms
+            any_live = False
+            for sym in symptom_names[:5]:  # Query key reported symptoms (up to 5)
                 results = search_bioportal_concept(sym, page_size=2)
                 if results:
                     first = results[0]
                     if first.get("is_live"):
-                        self.providers["BioPortal"].record_success(latency_ms=(time.time() - t0) * 1000)
+                        any_live = True
                     concepts.extend(results)
-            if not self.providers["BioPortal"].success and not self.providers["BioPortal"].attempted:
-                self.providers["BioPortal"].record_failure("empty_response", "No BioPortal results for any symptom")
+            if any_live or concepts:
+                self.providers["BioPortal"].record_success(latency_ms=(time.time() - t0) * 1000)
+            else:
+                self.providers["BioPortal"].record_no_relevant_result(latency_ms=(time.time() - t0) * 1000)
             _logger.info("[Pipeline] BioPortal: %d concept(s) resolved", len(concepts))
         except Exception as exc:
             self.providers["BioPortal"].record_failure("error", str(exc))
@@ -124,8 +219,8 @@ class ClinicalPipelineOrchestrator:
         try:
             from api.nlm_clinical import search_nlm_conditions
             t0 = time.time()
-            # Use first 2 key symptoms for NLM search
-            for sym in symptom_names[:2]:
+            # Query all reported key symptoms (up to 5)
+            for sym in symptom_names[:5]:
                 results = search_nlm_conditions(sym, max_list=8)
                 for c in results:
                     if c and c not in conditions:
@@ -133,7 +228,7 @@ class ClinicalPipelineOrchestrator:
             if conditions:
                 self.providers["NLM"].record_success(latency_ms=(time.time() - t0) * 1000)
             else:
-                self.providers["NLM"].record_failure("empty_response", "NLM returned no conditions")
+                self.providers["NLM"].record_no_relevant_result(latency_ms=(time.time() - t0) * 1000)
             _logger.info("[Pipeline] NLM: %d condition(s) discovered", len(conditions))
         except Exception as exc:
             self.providers["NLM"].record_failure("error", str(exc))
@@ -146,6 +241,9 @@ class ClinicalPipelineOrchestrator:
             from api.who_icd import validate_icd11_condition
             t0 = time.time()
             any_validated = False
+            any_live_attempt = False
+            last_failure_reason = ""
+
             for i, cond in enumerate(conditions):
                 c_name = cond.get("name", "")
                 result = validate_icd11_condition(c_name)
@@ -164,10 +262,17 @@ class ClinicalPipelineOrchestrator:
                     if not conditions[i].get("icd_code"):
                         conditions[i]["icd_code"] = result.get("code") or cond.get("icd_code", "Unspecified")
 
+                if result.get("is_live") or result.get("provider_status") in ("SUCCESS", "NO_RELEVANT_RESULT"):
+                    any_live_attempt = True
+                elif result.get("fallback_reason"):
+                    last_failure_reason = result.get("fallback_reason")
+
             if any_validated:
                 self.providers["WHO_ICD"].record_success(latency_ms=(time.time() - t0) * 1000)
+            elif any_live_attempt:
+                self.providers["WHO_ICD"].record_no_relevant_result(latency_ms=(time.time() - t0) * 1000)
             else:
-                self.providers["WHO_ICD"].record_failure("no_validation", "WHO returned no validated entities")
+                self.providers["WHO_ICD"].record_failure("no_validation", last_failure_reason or "WHO live service unavailable")
         except Exception as exc:
             self.providers["WHO_ICD"].record_failure("error", str(exc))
             _logger.error("[Pipeline] WHO ICD-11 validation error: %s", exc)
@@ -192,7 +297,7 @@ class ClinicalPipelineOrchestrator:
 
         provider_names = ", ".join(p.name for p in failed)
         return (
-            f"⚠️ Some live clinical data services are currently unavailable ({provider_names}). "
+            f" Some live clinical data services are currently unavailable ({provider_names}). "
             "DocMindX AI is using locally stored clinical reference data for parts of this assessment. "
             "Results may be less current and should be clinically verified with a qualified healthcare professional."
         )
@@ -261,30 +366,44 @@ class ClinicalPipelineOrchestrator:
             canonical_rep = canonical_normalizer.normalize(str(input_text).strip())
 
             # Check for unresolvable input ("something feels strange in my body")
-            if canonical_rep.clinical_status == "insufficient_information" and not symptom_names and not selected_symptom_ids:
-                _logger.info("[Pipeline] Input produced insufficient clinical information — returning safe prompt")
-                sys_status = self._build_system_status()
-                return {
-                    "clinical_status": "insufficient_information",
-                    "normalization_status": "failed",
-                    "is_emergency": False,
-                    "urgency_level": "Insufficient Information (Please Describe Symptoms)",
-                    "ranked_conditions": [],
-                    "compatible_conditions": [],
-                    "red_flags": [],
-                    "positive_findings": [],
-                    "negative_findings": [],
-                    "symptom_names": [],
-                    "symptom_ids": [],
-                    "tests_to_discuss": [],
-                    "system_status": sys_status,
-                    "fallback_warning": "",
-                    "message": "Insufficient clinical information to determine a differential pattern. Please describe your symptoms in more detail.",
-                    "clinical_input": {
-                        "symptom_names": [],
-                        "symptom_ids": [],
+            if (canonical_rep.clinical_status == "insufficient_information" or len(selected_symptom_ids) < len(symptom_names)) and input_text:
+                # Fallback to MultilingualSymptomExtractor (LLM + Indic NLP)
+                from ai.disease_prediction.multilingual_symptom_extractor import symptom_extractor
+                extracted = symptom_extractor.extract_symptoms_and_medicines(str(input_text).strip(), user_lang=lang_code or "en")
+                if extracted and (extracted.get("symptom_labels") or extracted.get("symptom_ids")):
+                    for lbl in extracted.get("symptom_labels", []):
+                        if lbl not in symptom_names:
+                            symptom_names.append(lbl)
+                    for sid in extracted.get("symptom_ids", []):
+                        if sid not in selected_symptom_ids:
+                            selected_symptom_ids.append(sid)
+                    for neg in extracted.get("negative_findings", []):
+                        if neg not in negative_findings:
+                            negative_findings.append(neg)
+                else:
+                    _logger.info("[Pipeline] Input produced insufficient clinical information — returning safe prompt")
+                    sys_status = self._build_system_status()
+                    return {
+                        "clinical_status": "insufficient_information",
+                        "normalization_status": "failed",
+                        "is_emergency": False,
+                        "urgency_level": "Insufficient Information (Please Describe Symptoms)",
+                        "ranked_conditions": [],
+                        "compatible_conditions": [],
+                        "red_flags": [],
                         "positive_findings": [],
                         "negative_findings": [],
+                        "symptom_names": [],
+                        "symptom_ids": [],
+                        "tests_to_discuss": [],
+                        "system_status": sys_status,
+                        "fallback_warning": "",
+                        "message": "Insufficient clinical information to determine a differential pattern. Please describe your symptoms in more detail.",
+                        "clinical_input": {
+                            "symptom_names": [],
+                            "symptom_ids": [],
+                            "positive_findings": [],
+                            "negative_findings": [],
                         "canonical_concepts": {},
                         "patient_context": patient_context
                     },
@@ -362,17 +481,33 @@ class ClinicalPipelineOrchestrator:
             if sid and sid not in selected_symptom_ids and sid not in negative_findings:
                 selected_symptom_ids.append(sid)
 
+        # Obtain canonical English clinical terms for external biomedical services (BioPortal, NLM)
+        searchable_symptoms = self._get_searchable_english_symptoms(
+            symptom_names=symptom_names,
+            selected_symptom_ids=selected_symptom_ids,
+            canonical_rep=canonical_rep
+        )
+
         # Stage 2: BioPortal concept resolution (contextual — non-blocking)
         bioportal_concepts = []
-        if run_bioportal and symptom_names:
-            bioportal_concepts = self._get_bioportal_concepts(symptom_names)
+        if run_bioportal and (searchable_symptoms or symptom_names):
+            bioportal_concepts = self._get_bioportal_concepts(searchable_symptoms or symptom_names)
+            # Ingest resolved concept symptom IDs into selected_symptom_ids
+            for bc in bioportal_concepts:
+                pref = bc.get("prefLabel") or bc.get("pref_label") or bc.get("name") or "" if isinstance(bc, dict) else str(bc)
+                if pref:
+                    sid = canonical_normalizer.get_symptom_id(str(pref))
+                    if sid and sid not in selected_symptom_ids and sid not in negative_findings:
+                        selected_symptom_ids.append(sid)
         else:
             self.providers["BioPortal"].record_skipped("BioPortal skipped")
 
-        # Stage 3: NLM condition discovery (contextual — non-blocking)
+        # Stage 3: NLM condition discovery (contextual reference — non-blocking)
         nlm_conditions = []
-        if run_nlm and symptom_names:
-            nlm_conditions = self._get_nlm_conditions(symptom_names)
+        if run_nlm and (searchable_symptoms or symptom_names):
+            nlm_conditions = self._get_nlm_conditions(searchable_symptoms or symptom_names)
+            # CRITICAL RULE: NLM conditions are diagnostic candidates/references, NEVER patient symptoms.
+            # Do NOT ingest nlm_conditions into selected_symptom_ids.
         else:
             self.providers["NLM"].record_skipped("NLM skipped")
 
@@ -389,7 +524,9 @@ class ClinicalPipelineOrchestrator:
                     patient_history=patient_context,
                     symptom_names=symptom_names,
                     chief_condition=chief_condition,
-                    negative_findings=negative_findings
+                    negative_findings=negative_findings,
+                    bioportal_concepts=bioportal_concepts,
+                    nlm_conditions=nlm_conditions
                 )
             else:
                 triage_result = triage_engine.evaluate_symptoms(
@@ -426,11 +563,14 @@ class ClinicalPipelineOrchestrator:
             try:
                 from ai.utils.care_recommendations import get_dynamic_clinical_recommendations
                 top_name = ranked[0].get("name", "Acute Illness") if ranked else "Acute Illness"
+                top_conf = ranked[0].get("match_percentage", 65) if ranked else 65
                 care_res = get_dynamic_clinical_recommendations(
                     symptoms=symptom_names,
                     user_context=patient_context,
                     top_condition=top_name,
-                    lang_code=patient_context.get("lang_code", "en")
+                    lang_code=patient_context.get("lang_code", "en"),
+                    ranked_conditions=ranked,
+                    top_confidence=top_conf
                 )
                 triage_result["care_recommendations"] = care_res
                 triage_result["care_plan"] = care_res

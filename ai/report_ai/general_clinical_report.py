@@ -11,7 +11,7 @@ import json
 import logging
 from typing import Dict, Any, List, Optional
 
-from config.settings import gemini_pool, GROQ_API_KEY
+from config.settings import gemini_pool, GROQ_API_KEY, GROQ_MODELS
 from ai.report_ai.medical_verifier import verify_medical_document
 
 _logger = logging.getLogger("DocMindX.ReportAI.GeneralClinical")
@@ -119,27 +119,28 @@ Do NOT output anything outside the JSON object."""
 
         # 3. Try Groq API Fallback
         if GROQ_API_KEY:
-            try:
-                import requests
-                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-                body = {
-                    "model": "llama-3.3-70b-versatile",
-                    "messages": [
-                        {"role": "system", "content": "You are a senior clinical document analyst. Output strict JSON only."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.1,
-                    "max_tokens": 1800,
-                    "response_format": {"type": "json_object"}
-                }
-                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
-                if res.status_code == 200:
-                    raw_out = res.json()["choices"][0]["message"]["content"]
-                    parsed = self._safe_parse_json(raw_out)
-                    if parsed and parsed.get("findings"):
-                        return self._format_result(parsed)
-            except Exception as e:
-                _logger.warning("Groq general clinical doc notice: %s", e)
+            import requests
+            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+            for groq_model in GROQ_MODELS:
+                try:
+                    body = {
+                        "model": groq_model,
+                        "messages": [
+                            {"role": "system", "content": "You are a senior clinical document analyst. Output strict JSON only."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        "temperature": 0.1,
+                        "max_tokens": 1800,
+                        "response_format": {"type": "json_object"}
+                    }
+                    res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
+                    if res.status_code == 200:
+                        raw_out = res.json()["choices"][0]["message"]["content"]
+                        parsed = self._safe_parse_json(raw_out)
+                        if parsed and parsed.get("findings"):
+                            return self._format_result(parsed)
+                except Exception as e:
+                    _logger.warning("Groq (%s) general clinical doc notice: %s", groq_model, e)
 
         # 4. Deterministic Clinical Regex / Rule Fallback (100% Offline Resilient)
         return self._deterministic_fallback_parser(raw_text, lang_label)

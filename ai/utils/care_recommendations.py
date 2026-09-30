@@ -23,15 +23,97 @@ import requests
 
 _logger = logging.getLogger("DocMindX.TriageEngine.CareRecommendations")
 
-# Valid model chains
-_GEMINI_MODELS = ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-3.7-flash"]
-_GROQ_MODELS = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768"]
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, OPENFDA_API_KEY, gemini_pool
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, OPENFDA_API_KEY, gemini_pool, GROQ_MODELS, DEFAULT_GEMINI_MODELS
 from ai.utils.image_resolver import resolve_image
 from ai.utils.seasonal_context import get_seasonal_health_context, INDIAN_STATES
+
+# Centralized valid model chains
+_GEMINI_MODELS = list(DEFAULT_GEMINI_MODELS)
+_GROQ_MODELS = list(GROQ_MODELS)
+
+
+def _match_condition_guidance_row(df_g, target_condition: str):
+    """
+    Safely matches a clinical condition string against condition_guidance.csv rows.
+    Enforces strict ranking and specificity:
+    1. Exact normalized name match
+    2. Specific keyword overlap with strict generic stopword stripping
+    3. NEVER returns an unranked .iloc[0] or unrelated condition.
+    """
+    if df_g is None or getattr(df_g, "empty", True) or not target_condition or not str(target_condition).strip():
+        return None
+
+    target_clean = str(target_condition).lower().strip()
+    target_clean_no_punct = re.sub(r'[^\w\s]', ' ', target_clean)
+    target_clean_no_punct = re.sub(r'\s+', ' ', target_clean_no_punct).strip()
+
+    # 1. Exact match check
+    for idx, row in df_g.iterrows():
+        c_name = str(row.get("condition_name", "")).lower().strip()
+        c_name_clean = re.sub(r'[^\w\s]', ' ', c_name)
+        c_name_clean = re.sub(r'\s+', ' ', c_name_clean).strip()
+        if target_clean == c_name or target_clean_no_punct == c_name_clean:
+            return row
+
+    # 2. Strict synonym / alias mapping
+    alias_map = {
+        "uti": "urinary tract infection",
+        "tb": "tuberculosis",
+        "covid": "covid-19",
+        "coronavirus": "covid-19",
+        "flu": "seasonal influenza",
+        "influenza": "seasonal influenza",
+        "pharyngitis": "chronic pharyngitis",
+        "sore throat": "chronic pharyngitis",
+    }
+    target_tokens = set(re.findall(r'\b\w{3,}\b', target_clean))
+    expanded_target_names = {target_clean}
+    for alias, full in alias_map.items():
+        if alias in target_tokens or alias in target_clean:
+            expanded_target_names.add(full)
+
+    generic_stopwords = {
+        "disease", "syndrome", "acute", "chronic", "pain", "infection", "disorder", "condition",
+        "fever", "major", "india", "type", "stage", "tract", "upper", "lower", "viral", "bacterial",
+        "illness", "unspecified", "mild", "moderate", "severe", "systemic", "general", "body", "signs"
+    }
+
+    target_specific_words = [w for w in re.findall(r'\b\w{4,}\b', target_clean) if w not in generic_stopwords]
+    if not target_specific_words:
+        return None
+
+    scored_candidates = []
+    for idx, row in df_g.iterrows():
+        c_name = str(row.get("condition_name", "")).lower().strip()
+        c_words = [w for w in re.findall(r'\b\w{4,}\b', c_name) if w not in generic_stopwords]
+        if not c_words:
+            continue
+
+        # Check if one is a complete clean substring
+        if any(c_name in exp or exp in c_name for exp in expanded_target_names):
+            scored_candidates.append((100.0, len(c_name), row))
+            continue
+
+        # Count specific token overlap
+        matched_specific = set(target_specific_words) & set(c_words)
+        if matched_specific:
+            score = (len(matched_specific) / max(len(c_words), len(target_specific_words))) * 10
+            scored_candidates.append((score, len(matched_specific), row))
+
+    if not scored_candidates:
+        return None
+
+    # Sort descending by score, then number of matched tokens
+    scored_candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    best_score, best_len, best_row = scored_candidates[0]
+
+    # Require minimum score or specific token match
+    if best_score >= 1.0 or best_len >= 1:
+        return best_row
+
+    return None
 
 try:
     from api.openfda import search_drug_openfda
@@ -88,7 +170,8 @@ def _clean_json_response(raw_text: str) -> dict | None:
 
 def _first_candidate_name(medicine_name: str, brand_examples: str = "") -> str:
     """
-    Picks a clean drug name to query against live medicine APIs.
+    Picks a clean active ingredient or base drug name to query against live medicine APIs (OpenFDA, DailyMed).
+    Strips strength dosages (e.g. 650mg, 500mg), salt modifiers, and dosage form descriptors.
     """
     candidate = ""
     if brand_examples:
@@ -98,7 +181,10 @@ def _first_candidate_name(medicine_name: str, brand_examples: str = "") -> str:
         candidate = candidate.split("(")[0]
         candidate = candidate.split("+")[0]
         candidate = candidate.split("/")[0]
-    return candidate.strip()
+    clean = candidate.strip()
+    clean = re.sub(r'[0-9]+(\.[0-9]+)?\s*(mg|mcg|g|%|ml|iu|tablets?|capsules?|drops?|syrup|gel|cream|ointment|oral|iv|im)\b', '', clean, flags=re.IGNORECASE).strip()
+    return clean or candidate.strip()
+
 
 
 
@@ -389,7 +475,10 @@ def get_medicine_gallery(
             except Exception as exc:
                 _logger.warning("[CareRecommendations] DailyMed verification notice for '%s': %s", candidate, exc)
 
+        is_local_record = any(k in str(source_tag).lower() for k in ["local", "master", "offline", "dataset"])
         is_clinically_verified = bool(fda_live or dailymed_live)
+        fallback_reason_text = ""
+
         if fda_live and dailymed_live:
             verification_status = "OPENFDA_AND_DAILYMED_VERIFIED"
             provider = "OpenFDA + DailyMed"
@@ -406,10 +495,16 @@ def get_medicine_gallery(
             verification_status = "DAILYMED_NAME_MATCH"
             provider = "DailyMed (Name Match Only)"
             api_source = f"{source_tag} [DailyMed Name Match]"
+        elif is_local_record:
+            verification_status = "LOCAL_CLINICAL_REFERENCE"
+            provider = "Local Clinical Reference Dataset"
+            api_source = f"{source_tag} [Local Reference]"
+            fallback_reason_text = "Local clinical reference dataset record"
         else:
-            verification_status = "CLINICAL_REFERENCE"
-            provider = "DocMindX Clinical Reference"
-            api_source = f"{source_tag} [Clinical Reference]"
+            verification_status = "UNVERIFIED"
+            provider = "Unverified Candidate"
+            api_source = f"{source_tag} [Unverified / No Label Found]"
+            fallback_reason_text = "No authoritative label found in OpenFDA or DailyMed"
 
         candidate_dosage = dosage
         verified_label_dosage = None
@@ -426,18 +521,16 @@ def get_medicine_gallery(
             raw_forms = api_info.get("dosage_forms") or api_info.get("verified_form")
             verified_form = raw_forms[0] if isinstance(raw_forms, list) and raw_forms else (raw_forms or None)
 
-        # Clean dosage form - never permit "Tube" (tube is packaging, not a dosage form)
-        clean_spec_form = spec_form
-        if str(clean_spec_form).strip().lower() in ["tube", "bottle", "strip"]:
-            clean_spec_form = "Cream" if is_topical else "Tablet"
-        if str(verified_form).strip().lower() in ["tube", "bottle", "strip"]:
-            verified_form = "Cream" if is_topical else "Tablet"
+        # Clean dosage form - never permit packaging words as dosage form
+        clean_spec_form = spec_form if str(spec_form).strip().lower() not in ["tube", "bottle", "strip", "unspecified", "unknown", "none", ""] else None
+        clean_verified_form = verified_form if str(verified_form).strip().lower() not in ["tube", "bottle", "strip", "unspecified", "unknown", "none", ""] else None
 
-        resolved_form = verified_form or clean_spec_form or ("Cream" if is_topical else "Tablet" if route_key == "oral" else route_key.capitalize())
-        resolved_route = verified_route or spec_route or route_key.capitalize()
+        # Do NOT invent Tablet or Cream if form is unknown
+        resolved_form = clean_verified_form or clean_spec_form or "Unspecified Formulation"
+        resolved_route = verified_route or spec_route or ("Oral" if route_key == "oral" and is_clinically_verified else "Requires Clinician / Pharmacist Verification")
 
         # Truthful dosage instruction display
-        dosage_display = candidate_dosage or "Consult healthcare practitioner for official clinical dosage."
+        dosage_display = verified_label_dosage or candidate_dosage or "Dosage information requires clinician / pharmacist verification."
 
         is_inj = (route_key == "injectable")
         is_hospital_protocol = is_inj
@@ -491,7 +584,9 @@ def get_dynamic_clinical_recommendations(
     symptoms: list,
     user_context: dict,
     top_condition: str = "",
-    lang_code: str = "en"
+    lang_code: str = "en",
+    ranked_conditions: list = None,
+    top_confidence: float = 65.0
 ) -> dict:
     """
     Main API-First Dynamic Clinical Engine.
@@ -528,6 +623,23 @@ def get_dynamic_clinical_recommendations(
 
     lang_instruction = "English" if lang_code == "en" else "Hindi (हिंदी)" if lang_code == "hi" else "Gujarati (ગુજરાતી)"
 
+    ranked_conditions = ranked_conditions or []
+    if not top_confidence and ranked_conditions:
+        top_confidence = ranked_conditions[0].get("match_percentage", 65.0)
+
+    is_low_confidence = top_confidence < 50.0 or (
+        len(ranked_conditions) > 1 and
+        (ranked_conditions[0].get("match_percentage", 0) - ranked_conditions[1].get("match_percentage", 0) < 8)
+    )
+
+    if is_low_confidence:
+        confidence_directive = f"""- LOW ALGORITHMIC CONFIDENCE / WEAK DIFFERENTIAL SEPARATION ({round(top_confidence)}/100):
+  The reported symptoms do not decisively distinguish {top_condition} from other differential possibilities.
+  1. HEDGED SUMMARY: In "summary", do NOT claim a definitive diagnosis. State that the symptoms represent a non-specific acute pattern compatible with multiple potential etiologies (including {top_condition}), requiring clinical evaluation to narrow down.
+  2. ANTIMICROBIAL SAFETY: DO NOT prescribe targeted single-disease prescription antibiotics (e.g. Doxycycline) on an unconfirmed low-confidence assessment. Recommend ONLY supportive and symptomatic care (e.g. Paracetamol for fever/body ache, ORS/fluids for hydration) and explicitly state that antibiotic therapy requires confirmatory diagnostic workup by a qualified physician."""
+    else:
+        confidence_directive = f"""- Clear differential evidence supported ({round(top_confidence)}/100)."""
+
     supports_topical = condition_supports_topical(top_condition, symptoms)
     if supports_topical:
         topical_prompt_directive = """
@@ -553,7 +665,7 @@ Perform an in-depth clinical analysis and prescribe a comprehensive, personalize
 PATIENT PROFILE:
 - Demographics: Age Group: {age}, Gender: {gender}, State: {state}, Blood Group: {blood_group}
 - Active Indian Season & Climate: {seasonal_data['season_name']} ({seasonal_data['alert_title']})
-- Prevalent Regional Outbreak Risks in {state}: {', '.join(seasonal_data['key_surging_diseases'])}
+- General Seasonal Health Context — Reference Only (Not Patient Evidence): Season is {seasonal_data['season_name']} in {state}.
 - Clinical Symptoms: {', '.join(symptoms) if symptoms else 'General Illness'}
 - Symptom Severity: {severity}
 - Symptom Duration: {duration}
@@ -570,6 +682,11 @@ ANTI-FABRICATION RULES (MANDATORY):
    DO NOT invent conditions or symptoms not present in the patient profile above.
    Use qualified clinical language: "Pattern compatible with..." NOT "Patient is diagnosed with..."
    Medicine count must be EXACTLY what is clinically required — do NOT pad with extra medicines.
+   Do not output any medicine unless it is required by validated patient evidence and can be verified through the downstream medication evidence gate.
+   If no medicine qualifies: return "medicines": [].
+
+CONFIDENCE GATING & ANTIMICROBIAL SAFETY DIRECTIVE:
+{confidence_directive}
 
 CRITICAL CLINICAL INSTRUCTIONS:
 1. LANGUAGE CONSISTENCY:
@@ -586,10 +703,10 @@ CRITICAL CLINICAL INSTRUCTIONS:
 {topical_prompt_directive}
    - Prescribe ONLY the clinically indicated medications directly supported by evidence for this patient's exact symptoms, severity, and duration (return dynamic count: 0, 1, 2, 3, etc. - do NOT artificially target any fixed count).
    - For EACH medicine provide:
-     - "name": Generic name with popular Indian brand in parentheses (e.g., "Paracetamol 650mg (Dolo 650 / Calpol)", "Pantoprazole 40mg (Pan 40)", "Oral Rehydration Salts (Electral / ORS)", "Azithromycin 500mg (Azee 500)", "Levocetirizine 5mg (Levocet)").
+     - "name": Generic medication name (active compound) with Indian trade alias if relevant. Do NOT default to generic painkillers unless pain was reported.
      - "indication": Specific symptom it treats in {lang_instruction}.
-     - "dosage": Exact clinical dosage (e.g., "1 Tablet thrice daily after meals", "Apply thin layer twice daily").
-     - "course_duration": Explicit course length in {lang_instruction} (e.g. "3 to 5 Days", "5 Days Full Course", "3 થી 5 દિવસ").
+     - "dosage": Clinical dosage instructions in {lang_instruction}.
+     - "course_duration": Explicit course length in {lang_instruction} (e.g. "3 to 5 Days", "3 થી 5 દિવસ").
      - "food_timing": Explicit timing strictly in {lang_instruction} ("After Food", "Before Food (Empty Stomach)", "External Application").
      - "time_of_day": E.g. "Morning & Night (BD)", "Morning Empty Stomach", "SOS (When needed)", "Thrice Daily (TDS)".
      - "type": "OTC" or "Prescription".
@@ -796,6 +913,9 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
         # Format Yoga / Physio with YouTube search URLs and images
         yoga_list = []
         text_presentation = f"{top_condition} " + " ".join([str(s) for s in symptoms]).lower()
+        is_acute_bite_or_trauma = any(k in text_presentation for k in [
+            "bite", "dog bite", "animal bite", "rabies", "wound", "trauma", "laceration", "bataku", "karad", "chaava", "काटा", "બટકું"
+        ])
         is_derm_condition = any(k in text_presentation for k in [
             "fungal", "fungus", "tinea", "ringworm", "dhadhar", "dadar", "khujli", "pruritus", "skin rash", "itching",
             "candidiasis", "athlete's foot", "jock itch"
@@ -807,8 +927,8 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
             attrs.get("has_gastrointestinal_symptoms")
         )
 
-        if is_emergency or (is_derm_condition and not has_physical_indication):
-            # EMERGENCY / DERMATOLOGICAL GATE: Routine yoga is not indicated for superficial fungal/skin infections
+        if is_emergency or is_acute_bite_or_trauma or (is_derm_condition and not has_physical_indication):
+            # EMERGENCY / TRAUMA / DERMATOLOGICAL GATE: Routine yoga is contraindicated during acute trauma/bites or superficial fungal infections
             yoga_list = []
         else:
             raw_yoga = ai_data.get("yoga_physio") or ai_data.get("yoga_recommendations") or ai_data.get("yoga") or []
@@ -835,7 +955,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 })
 
             # If LLM returned empty yoga list, populate safely from clinical attribute registry
-            if not yoga_list and not is_derm_condition:
+            if not yoga_list and not is_derm_condition and not is_acute_bite_or_trauma:
                 yoga_list = _get_condition_fallback_yoga(top_condition, symptoms, lang_code)
 
         foods_to_eat = ai_data.get("foods_to_eat") or []
@@ -876,17 +996,15 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
         if isinstance(red_flag_tips, str):
             red_flag_tips = [t.strip() for t in red_flag_tips.split("\n") if t.strip()]
 
-        # If empty, extract condition-specific tips from CSV
+        # If empty, extract condition-specific tips from CSV with scored matching
         if not diet_tips or not red_flag_tips or not foods_to_eat:
             try:
                 guidance_csv_path = os.path.join(os.path.dirname(__file__), "..", "..", "datasets", "diet", "condition_guidance.csv")
                 if os.path.exists(guidance_csv_path):
                     import pandas as pd
                     df_g = pd.read_csv(guidance_csv_path)
-                    cond_words = [w for w in re.findall(r'\b\w{4,}\b', (top_condition or "").lower()) if w not in ["disease", "syndrome", "acute", "chronic", "pain"]]
-                    matched_g = df_g[df_g["condition_name"].str.lower().apply(lambda x: any(w in str(x).lower() for w in cond_words))] if cond_words else df_g.head(0)
-                    if not matched_g.empty:
-                        row = matched_g.iloc[0]
+                    row = _match_condition_guidance_row(df_g, top_condition or "")
+                    if row is not None:
                         if not foods_to_eat:
                             diet_rec = str(row.get("diet_recommendation", "")).strip()
                             if diet_rec:
@@ -1020,13 +1138,13 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 "exercises": enriched_exercises
             }
 
-        # Emergency Gate: Suppress routine physiotherapy exercises
-        if is_emergency:
+        # Emergency / Trauma Gate: Suppress routine physiotherapy exercises
+        if is_emergency or is_acute_bite_or_trauma:
             physio_data = {
                 "is_indicated": False,
-                "clinical_rationale": "Emergency Gate Activated",
+                "clinical_rationale": "Emergency/Trauma Gate Activated",
                 "condition_target": "Emergency Medical Evaluation Required",
-                "cautions": "Routine physical exercises are strictly contraindicated during an acute emergency.",
+                "cautions": "Routine physical rehabilitation exercises are strictly contraindicated during an acute trauma/bite or emergency presentation.",
                 "exercises": []
             }
 
@@ -1268,6 +1386,32 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
             "time_of_day": "Throughout the day",
             "type": "OTC",
             "warnings": "Reconstitute in exact quantity of clean water.",
+            "source": "DocMindX Clinical Master"
+        })
+    elif any(r in sym_lower or r in cond_lower for r in [
+        "cough", "throat", "pharyngitis", "runny nose", "rhinorrhea", "cold", "nasal",
+        "congestion", "udhras", "udharas", "khasi", "khansi", "gala", "gale", "ઉધરસ", "ગળું"
+    ]):
+        parsed.append({
+            "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
+            "indication": "Relieves sore throat irritation, headache, and body aches." if lang_code == "en" else "गले के दर्द और बदन दर्द में राहत देता है।",
+            "dosage": "1 Tablet SOS / every 8 hours after meals.",
+            "course_duration": "3 to 5 Days" if lang_code == "en" else "3 से 5 दिन",
+            "food_timing": ft_after,
+            "time_of_day": "After meals",
+            "type": "OTC",
+            "warnings": "Do not exceed 3000mg total paracetamol per 24 hours.",
+            "source": "DocMindX Clinical Master"
+        })
+        parsed.append({
+            "name": "Levocetirizine 5mg (Levocet / 1-AL)",
+            "indication": "Relieves runny nose, sneezing, and upper respiratory allergic congestion." if lang_code == "en" else "नाक बहने, छींकने और गले की एलर्जी में राहत देता है।",
+            "dosage": "1 Tablet once daily at night / bedtime.",
+            "course_duration": "3 to 5 Days" if lang_code == "en" else "3 से 5 दिन",
+            "food_timing": ft_after,
+            "time_of_day": "Night / Bedtime",
+            "type": "OTC",
+            "warnings": "May cause mild drowsiness. Avoid driving or operating machinery.",
             "source": "DocMindX Clinical Master"
         })
     elif any(p in sym_lower for p in ["back", "joint", "muscle", "sprain", "strain", "stiff", "tendon", "ligament", "ache", "pain", "કમર", "કમરનો દુખાવો", "પીઠ", "દર્દ"]):
@@ -1564,7 +1708,7 @@ def _build_local_dataset_fallback(
     med_gallery = get_medicine_gallery(fallback_meds, max_items=None, top_condition=top_condition, symptoms=symptoms)
     yoga_list = [] if is_emergency else _get_condition_fallback_yoga(top_condition, symptoms, lang_code)
 
-    # Try condition-specific lookups from condition_guidance.csv
+    # Try condition-specific lookups from condition_guidance.csv with scored matching
     csv_diet_tips = []
     csv_red_flags = []
     try:
@@ -1572,10 +1716,8 @@ def _build_local_dataset_fallback(
         if os.path.exists(guidance_csv_path):
             import pandas as pd
             df_g = pd.read_csv(guidance_csv_path)
-            cond_words = [w for w in re.findall(r'\b\w{4,}\b', cond_lower) if w not in ["disease", "syndrome", "acute", "chronic", "pain"]]
-            matched_g = df_g[df_g["condition_name"].str.lower().apply(lambda x: any(w in str(x).lower() for w in cond_words))] if cond_words else df_g.head(0)
-            if not matched_g.empty:
-                row = matched_g.iloc[0]
+            row = _match_condition_guidance_row(df_g, top_condition)
+            if row is not None:
                 diet_rec = str(row.get("diet_recommendation", "")).strip()
                 avoid_food = str(row.get("food_to_limit", "") or row.get("what_to_avoid", "")).strip()
                 home_c = str(row.get("home_care", "") or row.get("what_to_do", "")).strip()
@@ -2094,23 +2236,26 @@ Bundle to translate:
             print(f"Gemini localization notice: {e}")
 
     if not translated_bundle and GROQ_API_KEY:
-        try:
-            headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-            body = {
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": f"Translate all medical text into 100% pure {lang_name}. Output strict JSON only."},
-                    {"role": "user", "content": trans_prompt}
-                ],
-                "temperature": 0.1,
-                "response_format": {"type": "json_object"}
-            }
-            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
-            if res.status_code == 200:
-                raw_t = res.json()["choices"][0]["message"]["content"]
-                translated_bundle = _clean_json_response(raw_t)
-        except Exception as e:
-            print(f"Groq localization notice: {e}")
+        for groq_model in _GROQ_MODELS:
+            try:
+                headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+                body = {
+                    "model": groq_model,
+                    "messages": [
+                        {"role": "system", "content": f"Translate all medical text into 100% pure {lang_name}. Output strict JSON only."},
+                        {"role": "user", "content": trans_prompt}
+                    ],
+                    "temperature": 0.1,
+                    "response_format": {"type": "json_object"}
+                }
+                res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
+                if res.status_code == 200:
+                    raw_t = res.json()["choices"][0]["message"]["content"]
+                    translated_bundle = _clean_json_response(raw_t)
+                    if translated_bundle:
+                        break
+            except Exception as e:
+                print(f"Groq localization notice ({groq_model}): {e}")
 
     if translated_bundle and isinstance(translated_bundle, dict):
         if translated_bundle.get("summary"):

@@ -6,7 +6,7 @@ using AI vision / clinical LLM with resilient deterministic radiological fallbac
 import re
 import json
 import requests
-from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
+from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS
 from ai.report_ai.medical_verifier import verify_medical_document
 
 RADIOLOGY_PATTERNS = [
@@ -240,7 +240,7 @@ Return strictly a valid JSON object matching this schema:
                         print(f"Gemini radiology parser note: {e}")
 
         if GROQ_API_KEY:
-            for model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
+            for model in GROQ_MODELS:
                 try:
                     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
                     body = {

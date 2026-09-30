@@ -227,7 +227,7 @@ def test_full_supply_chain():
         assert ".env" in f.read()
     with open(os.path.join(WORKSPACE_ROOT, "config", "settings.py"), "r", encoding="utf-8") as f:
         s_code = f.read()
-        assert "GEMINI_API_KEY = os.getenv" in s_code
+        assert "GEMINI_API_KEY" in s_code and ("os.getenv" in s_code or "get_active_gemini_key" in s_code)
     print("Security: .env protected in .gitignore, dynamic environment variable loading confirmed.")
 
     # 23. Dynamic UI Dropdown Hierarchies

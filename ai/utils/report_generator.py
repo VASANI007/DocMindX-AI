@@ -477,7 +477,15 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     # =========================================================================
     red_flags = triage_result.get("emergency_red_flags") or triage_result.get("red_flags") or []
     if red_flags:
-        flags_text = _clean_pdf_text("; ".join([str(x) for x in red_flags if str(x).strip()]))
+        formatted_flags = []
+        for rf in red_flags:
+            if isinstance(rf, dict):
+                sym = rf.get("symptom_name") or rf.get("name") or "Critical Finding"
+                prot = rf.get("immediate_action_protocol") or rf.get("action") or "Seek immediate medical evaluation."
+                formatted_flags.append(f"{sym}: {prot}")
+            elif str(rf).strip():
+                formatted_flags.append(str(rf).strip())
+        flags_text = _clean_pdf_text("; ".join(formatted_flags))
         icon_emerg_path = os.path.join(ICONS_DIR, "emergency_red.png")
         icon_emerg_img = RLImage(icon_emerg_path, width=15, height=15) if os.path.exists(icon_emerg_path) else ""
 

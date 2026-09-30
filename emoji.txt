@@ -35,7 +35,7 @@ Har emoji ke sath:
 ⏱️  | &#9201;   | Stopwatch / Timer       | OTP validity countdown ("Valid for 10 minutes")
 ⏳  | &#9203;   | Hourglass               | Expiring link, Action required within timeframe
 🚨  | &#128680; | Siren / Security Alert  | Suspicious login detected, Password reset warning
-⚠️  | &#9888;   | Warning Triangle        | Login failed alert, Max attempts warning
+  | &#9888;   | Warning Triangle        | Login failed alert, Max attempts warning
 🔐  | &#128272; | Key with Lock           | End-to-End encrypted data, Vault security
 
 --------------------------------------------------------------------------------

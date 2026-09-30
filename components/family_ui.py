@@ -315,7 +315,7 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
                 }
                 try:
                     auth_db.update_family_member(m_id, user_id, updated_dict)
-                    st.toast("Profile details updated successfully!", icon="✅")
+                    st.toast("Profile details updated successfully!", icon=":material/check_circle:")
                     st.rerun()
                 except ValueError as ve:
                     st.error(str(ve))
@@ -336,14 +336,14 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
                     </div>
                     """)
                 with c_c2:
-                    if st.button("✕", key=f"del_c_{c['id']}", help="Remove condition", type="secondary"):
+                    if st.button("", icon=":material/close:", key=f"del_c_{c['id']}", help="Remove condition", type="secondary"):
                         auth_db.delete_medical_condition(c["id"], user_id)
                         st.toast("Condition removed.")
                         st.rerun()
             st.markdown("<div style='margin-top: 6px;'></div>", unsafe_allow_html=True)
 
         new_c = st.text_input("Add Condition Name", placeholder="e.g. Diabetes, Hypertension, Asthma...", key=f"dlg_cond_input_{m_id}")
-        if st.button("＋ Save Condition", key=f"dlg_btn_cond_{m_id}", type="primary", use_container_width=True):
+        if st.button("Save Condition", icon=":material/add:", key=f"dlg_btn_cond_{m_id}", type="primary", use_container_width=True):
             if new_c and new_c.strip():
                 auth_db.add_medical_condition(m_id, user_id, new_c.strip())
                 st.toast("Medical condition added successfully!")
@@ -366,7 +366,7 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
                     </div>
                     """)
                 with m_c2:
-                    if st.button("✕", key=f"del_m_{m_item['id']}", help="Remove medicine", type="secondary"):
+                    if st.button("", icon=":material/close:", key=f"del_m_{m_item['id']}", help="Remove medicine", type="secondary"):
                         auth_db.delete_medication(m_item["id"], user_id)
                         st.toast("Medication removed.")
                         st.rerun()
@@ -390,7 +390,7 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
             <div style="font-size: 0.76rem; color: #64748B; line-height: 1.4;">Permanently delete this profile and all associated medical data? This action cannot be undone.</div>
         </div>
         """)
-        if st.button("🗑 Delete Profile Permanently", key=f"dlg_btn_del_{m_id}", type="secondary", use_container_width=True):
+        if st.button("Delete Profile Permanently", icon=":material/delete_forever:", key=f"dlg_btn_del_{m_id}", type="secondary", use_container_width=True):
             auth_db.delete_family_member(m_id, user_id)
             auth_db.log_security_event("FAMILY_MEMBER_DELETED", user_id=user_id, details=f"Deleted member ID {m_id}")
             st.toast("Profile permanently removed.")
@@ -399,7 +399,7 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
     # Subtle Compact Footer
     render_safe_html("""
     <div style="border-top: 1px solid var(--mm-border, #E2E8F0); padding-top: 8px; margin-top: 12px; display: flex; align-items: center; justify-content: space-between; font-size: 0.68rem; color: #64748B;">
-        <span>🔒 Encrypted • Private • Secure</span>
+        <span style="display: inline-flex; align-items: center; gap: 5px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Encrypted • Private • Secure</span>
         <span>DocMindX <strong>AI</strong></span>
     </div>
     """)
@@ -620,7 +620,11 @@ def render_family_management_view(user: dict):
 
                 avatar_bg = "#FEE2E2" if is_female else "#DCFCE7"
                 avatar_color = "#DC2626" if is_female else "#16A34A"
-                gender_glyph = "♀" if is_female else "♂"
+                gender_glyph = (
+                    '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"></circle><line x1="12" y1="13" x2="12" y2="21"></line><line x1="9" y1="17" x2="15" y2="17"></line></svg>'
+                    if is_female
+                    else '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="14" r="5"></circle><line x1="19" y1="5" x2="13.6" y2="10.4"></line><polyline points="15 5 19 5 19 9"></polyline></svg>'
+                )
                 date_str = format_member_date(m.get("created_at"))
 
                 # Blood group badge
@@ -690,7 +694,7 @@ def render_family_management_view(user: dict):
                                 st.markdown(f"<div style='font-size: 0.76rem; color: #64748B; font-style: italic; margin-top: 2px;'>Notes: {m.get('notes')}</div>", unsafe_allow_html=True)
 
                     with col_btn:
-                        if st.button("⚙ Manage", key=f"btn_manage_card_{m_id}", use_container_width=True):
+                        if st.button("Manage", icon=":material/settings:", key=f"btn_manage_card_{m_id}", use_container_width=True):
                             render_profile_actions_dialog(m_id, m_name, user_id)
 
                 st.markdown("<div style='margin-bottom: 8px;'></div>", unsafe_allow_html=True)
@@ -985,7 +989,7 @@ def render_family_management_view(user: dict):
                 elif fam_calc_age is None or fam_calc_age < 10:
                     trigger_popup(
                         "Age Restriction (Pediatric)",
-                        "⚠️ DocMindX AI Clinical Protocol: Family member age must be at least 10 years for independent clinical assessment. Pediatric profiles (< 10 years) require direct in-person consultation with a certified pediatrician.",
+                        " DocMindX AI Clinical Protocol: Family member age must be at least 10 years for independent clinical assessment. Pediatric profiles (< 10 years) require direct in-person consultation with a certified pediatrician.",
                         "warning"
                     )
                     st.rerun()
@@ -1027,7 +1031,7 @@ def render_family_management_view(user: dict):
                         st.session_state["add_fam_form_ver"] = form_ver + 1
                         trigger_popup(
                             "Family Member Added Successfully",
-                            f"🎉 Successfully added {clean_name} ({fam_rel}) to your family medical profiles! The form has been reset for new entries.",
+                            f"Successfully added {clean_name} ({fam_rel}) to your family medical profiles! The form has been reset for new entries.",
                             "success"
                         )
                         st.rerun()

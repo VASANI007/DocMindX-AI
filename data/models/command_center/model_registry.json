@@ -1,6 +1,6 @@
 {
   "registry_version": "1.0.0",
-  "last_updated": "2026-09-02T17:46:13.601412",
+  "last_updated": "2026-09-29T15:22:57.597262",
   "models": {
     "ai_demand_forecaster": {
       "model_name": "ai_demand_forecaster",
@@ -41,7 +41,7 @@
       ],
       "artifact_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\models\\command_center\\demand_forecasting\\demand_model.pkl",
       "status": "VALIDATED",
-      "trained_at": "2026-09-02T17:45:38.990474",
+      "trained_at": "2026-09-29T15:22:42.309661",
       "training_metadata": {
         "model_name": "ai_demand_forecaster",
         "version": "2.0.0",
@@ -50,7 +50,7 @@
         "val_rows": 15000,
         "test_rows": 15000,
         "residual_std": 19.503422335819206,
-        "trained_at": "2026-09-02T17:45:38.986798"
+        "trained_at": "2026-09-29T15:22:42.308187"
       }
     },
     "ai_stockout_classifier": {
@@ -83,7 +83,7 @@
       ],
       "artifact_path": "C:\\Users\\DAKSH\\Music\\DocMindX-AI\\data\\models\\command_center\\stockout_prediction\\stockout_model.pkl",
       "status": "RULE_BASED",
-      "trained_at": "2026-09-02T17:46:13.601400",
+      "trained_at": "2026-09-29T15:22:57.597237",
       "training_metadata": {
         "operational_engine": "Deterministic_Rule_Engine",
         "demonstration_classifier": "LogisticRegression"

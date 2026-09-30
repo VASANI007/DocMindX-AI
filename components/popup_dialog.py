@@ -120,7 +120,7 @@ def check_and_render_pending_popup():
                 <div style="font-weight: 400; font-size: 12.5px; color: rgba(255, 255, 255, 0.88); line-height: 1.45; word-break: break-word;">{msg}</div>
             </div>
         </div>
-        <button class="st-cyber-toast-close-{toast_id}" onclick="var el=document.getElementById('cyber-toast-{toast_id}'); if(el) el.remove();" title="Dismiss">✕</button>
+        <button class="st-cyber-toast-close-{toast_id}" onclick="var el=document.getElementById('cyber-toast-{toast_id}'); if(el) el.remove();" title="Dismiss"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button>
         <div class="st-cyber-toast-progress-{toast_id}"></div>
     </div>
 

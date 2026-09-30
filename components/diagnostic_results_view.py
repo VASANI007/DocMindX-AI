@@ -683,7 +683,8 @@ def render_diagnostic_evaluation_view(
 
     with b_col1:
         if st.button(
-            "✦ Deep Analyze with AI\nGet advanced health insights",
+            "Deep Analyze with AI\nGet advanced health insights",
+            icon=":material/psychology:",
             key="btn_p2_deep_ai_action",
             type="primary",
             use_container_width=True
@@ -697,7 +698,8 @@ def render_diagnostic_evaluation_view(
 
     with b_col2:
         if st.button(
-            "☁ New Scan / Upload Another Document\nAnalyze a different report",
+            "New Scan / Upload Another Document\nAnalyze a different report",
+            icon=":material/upload_file:",
             key="btn_p2_new_scan_action",
             use_container_width=True
         ):
@@ -716,7 +718,8 @@ def render_diagnostic_evaluation_view(
 
     with b_col3:
         st.download_button(
-            label="📄 Download Report (PDF)\nSave complete analysis",
+            label="Download Report (PDF)\nSave complete analysis",
+            icon=":material/download:",
             data=pdf_buf.getvalue(),
             file_name=pdf_filename,
             mime="application/pdf",

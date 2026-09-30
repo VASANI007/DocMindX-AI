@@ -18,6 +18,20 @@ from api.gemini_manager import (
 GEMINI_API_KEYS = get_gemini_api_keys()
 GEMINI_API_KEY = get_active_gemini_key()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+
+# Centralized AI Model Chains (Fastest verified working models first)
+DEFAULT_GEMINI_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.6-flash",
+    "gemini-3.7-flash",
+]
+GROQ_MODELS = [
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+    "allam-2-7b",
+]
+
 OPENFDA_API_KEY = os.getenv("OPENFDA_API_KEY", "")
 BIOPORTAL_API_KEY = os.getenv("BIOPORTAL_API_KEY", "")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY", "")

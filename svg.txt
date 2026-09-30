@@ -83,7 +83,7 @@ Kaha use ho raha hai:
 Iske Related Emojis:
   Emoji | HTML Entity | Name                     | change
   ------------------------------------------------------------------------------------
-  ⚠️    | &#9888;     | Warning Triangle         | https://cdn-icons-png.flaticon.com/512/564/564619.png
+      | &#9888;     | Warning Triangle         | https://cdn-icons-png.flaticon.com/512/564/564619.png
   ❗    | &#10071;    | Exclamation Mark         | https://cdn-icons-png.flaticon.com/512/5610/5610989.png
   ❕    | &#10070;    | White Exclamation Mark   | https://cdn-icons-png.flaticon.com/512/2058/2058160.png
   🚨    | &#128680;   | Flashing Siren           | https://cdn-icons-png.flaticon.com/512/4329/4329979.png
@@ -116,7 +116,7 @@ SVG / Visual Element            | Primary Emoji | Alternative Emojis
 Success Checkmark (Green)       | ✅ (&#9989;)  | ✔️, ☑️, 🟢, 💚
 Blocked Cross (Red)             | ❌ (&#10060;) | 🚫, ⛔, 🛑, 🔴
 Mail Envelope (Blue)            | ✉️ (&#9993;)  | 📩, 📨, 📧, 💬, 🎫
-Security Exclamation ("!" Badge)| ⚠️ (&#9888;)  | ❗, 🚨, 🛡️, 🔒
+Security Exclamation ("!" Badge)|  (&#9888;)  | ❗, 🚨, 🛡️, 🔒
 Brand Logo / Medical AI Header  | 🏥 (&#127973;)| 🧠, 🩺, 🤖, ⚕️
 
 ================================================================================

@@ -158,8 +158,8 @@ def generate_health_resource_map_html(facilities: list, dark_mode: bool = False,
         <div class="legend-item"><span class="legend-dot" style="background: #F59E0B;"></span> Warning (5–14 Days Stock)</div>
         <div class="legend-item"><span class="legend-dot" style="background: #EF4444;"></span> Critical Shortage (&lt; 5 Days)</div>
         <div class="legend-item"><span class="legend-dot" style="background: #3B82F6;"></span> Community Health Centre (CHC)</div>
-        <div class="legend-item"><span style="color: #DC2626; font-size: 13px; line-height: 1; font-weight: 900; margin-right: 2px;">✚</span> District Hospital</div>
-        <div class="legend-item"><span style="color: #8B5CF6; font-size: 13px; line-height: 1; font-weight: 900; margin-right: 2px;">✚</span> Medical College</div>
+        <div class="legend-item"><span style="display: inline-flex; align-items: center; margin-right: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#DC2626"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg></span> District Hospital</div>
+        <div class="legend-item"><span style="display: inline-flex; align-items: center; margin-right: 4px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="#8B5CF6"><path d="M19 10.5h-5.5V5c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v5.5H5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5h5.5V19c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-5.5H19c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5z"/></svg></span> Medical College</div>
         <div class="legend-item"><span class="legend-dot" style="background: #64748B;"></span> Other Facility</div>
     </div>
 

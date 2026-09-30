@@ -10,7 +10,7 @@ markdown>=3.5.0
 # --- Data Science, Machine Learning & Mathematical Optimization ---
 pandas>=2.0.0
 numpy>=1.24.0
-scikit-learn==1.9.0
+scikit-learn==1.9.1
 pydantic>=2.5.0
 
 # --- Generative AI & Large Language Model SDKs ---

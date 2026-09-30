@@ -319,7 +319,7 @@ CANONICAL_CONCEPT_PATTERNS = {
         "patterns": [
             r"\bfever\b", r"high.*temperature", r"pyrexia", r"febrile",
             r"बुखार", r"ताप", r"તાવ", r"জ্বর", r"காய்ச்சல்", r"జ్వరం", r"ಜ್ವರ", r"പനി", r"ਬੁਖਾਰ", r"ଜ୍ୱର", r"بخار",
-            r"bukhar", r"tav", r"taap"
+            r"bukhar", r"tav", r"taav", r"taap", r"tap"
         ],
         "category": "systemic_infectious",
         "red_flag": False
@@ -342,7 +342,22 @@ CANONICAL_CONCEPT_PATTERNS = {
             r"\bcough\b", r"coughing",
             r"खांसी", r"खोंसी", r"ખાંસી", r"ઉધરસ", r"खोकला",
             r"কাশি", r"இருமல்", r"దగ్గు", r"ಕೆಮ್ಮು", r"ചുമ", r"ਖੰਘ", r"କାଶ", r"کھانسی",
-            r"khasi", r"khansi", r"udhras", r"khokla"
+            r"khasi", r"khansi", r"udharas", r"udhras", r"khokla", r"chuma", r"kemmu", r"daggu", r"irumal", r"kashi", r"khang", r"udhras", r"khokla"
+        ],
+        "category": "respiratory",
+        "red_flag": False
+    },
+    # 4.1. Sore Throat / Pharyngitis (S000032)
+    "sore_throat": {
+        "symptom_id": "S000032",
+        "patterns": [
+            r"sore.*throat", r"throat.*pain", r"throat.*irritat", r"burning.*throat", r"pharyngitis", r"throat.*burn",
+            r"गले.*खराश", r"गले.*दर्द", r"गले.*जलन", r"गला.*सूख", r"गला.*बैठ", r"गले.*में.*जलन",
+            r"ગળામાં.*દુખાવો", r"ગળામાં.*બળતરા", r"ગળામાં.*બળે", r"ગળું.*બળ", r"ગળું.*છોલા", r"ગળા.*દુખાવો",
+            r"घशात.*खवखव", r"घसा.*दुख", r"घशात.*जळजळ",
+            r"গলা.*ব্যথা", r"தொண்டை.*வலி", r"గొంతు.*నొప్పి", r"ಗಂಟಲು.*ನೋವು", r"തൊണ്ടവേദന", r"ਗਲੇ.*ਦਰਦ",
+            r"gale.*dard", r"gala.*dard", r"gala.*bale", r"galama.*bale", r"gala.*ma.*bale", r"gala.*khari",
+            r"galam.*bale", r"galama.*bale.*cgge", r"galama.*bale.*chhe", r"ghasa.*dukh", r"ghashat.*khavkhav", r"gale.*jalan"
         ],
         "category": "respiratory",
         "red_flag": False
@@ -352,11 +367,34 @@ CANONICAL_CONCEPT_PATTERNS = {
         "symptom_id": "S000061",
         "patterns": [
             r"headache", r"head.*pain", r"cephalalgia", r"migraine",
-            r"सिरदर्द", r"सिर.*दर्द", r"માથા.*દુખાવો", r"માથામાં.*દુખાવો", r"ડોકેદુખી", r"डोकेदुखी",
+            r"सिरदर्द", r"सिर.*दर्द", r"માથા.*દુખાવો", r"માથામાં.*દુખાવો", r"માથું.*દુખ", r"માથું.*દુખે", r"માથાનો.*દુખાવો", r"ડોકેદુખી", r"डोकेदुखी",
             r"মাথাব্যথা", r"தலைவலி", r"తలనొప్పి", r"ತಲೆನೋವು", r"തലവേദന", r"ਸਿਰ.*ਦਰਦ", r"ମୁଣ୍ଡ.*ବିନ୍ଧା", r"سر.*درد",
-            r"sirdard", r"sir.*dard", r"mathano.*dukhav", r"dokedukhi"
+            r"sirdard", r"sir.*dard", r"sar.*dard", r"sar.*me.*dard", r"mathano.*dukhav", r"mathu.*dukh", r"mathu.*dukhe", r"mathu.*dard", r"dokedukhi", r"matha.*betha", r"matha.*byatha", r"matha.*ghorano", r"thalaivali", r"thalai.*vali", r"talanopi", r"tala.*noppi", r"tale.*novu", r"thala.*vedhana", r"dokedukhi"
         ],
         "category": "neurological",
+        "red_flag": False
+    },
+    # 5.1. Dizziness / Vertigo
+    "dizziness_vertigo": {
+        "symptom_id": "S000064",
+        "patterns": [
+            r"dizziness", r"vertigo", r"lightheaded", r"giddiness", r"spinning",
+            r"चक्कर", r"ચક્કર", r"चकरावणे", r"মাথা.*ঘোরা", r"மயக்கம்", r"తలతిరుగు", r"ತಲೆತಿರುಗುವಿಕೆ", r"തലകറക്കം",
+            r"chakkar", r"chakara", r"chakar", r"mayakkam", r"talatirugudu"
+        ],
+        "category": "neurological",
+        "red_flag": False
+    },
+    # 5.2. Generalized Body Ache / Myalgia
+    "body_ache_myalgia": {
+        "symptom_id": "S000011",
+        "patterns": [
+            r"body.*pain", r"body.*ache", r"myalgia", r"generalized.*pain", r"muscle.*pain", r"leg.*pain", r"foot.*pain", r"heel.*pain",
+            r"बदन.*दर्द", r"शरीर.*दर्द", r"અંગ.*દુખાવો", r"પગ.*દુખાવો", r"પગમાં.*દુખાવો", r"પગ.*દુખ", r"अंगदुखी",
+            r"গায়ে.*ব্যথা", r"உடல்.*வலி", r"శరీర.*నొప్పులు", r"ಮೈಕೈ.*ನೋವು", r"ശരീരവേദന",
+            r"badan.*dard", r"ang.*dukhav", r"pag.*dukh", r"pag.*ma.*dukh", r"pag.*ma.*adiye.*dukh", r"sarir.*dard", r"udal.*vali"
+        ],
+        "category": "systemic_infectious",
         "red_flag": False
     },
     # 6. Gastrointestinal
@@ -366,7 +404,7 @@ CANONICAL_CONCEPT_PATTERNS = {
             r"abdominal.*pain", r"stomach.*pain", r"stomach.*ache", r"belly.*pain", r"cramps", r"cramp", r"pelvic.*cramps", r"pelvic.*pain",
             r"पेट.*दर्द", r"પેટ.*દુખાવો", r"પેટમાં.*દુખાવો", r"पोटदुखी", r"पोटात.*वेदना", r"मरोड़", r"ऐंठन", r"મરોડ",
             r"পেট.*ব্যথা", r"வயிற்று.*வலி", r"కడుపు.*నొప్పి", r"ಹೊಟ್ಟೆ.*ನೋವು", r"വയറുവേദന", r"ਢਿੱਡ.*ਪੀੜ",
-            r"pet.*dard", r"pet.*dukhav", r"potdukhi"
+            r"pet.*dard", r"pet.*dukhav", r"potdukhi", r"kadupu.*noppi", r"vayiru.*vali", r"vayi.*vali", r"pot.*dukh", r"hotte.*novu", r"vayaru.*vedhana"
         ],
         "category": "gastrointestinal",
         "red_flag": False
@@ -377,7 +415,7 @@ CANONICAL_CONCEPT_PATTERNS = {
             r"vomiting", r"\bvomit\b", r"throwing.*up",
             r"उल्टी", r"वमन", r"ઉલટી", r"ઉલ્ટી", r"વાંટો", r"उलटी", r"उलट्या", r"उलट",
             r"বমি", r"வாந்தி", r"వాంతులు", r"ವಾಂತಿ", r"ഛർദ്ദി", r"ਉਲਟੀ", r"ବାନ୍ତି", r"الٹی",
-            r"ulti", r"vomit"
+            r"ulti", r"vomit", r"vanti", r"vaanthi", r"chardi", r"bomi", r"banthee"
         ],
         "category": "gastrointestinal",
         "red_flag": False
@@ -400,7 +438,7 @@ CANONICAL_CONCEPT_PATTERNS = {
             r"\brash\b", r"skin.*eruption", r"hives", r"erythema", r"itching",
             r"चकत्ते", r"खुजली", r"दाने", r"ગુમડાં", r"ખંજવાળ", r"લાલ.*ચકામા", r"खाज", r"पुरळ",
             r"ফুসকুড়ি", r"அரிப்பு", r"దద్దుర్లు", r"ತುರಿಕೆ", r"ചൊറിച്ചിൽ", r"ਖੁਜਲੀ", r"କୁଣ୍ଡାଇ",
-            r"khujli", r"khanjwal", r"chakama", r"rash"
+            r"khujli", r"khanjwal", r"chakama", r"\brash\b"
         ],
         "category": "dermatological",
         "red_flag": False
@@ -480,11 +518,18 @@ NEGATION_MARKERS = [
 DURATION_PATTERNS = [
     (r"(?:\d+|one|two|three|few|a|an|दोन|एक|બે)?\s*(?:hours?|hrs?|घंटे|कલાક|તાસ|तास|घण्टे|ঘন্টা|மணிநேரம்|గంటలు|గంటల|గంట|ಗಂಟೆ|മണിക്കൂർ|ਘੰਟੇ|घण्टा|घंटा|કલાક|तासांपूर्वी|kalak|taas)", "today", 1),
     (r"(today|आज|આજે|आजच|இன்று|నేడు|ಇಂದು|ਅੱਜ|just now|अभी|હમણાં|आत्ता)", "today", 1),
-    (r"(yesterday|कल|ગઈકાલે|काल|நேற்று|నిన్న|ನಿನ್ನೆ)", "1-3 days", 1),
-    (r"(\d+)\s*(days?|दिन|દિવસ|दिवस|দিন|நாட்கள்|రోజులు|ದಿನಗಳು|ਦਿਨ|ଦିନ|دن)", "days_var", 0),
-    (r"(1|one)\s*(week|हफ्ता|અઠવાડિયું|आठवडा|সপ্তাহ|வாரம்|వారం|ವಾರ)", "4-7 days", 7),
-    (r"(\d+)\s*(weeks?|हफ्ते|અઠવાડિયા|आठवडे)", "weeks_var", 0),
-    (r"(month|months?|महीने|મહિના|महिने)", ">2 weeks", 30)
+    (r"(yesterday|कल(?:\s+से)?|ગઈકાલે(?:\s+થી)?|ગઈકાલથી|काल(?:\s+पासून)?|நேற்று|నిన్న|ನಿನ್ನೆ|since\s+yesterday|kal\s+se|kaal\s+thi)", "1-3 days", 1),
+    (r"(\d+)\s*(?:days?|दिन(?:\s*से)?|દિવસ(?:\s*થી)?|દિવસથી|दिवस|দিন|நாட்கள்|రోజులు|ದಿನಗಳು|ਦਿਨ|ଦିନ|دن|divas(?:\s*thi)?|din(?:\s*se)?)", "days_var", 0),
+    (r"(?:दो|do|two|બે|be|दोन)\s*(?:days?|दिन(?:\s*से)?|દિવસ(?:\s*થી)?|દિવસથી|दिवस|divas|din)", "1-3 days", 2),
+    (r"(?:तीन|teen|three|ત્રણ|tran)\s*(?:days?|दिन(?:\s*से)?|દિવસ(?:\s*થી)?|દિવસથી|दिवस|divas|din)", "1-3 days", 3),
+    (r"(?:चार|char|four|ચાર)\s*(?:days?|दिन(?:\s*से)?|દિવસ(?:\s*થી)?|દિવસથી|दिवस|divas|din)", "4-7 days", 4),
+    (r"(?:पांच|paanch|five|પાંચ|panch|पाच)\s*(?:days?|दिन(?:\s*से)?|દિવસ(?:\s*થી)?|દિવસથી|दिवસ|divas|din)", "4-7 days", 5),
+    (r"(?:छह|chhah|six|છ|chha|सहा)\s*(?:days?|दिन(?:\s*से)?|દિવસ(?:\s*થી)?|દિવસથી|दिवસ|divas|din)", "4-7 days", 6),
+    (r"(?:सात|saat|seven|સાત)\s*(?:days?|दिन(?:\s*से)?|દિવસ(?:\s*થી)?|દિવસથી|दिवસ|divas|din)", "4-7 days", 7),
+    (r"(?:1|one|ek|એક|एक)\s*(?:week|हफ्ता|અઠવાડિયું|આઠવડિયું|आठवडा|সপ্তাহ|வாரம்|వారం|ವಾರ|athvadiyu|hafte)", "4-7 days", 7),
+    (r"(?:2|two|do|બે|be|दोन)\s*(?:weeks?|हफ्ते|અઠવાડિયા|આઠવડિયા|आठवडे|hafte|athvadiya|weeks)", "1-2 weeks", 14),
+    (r"(\d+)\s*(?:weeks?|हफ्ते|અઠવાડિયા|આઠવડિયા|आठवडे|hafte|athvadiya)", "weeks_var", 0),
+    (r"(?:month|months?|महीने|મહિના|મહિનો|महिने|mahine|mahino)", ">2 weeks", 30)
 ]
 
 SEVERITY_PATTERNS = {
@@ -926,7 +971,203 @@ class MasterSymptomTaxonomyBridge:
         if norm_clean in self.exact_name_to_id:
             return self.exact_name_to_id[norm_clean]
 
+        # Check canonical concept patterns directly
+        for concept_name, info in CANONICAL_CONCEPT_PATTERNS.items():
+            for p in info["patterns"]:
+                if re.search(p, st_clean, re.IGNORECASE):
+                    return info["symptom_id"]
+
+        # Biomedical synonyms map
+        biomed_synonyms = {
+            "pyrexia": "S000001", "hyperthermia": "S000001", "fever": "S000001", "febrile": "S000001",
+            "cephalalgia": "S000061", "headache": "S000061", "migraine": "S000063",
+            "pharyngitis": "S000032", "sore throat": "S000032", "throat pain": "S000032",
+            "dizziness": "S000064", "vertigo": "S000065", "lightheadedness": "S000064",
+            "myalgia": "S000011", "body ache": "S000011", "muscle pain": "S000011", "arthralgia": "S000011",
+            "nausea": "S000086", "vomiting": "S000087", "emesis": "S000087",
+            "diarrhea": "S000089", "loose motion": "S000089",
+            "dyspnea": "S000026", "breathlessness": "S000026", "shortness of breath": "S000026",
+            "chest pain": "S000046", "angina": "S000046"
+        }
+        for k, v in biomed_synonyms.items():
+            if k in st_clean or st_clean in k:
+                return v
+
+        # Fuzzy token search across exact_name_to_id
+        st_tokens = set(re.findall(r'\b\w{3,}\b', st_clean))
+        if st_tokens:
+            best_match = None
+            best_overlap = 0
+            for name, sid in self.exact_name_to_id.items():
+                name_tokens = set(re.findall(r'\b\w{3,}\b', name))
+                overlap = len(st_tokens & name_tokens)
+                if overlap > best_overlap:
+                    best_overlap = overlap
+                    best_match = sid
+            if best_overlap >= 1 and best_match:
+                return best_match
+
         return None
+
+    def match_symptom_detailed(self, symptom_text: str) -> Dict[str, Any]:
+        """
+        Validates an extracted symptom phrase or normalized English name against
+        symptoms_master.csv following the strict matching hierarchy:
+        1. Exact match (symptom_name exact)
+        2. Alias match (Hindi/Gujarati/Parenthetical/Known Concept patterns)
+        3. Normalized lexical match (punctuation/whitespace/stem)
+        4. Controlled fuzzy match (SequenceMatcher >= 0.82)
+        5. Semantic match (Biomedical synonym dictionary)
+        6. Otherwise UNMATCHED
+        
+        Returns:
+        {
+            "dataset_match": bool,
+            "dataset_name": Optional[str],
+            "symptom_id": Optional[str],
+            "match_type": "EXACT MATCH" | "ALIAS MATCH" | "NORMALIZED MATCH" | "FUZZY MATCH" | "SEMANTIC MATCH" | "UNMATCHED",
+            "match_status": "Matched" | "Not Matched",
+            "record": Optional[dict]
+        }
+        """
+        if not symptom_text or not str(symptom_text).strip():
+            return {
+                "dataset_match": False,
+                "dataset_name": None,
+                "symptom_id": None,
+                "match_type": "UNMATCHED",
+                "match_status": "Not Matched",
+                "record": None
+            }
+
+        st = str(symptom_text).strip()
+        st_clean = st.lower()
+
+        # 0. Direct Canonical ID
+        if re.match(r"^S[0-9]{6}$", st.upper()):
+            sid = st.upper()
+            rec = self.id_to_record.get(sid)
+            return {
+                "dataset_match": True,
+                "dataset_name": rec.get("symptom_name", st) if rec else st,
+                "symptom_id": sid,
+                "match_type": "EXACT MATCH",
+                "match_status": "Matched",
+                "record": rec
+            }
+
+        # 1. Exact Match against master English names
+        for sid, rec in self.id_to_record.items():
+            if rec.get("symptom_name", "").lower() == st_clean:
+                return {
+                    "dataset_match": True,
+                    "dataset_name": rec.get("symptom_name"),
+                    "symptom_id": sid,
+                    "match_type": "EXACT MATCH",
+                    "match_status": "Matched",
+                    "record": rec
+                }
+
+        # 2. Alias Match (Hindi, Gujarati, Parenthetical aliases)
+        if st_clean in self.exact_name_to_id:
+            sid = self.exact_name_to_id[st_clean]
+            rec = self.id_to_record.get(sid)
+            return {
+                "dataset_match": True,
+                "dataset_name": rec.get("symptom_name") if rec else st,
+                "symptom_id": sid,
+                "match_type": "ALIAS MATCH",
+                "match_status": "Matched",
+                "record": rec
+            }
+
+        # Check concept patterns (e.g. lower_back_pain, chest_pain, animal_bite)
+        for concept_name, info in CANONICAL_CONCEPT_PATTERNS.items():
+            for p in info["patterns"]:
+                if re.search(p, st_clean, re.IGNORECASE):
+                    sid = info["symptom_id"]
+                    rec = self.id_to_record.get(sid)
+                    return {
+                        "dataset_match": True,
+                        "dataset_name": rec.get("symptom_name") if rec else concept_name.replace("_", " ").title(),
+                        "symptom_id": sid,
+                        "match_type": "ALIAS MATCH",
+                        "match_status": "Matched",
+                        "record": rec
+                    }
+
+        # 3. Normalized Lexical Match (strip non-alphanumeric, collapse whitespace)
+        norm_clean = re.sub(r"[^\w\s\u0900-\u0DFF]", " ", st_clean)
+        norm_clean = re.sub(r"\s+", " ", norm_clean).strip()
+        if norm_clean in self.exact_name_to_id:
+            sid = self.exact_name_to_id[norm_clean]
+            rec = self.id_to_record.get(sid)
+            return {
+                "dataset_match": True,
+                "dataset_name": rec.get("symptom_name") if rec else st,
+                "symptom_id": sid,
+                "match_type": "NORMALIZED MATCH",
+                "match_status": "Matched",
+                "record": rec
+            }
+
+        # 4. Semantic Match (Biomedical synonyms)
+        biomed_synonyms = {
+            "pyrexia": "S000001", "hyperthermia": "S000001", "fever": "S000001", "febrile": "S000001",
+            "burning throat": "S000032", "sore throat": "S000032", "throat irritation": "S000032", "pharyngitis": "S000032", "throat pain": "S000032",
+            "cephalalgia": "S000061", "headache": "S000061", "migraine": "S000063",
+            "dizziness": "S000064", "vertigo": "S000065", "lightheadedness": "S000064", "giddiness": "S000064",
+            "myalgia": "S000011", "body ache": "S000011", "body pain": "S000011", "muscle pain": "S000011", "arthralgia": "S000011",
+            "nausea": "S000086", "vomiting": "S000087", "emesis": "S000087",
+            "diarrhea": "S000089", "loose motion": "S000089",
+            "dyspnea": "S000026", "breathlessness": "S000026", "shortness of breath": "S000026",
+            "chest pain": "S000046", "angina": "S000046",
+            "runny nose": "S000035", "rhinorrhea": "S000035", "cold": "S000035",
+            "abdominal bloating": "S000100", "bloating": "S000100", "stomach fullness": "S000100"
+        }
+        for k, v in biomed_synonyms.items():
+            if k == st_clean or (len(k) > 4 and k in st_clean) or (len(st_clean) > 4 and st_clean in k):
+                sid = v
+                rec = self.id_to_record.get(sid)
+                return {
+                    "dataset_match": True,
+                    "dataset_name": rec.get("symptom_name") if rec else k.title(),
+                    "symptom_id": sid,
+                    "match_type": "SEMANTIC MATCH",
+                    "match_status": "Matched",
+                    "record": rec
+                }
+
+        # 5. Controlled Fuzzy Match (difflib SequenceMatcher >= 0.82)
+        import difflib
+        best_ratio = 0.0
+        best_sid = None
+        for name, sid in self.exact_name_to_id.items():
+            ratio = difflib.SequenceMatcher(None, st_clean, name).ratio()
+            if ratio > best_ratio:
+                best_ratio = ratio
+                best_sid = sid
+        
+        if best_ratio >= 0.82 and best_sid:
+            rec = self.id_to_record.get(best_sid)
+            return {
+                "dataset_match": True,
+                "dataset_name": rec.get("symptom_name") if rec else st,
+                "symptom_id": best_sid,
+                "match_type": "FUZZY MATCH",
+                "match_status": "Matched",
+                "record": rec
+            }
+
+        # 6. UNMATCHED (No fabricated match)
+        return {
+            "dataset_match": False,
+            "dataset_name": None,
+            "symptom_id": None,
+            "match_type": "UNMATCHED",
+            "match_status": "Not Matched",
+            "record": None
+        }
 
     def lookup_by_id(self, sid: str) -> Optional[Dict[str, Any]]:
         if not sid:
@@ -954,6 +1195,9 @@ MANDATORY_CANONICAL_TAXONOMY = {
     "S000124": "Fungal Skin Infection Signs (Ring-shaped Rash)",
     "S000108": "Worm Infestation Symptoms (Itching, Visible Worms)",
     "S000001": "Fever",
+    "S000032": "Sore Throat",
+    "S000064": "Dizziness",
+    "S000011": "Generalized Body Ache",
     "S000003": "Chills",
     "S000023": "Dry Cough",
     "S000046": "Chest Pain",
