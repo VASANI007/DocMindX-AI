@@ -611,10 +611,12 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
         justify-content: center;
         margin: 0 auto 14px auto;
         box-shadow: 0 4px 16px rgba(37, 99, 235, 0.12);
+        flex-shrink: 0;
     }}
     .auth-center-icon-badge svg {{
-        color: #2563EB;
-        stroke: #2563EB;
+        display: block;
+        margin: 0 auto;
+        flex-shrink: 0;
     }}
 
     /* Form Title & Subtitle */

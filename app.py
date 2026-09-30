@@ -511,6 +511,15 @@ def sync_language(source_key):
             if k != source_key:
                 st.session_state[k] = new_val
 
+def format_lang_display(opt: str) -> str:
+    """Returns pure language name for selectbox display without emoji prefix."""
+    if not opt:
+        return "English"
+    s = str(opt).strip()
+    if s.startswith("🌐"):
+        return s.replace("🌐", "").strip()
+    return s
+
 def sync_theme_mode(source_key):
     new_mode = st.session_state.get(source_key, False)
     st.session_state["dark_mode"] = new_mode
@@ -1221,11 +1230,25 @@ if is_dark:
         color: #93C5FD !important;
         font-weight: 800 !important;
     }
-    .st-key-d_lang_wrap [data-baseweb="select"] > div,
-    .st-key-m_lang_wrap [data-baseweb="select"] > div {
-        background: #1E293B !important;
+    .st-key-d_lang_wrap [data-baseweb="select"] > div {
+        background-color: #1E293B !important;
         border-color: #334155 !important;
         color: #F8FAFC !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360A5FA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: left 9px center !important;
+        background-size: 16px 16px !important;
+        padding-left: 31px !important;
+    }
+    .st-key-m_lang_wrap [data-baseweb="select"] > div {
+        background-color: #1E293B !important;
+        border-color: #334155 !important;
+        color: #F8FAFC !important;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360A5FA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
+        background-repeat: no-repeat !important;
+        background-position: left 7px center !important;
+        background-size: 14px 14px !important;
+        padding-left: 26px !important;
     }
     .st-key-d_lang_wrap [data-baseweb="select"] span,
     .st-key-m_lang_wrap [data-baseweb="select"] span {
@@ -1884,26 +1907,20 @@ st.markdown("""
     height: 38px !important;
     min-height: 38px !important;
     border-radius: 8px !important;
-    font-size: 0.78rem !important;
+    font-size: 0.76rem !important;
     font-weight: 700 !important;
-    padding: 0 8px !important;
+    padding: 0 6px !important;
     white-space: nowrap !important;
-    text-overflow: ellipsis !important;
-    overflow: hidden !important;
     border: 1px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
     background: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
     color: """ + ('#E2E8F0' if is_dark else '#334155') + """ !important;
     transition: all 0.15s ease !important;
 }
-/* Force text truncation on button inner label */
 .st-key-dmx_desktop_container button p,
 .st-key-dmx_desktop_container button span:not([data-testid]) {
-    font-size: 0.78rem !important;
+    font-size: 0.76rem !important;
     font-weight: 700 !important;
     white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 100% !important;
 }
 .st-key-dmx_master_header_card button:hover {
     border-color: #2563EB !important;
@@ -1924,21 +1941,21 @@ st.markdown("""
     font-weight: 800 !important;
 }
 
-/* ── Single Colored Material Icons per nav button (Zero Duplicate SVGs) ── */
+/* ── Single Colored Material Icons per nav button (Explicit Font Family) ── */
 .st-key-d_nav_1 button [data-testid="stIconMaterial"],
-.st-key-m_nav_1 button [data-testid="stIconMaterial"] { color: #2563EB !important; font-size: 16px !important; }
+.st-key-m_nav_1 button [data-testid="stIconMaterial"] { color: #2563EB !important; font-size: 16px !important; font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', sans-serif !important; }
 .st-key-d_nav_2 button [data-testid="stIconMaterial"],
-.st-key-m_nav_2 button [data-testid="stIconMaterial"] { color: #059669 !important; font-size: 16px !important; }
+.st-key-m_nav_2 button [data-testid="stIconMaterial"] { color: #059669 !important; font-size: 16px !important; font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', sans-serif !important; }
 .st-key-d_nav_3 button [data-testid="stIconMaterial"],
-.st-key-m_nav_3 button [data-testid="stIconMaterial"] { color: #7C3AED !important; font-size: 16px !important; }
+.st-key-m_nav_3 button [data-testid="stIconMaterial"] { color: #7C3AED !important; font-size: 16px !important; font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', sans-serif !important; }
 .st-key-d_nav_4 button [data-testid="stIconMaterial"],
-.st-key-m_nav_4 button [data-testid="stIconMaterial"] { color: #D97706 !important; font-size: 16px !important; }
+.st-key-m_nav_4 button [data-testid="stIconMaterial"] { color: #D97706 !important; font-size: 16px !important; font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', sans-serif !important; }
 .st-key-d_nav_5 button [data-testid="stIconMaterial"],
-.st-key-m_nav_5 button [data-testid="stIconMaterial"] { color: #DC2626 !important; font-size: 16px !important; }
+.st-key-m_nav_5 button [data-testid="stIconMaterial"] { color: #DC2626 !important; font-size: 16px !important; font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', sans-serif !important; }
 .st-key-d_nav_6 button [data-testid="stIconMaterial"],
-.st-key-m_nav_6 button [data-testid="stIconMaterial"] { color: #2563EB !important; font-size: 16px !important; }
+.st-key-m_nav_6 button [data-testid="stIconMaterial"] { color: #2563EB !important; font-size: 16px !important; font-family: 'Material Symbols Rounded', 'Material Symbols Outlined', sans-serif !important; }
 
-/* ── Language Selectbox (Compact, Clean, No Card/Border Behind, Right-Aligned Arrow) ── */
+/* ── Language Selectbox (Compact, Clean, Unified Single Border, Zero Overlap) ── */
 .st-key-d_lang_wrap,
 .st-key-m_lang_wrap {
     position: relative !important;
@@ -1947,6 +1964,11 @@ st.markdown("""
     box-shadow: none !important;
     outline: none !important;
     width: 100% !important;
+}
+.st-key-d_lang_wrap::before,
+.st-key-m_lang_wrap::before {
+    content: none !important;
+    display: none !important;
 }
 .st-key-d_lang_wrap div,
 .st-key-m_lang_wrap div,
@@ -1960,105 +1982,56 @@ st.markdown("""
     background: transparent !important;
     background-color: transparent !important;
 }
-.st-key-d_lang_wrap [data-baseweb="select"] > div,
-.st-key-m_lang_wrap [data-baseweb="select"] > div {
-    height: 36px !important;
-    min-height: 36px !important;
-    max-height: 36px !important;
-    border-radius: 8px !important;
-    border: 1px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
-    background: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
+.st-key-d_lang_wrap [data-baseweb="select"] > div {
+    height: 38px !important;
+    min-height: 38px !important;
+    max-height: 38px !important;
+    border-radius: 9px !important;
+    border: 1.5px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
+    background-color: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
+    background-image: url('""" + ("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2360A5FA%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%2222%22 y2=%2212%22/%3E%3Cpath d=%22M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z%22/%3E%3C/svg%3E" if is_dark else "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232563EB%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%2222%22 y2=%2212%22/%3E%3Cpath d=%22M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z%22/%3E%3C/svg%3E") + """') !important;
+    background-repeat: no-repeat !important;
+    background-position: left 9px center !important;
+    background-size: 16px 16px !important;
     color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
     box-shadow: none !important;
     outline: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 0 !important;
+    padding: 0 8px 0 31px !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
     box-sizing: border-box !important;
 }
-.st-key-d_lang_wrap [data-baseweb="select"] > div:hover,
-.st-key-m_lang_wrap [data-baseweb="select"] > div:hover {
+.st-key-d_lang_wrap [data-baseweb="select"] > div:hover {
     border-color: #2563EB !important;
 }
-[data-theme="dark"] .st-key-d_lang_wrap [data-baseweb="select"] > div,
-[data-theme="dark"] .st-key-m_lang_wrap [data-baseweb="select"] > div {
-    background: #1E293B !important;
+[data-theme="dark"] .st-key-d_lang_wrap [data-baseweb="select"] > div {
+    background-color: #1E293B !important;
     border-color: #334155 !important;
     color: #F8FAFC !important;
-}
-/* Value text bold and aligned to left with 26px margin after globe icon */
-.st-key-d_lang_wrap [data-baseweb="select"] > div > div:first-child,
-.st-key-m_lang_wrap [data-baseweb="select"] > div > div:first-child {
-    font-size: 0.78rem !important;
-    font-weight: 700 !important;
-    color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    margin-left: 26px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    line-height: 1 !important;
-    padding: 0 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360A5FA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 9px center !important;
+    background-size: 16px 16px !important;
 }
 .st-key-d_lang_wrap [data-baseweb="select"] span,
-.st-key-m_lang_wrap [data-baseweb="select"] span {
-    font-size: 0.78rem !important;
+.st-key-d_lang_wrap [data-baseweb="select"] [data-testid="stMarkdownContainer"] p {
+    font-size: 0.80rem !important;
     font-weight: 700 !important;
     color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
+    white-space: nowrap !important;
 }
-[data-theme="dark"] .st-key-d_lang_wrap [data-baseweb="select"] span,
-[data-theme="dark"] .st-key-m_lang_wrap [data-baseweb="select"] span {
+[data-theme="dark"] .st-key-d_lang_wrap [data-baseweb="select"] span {
     color: #F8FAFC !important;
 }
-/* Arrow neatly positioned at far right */
-.st-key-d_lang_wrap [data-baseweb="select"] > div > div:last-child,
-.st-key-m_lang_wrap [data-baseweb="select"] > div > div:last-child {
-    flex: 0 0 auto !important;
-    margin-left: auto !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+.st-key-d_lang_wrap [data-baseweb="select"] svg {
     width: 16px !important;
-    height: 100% !important;
-    padding: 0 !important;
-}
-.st-key-d_lang_wrap [data-baseweb="select"] svg,
-.st-key-m_lang_wrap [data-baseweb="select"] svg {
-    width: 14px !important;
-    height: 14px !important;
+    height: 16px !important;
     fill: """ + ('#94A3B8' if is_dark else '#64748B') + """ !important;
     color: """ + ('#94A3B8' if is_dark else '#64748B') + """ !important;
-}
-/* Zero out hidden input so it never clips language text */
-.st-key-d_lang_wrap [data-baseweb="select"] input,
-.st-key-m_lang_wrap [data-baseweb="select"] input {
-    width: 0 !important;
-    min-width: 0 !important;
-    max-width: 0 !important;
-    position: absolute !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-}
-/* Globe icon inside selectbox */
-.st-key-d_lang_wrap::before,
-.st-key-m_lang_wrap::before {
-    content: '' !important;
-    position: absolute !important;
-    left: 8px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    width: 14px !important;
-    height: 14px !important;
-    z-index: 10 !important;
-    pointer-events: none !important;
-    background-size: contain !important;
-    background-repeat: no-repeat !important;
-    background-position: center !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563EB' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
+    flex-shrink: 0 !important;
 }
 
 /* ── Desktop & Mobile Theme Toggle: Pure Sun/Moon Icon (No Button Box, No Border, No Background) ── */
@@ -2341,62 +2314,53 @@ st.markdown("""
     display: block !important;
 }
 
-/* Mobile Language Selector Dropdown (Compact, Clean Separation, Globe aligned) */
+/* Mobile Language Selector Dropdown (Compact, Crisp SVG Globe Icon) */
 .st-key-m_lang_wrap {
     width: 100% !important;
     position: relative !important;
-    max-width: 98px !important;
+    max-width: 110px !important;
     margin: 0 auto !important;
 }
 .st-key-m_lang_wrap [data-baseweb="select"] > div {
-    height: 32px !important;
-    min-height: 32px !important;
-    max-height: 32px !important;
-    padding: 0 4px 0 6px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    max-height: 34px !important;
+    padding: 0 4px 0 26px !important;
     border-radius: 8px !important;
+    border: 1.5px solid """ + ('#334155' if is_dark else '#DCE6F3') + """ !important;
+    background-color: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
+    background-image: url('""" + ("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2360A5FA%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%2222%22 y2=%2212%22/%3E%3Cpath d=%22M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z%22/%3E%3C/svg%3E" if is_dark else "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232563EB%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%2222%22 y2=%2212%22/%3E%3Cpath d=%22M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z%22/%3E%3C/svg%3E") + """') !important;
+    background-repeat: no-repeat !important;
+    background-position: left 7px center !important;
+    background-size: 14px 14px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
     position: relative !important;
+    box-sizing: border-box !important;
 }
-.st-key-m_lang_wrap [data-baseweb="select"] > div > div:first-child {
-    font-size: 0.74rem !important;
-    font-weight: 700 !important;
-    margin-left: 18px !important;
-    padding: 0 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    line-height: 1 !important;
-    color: inherit !important;
+[data-theme="dark"] .st-key-m_lang_wrap [data-baseweb="select"] > div {
+    background-color: #1E293B !important;
+    border-color: #334155 !important;
+    color: #F8FAFC !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360A5FA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: left 7px center !important;
+    background-size: 14px 14px !important;
 }
 .st-key-m_lang_wrap [data-baseweb="select"] span {
     font-size: 0.74rem !important;
     font-weight: 700 !important;
     line-height: 1 !important;
-}
-.st-key-m_lang_wrap::before {
-    left: 6px !important;
-    width: 14px !important;
-    height: 14px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    z-index: 10 !important;
-    pointer-events: none !important;
-}
-.st-key-m_lang_wrap [data-baseweb="select"] > div > div:last-child {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 14px !important;
-    height: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 .st-key-m_lang_wrap [data-baseweb="select"] svg {
     width: 12px !important;
     height: 12px !important;
     margin: auto 0 !important;
+    flex-shrink: 0 !important;
 }
 
 /* Mobile Theme Toggle Button (Moon / Sun) */
@@ -3101,13 +3065,14 @@ with st.container(key="dmx_master_header_card"):
                         args=(p_key,)
                     )
 
-        # Col 7: Language Selector with SVG Globe Icon
+        # Col 7: Language Selector with Globe Icon
         with d_cols[7]:
             with st.container(key="d_lang_wrap"):
                 st.selectbox(
                     "Language",
                     options=LANG_OPTIONS,
                     index=curr_lang_idx,
+                    format_func=format_lang_display,
                     key="d_top_lang_select",
                     label_visibility="collapsed",
                     on_change=sync_language,
@@ -3188,6 +3153,7 @@ with st.container(key="dmx_master_header_card"):
                     "Lang",
                     options=LANG_OPTIONS,
                     index=curr_lang_idx,
+                    format_func=format_lang_display,
                     key="m_top_lang_select",
                     label_visibility="collapsed",
                     on_change=sync_language,
