@@ -29,6 +29,7 @@ An **enterprise-grade, end-to-end clinical intelligence and healthcare logistics
 DocMindX AI merges **rigorous clinical machine learning**, **multimodal computer vision**, **verified pharmaceutical knowledge graphs**, and **real-time spatial intelligence** into an assistive medical platform:
 
 - **Patient & Citizen Suite:** Free, instantaneous preliminary triage in multiple languages, multimodal OCR analysis of medical documents, clinical dos and don'ts, ICMR-calibrated dietary recovery plans, verified medicine packaging identification, and nearest emergency hospital radar.
+- **Surgical Clinical Intelligence (Pipeline v3):** Strict evidence-channel separation isolating patient-reported symptoms from external clinical ontology titles, constituent red-flag evaluation gates, multi-domain anatomical tracking, duration-aware diagnostic testing gates, and truthful medication verification via OpenFDA and DailyMed.
 - **National Health Command Center:** Macro-level public health telemetry tracking 225+ health facilities across 36 Indian States/UTs, 7-day predictive medicine demand forecasting, stock-out early warnings under epidemic stress scenarios, and automated cross-district supply redistribution.
 
 DocMindX AI bridges the gap between rural community health centers and specialist tertiary care, democratizing early diagnosis and preventing preventable stock-outs.
@@ -37,32 +38,36 @@ DocMindX AI bridges the gap between rural community health centers and specialis
 
 # 🎯 Key Features
 
-### 1. 🤖 Differential Clinical Diagnostic Engine
+### 1. 🤖 Differential Clinical Diagnostic Engine (Pipeline v3)
 - Multi-vector symptom evaluation matching **280 clinical features** against **101 ICD-11 aligned disease classes**.
-- Dual-tier inference: Local Scikit-Learn **Random Forest Classifier (50 Trees)** with calibrated probability scoring + live Google Gemini / Groq reasoning.
+- **Isolated Evidence Channels:** Pure patient findings (`patient_raw_tokens`, `patient_canonical_tokens`, `patient_positive_tokens`) are strictly separated from external candidate discoveries (NLM, BioPortal), preventing clinical cross-contamination.
+- **Hard-Gated Red Flag Triggers:** Constituent safety gates for high-acuity presentations (e.g. `RF030` requires constituent head trauma *plus* persistent vomiting; headache alone cannot trigger it).
+- **Multi-Domain Anatomy & Exposure Priority:** Preserves multi-symptom clinical presentations (e.g., animal bite trauma + cranial headache + respiratory pharyngitis) without collapsing domains.
+- **Dual-tier inference:** Scikit-Learn **Random Forest Classifier (50 Trees)** with calibrated probability scoring + live WHO ICD-11, NLM Clinical Tables, BioPortal, and Google Gemini / Groq reasoning.
 - **99.01% textbook benchmark accuracy** and **97.58% Top-3 differential diagnosis accuracy** across simulated partial symptom stress-tests.
 
 ### 2. 🌐 Indic Multilingual Symptom Extraction
-- Translates and extracts clinical entities from colloquial queries in **English, Hindi (हिंदी), Gujarati (ગુજરાતી), Marathi (मराठी), Bengali (বাংলা), Telugu (తెలుగు), and Tamil (தமிழ்)**.
-- Phonetic transliteration and Hinglish/Gujlish normalization using custom medical term mappings and Gemini NLP.
+- Translates and extracts clinical entities from colloquial queries in **English, Hindi (हिंदी), Gujarati (ગુજરાતી), Marathi (मराठी), Bengali (বাংলা), Telugu (తెలుగు), Tamil (தமிழ்), and Romanized Indic scripts (Hinglish, Gujlish)**.
+- Phonetic transliteration and normalization using extensive regex pattern taxonomies and Google Gemini NLP.
+- Robust negation detection ensuring denied symptoms (e.g. *"mathu nathi dukhtu"*, *"no fever"*) are strictly excluded from positive evidence vectors.
 
 ### 3. 📄 Multimodal Medical OCR & Report Analyzer
-- **Handwritten Prescription Digitization:** Identifies drug names, dosages, frequencies, and cautionary instructions from handwritten doctor scripts.
+- **Handwritten Prescription Digitization:** Decodes drug names, dosages, frequencies, and cautionary instructions from handwritten doctor scripts.
 - **Biochemical Blood Report Scanner:** Parses Complete Blood Count (CBC), Lipid Profiles, Liver Function Tests (LFT), and Metabolic Panels against clinical reference intervals.
 - **Radiology Report Intelligence:** Summarizes X-Ray, CT Scan, and MRI findings into accessible, non-alarmist patient explanations.
 
-### 4. 💊 Drug Formulary & Live Image Verification
-- Direct integration with **NIH DailyMed** and **OpenFDA** APIs to fetch authentic, high-resolution medication packaging photos, avoiding generic icons.
+### 4. 💊 Truthful Drug Formulary & Live Image Verification
+- Direct integration with **NIH DailyMed** and **OpenFDA** APIs to fetch authentic medication packaging photos, active ingredients, dosage forms, and warnings.
+- **Truthful Provenance Gating:** Medicines without authoritative labels are marked `UNVERIFIED` — preventing AI candidate hallucinations, fabricated dosage forms (e.g. defaulting unknown forms to Tablet/Cream), and unverified fallback promotion.
 - Displays dosage forms, contraindications, pregnancy warnings, and drug-to-drug interactions based on NLEM 2022 standards.
 
-### 5. 🥗 Comprehensive Holistic Care & Lifestyle Guidance
+### 5. 🥗 Evidence-Based Care, Nutrition & Emergency Protocols
 - **Dietary Nutrition:** Evidence-based foods to consume and foods to avoid based on ICMR-NIN clinical dietary protocols.
-- **Cold / Hot Therapy:** Step-by-step guidance on compress therapies and hydration schedules.
-- **Therapeutic Yoga Asanas:** Curated physical recovery postures backed by verified Wikimedia clinical photography.
-- **Recommended Diagnostic Tests:** Highlighting lab tests (e.g., CRP, Dengue NS1, HbA1c) to discuss with a physician.
+- **Supportive Therapies:** Step-by-step guidance on compress therapies, hydration schedules, and therapeutic yoga asanas (suppressed during emergency acute presentations).
+- **Duration-Gated Diagnostic Tests:** Routine lab panels (Lipid Profile, EEG, Brain MRI, ECG) are suppressed for short-duration acute presentations (`duration <= 4 days`), allowing only acute emergency/exposure evaluations (wound assessment, rabies risk, tetanus status).
 
 ### 6. 🚨 Emergency Red Flag Detection & GIS Hospital Radar
-- Automated rule-based triage flags life-threatening emergencies (e.g., myocardial infarction, sepsis, stroke) and renders emergency hotline quick-dials (108 / 112).
+- Automated rule-based triage flags life-threatening emergencies (e.g., myocardial infarction, sepsis, stroke, animal bite trauma) and renders emergency hotline quick-dials (108 / 112).
 - Geospatial locator using **OpenStreetMap/Overpass API** and **Google Maps Platform** to discover 24x7 verified hospitals, ICUs, and trauma centers with turn-by-turn routing.
 
 ### 7. 💬 24x7 Conversational Copilot & Deep Explainer
@@ -82,22 +87,23 @@ DocMindX AI bridges the gap between rural community health centers and specialis
 
 | Feature / Capability | **DocMindX AI (Our Platform)** | WebMD | Ada Health | Babylon Health | Practo | Google Health |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Dual ML + LLM Differential Triage** | ✅ **Yes (97.58% Top-3 Acc)** | ❌ Rule-only |  Probabilistic |  Chat-only | ❌ Booking app |  Search-only |
-| **Multilingual Indic NLP (HI, GU, MR, etc.)** | ✅ **Native Indic Support** | ❌ English only |  Limited | ❌ English only |  Limited |  Search-level |
-| **Handwritten Prescription OCR** | ✅ **Gemini Vision OCR** | ❌ None | ❌ None | ❌ None | ❌ None |  Cloud API only |
-| **Lab & Radiology Report Analyzer** | ✅ **CBC, LFT, X-Ray, CT, MRI** | ❌ None | ❌ None | ❌ None |  Upload only |  Research |
-| **Real DailyMed Packaging Photos** | ✅ **Live NIH API** | ❌ Stock vectors | ❌ None | ❌ None |  Pharmacy catalog | ❌ None |
-| **Holistic Care (Diet, Yoga, Compresses)** | ✅ **Integrated** |  Generic articles| ❌ None | ❌ None | ❌ Doctor appointment|  General search |
-| **Emergency Red Flag Detection** | ✅ **Automated Triage** |  Static notice | ✅ Basic | ✅ Basic | ❌ None |  Warning card |
-| **Nearby Hospital Radar & Routing** | ✅ **Overpass + Google Maps** |  Directory only | ❌ None | ❌ None | ✅ Paid listings | ✅ Maps |
+| **Dual ML + LLM Differential Triage** | ✅ **Yes (97.58% Top-3 Acc)** | ❌ Rule-only | ⚠️ Probabilistic | ⚠️ Chat-only | ❌ Booking app | ⚠️ Search-only |
+| **Multilingual Indic NLP (HI, GU, MR, etc.)** | ✅ **Native Indic Support** | ❌ English only | ⚠️ Limited | ❌ English only | ⚠️ Limited | ⚠️ Search-level |
+| **Handwritten Prescription OCR** | ✅ **Gemini Vision OCR** | ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Cloud API only |
+| **Lab & Radiology Report Analyzer** | ✅ **CBC, LFT, X-Ray, CT, MRI** | ❌ None | ❌ None | ❌ None | ⚠️ Upload only | ⚠️ Research |
+| **Real DailyMed Packaging Photos** | ✅ **Live NIH API** | ❌ Stock vectors | ❌ None | ❌ None | ⚠️ Pharmacy catalog | ❌ None |
+| **Truthful Medication Verification Gate** | ✅ **OpenFDA / DailyMed Gate** | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None |
+| **Holistic Care (Diet, Yoga, Compresses)** | ✅ **Integrated** | ⚠️ Generic articles| ❌ None | ❌ None | ❌ Doctor appointment| ⚠️ General search |
+| **Emergency Red Flag Detection** | ✅ **Automated Triage** | ⚠️ Static notice | ✅ Basic | ✅ Basic | ❌ None | ⚠️ Warning card |
+| **Nearby Hospital Radar & Routing** | ✅ **Overpass + Google Maps** | ⚠️ Directory only | ❌ None | ❌ None | ✅ Paid listings | ✅ Maps |
 | **Public Health Supply Chain Resilience**| ✅ **NLEM 2022 Command Center**| ❌ None | ❌ None | ❌ None | ❌ None | ❌ None |
-| **Epidemic Predictive Demand Forecasting**| ✅ **Multi-Factor Time-Series**| ❌ None | ❌ None | ❌ None | ❌ None |  Research |
+| **Epidemic Predictive Demand Forecasting**| ✅ **Multi-Factor Time-Series**| ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Research |
 | **Cross-District Redistribution Optimizer**| ✅ **Two-Stage Transit Solver**| ❌ None | ❌ None | ❌ None | ❌ None | ❌ None |
-| **Cost to Citizen** | 🆓 **100% Free & Open** |  Ad-supported |  Freemium | 💳 Subscription | 💳 Consultation fee | 🆓 Free Search |
+| **Cost to Citizen** | 🆓 **100% Free & Open** | ⚠️ Ad-supported | ⚠️ Freemium | 💳 Subscription | 💳 Consultation fee | 🆓 Free Search |
 
 ---
 
-# 🧠 How It Works (Clinical Pipeline)
+# 🧠 How It Works (Clinical Pipeline v3 Architecture)
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -108,32 +114,42 @@ DocMindX AI bridges the gap between rural community health centers and specialis
                                             │
                                             ▼
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                               MULTILINGUAL INDIC NLP & OCR                             │
-│   • Indic Translation & Phonetic Normalization (ai/disease_prediction/multilingual_*)  │
-│   • Multimodal Vision Extraction (ai/ocr/text_extractor.py & report_ai/)               │
+│                        CANONICAL PATIENT SYMPTOM NORMALIZER                            │
+│   • Indic Translation & Transliteration Normalization (ai/disease_prediction/*)        │
+│   • Multi-lingual Concept Extraction & Negation Filtering                              │
+│   • Output: Pure Patient Evidence Vector (patient_raw + canonical + positive tokens)   │
+└───────────────────────────────────────────┬────────────────────────────────────────────┘
+                                            │
+                                            ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                     EVIDENCE ISOLATION & RED FLAG SAFETY GATE                          │
+│   • Hard evidence boundary (NLM/BioPortal concepts NEVER contaminate patient evidence) │
+│   • Constituent Safety Gating (e.g., RF030 requires both Head Trauma AND Vomiting)     │
+│   • Multi-Domain Anatomy Tracking with Acute Exposure Priority                         │
 └───────────────────────────────────────────┬────────────────────────────────────────────┘
                                             │
                                             ▼
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                        DUAL-TIER MACHINE LEARNING TRIAGE ENGINE                        │
-│   • Binary Symptom Vectorizer (280 Clinical Features)                                  │
 │   • Scikit-Learn Random Forest Classifier (50 Trees, Gini Impurity)                    │
-│   • Google Gemini Flash & Groq Fallback for Contextual Synthesis                       │
-│   • Output: Ranked Differential Diagnoses (ICD-11 Aligned) + Match Probabilities       │
+│   • Bipartite Disease-Symptom Knowledge Graph Verification                             │
+│   • WHO ICD-11 & NLM Candidate Cross-Referencing                                       │
+│   • Strict Quality Gate: Candidates require genuine patient symptom overlap            │
 └───────────────────────────────────────────┬────────────────────────────────────────────┘
                                             │
                                             ▼
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                          MULTI-TIER CLINICAL PROTOCOL ENGINE                           │
-│   • Verified Pharmaceutical Lookup (DailyMed API, OpenFDA, NLEM 2022)                  │
-│   • Evidence-Based Recovery Protocols (Dietary Nutrition, Yoga, Cold/Hot Compresses)   │
-│   • Recommended Clinical Diagnostic Tests & Emergency Red Flag Verification            │
+│                     TRUTHFUL CARE & MEDICATION EVIDENCE GATE                           │
+│   • Authoritative OpenFDA & DailyMed Drug Label Verification                           │
+│   • Truthful Provenance Tracking (Zero fake "Clinical Reference" promotions)           │
+│   • Duration-Gated Diagnostic Test Engine (Routine tests suppressed if duration <= 4d) │
+│   • Emergency-Aware Supportive Care (Routine yoga & physio suppressed in acute cases)  │
 └───────────────────────────────────────────┬────────────────────────────────────────────┘
                                             │
                                             ▼
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                             INTERACTION & DELIVERY LAYER                               │
-│   • Interactive Triage Dashboard (Clean, High-Contrast Accessible Design)               │
+│   • Interactive Triage Dashboard (Clean, High-Contrast Accessible UI, Zero Emojis)    │
 │   • Real-Time Geospatial Hospital Radar (OpenStreetMap / Google Maps)                  │
 │   • Conversational Clinical AI Copilot & Deep Medical Explainer                        │
 │   • Automated Exportable PDF Clinical Consultation Report                              │
@@ -153,6 +169,8 @@ DocMindX-AI/
 │   │   └── rag.py                         # Clinical Retrieval-Augmented Generation
 │   │
 │   ├── disease_prediction/                # ML Disease Prediction Engine
+│   │   ├── canonical_concepts.py          # Multilingual Master Taxonomy & Canonical Patterns
+│   │   ├── clinical_pipeline.py           # Global API-First Orchestrator with Provider States
 │   │   ├── model.pkl                      # Serialized Random Forest Classifier (5.31 MB)
 │   │   ├── multilingual_symptom_extractor.py # Indic NLP Translation & Feature Extractor
 │   │   ├── predict.py                     # Hybrid Prediction Engine (ML + LLM Reasoning)
@@ -180,22 +198,28 @@ DocMindX-AI/
 │   │   └── federated_learning_sim.py      # Privacy-Preserving Decentralized Learning Node
 │   │
 │   └── utils/                             # Clinical Support & Media Resolvers
-│       ├── care_recommendations.py        # Diet, Dos & Don'ts, Cold/Hot Compress Guidance
+│       ├── care_recommendations.py        # Diet, Dos & Don'ts, Compress & Medication Gating
 │       ├── image_resolver.py              # DailyMed Drug Packaging & Yoga Photo Fetcher
-│       └── report_generator.py            # ReportLab Clinical PDF Generator
+│       ├── report_generator.py            # ReportLab Clinical PDF Generator
+│       └── seasonal_context.py            # Regional Seasonal Health Context & Advisory
 │
 ├── api/                                   # Real-Time External API Integrations
 │   ├── bioportal.py                       # SNOMED-CT & LOINC Clinical Terminology API
 │   ├── dailymed.py                        # NIH National Library of Medicine Packaging API
 │   ├── openfda.py                         # US FDA Adverse Reactions & Labeling API
 │   ├── who_icd.py                         # World Health Organization ICD-11 API
+│   ├── nlm_clinical.py                    # NLM Clinical Tables Medical Search API
 │   ├── medlineplus.py                     # MedlinePlus Consumer Health Summaries
 │   ├── overpass.py                        # OpenStreetMap Emergency Hospital Geocoder
 │   ├── maps.py                            # Google Maps Platform Geocoding & Distance Matrix
 │   └── yoga_api.py                        # Wikimedia Medical & Asana Image Resolver
 │
+├── components/                            # Modular UI Components & Subviews
+│   ├── family_ui.py                       # Family Profile Management UI
+│   └── gps_locator.py                     # Real-Time Geolocation Radar Component
+│
 ├── config/                                # System Themes, Internationalization & Settings
-│   ├── theme.py                           # Premium CSS Design System (Buttons, Glassmorphism)
+│   ├── theme.py                           # CSS Design System (High Contrast, Accessible Cards)
 │   ├── language.py                        # Localized Translations (English, Hindi, Gujarati)
 │   └── settings.py                        # Application Parameters & Confidence Thresholds
 │
@@ -210,8 +234,11 @@ DocMindX-AI/
 │   └── disease_model.pkl                  # Production Random Forest Model (101 Classes)
 │
 ├── tests/                                 # Automated Test Suites
-│   ├── test_prediction.py                 # Clinical Diagnostic Accuracy Tests
-│   └── test_ocr.py                        # OCR Parsing & Entity Extraction Tests
+│   ├── test_clinical_surgical_v3_root_cause.py # 14-Test Comprehensive Root-Cause Matrix
+│   ├── test_clinical_surgical_v2_regression.py # 10-Case Clinical Regression Suite
+│   ├── test_symptom_normalization_matrix.py    # 22-Case Multilingual & Negation Tests
+│   ├── test_dosage_forms.py                    # 16-Dosage Form Validation Tests
+│   └── test_medication_provenance.py           # Drug Provenance & Route Safety Tests
 │
 ├── app.py                                 # Main Streamlit Dashboard & Application Controller
 ├── verify_ml_model.py                     # Independent Scikit-Learn Model Audit & Stress Test
@@ -220,80 +247,6 @@ DocMindX-AI/
 ├── LICENSE                                # MIT Open-Source License
 └── README.md                              # Project Documentation
 ```
-
----
-
-# 🔍 File Explanations (Deep Architecture)
-
-## 📂 `app.py`  
-**Central Application Controller & Streamlit Interface**
-- Renders the end-to-end multi-step assessment workflow (Patient Demographics $\to$ Symptom Intake $\to$ Laboratory Upload $\to$ Diagnostic Triage $\to$ Actionable Recovery).
-- Features dynamic top-bar navigation switching smoothly between the **Clinical Health Suite** and the **National Command**.
-- Houses the floating **Conversational Medical Assistant** modal with full persistent consultation context.
-- Implements custom CSS styling tokens (`config/theme.py`) guaranteeing unified button heights, high-contrast accessible cards, and zero emoji clutter.
-
----
-
-## 📂 `ai/disease_prediction/predict.py`  
-**Dual-Tier Clinical Triage Engine**
-- Preprocesses normalized symptom IDs into a 280-dimensional binary feature vector.
-- Executes forward inference through the trained **Random Forest Classifier** to retrieve calibrated class posterior probabilities.
-- Combines model probabilities with the **Columbia University Medical Knowledge Graph** to formulate a Top-3 Differential Diagnosis list.
-- Passes extracted findings to **Google Gemini Flash** (with automatic Groq fallback) to synthesize clinical summaries, urgency scores, and physician discussion points.
-
----
-
-## 📂 `ai/disease_prediction/multilingual_symptom_extractor.py`  
-**Indic Natural Language Symptom Parser**
-- Parses natural language inputs typed in Romanized or native scripts (Hindi, Gujarati, Marathi, Bengali, Telugu, Tamil, Hinglish).
-- Matches colloquial phrases (e.g., *"bahut tezz sar dard"*, *"mathu dukhe chhe"*, *"severe pounding head"*) against standardized symptom taxonomy using phonetic similarity and Gemini NLP.
-- Returns verified symptom ID sets ready for vectorization.
-
----
-
-## 📂 `ai/ocr/text_extractor.py`  
-**Multimodal Medical Vision & Document Digitizer**
-- Accepts scanned images and PDFs of doctor prescriptions, handwritten notes, and pathology sheets.
-- Utilizes **Google Gemini 2.5 Vision** with tailored few-shot prompts to decipher cursive physician handwriting, Latin dosage abbreviations (*BD*, *TDS*, *QDS*, *PRN*), and diagnostic remarks.
-- Employs **Tesseract OCR** as an offline fallback when internet connectivity is restricted.
-
----
-
-## 📂 `ai/report_ai/blood_report.py` & `radiology.py`  
-**Pathology & Imaging Diagnostic Interpreters**
-- `blood_report.py`: Matches extracted lab values against standard clinical reference intervals (e.g., Hemoglobin, Platelet Count, WBC, Fasting Glucose, Serum Bilirubin). Categorizes each parameter as *Low*, *Normal*, or *Critical High*.
-- `radiology.py`: Extracts findings and clinical impressions from X-Ray, CT Scan, and MRI reports, explaining technical findings (e.g., *"consolidation in right lower lobe"*, *"L4-L5 disc protrusion"*) in clear, non-alarmist terminology.
-
----
-
-## 📂 `ai/chatbot/chatbot.py`  
-**Multi-Turn Clinical Conversational Assistant**
-- Maintains a real-time conversational thread equipped with complete awareness of the patient’s age, gender, reported symptoms, predicted diagnoses, and prescribed medications.
-- Prioritizes **Google Gemini AI** (`gemini-3.6-flash`) and seamlessly fails over to **Groq** (`llama-3.3-70b-versatile` / `llama-3.1-8b-instant`) if quota limits are reached.
-- Adheres to clinical guardrails: professional tone, zero informal emoji usage, and explicit reminders to seek in-person medical evaluation.
-
----
-
-## 📂 `ai/utils/care_recommendations.py`  
-**Evidence-Based Lifestyle & Recovery Protocol Engine**
-- Generates condition-specific lifestyle interventions derived from **ICMR-NIN** (National Institute of Nutrition) and clinical practice guidelines.
-- Produces prioritized **Foods to Eat** (nutrients, hydration, gut support) and **Foods to Avoid** (inflammatory foods, allergens, high sodium/sugar).
-- Delivers clinical **Dos and Don'ts**, **Hot/Cold Compress Guidelines**, and **Recommended Diagnostic Lab Tests** for physician consultation.
-
----
-
-## 📂 `ai/utils/image_resolver.py` & `api/dailymed.py`  
-**Authentic Clinical Media Resolution System**
-- Queries the **U.S. National Library of Medicine (NLM) DailyMed API** to retrieve genuine pharmaceutical packaging photos by NDC code or active generic ingredient.
-- Filters out corporate brand logos and stock graphics to display actual box/blister-pack imagery.
-- Connects to the **Wikimedia Commons API** to fetch authentic, step-by-step therapeutic Yoga Asana photographs.
-
----
-
-## 📂 `ai/supply_chain/redistribution_engine.py` & `demand_forecaster.py`  
-**National Command Intelligence Engines**
-- `demand_forecaster.py`: Time-series forecasting model combining historical consumption, OPD influx, seasonal weather patterns, and disease outbreaks. Generates 7-day predictive curves with 95% confidence intervals.
-- `redistribution_engine.py`: Solves supply deficit crises using a two-stage logistics optimization algorithm (Haversine geographic radius $\to$ Google Routes transit matrix), minimizing transit hours and producing legal transfer manifests.
 
 ---
 
@@ -372,7 +325,7 @@ DocMindX AI is built upon validated clinical and public health databases:
 │ AI Engine              │ Primary Provider       │ Fallback / Offline Engine                │
 ├────────────────────────┼────────────────────────┼──────────────────────────────────────────┤
 │ Clinical ML Triage     │ Scikit-Learn RF (50T)  │ Knowledge Graph Cosine Similarity        │
-│ Multilingual Indic NLP │ Google Gemini 2.5      │ Indic Medical Term Dictionary Matching   │
+│ Multilingual Indic NLP │ Google Gemini 2.5      │ Indic Medical Term Canonical Regex       │
 │ Medical Vision & OCR   │ Gemini 2.5 Vision      │ Tesseract OCR + OpenCV Image Cleaner     │
 │ Conversational Copilot │ Google Gemini 2.5      │ Groq LLM (Llama-3.3-70B-Versatile)       │
 │ Supply Chain Reasoning │ Google Gemini Flash    │ Rule-Based Algorithmic Incident Triage   │
@@ -389,7 +342,7 @@ DocMindX AI is built upon validated clinical and public health databases:
 
 ### 2. Clone the Repository
 ```bash
-git clone https://github.com/Dakshvasani/DocMindX-AI.git
+git clone https://github.com/vasani007/DocMindX-AI.git
 cd DocMindX-AI
 ```
 
@@ -449,9 +402,21 @@ Open your browser at `http://localhost:8501`.
 
 # 🧪 Automated Test Suites
 
-Verify all machine learning models, OCR parsers, and supply chain redistribution engines:
+Verify all clinical pipelines, machine learning models, OCR parsers, and supply chain redistribution engines:
 
 ```bash
+# Run the 14-Case Clinical Pipeline Root-Cause Matrix
+pytest tests/test_clinical_surgical_v3_root_cause.py -v
+
+# Run the 10-Case Clinical Regression Suite
+pytest tests/test_clinical_surgical_v2_regression.py -v
+
+# Run the Multilingual Normalization & Negation Matrix
+pytest tests/test_symptom_normalization_matrix.py -v
+
+# Run Medication Provenance & Formulation Tests
+pytest tests/test_dosage_forms.py tests/test_medication_provenance.py -v
+
 # Audit the Scikit-Learn Disease Prediction Model
 python verify_ml_model.py
 
@@ -470,14 +435,12 @@ python verify_supply_chain.py
 
 ---
 
-
-
 # 👨‍💻 Author
 
 **Daksh Vasani**  
 *Machine Learning Engineer & Data Scientist*  
 - 💼 LinkedIn: [Daksh Vasani](https://www.linkedin.com/in/vasani007/)  
-- 🐙 GitHub: [@Dakshvasani](https://github.com/vasani007)  
+- 🐙 GitHub: [@vasani007](https://github.com/vasani007)  
 - 📧 Email: dakshvasani2510@gmail.com
 
 ---
