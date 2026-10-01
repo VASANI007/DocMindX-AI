@@ -245,7 +245,7 @@ def store_otp(email: str, purpose: str, otp_hash: str, expires_at_str: str):
     cursor.execute("""
         INSERT INTO otp_verifications (email, purpose, otp_hash, expires_at, attempts, verified, created_at)
         VALUES (?, ?, ?, ?, 0, 0, ?)
-    """, (email.strip().lower(), purpose, otp_hash, expires_at_str, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    """, (email.strip().lower(), purpose, otp_hash, expires_at_str, datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")))
     conn.commit()
     conn.close()
 

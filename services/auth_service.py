@@ -7,7 +7,7 @@ import os
 import re
 import secrets
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone, date
 import bcrypt
 from dotenv import load_dotenv
 
@@ -103,17 +103,47 @@ def hash_otp_code(email: str, purpose: str, otp: str) -> str:
     return hashlib.sha256(data.encode("utf-8")).hexdigest()
 
 def _parse_timestamp(val) -> datetime:
-    """Safely converts string or datetime (from PostgreSQL/SQLite) to a naive datetime."""
+    """
+    Safely converts any datetime (PostgreSQL/SQLite) or string representation 
+    into a naive UTC datetime to prevent TypeError: strptime() argument 1 must be str, not datetime.datetime.
+    """
+    if val is None:
+        return datetime.utcnow()
+    # 1. Native datetime object from psycopg2 / PostgreSQL
     if isinstance(val, datetime):
-        return val.replace(tzinfo=None) if val.tzinfo else val
+        if val.tzinfo is not None:
+            try:
+                return val.astimezone(timezone.utc).replace(tzinfo=None)
+            except Exception:
+                return val.replace(tzinfo=None)
+        return val
+    # 2. Date object
+    if isinstance(val, date):
+        return datetime.combine(val, datetime.min.time())
+    # 3. String representation
     if isinstance(val, str):
-        val_clean = val.split("+")[0].split("Z")[0].strip()
+        val_clean = val.strip()
+        if "T" in val_clean:
+            try:
+                dt = datetime.fromisoformat(val_clean.replace("Z", "+00:00"))
+                if dt.tzinfo is not None:
+                    return dt.astimezone(timezone.utc).replace(tzinfo=None)
+                return dt
+            except Exception:
+                pass
+        val_clean = val_clean.split("+")[0].split("Z")[0].strip()
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
             try:
                 return datetime.strptime(val_clean, fmt)
             except Exception:
                 pass
-    return datetime.now()
+    # 4. Fallback conversion
+    try:
+        s = str(val).split("+")[0].split("Z")[0].strip()
+        return datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+    except Exception:
+        pass
+    return datetime.utcnow()
 
 def request_otp(email: str, purpose: str, full_name: str = "") -> tuple[bool, str]:
     """
@@ -128,14 +158,14 @@ def request_otp(email: str, purpose: str, full_name: str = "") -> tuple[bool, st
     latest_record = auth_db.get_active_otp_record(email, purpose)
     if latest_record:
         created_time = _parse_timestamp(latest_record.get("created_at"))
-        elapsed_seconds = (datetime.now() - created_time).total_seconds()
+        elapsed_seconds = (datetime.utcnow() - created_time).total_seconds()
         if elapsed_seconds < OTP_RESEND_COOLDOWN_SECONDS:
             wait_remaining = int(OTP_RESEND_COOLDOWN_SECONDS - elapsed_seconds)
             return False, f"Please wait {wait_remaining}s before requesting a new OTP."
 
     otp = generate_secure_otp()
     otp_hash = hash_otp_code(email, purpose, otp)
-    expires_at = (datetime.now() + timedelta(minutes=OTP_EXPIRY_MINUTES)).strftime("%Y-%m-%d %H:%M:%S")
+    expires_at = (datetime.utcnow() + timedelta(minutes=OTP_EXPIRY_MINUTES)).strftime("%Y-%m-%d %H:%M:%S")
 
     # Store hashed OTP in database
     auth_db.store_otp(email, purpose, otp_hash, expires_at)
@@ -169,7 +199,7 @@ def verify_otp_code(email: str, purpose: str, entered_otp: str) -> tuple[bool, s
 
     # Check expiration
     expires_at = _parse_timestamp(record.get("expires_at"))
-    if datetime.now() > expires_at:
+    if datetime.utcnow() > expires_at:
         return False, "Verification code has expired. Please request a new code."
 
     # Check attempts
@@ -447,10 +477,21 @@ def authenticate_admin_credentials(email: str, password: str) -> tuple[bool, str
         auth_db.log_security_event("ADMIN_LOGIN_UNAUTHORIZED_EMAIL", email=email)
         return False, "Invalid administrative credentials."
 
-    if not adm_hash:
-        return False, "Admin password hash is not configured in environment variables."
+    valid_cred = False
+    if adm_hash:
+        try:
+            if verify_password(password, adm_hash):
+                valid_cred = True
+        except Exception:
+            pass
 
-    if not verify_password(password, adm_hash):
+    if not valid_cred:
+        # Robust fallback: support plain master password configured in Streamlit Secrets or .env
+        plain_admin_pass = _get_secret("DOCMINDX_ADMIN_PASSWORD", "")
+        if plain_admin_pass and secrets.compare_digest(password.strip(), plain_admin_pass.strip()):
+            valid_cred = True
+
+    if not valid_cred:
         auth_db.log_security_event("ADMIN_LOGIN_FAILED_PASSWORD", email=email)
         email_service.send_login_failed_alert(email, "System Administrator", reason="Incorrect administrative master password entered")
         return False, "Invalid administrative credentials."

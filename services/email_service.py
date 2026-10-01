@@ -14,6 +14,27 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+def _get_smtp_settings():
+    """Dynamically reads SMTP settings from Streamlit Cloud secrets or environment variables."""
+    def _val(key: str, default: str = "") -> str:
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets") and key in st.secrets:
+                return str(st.secrets[key]).strip()
+        except Exception:
+            pass
+        return os.getenv(key, default).strip()
+
+    host = _val("SMTP_HOST", "smtp.gmail.com")
+    try:
+        port = int(_val("SMTP_PORT", "587"))
+    except Exception:
+        port = 587
+    user = _val("SMTP_USERNAME", "docmindxai@gmail.com")
+    pwd = _val("SMTP_PASSWORD", "")
+    frm = _val("EMAIL_FROM", "DocMindX AI <docmindxai@gmail.com>")
+    return host, port, user, pwd, frm
+
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "docmindxai@gmail.com")
@@ -170,27 +191,28 @@ def send_email_message(to_email: str, subject: str, html_body: str, plain_body: 
         "timestamp": datetime.now().isoformat()
     }
     
-    if not SMTP_PASSWORD or not SMTP_USERNAME:
+    smtp_host, smtp_port, smtp_username, smtp_password, email_from = _get_smtp_settings()
+    if not smtp_password or not smtp_username:
         return True
 
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = EMAIL_FROM
+        msg["From"] = email_from
         msg["To"] = to_email
         
         if plain_body:
             msg.attach(MIMEText(plain_body, "plain"))
         msg.attach(MIMEText(html_body, "html"))
         
-        if SMTP_PORT == 465:
-            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10)
+        if smtp_port == 465:
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10)
         else:
-            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10)
+            server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
             server.starttls()
             
-        server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        server.sendmail(EMAIL_FROM, [to_email], msg.as_string())
+        server.login(smtp_username, smtp_password)
+        server.sendmail(email_from, [to_email], msg.as_string())
         server.quit()
         return True
     except Exception as e:

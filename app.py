@@ -31,6 +31,15 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
+# Sync Streamlit Cloud secrets into os.environ for all background modules & services
+try:
+    if hasattr(st, "secrets"):
+        for _sk, _sv in st.secrets.items():
+            if isinstance(_sv, (str, int, float, bool)) and _sk not in os.environ:
+                os.environ[_sk] = str(_sv)
+except Exception:
+    pass
+
 import components.admin_ui as admin_ui
 import components.auth_ui as auth_ui
 import components.family_ui as family_ui
