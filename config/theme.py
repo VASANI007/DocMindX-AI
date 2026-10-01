@@ -374,17 +374,69 @@ td code {
     color: #94A3B8 !important;
 }
 
-/* Selectbox dropdown menu */
+/* Selectbox and Multiselect dropdown menu (Dark Mode) */
 [data-theme="dark"] [data-baseweb="menu"],
 [data-theme="dark"] [data-baseweb="popover"],
-[data-theme="dark"] li[role="option"] {
-    background-color: #111827 !important;
+[data-theme="dark"] [role="listbox"],
+[data-theme="dark"] li[role="option"],
+[data-theme="dark"] div[role="option"],
+.stApp[data-theme="dark"] [data-baseweb="menu"],
+.stApp[data-theme="dark"] [data-baseweb="popover"],
+.stApp[data-theme="dark"] [role="listbox"],
+.stApp[data-theme="dark"] li[role="option"] {
+    background-color: #0F172A !important;
+    background: #0F172A !important;
     border-color: #1E2E4E !important;
     color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
 }
+
+[data-theme="dark"] li[role="option"] *,
+[data-theme="dark"] div[role="option"] *,
+[data-theme="dark"] [role="option"] *,
+[data-theme="dark"] [data-baseweb="menu"] li *,
+[data-theme="dark"] [data-baseweb="popover"] li *,
+.stApp[data-theme="dark"] li[role="option"] *,
+.stApp[data-theme="dark"] div[role="option"] *,
+.stApp[data-theme="dark"] [role="option"] * {
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+}
+
 [data-theme="dark"] li[role="option"]:hover,
-[data-theme="dark"] li[role="option"][aria-selected="true"] {
-    background-color: #1E293B !important;
+[data-theme="dark"] div[role="option"]:hover,
+[data-theme="dark"] [role="option"]:hover,
+.stApp[data-theme="dark"] li[role="option"]:hover {
+    background-color: #1E3A8A !important;
+    background: #1E3A8A !important;
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+}
+
+[data-theme="dark"] li[role="option"]:hover *,
+[data-theme="dark"] div[role="option"]:hover *,
+[data-theme="dark"] [role="option"]:hover * {
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+}
+
+[data-theme="dark"] li[role="option"][aria-selected="true"],
+[data-theme="dark"] div[role="option"][aria-selected="true"],
+[data-theme="dark"] [role="option"][aria-selected="true"],
+.stApp[data-theme="dark"] li[role="option"][aria-selected="true"] {
+    background-color: #2563EB !important;
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
+[data-theme="dark"] li[role="option"][aria-selected="true"] *,
+[data-theme="dark"] div[role="option"][aria-selected="true"] *,
+[data-theme="dark"] [role="option"][aria-selected="true"] * {
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+    font-weight: 700 !important;
 }
 
 /* Hide confusing 'Press Enter to apply' tooltip that obscures the password eye icon */
@@ -7547,51 +7599,109 @@ textarea::placeholder,
     fill: #FCA5A5 !important;
 }
 
-/* Dropdown Menu Popovers */
-[data-baseweb="popover"],
-[data-baseweb="popover"] > div,
-[data-baseweb="menu"],
-[data-baseweb="menu"] li,
-[role="listbox"],
-[role="option"],
+/* ============================================================
+   UNIVERSAL DROPDOWN & SELECTBOX MENU FIX (ALL POPUPS & PORTALS)
+   ============================================================ */
+/* 1. Popover and Menu Container */
+div[data-baseweb="popover"],
+div[data-baseweb="popover"] > div,
+div[data-baseweb="menu"],
+ul[data-baseweb="menu"],
 ul[role="listbox"],
+div[role="listbox"],
 div[data-testid="stSelectboxVirtualDropdown"],
 ul[data-testid="stVirtualDropdown"] {
-    background-color: #111827 !important;
-    background: #111827 !important;
+    background-color: #0F172A !important;
+    background: #0F172A !important;
+    border: 1.5px solid #1E2E4E !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.75) !important;
     color: #F8FAFC !important;
-    border: 1px solid #1E293B !important;
+    padding: 6px !important;
 }
 
+/* 2. Each Dropdown Option Item */
 li[role="option"],
 div[role="option"],
-[data-baseweb="menu"] li {
+[role="option"],
+[data-baseweb="menu"] li,
+ul[role="listbox"] li,
+div[data-baseweb="popover"] li,
+div[data-baseweb="popover"] div[role="option"] {
+    background-color: transparent !important;
+    background: transparent !important;
     color: #F8FAFC !important;
-    border-bottom: 1px solid #1E293B !important;
-}
-li[role="option"] *,
-div[role="option"] *,
-[data-baseweb="menu"] li * {
-    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    margin: 2px 0 !important;
+    font-size: 0.92rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
 }
 
+/* 3. Deep Target All Text Elements Inside Each Option Item */
+li[role="option"] *,
+div[role="option"] *,
+[role="option"] *,
+[data-baseweb="menu"] li *,
+ul[role="listbox"] li *,
+div[data-baseweb="popover"] li *,
+div[data-baseweb="popover"] [role="option"] * {
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+    font-weight: 500 !important;
+    font-size: 0.92rem !important;
+}
+
+/* 4. Hover State on Option Items */
 li[role="option"]:hover,
 div[role="option"]:hover,
-li[role="option"][aria-selected="true"],
-div[role="option"][aria-selected="true"],
-li[role="option"]:focus,
-div[role="option"]:focus,
 [role="option"]:hover,
-[role="option"][aria-selected="true"] {
-    background-color: #1E293B !important;
-    background: #1E293B !important;
-    color: #60A5FA !important;
+[data-baseweb="menu"] li:hover,
+ul[role="listbox"] li:hover,
+div[data-baseweb="popover"] li:hover {
+    background-color: #1E3A8A !important;
+    background: #1E3A8A !important;
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
 }
+
 li[role="option"]:hover *,
 div[role="option"]:hover *,
+[role="option"]:hover *,
+[data-baseweb="menu"] li:hover *,
+ul[role="listbox"] li:hover *,
+div[data-baseweb="popover"] li:hover * {
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* 5. Selected / Active Option Item */
+li[role="option"][aria-selected="true"],
+div[role="option"][aria-selected="true"],
+[role="option"][aria-selected="true"],
+[data-baseweb="menu"] li[aria-selected="true"],
+ul[role="listbox"] li[aria-selected="true"],
+div[data-baseweb="popover"] li[aria-selected="true"] {
+    background-color: #2563EB !important;
+    background: #2563EB !important;
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+    font-weight: 700 !important;
+}
+
 li[role="option"][aria-selected="true"] *,
-div[role="option"][aria-selected="true"] * {
-    color: #60A5FA !important;
+div[role="option"][aria-selected="true"] *,
+[role="option"][aria-selected="true"] *,
+[data-baseweb="menu"] li[aria-selected="true"] *,
+ul[role="listbox"] li[aria-selected="true"] *,
+div[data-baseweb="popover"] li[aria-selected="true"] * {
+    color: #FFFFFF !important;
+    -webkit-text-fill-color: #FFFFFF !important;
+    font-weight: 700 !important;
 }
 
 /* -- 8. File Uploader Dropzone -- */
