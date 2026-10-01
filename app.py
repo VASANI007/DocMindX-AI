@@ -1470,30 +1470,38 @@ if is_dark:
         color: #34D399 !important;
     }
 
-    /* Circular Scan Inspection Button (Centered Arrow) */
+    /* Circular / Rounded '>' Scan Button Popover (Centered Arrow) */
     div[class*="st-key-wrap_sc_btn_"],
-    div[class*="st-key-pop_sc_btn_"] {
+    div[class*="st-key-pop_sc_btn_"],
+    .st-key-wrap_sc_btn_,
+    .st-key-pop_sc_btn_ {
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
     div[class*="st-key-wrap_sc_btn_"] div[data-testid="stPopover"],
-    div[class*="st-key-pop_sc_btn_"] div[data-testid="stPopover"] {
+    div[class*="st-key-pop_sc_btn_"] div[data-testid="stPopover"],
+    .st-key-wrap_sc_btn_ div[data-testid="stPopover"],
+    .st-key-pop_sc_btn_ div[data-testid="stPopover"] {
         width: 36px !important;
         height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
     div[class*="st-key-wrap_sc_btn_"] button,
-    div[class*="st-key-pop_sc_btn_"] button {
+    div[class*="st-key-pop_sc_btn_"] button,
+    .st-key-wrap_sc_btn_ button,
+    .st-key-pop_sc_btn_ button {
         width: 36px !important;
         height: 36px !important;
         min-width: 36px !important;
         min-height: 36px !important;
         max-width: 36px !important;
         max-height: 36px !important;
-        border-radius: 50% !important;
+        border-radius: 8px !important;
         background: #1E293B !important;
         border: 1.5px solid #334155 !important;
         color: #38BDF8 !important;
@@ -1503,33 +1511,58 @@ if is_dark:
         padding: 0 !important;
         margin: 0 auto !important;
         box-sizing: border-box !important;
+        position: relative !important;
     }
     div[class*="st-key-wrap_sc_btn_"] button div[data-testid="stMarkdownContainer"],
     div[class*="st-key-pop_sc_btn_"] button div[data-testid="stMarkdownContainer"],
-    div[class*="st-key-wrap_sc_btn_"] button p,
-    div[class*="st-key-pop_sc_btn_"] button p {
-        margin: 0 !important;
-        padding: 0 !important;
+    .st-key-wrap_sc_btn_ button div[data-testid="stMarkdownContainer"],
+    .st-key-pop_sc_btn_ button div[data-testid="stMarkdownContainer"] {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         text-align: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    div[class*="st-key-wrap_sc_btn_"] button p,
+    div[class*="st-key-pop_sc_btn_"] button p,
+    .st-key-wrap_sc_btn_ button p,
+    .st-key-pop_sc_btn_ button p {
+        width: 100% !important;
+        height: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
         font-size: 1.35rem !important;
         font-weight: 800 !important;
         line-height: 1 !important;
         color: #38BDF8 !important;
-        width: 100% !important;
-        height: 100% !important;
         transform: translateY(-1px) !important;
     }
     div[class*="st-key-wrap_sc_btn_"] button svg,
     div[class*="st-key-pop_sc_btn_"] button svg,
     div[class*="st-key-wrap_sc_btn_"] button [data-testid="stIconMaterial"],
-    div[class*="st-key-pop_sc_btn_"] button [data-testid="stIconMaterial"] {
+    div[class*="st-key-pop_sc_btn_"] button [data-testid="stIconMaterial"],
+    .st-key-wrap_sc_btn_ button svg,
+    .st-key-pop_sc_btn_ button svg,
+    .st-key-wrap_sc_btn_ button [data-testid="stIconMaterial"],
+    .st-key-pop_sc_btn_ button [data-testid="stIconMaterial"] {
         display: none !important;
     }
     div[class*="st-key-wrap_sc_btn_"] button:hover,
-    div[class*="st-key-pop_sc_btn_"] button:hover {
+    div[class*="st-key-pop_sc_btn_"] button:hover,
+    .st-key-wrap_sc_btn_ button:hover,
+    .st-key-pop_sc_btn_ button:hover {
         background: #2563EB !important;
         border-color: #3B82F6 !important;
         color: #FFFFFF !important;
@@ -1604,22 +1637,30 @@ if is_dark:
 
     /* ── Top Header Profile Popover Button Alignment & Size (e.g. 'Sa ▾') ── */
     div[class*="st-key-top_profile_wrap"],
-    .st-key-top_profile_wrap {
+    .st-key-top_profile_wrap,
+    div.st-key-top_profile_wrap {
         width: 100% !important;
+        min-width: 90px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
     div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"],
-    .st-key-top_profile_wrap div[data-testid="stPopover"] {
+    .st-key-top_profile_wrap div[data-testid="stPopover"],
+    div.st-key-top_profile_wrap div[data-testid="stPopover"] {
         width: 100% !important;
+        min-width: 90px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
     }
     div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button,
-    .st-key-top_profile_wrap div[data-testid="stPopover"] > button {
+    .st-key-top_profile_wrap div[data-testid="stPopover"] > button,
+    div.st-key-top_profile_wrap div[data-testid="stPopover"] > button,
+    div[class*="st-key-top_profile_wrap"] button,
+    .st-key-top_profile_wrap button {
         width: 100% !important;
+        min-width: 90px !important;
         height: 38px !important;
         min-height: 38px !important;
         max-height: 38px !important;
@@ -1627,8 +1668,8 @@ if is_dark:
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
-        gap: 6px !important;
-        padding: 0 12px !important;
+        gap: 8px !important;
+        padding: 0 14px !important;
         background: #1E293B !important;
         border: 1px solid #334155 !important;
         color: #F8FAFC !important;
@@ -2742,9 +2783,10 @@ div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] {
 }
 .st-key-top_profile_wrap div[data-testid="stPopover"] > button,
 div.st-key-top_profile_wrap div[data-testid="stPopover"] > button,
-div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button {
+div[class*="st-key-top_profile_wrap"] button,
+.st-key-top_profile_wrap button {
     width: 100% !important;
-    min-width: 100% !important;
+    min-width: 90px !important;
     height: 38px !important;
     min-height: 38px !important;
     max-height: 38px !important;
@@ -2755,8 +2797,8 @@ div[class*="st-key-top_profile_wrap"] div[data-testid="stPopover"] > button {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 6px !important;
-    padding: 0 10px !important;
+    gap: 8px !important;
+    padding: 0 14px !important;
     font-size: 0.80rem !important;
     font-weight: 700 !important;
     line-height: 1 !important;
@@ -2797,7 +2839,14 @@ div.st-key-top_profile_wrap div[data-testid="stPopover"] > button:hover {
     position: relative !important;
     top: 0 !important;
 }
-.st-key-top_auth_signin_btn button {
+.st-key-top_auth_signin_btn,
+div.st-key-top_auth_signin_btn,
+div[class*="st-key-top_auth_signin_btn"] {
+    width: 100% !important;
+    min-width: 90px !important;
+}
+.st-key-top_auth_signin_btn button,
+div[class*="st-key-top_auth_signin_btn"] button {
     background: #2563EB !important;
     border: 1px solid #2563EB !important;
     color: #FFFFFF !important;
@@ -2806,7 +2855,13 @@ div.st-key-top_profile_wrap div[data-testid="stPopover"] > button:hover {
     font-size: 0.80rem !important;
     height: 38px !important;
     min-height: 38px !important;
+    max-height: 38px !important;
+    width: 100% !important;
+    min-width: 90px !important;
     padding: 0 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 .st-key-top_auth_signin_btn button p,
 .st-key-top_auth_signin_btn button span {
@@ -3640,7 +3695,7 @@ with st.container(key="dmx_master_header_card"):
     # 1. DESKTOP VIEW (Image 2 Design)
     
     with st.container(key="dmx_desktop_container"):
-        d_cols = st.columns([1.35, 1.15, 1.05, 1.15, 1.05, 1.15, 0.78, 0.95, 0.38, 0.70], vertical_alignment="center")
+        d_cols = st.columns([1.35, 1.15, 1.05, 1.15, 1.05, 1.15, 0.78, 0.95, 0.38, 0.85], vertical_alignment="center")
 
         # Col 0: Brand Logo & Title
         with d_cols[0]:
@@ -3709,9 +3764,9 @@ with st.container(key="dmx_master_header_card"):
                 if len(_parts) >= 2:
                     _ini = f"{_parts[0][0]}{_parts[1][0]}".title()
                 elif len(_pname) >= 2:
-                    _ini = f"{_pname[0].upper()}{_pname[1].lower()}"
+                    _ini = f"{_pname[0].upper()}{_pname[1].upper()}"
                 else:
-                    _ini = "Dv"
+                    _ini = "DV"
 
                 with st.container(key="top_profile_wrap"):
                     with st.popover(f"{_ini}", help=f"{_pname} account menu", use_container_width=True):

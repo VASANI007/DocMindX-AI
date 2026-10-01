@@ -6433,30 +6433,90 @@ div[class*="st-key-pop_sc_btn_"] button:hover {
 }
 
 /* Circular '>' Scan Button Popover (Light Mode) */
+div[class*="st-key-pop_sc_btn_"],
+div[class*="st-key-wrap_sc_btn_"],
+.st-key-pop_sc_btn_,
+.st-key-wrap_sc_btn_ {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+div[class*="st-key-pop_sc_btn_"] div[data-testid="stPopover"],
+div[class*="st-key-wrap_sc_btn_"] div[data-testid="stPopover"],
+.st-key-pop_sc_btn_ div[data-testid="stPopover"],
+.st-key-wrap_sc_btn_ div[data-testid="stPopover"] {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 div[class*="st-key-pop_sc_btn_"] button,
 div[class*="st-key-wrap_sc_btn_"] button,
 .st-key-pop_sc_btn_ button,
 .st-key-wrap_sc_btn_ button {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
-    min-height: 34px !important;
-    max-height: 34px !important;
-    border-radius: 50% !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    border-radius: 8px !important;
     padding: 0 !important;
-    display: inline-flex !important;
+    margin: 0 auto !important;
+    display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 1.15rem !important;
-    font-weight: 800 !important;
-    line-height: 1 !important;
     background: #EFF6FF !important;
     border: 1.5px solid #BFDBFE !important;
     color: #2563EB !important;
     box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12) !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     cursor: pointer !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+div[class*="st-key-pop_sc_btn_"] button div[data-testid="stMarkdownContainer"],
+div[class*="st-key-wrap_sc_btn_"] button div[data-testid="stMarkdownContainer"],
+.st-key-pop_sc_btn_ button div[data-testid="stMarkdownContainer"],
+.st-key-wrap_sc_btn_ button div[data-testid="stMarkdownContainer"] {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+div[class*="st-key-pop_sc_btn_"] button p,
+div[class*="st-key-wrap_sc_btn_"] button p,
+.st-key-pop_sc_btn_ button p,
+.st-key-wrap_sc_btn_ button p {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #2563EB !important;
+    transform: translateY(-1px) !important;
 }
 
 div[class*="st-key-pop_sc_btn_"] button:hover,
@@ -6470,10 +6530,19 @@ div[class*="st-key-wrap_sc_btn_"] button:hover,
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
 }
 
+div[class*="st-key-pop_sc_btn_"] button:hover p,
+div[class*="st-key-wrap_sc_btn_"] button:hover p {
+    color: #FFFFFF !important;
+}
+
 div[class*="st-key-pop_sc_btn_"] button svg,
 div[class*="st-key-wrap_sc_btn_"] button svg,
 div[class*="st-key-pop_sc_btn_"] button [data-testid="stIconMaterial"],
-div[class*="st-key-wrap_sc_btn_"] button [data-testid="stIconMaterial"] {
+div[class*="st-key-wrap_sc_btn_"] button [data-testid="stIconMaterial"],
+.st-key-pop_sc_btn_ button svg,
+.st-key-wrap_sc_btn_ button svg,
+.st-key-pop_sc_btn_ button [data-testid="stIconMaterial"],
+.st-key-wrap_sc_btn_ button [data-testid="stIconMaterial"] {
     display: none !important;
 }
 
@@ -10805,30 +10874,90 @@ div[data-baseweb="popover"] button:hover {
 }
 
 /* Circular '>' Scan Button Popover (Dark Mode) */
+div[class*="st-key-pop_sc_btn_"],
+div[class*="st-key-wrap_sc_btn_"],
+.st-key-pop_sc_btn_,
+.st-key-wrap_sc_btn_ {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+div[class*="st-key-pop_sc_btn_"] div[data-testid="stPopover"],
+div[class*="st-key-wrap_sc_btn_"] div[data-testid="stPopover"],
+.st-key-pop_sc_btn_ div[data-testid="stPopover"],
+.st-key-wrap_sc_btn_ div[data-testid="stPopover"] {
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
 div[class*="st-key-pop_sc_btn_"] button,
 div[class*="st-key-wrap_sc_btn_"] button,
 .st-key-pop_sc_btn_ button,
 .st-key-wrap_sc_btn_ button {
-    width: 34px !important;
-    height: 34px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
-    min-height: 34px !important;
-    max-height: 34px !important;
-    border-radius: 50% !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    max-width: 36px !important;
+    min-height: 36px !important;
+    max-height: 36px !important;
+    border-radius: 8px !important;
     padding: 0 !important;
-    display: inline-flex !important;
+    margin: 0 auto !important;
+    display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 1.15rem !important;
-    font-weight: 800 !important;
-    line-height: 1 !important;
-    background: rgba(30, 41, 59, 0.85) !important;
-    border: 1.5px solid rgba(59, 130, 246, 0.45) !important;
-    color: #60A5FA !important;
+    background: #1E293B !important;
+    border: 1.5px solid #334155 !important;
+    color: #38BDF8 !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45) !important;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     cursor: pointer !important;
+    box-sizing: border-box !important;
+    position: relative !important;
+}
+
+div[class*="st-key-pop_sc_btn_"] button div[data-testid="stMarkdownContainer"],
+div[class*="st-key-wrap_sc_btn_"] button div[data-testid="stMarkdownContainer"],
+.st-key-pop_sc_btn_ button div[data-testid="stMarkdownContainer"],
+.st-key-wrap_sc_btn_ button div[data-testid="stMarkdownContainer"] {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+div[class*="st-key-pop_sc_btn_"] button p,
+div[class*="st-key-wrap_sc_btn_"] button p,
+.st-key-pop_sc_btn_ button p,
+.st-key-wrap_sc_btn_ button p {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    font-size: 1.35rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #38BDF8 !important;
+    transform: translateY(-1px) !important;
 }
 
 div[class*="st-key-pop_sc_btn_"] button:hover,
@@ -10842,10 +10971,19 @@ div[class*="st-key-wrap_sc_btn_"] button:hover,
     box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5) !important;
 }
 
+div[class*="st-key-pop_sc_btn_"] button:hover p,
+div[class*="st-key-wrap_sc_btn_"] button:hover p {
+    color: #FFFFFF !important;
+}
+
 div[class*="st-key-pop_sc_btn_"] button svg,
 div[class*="st-key-wrap_sc_btn_"] button svg,
 div[class*="st-key-pop_sc_btn_"] button [data-testid="stIconMaterial"],
-div[class*="st-key-wrap_sc_btn_"] button [data-testid="stIconMaterial"] {
+div[class*="st-key-wrap_sc_btn_"] button [data-testid="stIconMaterial"],
+.st-key-pop_sc_btn_ button svg,
+.st-key-wrap_sc_btn_ button svg,
+.st-key-pop_sc_btn_ button [data-testid="stIconMaterial"],
+.st-key-wrap_sc_btn_ button [data-testid="stIconMaterial"] {
     display: none !important;
 }
 

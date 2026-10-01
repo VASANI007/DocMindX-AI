@@ -559,28 +559,55 @@ def render_family_management_view(user: dict):
     with tab_family:
         family_members = auth_db.get_family_members(user_id)
         
-        # Section Header: Icon + Title + Count + Add Button
-        col_fh1, col_fh2 = st.columns([3, 1.2])
+        # Section Header Card matching other tabs (Image Design)
+        st.markdown(f"""
+        <div class="account-settings-card" style="background: var(--mm-card-bg, #FFFFFF); border: 1.5px solid #E2E8F0; border-radius: 18px; padding: 24px 28px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-bottom: 1.5px solid #F1F5F9; padding-bottom: 18px; margin-bottom: 22px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(37, 99, 235, 0.1); border: 1.5px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.32rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); letter-spacing: -0.2px;">My <span style="color: #2563EB;">Family Members</span></h3>
+                        <div style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 2px;">Saved medical profiles are automatically loaded during scans and health evaluations.</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: #2563EB; display: flex; align-items: center; justify-content: center;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+                                <path d="M3.22 12H9.5l1.5-3 2 6 1.5-3h4.78"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.95rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1;">DocMindX <span style="color: #2563EB;">AI</span></div>
+                            <div style="font-size: 0.62rem; color: var(--mm-text-secondary, #64748B); font-weight: 700; letter-spacing: 0.3px;">CLINICAL AI HEALTHCARE SYSTEM</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #15803D; font-weight: 600; border-left: 1px solid #E2E8F0; padding-left: 14px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"></path><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"></path></svg>
+                        Better Health<br/>Brighter Tomorrow
+                    </div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col_fh1, col_fh2 = st.columns([3, 1.2], vertical_alignment="center")
         with col_fh1:
             st.markdown(f"""
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                <div style="width: 40px; height: 40px; border-radius: 10px; background: rgba(37, 99, 235, 0.1); border: 1.2px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h3 style="margin: 0; font-size: 1.22rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">My Family Members</h3>
-                    <div style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 1px;">You have <strong>{len(family_members)}</strong> saved family medical profile(s).</div>
-                </div>
+            <div style="font-size: 0.88rem; color: var(--mm-text-secondary, #64748B); font-weight: 600; margin-bottom: 8px;">
+                Showing <strong style="color: var(--mm-text-primary, #0F172A);">{len(family_members)}</strong> registered family medical profile(s)
             </div>
             """, unsafe_allow_html=True)
         with col_fh2:
-            st.markdown("<div style='margin-top: 4px;'></div>", unsafe_allow_html=True)
-            if st.button("Add New Family Member", key="btn_add_family_hero", use_container_width=True):
+            if st.button("+ Add New Family Member", key="btn_add_family_hero", type="primary", use_container_width=True):
                 st.session_state["active_family_tab"] = "add"
                 st.rerun()
 

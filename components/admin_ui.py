@@ -723,7 +723,7 @@ def render_admin_dashboard_view():
                     """, unsafe_allow_html=True)
 
                     # 2. Family Members Header with Add Button
-                    fams = auth_db.get_family_members(uid)
+                    fams = u.get("family_members", [])
                     f_hcol1, f_hcol2 = st.columns([3, 1.2])
                     with f_hcol1:
                         st.markdown(f"""
@@ -1073,7 +1073,7 @@ def render_admin_dashboard_view():
                             st.markdown(f'<div style="text-align: right; padding-right: 4px;"><span style="font-size: 0.65rem; color: #64748B; display: block; font-weight: 700; text-transform: uppercase;">Scan ID</span><strong style="font-size: 0.96rem; color: #2563EB;">#{sid}</strong></div>', unsafe_allow_html=True)
                         with r_c2:
                             with st.container(key=f"wrap_sc_btn_{sid}"):
-                                with st.popover(" ›", help="Click to open scan report & inspection"):
+                                with st.popover("›", help="Click to open scan report & inspection"):
                                     st.markdown(f"#### Scan Inspection Record #{sid}")
                                     st.caption(f"Recorded: **{s.get('created_at')}** &bull; Type: **{s.get('scan_type')}**")
                                     st.markdown("---")

@@ -40,6 +40,22 @@ def init_auth_tables():
         conn.commit()
     except Exception:
         pass
+    # High-Performance Indexes for Instant Batch Queries
+    indexes = [
+        "CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);",
+        "CREATE INDEX IF NOT EXISTS idx_users_status ON users(account_status);",
+        "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);",
+        "CREATE INDEX IF NOT EXISTS idx_family_members_user_id ON family_members(user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_medical_scans_user_id ON medical_scans(user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_security_logs_user_id ON security_audit_logs(user_id);",
+        "CREATE INDEX IF NOT EXISTS idx_security_logs_event_type ON security_audit_logs(event_type);"
+    ]
+    for idx_sql in indexes:
+        try:
+            cursor.execute(idx_sql)
+            conn.commit()
+        except Exception:
+            pass
     conn.close()
 
 # Initialize tables immediately on module load
@@ -861,7 +877,7 @@ def admin_get_users_count(search: str = None, status_filter: str = None) -> int:
     return count
 
 def admin_get_users(search: str = None, status_filter: str = None, limit: int = 20, offset: int = 0) -> list:
-    """Admin query to list users with family count and scan count with pagination."""
+    """Admin query to list users with family count and scan count with pagination in a single fast batch."""
     conn = get_db_connection()
     cursor = conn.cursor()
     query = """
@@ -886,6 +902,21 @@ def admin_get_users(search: str = None, status_filter: str = None, limit: int = 
     
     cursor.execute(query, tuple(params))
     rows = [dict(r) for r in cursor.fetchall()]
+
+    if rows:
+        user_ids = [r["id"] for r in rows]
+        placeholders = ",".join("?" for _ in user_ids)
+        cursor.execute(f"SELECT * FROM family_members WHERE user_id IN ({placeholders}) ORDER BY id ASC", tuple(user_ids))
+        fam_rows = [dict(fr) for fr in cursor.fetchall()]
+        fams_by_user = {}
+        for fr in fam_rows:
+            fams_by_user.setdefault(fr["user_id"], []).append(fr)
+        for r in rows:
+            r["family_members"] = fams_by_user.get(r["id"], [])
+    else:
+        for r in rows:
+            r["family_members"] = []
+
     conn.close()
     return rows
 
