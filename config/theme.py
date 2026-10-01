@@ -8197,29 +8197,64 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(.mm-yoga-card-content),
     border-left: 5px solid #F97316 !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
 }
-.mm-review-card-blue {
+[data-theme="dark"] .mm-review-card-blue,
+.stApp[data-theme="dark"] .mm-review-card-blue {
     background: #111827 !important;
-    border-color: rgba(59, 130, 246, 0.35) !important;
+    border: 1.5px solid rgba(59, 130, 246, 0.35) !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
 }
-.mm-review-card-purple {
+[data-theme="dark"] .mm-review-card-blue .mm-text-blue,
+.stApp[data-theme="dark"] .mm-review-card-blue .mm-text-blue {
+    color: #60A5FA !important;
+}
+[data-theme="dark"] .mm-review-row-blue,
+.stApp[data-theme="dark"] .mm-review-row-blue {
+    background: rgba(37, 99, 235, 0.12) !important;
+    border: 1px solid rgba(59, 130, 246, 0.22) !important;
+}
+[data-theme="dark"] .mm-review-row-blue svg,
+.stApp[data-theme="dark"] .mm-review-row-blue svg {
+    stroke: #60A5FA !important;
+}
+
+[data-theme="dark"] .mm-review-card-purple,
+.stApp[data-theme="dark"] .mm-review-card-purple {
     background: #111827 !important;
-    border-color: rgba(124, 58, 237, 0.35) !important;
+    border: 1.5px solid rgba(124, 58, 237, 0.35) !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
 }
-.mm-review-card-green {
+[data-theme="dark"] .mm-review-card-purple .mm-text-purple,
+.stApp[data-theme="dark"] .mm-review-card-purple .mm-text-purple {
+    color: #A78BFA !important;
+}
+[data-theme="dark"] .mm-review-row-purple,
+.stApp[data-theme="dark"] .mm-review-row-purple {
+    background: rgba(124, 58, 237, 0.12) !important;
+    border: 1px solid rgba(124, 58, 237, 0.22) !important;
+}
+[data-theme="dark"] .mm-review-row-purple svg,
+.stApp[data-theme="dark"] .mm-review-row-purple svg {
+    stroke: #A78BFA !important;
+}
+
+[data-theme="dark"] .mm-review-card-green,
+.stApp[data-theme="dark"] .mm-review-card-green {
     background: #111827 !important;
-    border-color: rgba(16, 185, 129, 0.35) !important;
+    border: 1.5px solid rgba(16, 185, 129, 0.35) !important;
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
 }
-.mm-review-row-blue {
-    background: rgba(37, 99, 235, 0.09) !important;
+[data-theme="dark"] .mm-review-card-green .mm-text-green,
+.stApp[data-theme="dark"] .mm-review-card-green .mm-text-green {
+    color: #34D399 !important;
 }
-.mm-review-row-purple {
-    background: rgba(124, 58, 237, 0.09) !important;
+[data-theme="dark"] .mm-review-row-green,
+.stApp[data-theme="dark"] .mm-review-row-green {
+    background: rgba(16, 185, 129, 0.12) !important;
+    border: 1px solid rgba(16, 185, 129, 0.22) !important;
 }
-.mm-review-row-green {
-    background: rgba(16, 185, 129, 0.09) !important;
+[data-theme="dark"] .mm-review-row-green svg,
+.stApp[data-theme="dark"] .mm-review-row-green svg {
+    stroke: #34D399 !important;
 }
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-gis_panel_col_1),
 div[data-testid="stVerticalBlockBorderWrapper"]:has(.st-key-gis_panel_col_2),
@@ -8708,17 +8743,33 @@ div[class*="st-key-btn_run_triage"] button:hover {
 [data-theme="dark"] .mm-step-header-sub {
     color: #94A3B8 !important;
 }
-[data-theme="dark"] .mm-step-info-pill {
-    background: rgba(14, 165, 233, 0.15) !important;
-    border-color: rgba(14, 165, 233, 0.35) !important;
-    color: #7DD3FC !important;
+[data-theme="dark"] .mm-step-info-pill,
+.stApp[data-theme="dark"] .mm-step-info-pill {
+    background: rgba(30, 41, 59, 0.8) !important;
+    border: 1px solid rgba(59, 130, 246, 0.35) !important;
+    color: #93C5FD !important;
 }
-[data-theme="dark"] .mm-field-label-wrap {
+[data-theme="dark"] .mm-step-info-pill span,
+.stApp[data-theme="dark"] .mm-step-info-pill span {
+    color: #93C5FD !important;
+}
+[data-theme="dark"] .mm-step-info-pill svg,
+.stApp[data-theme="dark"] .mm-step-info-pill svg {
+    stroke: #60A5FA !important;
+}
+[data-theme="dark"] .mm-field-label-wrap,
+.stApp[data-theme="dark"] .mm-field-label-wrap {
     color: #F8FAFC !important;
 }
-[data-theme="dark"] .mm-field-icon-badge {
-    background: #1E293B !important;
-    border-color: #334155 !important;
+[data-theme="dark"] .mm-field-icon-badge,
+.stApp[data-theme="dark"] .mm-field-icon-badge {
+    background: rgba(37, 99, 235, 0.18) !important;
+    border: 1px solid rgba(59, 130, 246, 0.35) !important;
+    color: #60A5FA !important;
+}
+[data-theme="dark"] .mm-field-icon-badge svg,
+.stApp[data-theme="dark"] .mm-field-icon-badge svg {
+    stroke: #60A5FA !important;
 }
 [data-theme="dark"] .mm-step-progress-bar {
     background: #38BDF8 !important;
@@ -8729,10 +8780,19 @@ div[class*="st-key-btn_run_triage"] button:hover {
 [data-theme="dark"] .mm-step-progress-sub {
     color: #94A3B8 !important;
 }
-[data-theme="dark"] .mm-symptom-tag {
-    background: rgba(14, 165, 233, 0.18) !important;
-    color: #38BDF8 !important;
-    border-color: rgba(14, 165, 233, 0.35) !important;
+[data-theme="dark"] .mm-symptom-tag,
+.stApp[data-theme="dark"] .mm-symptom-tag,
+[data-theme="dark"] .symptom-chip,
+.stApp[data-theme="dark"] .symptom-chip {
+    background: rgba(37, 99, 235, 0.18) !important;
+    color: #93C5FD !important;
+    border: 1px solid rgba(59, 130, 246, 0.4) !important;
+}
+[data-theme="dark"] .mm-symptom-tag svg,
+.stApp[data-theme="dark"] .mm-symptom-tag svg,
+[data-theme="dark"] .symptom-chip svg,
+.stApp[data-theme="dark"] .symptom-chip svg {
+    stroke: #60A5FA !important;
 }
 [data-theme="dark"] .mm-symptom-tag-x {
     color: #38BDF8 !important;

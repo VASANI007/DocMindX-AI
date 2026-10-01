@@ -4159,13 +4159,28 @@ if st.session_state["active_panel"] == "Health Assessment":
     else:
         st.session_state["p1_patient_context"] = {"mode": "GENERAL", "member_id": None, "name": "General Patient"}
 
+    is_dark = st.session_state.get("dark_mode", False)
+    step_icon_bg = "rgba(37, 99, 235, 0.2)" if is_dark else "#EFF6FF"
+    step_icon_border = "rgba(59, 130, 246, 0.4)" if is_dark else "#BFDBFE"
+    step_icon_color = "#60A5FA" if is_dark else "#2563EB"
+    step_pind_bg = "#111827" if is_dark else "var(--mm-card-bg, #FFFFFF)"
+    step_pind_border = "rgba(59, 130, 246, 0.35)" if is_dark else "#BFDBFE"
+    step_pind_color = "#60A5FA" if is_dark else "#2563EB"
+    step_badge_bg = "rgba(37, 99, 235, 0.18)" if is_dark else "#EFF6FF"
+    step_badge_border = "rgba(59, 130, 246, 0.35)" if is_dark else "#BFDBFE"
+    step_badge_color = "#60A5FA" if is_dark else "#2563EB"
+    step_info_bg = "rgba(30, 41, 59, 0.8)" if is_dark else "#EFF6FF"
+    step_info_border = "rgba(59, 130, 246, 0.4)" if is_dark else "#BFDBFE"
+    step_info_color = "#93C5FD" if is_dark else "#1D4ED8"
+    step_info_svg = "#60A5FA" if is_dark else "#2563EB"
+
     # ----------------- STEP 1: ABOUT YOU -----------------
     if current_step == 1:
         with st.container(key="assessment_step_card", border=True):
             safe_markdown(f"""
             <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
-                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: {step_icon_bg}; border: 1.2px solid {step_icon_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_icon_color};">
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                             <circle cx="12" cy="7" r="4"></circle>
@@ -4176,10 +4191,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                         <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("about_you_note", "Your demographic data helps our clinical AI calculate precise body mass and physiological risk factors.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: {step_pind_bg}; border: 1px solid {step_pind_border}; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 1 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: {step_pind_color}; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 1 {T.get("of_label", "OF")} 4</span>
                         <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step1_sub", "BASIC INFORMATION")}</span>
                     </div>
                 </div>
@@ -4190,7 +4205,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with r1_c1:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
                             <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -4218,7 +4233,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with r1_c2:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="5"></circle>
                             <path d="M11 16v5M8 18.5h6M14.5 7.5L19 3M19 6.5V3h-3.5"></path>
@@ -4244,7 +4259,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with r1_c3:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                             <circle cx="12" cy="10" r="3"></circle>
@@ -4271,7 +4286,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with r2_c1:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-top: 10px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="7" y="2" width="10" height="20" rx="2"></rect>
                             <line x1="7" y1="6" x2="11" y2="6"></line>
@@ -4296,7 +4311,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with r2_c2:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-top: 10px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="3" width="18" height="18" rx="4"></rect>
                             <path d="M9 7h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1Z"></path>
@@ -4318,7 +4333,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with r2_c3:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; margin-top: 10px; font-weight: 700; font-size: 0.84rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
                         </svg>
@@ -4343,7 +4358,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             safe_markdown(f"""
             <div class="mm-symptoms-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
-                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: {step_icon_bg}; border: 1.2px solid {step_icon_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_icon_color};">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                             <path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" fill="#2563EB"/>
                             <path d="M14 2V8H20" fill="#93C5FD"/>
@@ -4721,7 +4736,10 @@ if st.session_state["active_panel"] == "Health Assessment":
             """, unsafe_allow_html=True)
             st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state.get("selected_symptoms_list", []))
             if st.session_state["selected_symptoms_list"]:
-                sel_chips_html = "".join([f'<span class="symptom-chip" style="background: rgba(37, 99, 235, 0.10); color: #2563EB; border: 1.2px solid rgba(37, 99, 235, 0.3); border-radius: 8px; padding: 5px 10px; font-size: 0.80rem; font-weight: 700; margin-right: 6px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px;">{format_symptom_display(s)}</span>' for s in st.session_state["selected_symptoms_list"]])
+                chip_bg = "rgba(37, 99, 235, 0.22)" if is_dark else "rgba(37, 99, 235, 0.10)"
+                chip_color = "#93C5FD" if is_dark else "#2563EB"
+                chip_border = "rgba(59, 130, 246, 0.45)" if is_dark else "rgba(37, 99, 235, 0.3)"
+                sel_chips_html = "".join([f'<span class="symptom-chip" style="background: {chip_bg}; color: {chip_color}; border: 1.2px solid {chip_border}; border-radius: 8px; padding: 5px 10px; font-size: 0.80rem; font-weight: 700; margin-right: 6px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px;">{format_symptom_display(s)}</span>' for s in st.session_state["selected_symptoms_list"]])
                 sel_col1, sel_col2 = st.columns([4, 1])
                 with sel_col1:
                     st.markdown(f'<div class="selected-symptoms" style="display: flex; align-items: center; flex-wrap: wrap;">{sel_chips_html}</div>', unsafe_allow_html=True)
@@ -4760,8 +4778,8 @@ if st.session_state["active_panel"] == "Health Assessment":
             safe_markdown(f"""
             <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
-                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #E0F2FE; border: 1.2px solid #BAE6FD; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: {step_icon_bg}; border: 1.2px solid {step_icon_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_icon_color};">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{step_icon_color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4.5 3v5a5.5 5.5 0 0 0 11 0V3"></path>
                             <path d="M10 13.5v3.5a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-1.5"></path>
                             <circle cx="17" cy="15.5" r="2.5"></circle>
@@ -4772,10 +4790,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                         <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("card_symptoms_sub", "Tell us about your current symptoms so our AI can analyze them more accurately.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: {step_pind_bg}; border: 1px solid {step_pind_border}; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 2 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: {step_pind_color}; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 2 {T.get("of_label", "OF")} 4</span>
                         <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step2_sub", "CLINICAL SYMPTOMS")}</span>
                     </div>
                 </div>
@@ -4794,7 +4812,11 @@ if st.session_state["active_panel"] == "Health Assessment":
                 if c_nm:
                     step2_syms = [c_nm]
             if step2_syms:
-                active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.75;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>' for s in step2_syms])
+                s_tag_bg = "rgba(37, 99, 235, 0.18)" if is_dark else "#EFF6FF"
+                s_tag_border = "rgba(59, 130, 246, 0.4)" if is_dark else "#BFDBFE"
+                s_tag_color = "#93C5FD" if is_dark else "#2563EB"
+                s_tag_stroke = "#60A5FA" if is_dark else "#2563EB"
+                active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: {s_tag_bg}; border: 1px solid {s_tag_border}; color: {s_tag_color}; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{s_tag_stroke}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.85;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>' for s in step2_syms])
             else:
                 active_s_html = f"<span style='font-size: 0.80rem; color: var(--mm-text-muted); font-style: italic;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Return to Step 1 to add symptoms.')}</span>"
             safe_markdown(f"<div style='margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px;'>{active_s_html}</div>")
@@ -4857,10 +4879,10 @@ if st.session_state["active_panel"] == "Health Assessment":
             safe_markdown(f"""
             <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
-                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: {step_icon_bg}; border: 1.2px solid {step_icon_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_icon_color};">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round"/>
-                            <rect x="8" y="2" width="8" height="4" rx="1.5" fill="#2563EB"/>
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" stroke="{step_icon_color}" stroke-width="2.2" stroke-linecap="round"/>
+                            <rect x="8" y="2" width="8" height="4" rx="1.5" fill="{step_icon_color}"/>
                             <path d="M12 11v6M9 14h6" stroke="#DC2626" stroke-width="2.2" stroke-linecap="round"/>
                         </svg>
                     </div>
@@ -4869,10 +4891,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                         <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("card_history_sub", "Tell us about your existing health background to get more accurate insights.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: {step_pind_bg}; border: 1px solid {step_pind_border}; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 3 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: {step_pind_color}; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 3 {T.get("of_label", "OF")} 4</span>
                         <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step3_sub", "MEDICAL HISTORY")}</span>
                     </div>
                 </div>
@@ -4880,19 +4902,19 @@ if st.session_state["active_panel"] == "Health Assessment":
             """)
 
             safe_markdown(f"""
-            <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 16px; font-size: 0.78rem; color: #1D4ED8; font-weight: 600; line-height: 1.35; margin-top: 4px; margin-bottom: 14px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+            <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: {step_info_bg}; border: 1px solid {step_info_border}; border-radius: 10px; padding: 10px 16px; font-size: 0.78rem; color: {step_info_color}; font-weight: 600; line-height: 1.35; margin-top: 4px; margin-bottom: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{step_info_svg}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="16" x2="12" y2="12"></line>
                     <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
-                <span>This information helps our AI provide more personalized and safe recommendations.</span>
+                <span style="color: {step_info_color};">This information helps our AI provide more personalized and safe recommendations.</span>
             </div>
             """)
 
             safe_markdown(f"""
             <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
-                <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4.5 3v5a5.5 5.5 0 0 0 11 0V3"></path>
                         <path d="M10 13.5v3.5a3 3 0 0 0 3 3h1a3 3 0 0 0 3-3v-1.5"></path>
@@ -4907,7 +4929,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 "Diabetes (Type 1 or 2)": {"en": "Diabetes (Type 1 or 2)", "hi": "डायबिटीज / मधुमेह (Diabetes)", "gu": "ડાયાબિટીસ (Diabetes)"},
                 "Hypertension (High BP)": {"en": "Hypertension (High BP)", "hi": "हाई ब्लड प्रेशर (Hypertension)", "gu": "હાઈ બ્લડ પ્રેશર (Hypertension)"},
                 "Asthma / Respiratory": {"en": "Asthma / Respiratory", "hi": "अस्थमा / श्वास रोग (Asthma)", "gu": "અસ્થમા / શ્વાસની તકલીફ (Asthma)"},
-                "Heart Disease": {"en": "Heart Disease", "hi": "हृदय रोग (Heart Disease)", "gu": "હૃદય રોગ (Heart Disease)"},
+                "Heart Disease": {"en": "Heart Disease", "hi": "हृदय रोग (Heart Disease)", "gu": "हृदय रोग (Heart Disease)"},
                 "Thyroid Disorder": {"en": "Thyroid Disorder", "hi": "थायरॉइड विकार (Thyroid)", "gu": "થાઇરોઇડ (Thyroid)"},
                 "Kidney Disease": {"en": "Kidney Disease", "hi": "किडनी की बीमारी (Kidney Disease)", "gu": "કિડનીની બીમારી (Kidney Disease)"},
                 "Acidity / GERD": {"en": "Acidity / GERD", "hi": "एसिडिटी / गैस (Acidity / GERD)", "gu": "એસિડિટી / ગેસ (Acidity / GERD)"}
@@ -4931,7 +4953,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with col_m1:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path>
                             <path d="m8.5 8.5 7 7"></path>
@@ -4950,7 +4972,7 @@ if st.session_state["active_panel"] == "Health Assessment":
             with col_m2:
                 safe_markdown(f"""
                 <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
-                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                    <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="4"></circle>
                             <path d="M12 2v2"></path>
@@ -4976,7 +4998,7 @@ if st.session_state["active_panel"] == "Health Assessment":
 
             safe_markdown(f"""
             <div class="mm-field-label-wrap" style="display: flex; align-items: center; gap: 8px; margin-top: 14px; margin-bottom: 6px; font-weight: 700; font-size: 0.85rem; color: var(--mm-text-primary, #0F172A);">
-                <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
+                <div class="mm-field-icon-badge" style="width: 28px; height: 28px; border-radius: 8px; background: {step_badge_bg}; border: 1px solid {step_badge_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_badge_color};">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
@@ -5012,8 +5034,8 @@ if st.session_state["active_panel"] == "Health Assessment":
             safe_markdown(f"""
             <div class="mm-step-card-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
                 <div class="mm-step-header-left" style="display: flex; align-items: center; gap: 14px;">
-                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; border: 1.2px solid #BFDBFE; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: #2563EB;">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <div class="mm-step-header-icon" style="width: 44px; height: 44px; border-radius: 12px; background: {step_icon_bg}; border: 1.2px solid {step_icon_border}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: {step_icon_color};">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{step_icon_color}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                             <polyline points="22 4 12 14.01 9 11.01"></polyline>
                         </svg>
@@ -5023,10 +5045,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                         <div class="mm-step-header-sub" style="font-size: 0.82rem; color: var(--mm-text-secondary, #64748B); margin-top: 3px; line-height: 1.35;">{T.get("card_review_sub", "Verify your submitted details before running the knowledge graph triage engine.")}</div>
                     </div>
                 </div>
-                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid #BFDBFE; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
+                <div class="mm-step-progress-indicator" style="display: flex; align-items: center; gap: 10px; background: {step_pind_bg}; border: 1px solid {step_pind_border}; border-radius: 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(37,99,235,0.06);">
                     <div class="mm-step-progress-bar" style="width: 3.5px; height: 28px; background: #2563EB; border-radius: 2px;"></div>
                     <div class="mm-step-progress-text" style="display: flex; flex-direction: column; line-height: 1.15;">
-                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: #2563EB; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 4 {T.get("of_label", "OF")} 4</span>
+                        <span class="mm-step-progress-step" style="font-size: 0.74rem; font-weight: 800; color: {step_pind_color}; letter-spacing: 0.5px;">{T.get("step_label", "STEP")} 4 {T.get("of_label", "OF")} 4</span>
                         <span class="mm-step-progress-sub" style="font-size: 0.68rem; font-weight: 700; color: var(--mm-text-secondary, #64748B); letter-spacing: 0.5px;">{T.get("p1_step4_sub", "ANALYSIS & TRIAGE")}</span>
                     </div>
                 </div>
@@ -5034,79 +5056,104 @@ if st.session_state["active_panel"] == "Health Assessment":
             """)
 
             safe_markdown(f"""
-            <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 16px; font-size: 0.78rem; color: #1D4ED8; font-weight: 600; line-height: 1.35; margin-top: 4px; margin-bottom: 14px;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+            <div class="mm-step-info-pill" style="display: flex; align-items: center; gap: 8px; background: {step_info_bg}; border: 1px solid {step_info_border}; border-radius: 10px; padding: 10px 16px; font-size: 0.78rem; color: {step_info_color}; font-weight: 600; line-height: 1.35; margin-top: 4px; margin-bottom: 14px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{step_info_svg}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="12" y1="16" x2="12" y2="12"></line>
                     <line x1="12" y1="8" x2="12.01" y2="8"></line>
                 </svg>
-                <span>Verify all clinical parameters before generating triage diagnosis.</span>
+                <span style="color: {step_info_color};">Verify all clinical parameters before generating triage diagnosis.</span>
             </div>
             """)
 
             u_ctx = st.session_state.get("user_context", {})
+
+            rc_blue_bg = "#111827" if is_dark else "#FFFFFF"
+            rc_blue_border = "rgba(59, 130, 246, 0.35)" if is_dark else "#93C5FD"
+            rc_blue_title = "#60A5FA" if is_dark else "#1D4ED8"
+            rc_blue_row_bg = "rgba(37, 99, 235, 0.12)" if is_dark else "#EFF6FF"
+            rc_blue_row_border = "rgba(59, 130, 246, 0.22)" if is_dark else "transparent"
+            rc_blue_icon = "#60A5FA" if is_dark else "#2563EB"
+
+            rc_purple_bg = "#111827" if is_dark else "#FFFFFF"
+            rc_purple_border = "rgba(124, 58, 237, 0.35)" if is_dark else "#DDD6FE"
+            rc_purple_title = "#A78BFA" if is_dark else "#7C3AED"
+            rc_purple_row_bg = "rgba(124, 58, 237, 0.12)" if is_dark else "#FAF5FF"
+            rc_purple_row_border = "rgba(124, 58, 237, 0.22)" if is_dark else "transparent"
+            rc_purple_icon = "#A78BFA" if is_dark else "#7C3AED"
+
+            rc_green_bg = "#111827" if is_dark else "#FFFFFF"
+            rc_green_border = "rgba(16, 185, 129, 0.35)" if is_dark else "#BBF7D0"
+            rc_green_title = "#34D399" if is_dark else "#059669"
+            rc_green_row_bg = "rgba(16, 185, 129, 0.12)" if is_dark else "#F0FDF4"
+            rc_green_row_border = "rgba(16, 185, 129, 0.22)" if is_dark else "transparent"
+            rc_green_icon = "#34D399" if is_dark else "#059669"
+
+            rc_sub_color = "#94A3B8" if is_dark else "var(--mm-text-secondary)"
+            rc_lbl_color = "#94A3B8" if is_dark else "var(--mm-text-secondary)"
+            rc_val_color = "#F8FAFC" if is_dark else "var(--mm-text-primary)"
 
             c_sum1, c_sum2, c_sum3 = st.columns(3)
             with c_sum1:
                 h_disp = u_ctx.get('height') or 'None'
                 w_disp = u_ctx.get('weight') or 'None'
                 safe_markdown(f"""
-                <div class="mm-review-card-blue">
+                <div class="mm-review-card-blue" style="background: {rc_blue_bg}; border: 1.5px solid {rc_blue_border}; border-radius: 20px; padding: 22px; height: 100%; box-sizing: border-box; box-shadow: 0 2px 8px rgba(37, 99, 235, 0.06);">
                     <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
                         <div style="width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 3px 10px rgba(37, 99, 235, 0.28);">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                         <div>
-                            <b class="mm-text-blue" style="font-size: 1.15rem; font-weight: 800; color: #1D4ED8; display: block; line-height: 1.2;">
+                            <b class="mm-text-blue" style="font-size: 1.15rem; font-weight: 800; color: {rc_blue_title}; display: block; line-height: 1.2;">
                                 {T.get("card_about_you", "Patient Demographics")}
                             </b>
-                            <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">
+                            <div style="font-size: 0.78rem; color: {rc_sub_color}; margin-top: 2px;">
                                 {T.get("card_about_you_sub", "Basic information about the patient")}
                             </div>
                         </div>
                     </div>
                     <div>
-                        <div class="mm-review-row-blue">
+                        <div class="mm-review-row-blue" style="background: {rc_blue_row_bg}; border: 1px solid {rc_blue_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_age_group", "Age Group")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_blue_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_age_group", "Age Group")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('age', u_ctx.get('age', '21-30'), T, lang_code)}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{get_localized_user_val('age', u_ctx.get('age', '21-30'), T, lang_code)}</span>
                         </div>
-                        <div class="mm-review-row-blue">
+                        <div class="mm-review-row-blue" style="background: {rc_blue_row_bg}; border: 1px solid {rc_blue_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="10" cy="14" r="5"/><line x1="19" y1="5" x2="13.5" y2="10.5"/><polyline points="15 5 19 5 19 9"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_gender", "Biological Gender")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_blue_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="10" cy="14" r="5"/><line x1="19" y1="5" x2="13.5" y2="10.5"/><polyline points="15 5 19 5 19 9"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_gender", "Biological Gender")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('gender', u_ctx.get('gender', 'Male'), T, lang_code)}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{get_localized_user_val('gender', u_ctx.get('gender', 'Male'), T, lang_code)}</span>
                         </div>
-                        <div class="mm-review-row-blue">
+                        <div class="mm-review-row-blue" style="background: {rc_blue_row_bg}; border: 1px solid {rc_blue_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_location", "Current City / Location")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_blue_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_location", "Current City / Location")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('state') or u_ctx.get('location') or 'None'}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{u_ctx.get('state') or u_ctx.get('location') or 'None'}</span>
                         </div>
-                        <div class="mm-review-row-blue">
+                        <div class="mm-review-row-blue" style="background: {rc_blue_row_bg}; border: 1px solid {rc_blue_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 3v18"/><path d="M3 3v18"/><path d="M3 12h18"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_height", "Height (cm)")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_blue_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M21 3v18"/><path d="M3 3v18"/><path d="M3 12h18"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_height", "Height (cm)")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{h_disp}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{h_disp}</span>
                         </div>
-                        <div class="mm-review-row-blue">
+                        <div class="mm-review-row-blue" style="background: {rc_blue_row_bg}; border: 1px solid {rc_blue_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="6" width="16" height="14" rx="2"/><circle cx="12" cy="10" r="2"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_weight", "Weight (kg)")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_blue_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="4" y="6" width="16" height="14" rx="2"/><circle cx="12" cy="10" r="2"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_weight", "Weight (kg)")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{w_disp}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{w_disp}</span>
                         </div>
-                        <div class="mm-review-row-blue" style="margin-bottom: 0;">
+                        <div class="mm-review-row-blue" style="background: {rc_blue_row_bg}; border: 1px solid {rc_blue_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_blood_group", "Blood Group")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_blue_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_blood_group", "Blood Group")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('other', u_ctx.get('blood_group'), T, lang_code)}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{get_localized_user_val('other', u_ctx.get('blood_group'), T, lang_code)}</span>
                         </div>
                     </div>
                 </div>
@@ -5127,41 +5174,41 @@ if st.session_state["active_panel"] == "Health Assessment":
                 sev_lbl = T.get("symptom_severity", "Symptom Severity Level").rstrip(":")
                 dur_lbl = T.get("symptom_duration", "Symptom Duration").rstrip(":")
                 safe_markdown(f"""
-                <div class="mm-review-card-purple">
+                <div class="mm-review-card-purple" style="background: {rc_purple_bg}; border: 1.5px solid {rc_purple_border}; border-radius: 20px; padding: 22px; height: 100%; box-sizing: border-box; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.06);">
                     <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
                         <div style="width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: #7C3AED; display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 3px 10px rgba(124, 58, 237, 0.28);">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                         </div>
                         <div>
-                            <b class="mm-text-purple" style="font-size: 1.15rem; font-weight: 800; color: #7C3AED; display: block; line-height: 1.2;">
+                            <b class="mm-text-purple" style="font-size: 1.15rem; font-weight: 800; color: {rc_purple_title}; display: block; line-height: 1.2;">
                                 {T.get("card_symptoms_title", "Clinical Symptoms")}
                             </b>
-                            <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">
+                            <div style="font-size: 0.78rem; color: {rc_sub_color}; margin-top: 2px;">
                                 {T.get("card_symptoms_sub", "Current symptoms and severity")}
                             </div>
                         </div>
                     </div>
                     <div>
-                        <div class="mm-review-row-purple">
+                        <div class="mm-review-row-purple" style="background: {rc_purple_row_bg}; border: 1px solid {rc_purple_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{sym_lbl}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_purple_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{sym_lbl}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{s_list_str}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{s_list_str}</span>
                         </div>
-                        <div class="mm-review-row-purple">
+                        <div class="mm-review-row-purple" style="background: {rc_purple_row_bg}; border: 1px solid {rc_purple_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{sev_lbl}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_purple_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{sev_lbl}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('severity', u_ctx.get('severity', 'Moderate'), T, lang_code)}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{get_localized_user_val('severity', u_ctx.get('severity', 'Moderate'), T, lang_code)}</span>
                         </div>
-                        <div class="mm-review-row-purple" style="margin-bottom: 0;">
+                        <div class="mm-review-row-purple" style="background: {rc_purple_row_bg}; border: 1px solid {rc_purple_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{dur_lbl}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_purple_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{dur_lbl}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{get_localized_user_val('duration', u_ctx.get('duration', '1 - 3 Days'), T, lang_code)}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{get_localized_user_val('duration', u_ctx.get('duration', '1 - 3 Days'), T, lang_code)}</span>
                         </div>
                     </div>
                 </div>
@@ -5171,48 +5218,48 @@ if st.session_state["active_panel"] == "Health Assessment":
                 cond_str = ", ".join(u_ctx.get("conditions", ["None"]))
                 fam_val = u_ctx.get("surgeries", "") or "None"
                 safe_markdown(f"""
-                <div class="mm-review-card-green">
+                <div class="mm-review-card-green" style="background: {rc_green_bg}; border: 1.5px solid {rc_green_border}; border-radius: 20px; padding: 22px; height: 100%; box-sizing: border-box; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.06);">
                     <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
                         <div style="width: 44px; height: 44px; min-width: 44px; border-radius: 50%; background: #059669; display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 3px 10px rgba(5, 150, 105, 0.28);">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
                         </div>
                         <div>
-                            <b class="mm-text-green" style="font-size: 1.15rem; font-weight: 800; color: #059669; display: block; line-height: 1.2;">
+                            <b class="mm-text-green" style="font-size: 1.15rem; font-weight: 800; color: {rc_green_title}; display: block; line-height: 1.2;">
                                 {T.get("step3_title", "Medical History")}
                             </b>
-                            <div style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-top: 2px;">
+                            <div style="font-size: 0.78rem; color: {rc_sub_color}; margin-top: 2px;">
                                 {T.get("card_history_sub", "Past medical conditions and relevant history")}
                             </div>
                         </div>
                     </div>
                     <div>
-                        <div class="mm-review-row-green">
+                        <div class="mm-review-row-green" style="background: {rc_green_row_bg}; border: 1px solid {rc_green_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_conditions", "Pre-existing Medical Conditions")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_green_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_conditions", "Pre-existing Medical Conditions")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{cond_str}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{cond_str}</span>
                         </div>
-                        <div class="mm-review-row-green">
+                        <div class="mm-review-row-green" style="background: {rc_green_row_bg}; border: 1px solid {rc_green_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="4.5" y1="19.5" x2="19.5" y2="4.5"/><path d="M10.5 4.5a4.24 4.24 0 0 0-6 6l9 9a4.24 4.24 0 0 0 6-6l-9-9z"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_medications", "Current Ongoing Medications")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_green_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><line x1="4.5" y1="19.5" x2="19.5" y2="4.5"/><path d="M10.5 4.5a4.24 4.24 0 0 0-6 6l9 9a4.24 4.24 0 0 0 6-6l-9-9z"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_medications", "Current Ongoing Medications")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('medications') or 'None'}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{u_ctx.get('medications') or 'None'}</span>
                         </div>
-                        <div class="mm-review-row-green">
+                        <div class="mm-review-row-green" style="background: {rc_green_row_bg}; border: 1px solid {rc_green_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_allergies", "Known Food or Drug Allergies")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_green_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_allergies", "Known Food or Drug Allergies")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{u_ctx.get('allergies') or 'None'}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{u_ctx.get('allergies') or 'None'}</span>
                         </div>
-                        <div class="mm-review-row-green" style="margin-bottom: 0;">
+                        <div class="mm-review-row-green" style="background: {rc_green_row_bg}; border: 1px solid {rc_green_row_border}; border-radius: 12px; padding: 10px 14px; margin-bottom: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                                <span style="font-size: 0.82rem; color: var(--mm-text-secondary); font-weight: 500;">{T.get("label_family_history", "Relevant Family Medical History (Optional)")}:</span>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="{rc_green_icon}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                <span style="font-size: 0.82rem; color: {rc_lbl_color}; font-weight: 500;">{T.get("label_family_history", "Relevant Family Medical History (Optional)")}:</span>
                             </div>
-                            <span style="font-size: 0.84rem; color: var(--mm-text-primary); font-weight: 700;">{fam_val}</span>
+                            <span style="font-size: 0.84rem; color: {rc_val_color}; font-weight: 700;">{fam_val}</span>
                         </div>
                     </div>
                 </div>
