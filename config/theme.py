@@ -303,7 +303,17 @@ td code {
 
 /* Dark Mode Form Inputs (Inputs, TextAreas, Dropdowns) */
 [data-theme="dark"] [data-baseweb="base-input"],
+[data-theme="dark"] [data-baseweb="input"],
 [data-theme="dark"] .stTextInput [data-baseweb="base-input"],
+[data-theme="dark"] .stTextInput [data-baseweb="input"],
+[data-theme="dark"] div[data-testid="stTextInput"] [data-baseweb="base-input"],
+[data-theme="dark"] div[data-testid="stTextInput"] [data-baseweb="input"],
+.stApp[data-theme="dark"] [data-baseweb="base-input"],
+.stApp[data-theme="dark"] [data-baseweb="input"],
+.stApp[data-theme="dark"] .stTextInput [data-baseweb="base-input"],
+.stApp[data-theme="dark"] .stTextInput [data-baseweb="input"],
+.stApp[data-theme="dark"] div[data-testid="stTextInput"] [data-baseweb="base-input"],
+.stApp[data-theme="dark"] div[data-testid="stTextInput"] [data-baseweb="input"],
 [data-theme="dark"] .stTextArea [data-baseweb="base-input"],
 [data-theme="dark"] .stNumberInput [data-baseweb="base-input"],
 [data-theme="dark"] .stSelectbox > div > div,
@@ -312,8 +322,8 @@ td code {
 [data-theme="dark"] .stTimeInput [data-baseweb="base-input"],
 [data-theme="dark"] .stMultiSelect > div > div,
 [data-theme="dark"] [data-baseweb="multi-select"] > div {
-    background-color: #111827 !important;
-    background: #111827 !important;
+    background-color: #0F172A !important;
+    background: #0F172A !important;
     border: 1.5px solid #1E2E4E !important;
     border-color: #1E2E4E !important;
     border-radius: 8px !important;
@@ -11719,11 +11729,65 @@ div[data-testid="stNotification"] svg {
 [data-theme="dark"] ::-webkit-scrollbar-track { background: #0B1220 !important; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #1E293B !important; border-radius: 4px !important; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #334155 !important; }
+
+/* ============================================================
+   BULLETPROOF DARK MODE TEXT INPUT FIX (STREAMLIT CLOUD COMPATIBLE)
+   ============================================================ */
+div[data-testid="stTextInput"],
+div[data-testid="stTextInput"] > div,
+div[data-testid="stTextInput"] [data-baseweb="base-input"],
+div[data-testid="stTextInput"] [data-baseweb="input"],
+div[data-testid="stTextInputRootElement"],
+.stTextInput,
+.stTextInput > div,
+.stTextInput [data-baseweb="base-input"],
+.stTextInput [data-baseweb="input"],
+.stTextInput > div > div,
+div[data-testid="stForm"] div[data-testid="stTextInput"] [data-baseweb="base-input"],
+div[data-testid="stForm"] div[data-testid="stTextInput"] [data-baseweb="input"] {
+    background: #0F172A !important;
+    background-color: #0F172A !important;
+    border: 1.5px solid #1E2E4E !important;
+    border-color: #1E2E4E !important;
+    border-radius: 8px !important;
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+}
+
+div[data-testid="stTextInput"] input,
+div[data-testid="stTextInput"] [data-baseweb="input"] input,
+div[data-testid="stTextInput"] [data-baseweb="base-input"] input,
+.stTextInput input,
+.stTextInput [data-baseweb="input"] input,
+.stTextInput [data-baseweb="base-input"] input,
+.stTextInput > div > div > input,
+form[data-testid="stForm"] .stTextInput input,
+form[data-testid="stForm"] div[data-testid="stTextInput"] input {
+    background: transparent !important;
+    background-color: transparent !important;
+    color: #F8FAFC !important;
+    -webkit-text-fill-color: #F8FAFC !important;
+    border: none !important;
+    border-width: 0 !important;
+    outline: none !important;
+    box-shadow: none !important;
+    caret-color: #38BDF8 !important;
+}
+
+div[data-testid="stTextInput"] input::placeholder,
+.stTextInput input::placeholder,
+form[data-testid="stForm"] .stTextInput input::placeholder {
+    color: #64748B !important;
+    -webkit-text-fill-color: #64748B !important;
+}
+
+div[data-testid="stTextInput"] [data-baseweb="base-input"]:focus-within,
+.stTextInput [data-baseweb="base-input"]:focus-within {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) !important;
+}
 </style>
 """
-
-
-DARK_CSS_OVERRIDE = ""
 
 
 def apply_theme(dark_mode: bool = False):
@@ -11734,4 +11798,14 @@ def apply_theme(dark_mode: bool = False):
     import streamlit as st
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
     if dark_mode:
-        st.markdown('<script>document.documentElement.setAttribute("data-theme", "dark");</script>', unsafe_allow_html=True)
+        st.markdown(DARK_CSS_OVERRIDE, unsafe_allow_html=True)
+        st.markdown("""
+        <script>
+        try {
+            document.documentElement.setAttribute("data-theme", "dark");
+            document.body.setAttribute("data-theme", "dark");
+            var stApp = document.querySelector('.stApp');
+            if (stApp) stApp.setAttribute("data-theme", "dark");
+        } catch(e) {}
+        </script>
+        """, unsafe_allow_html=True)

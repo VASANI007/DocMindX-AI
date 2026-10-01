@@ -1,9 +1,19 @@
 """
 DocMindX AI - Diagnostic Evaluation & Clinical Findings Results Component
 Renders the complete clinical evaluation results screen with 100% dynamic data,
-zero emojis (pure vector SVGs), dark mode support, and responsive mobile flex layout.
-Matches the clinical reference design with KPI cards, 5 numbered clinical guides,
-side-by-side sub-cards, parameter breakdown table, and export buttons.
+zero emojis (pure vector SVGs), dark mode & light mode support, and responsive layout.
+Matches the clinical reference mockup in Image 3 with:
+- Top Header Card with document icon, title, metadata, date box, and download action
+- 4 KPI Stat Cards in a row (Total Evaluated, Abnormal, Overall Status, AI Complete)
+- Lightbulb clinical AI guide banner
+- Accordion / Collapsible section cards with SVG icons and animated chevrons:
+    1. Key Findings Overview (Open: Normal vs Abnormal side-by-side cards)
+    2. Biological Function in Plain Language (Open: 5 colored mini cards grid)
+    3. Impact on the Body & Symptoms (Collapsible)
+    4. Actionable Diet & Nutrition Plan (Collapsible: Foods to Consume vs Foods to Avoid)
+    5. Medical Precautions & Red Flags (Collapsible: Next Steps vs Red Flags)
+    6. Detailed Parameter Breakdown (Collapsible: full clean HTML table)
+- Bottom action buttons
 """
 import re
 from datetime import datetime
@@ -55,7 +65,7 @@ def format_bullets_to_html(raw_text: str, bullet_color: str = "#2563EB", is_dark
 
     if not items:
         cleaned_raw = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', raw_text)
-        return f"<p style='margin: 0; font-size: 0.86rem; line-height: 1.6; color: {text_c};'>{cleaned_raw}</p>"
+        return f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.6; color: {text_c};'>{cleaned_raw}</p>"
 
     html_items = []
     for it in items:
@@ -65,7 +75,7 @@ def format_bullets_to_html(raw_text: str, bullet_color: str = "#2563EB", is_dark
             it_clean = f'<strong style="color: {bold_c}; font-weight: 700;">{parts[0].strip()}:</strong> {parts[1].strip()}'
 
         dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; border-radius: 50%; background: {bullet_color}; margin-top: 7px; flex-shrink: 0;"></span>'
-        html_items.append(f'<div style="display: flex; align-items: flex-start; gap: 9px; margin-bottom: 8px; font-size: 0.86rem; line-height: 1.55; color: {text_c};">{dot}<div style="flex: 1;">{it_clean}</div></div>')
+        html_items.append(f'<div style="display: flex; align-items: flex-start; gap: 9px; margin-bottom: 8px; font-size: 0.85rem; line-height: 1.55; color: {text_c};">{dot}<div style="flex: 1;">{it_clean}</div></div>')
 
     return "".join(html_items)
 
@@ -90,7 +100,7 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
                     parts = b_clean.split(":", 1)
                     b_clean = f'<strong style="color: {bold_c}; font-weight: 700;">{parts[0].strip()}:</strong> {parts[1].strip()}'
                 dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; border-radius: 50%; background: {dot_color}; margin-top: 7px; flex-shrink: 0;"></span>'
-                formatted_parts.append(f'<div style="display: flex; align-items: flex-start; gap: 9px; margin-bottom: 7px; font-size: 0.88rem; line-height: 1.55; color: {text_c};">{dot}<div style="flex: 1;">{b_clean}</div></div>')
+                formatted_parts.append(f'<div style="display: flex; align-items: flex-start; gap: 9px; margin-bottom: 7px; font-size: 0.86rem; line-height: 1.55; color: {text_c};">{dot}<div style="flex: 1;">{b_clean}</div></div>')
             bullet_items = []
 
     for line in lines:
@@ -105,7 +115,7 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
         else:
             flush_bullets()
             para = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', stripped)
-            formatted_parts.append(f'<p style="margin: 0 0 10px 0; font-size: 0.88rem; line-height: 1.65; color: {text_c};">{para}</p>')
+            formatted_parts.append(f'<p style="margin: 0 0 10px 0; font-size: 0.86rem; line-height: 1.65; color: {text_c};">{para}</p>')
 
     flush_bullets()
     return "".join(formatted_parts)
@@ -157,9 +167,19 @@ def render_diagnostic_evaluation_view(
     lang_code: str = "en"
 ):
     """
-    Renders the complete clinical evaluation screen matching the user's reference mockup.
-    Provides harmonious dark/light mode rendering, crisp alignment, zero unrendered code blocks,
-    and responsive mobile-desktop layout.
+    Renders the complete clinical evaluation screen matching the user's reference mockup in Image 3.
+    Features:
+    - 4 KPI cards in a row
+    - Blue lightbulb AI guide banner
+    - Interactive accordion cards for each clinical section
+    - Section 1: Normal Parameters (green) vs Abnormal Parameters (red) side-by-side cards
+    - Section 2: 5 colored mini cards grid explaining biological function of each marker
+    - Section 3: Impact on body & symptoms
+    - Section 4: Diet plan with Foods to Consume vs Foods to Avoid
+    - Section 5: Medical Precautions & Red Flags
+    - Section 6: Clean Parameter Breakdown Table with styled Normal/Abnormal badges
+    - Zero code blocks or raw HTML display bugs
+    - 100% responsive and identical in both dark and light modes
     """
     findings = findings or []
     breakdown_text = breakdown_text or ""
@@ -167,114 +187,151 @@ def render_diagnostic_evaluation_view(
 
     # Core Design Tokens
     card_bg = "#111827" if is_dark else "#FFFFFF"
-    card_border = "rgba(59, 130, 246, 0.28)" if is_dark else "#E2E8F0"
+    card_border = "rgba(59, 130, 246, 0.25)" if is_dark else "#E2E8F0"
     card_shadow = "0 4px 16px rgba(0, 0, 0, 0.35)" if is_dark else "0 2px 8px rgba(0, 0, 0, 0.04)"
     text_primary = "#F8FAFC" if is_dark else "#0F172A"
     text_secondary = "#94A3B8" if is_dark else "#64748B"
-    text_muted = "#64748B" if is_dark else "#94A3B8"
+    inner_divider = "rgba(255, 255, 255, 0.06)" if is_dark else "#F1F5F9"
+
+    # Pre-generate PDF for download button
+    c1_info = kpi_data.get("card1", {})
+    c2_info = kpi_data.get("card2", {})
+    c3_info = kpi_data.get("card3", {})
+    total_detected = c1_info.get('val', len(findings))
+    ab_count = c2_info.get('val', 0)
+    status_overall = c3_info.get('val', 'All Normal')
+
+    pdf_buf = generate_diagnostic_evaluation_pdf(
+        doc_name=doc_name,
+        doc_type=doc_type_choice,
+        age_group=age_for_report,
+        gender=gender_for_report,
+        findings=findings,
+        breakdown_text=breakdown_text,
+        total_eval=total_detected,
+        abnormal_count=ab_count,
+        overall_status=status_overall
+    )
+    pdf_filename = f"DocMindX_Diagnostic_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    report_date_str = datetime.now().strftime("%d %b %Y")
+
+    # Injected styles for seamless accordions
+    render_html("""
+    <style>
+    .mm-result-accordion summary::-webkit-details-marker { display: none !important; }
+    .mm-result-accordion summary { list-style: none !important; outline: none !important; }
+    .mm-result-accordion[open] .mm-chevron-icon svg { transform: rotate(180deg); }
+    .mm-chevron-icon svg { transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1); }
+    .mm-result-accordion:hover { border-color: rgba(59, 130, 246, 0.40) !important; }
+    </style>
+    """)
 
     # =========================================================================
-    # 1. TOP REPORT HEADER CARD
+    # 1. TOP HEADER (Matching Image 3 Top Row)
     # =========================================================================
-    badge_bg = "rgba(16, 185, 129, 0.16)" if is_dark else "rgba(16, 185, 129, 0.10)"
-    badge_border = "rgba(16, 185, 129, 0.35)" if is_dark else "rgba(16, 185, 129, 0.30)"
-    badge_title_c = "#34D399" if is_dark else "#059669"
-    icon_box_bg = "rgba(37, 99, 235, 0.18)" if is_dark else "#EFF6FF"
-    icon_box_border = "rgba(59, 130, 246, 0.35)" if is_dark else "#BFDBFE"
+    hdr_col_left, hdr_col_right = st.columns([3.2, 1.8], gap="medium")
 
-    render_html(f"""
-    <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 18px 22px; margin-bottom: 16px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
-        <div style="display: flex; align-items: center; gap: 14px;">
-            <div style="width: 46px; height: 46px; min-width: 46px; border-radius: 12px; background: {icon_box_bg}; border: 1.2px solid {icon_box_border}; display: flex; align-items: center; justify-content: center; position: relative; flex-shrink: 0;">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                    <path d="M12 11h4"></path>
-                    <path d="M12 16h4"></path>
-                    <path d="M8 11h.01"></path>
-                    <path d="M8 16h.01"></path>
+    with hdr_col_left:
+        render_html(f"""
+        <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
+            <div style="width: 48px; height: 48px; min-width: 48px; border-radius: 12px; background: #2563EB; display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);">
+                <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <line x1="10" y1="9" x2="8" y2="9"></line>
                 </svg>
             </div>
             <div>
-                <h2 style="font-size: 1.28rem; font-weight: 800; color: {text_primary}; margin: 0; line-height: 1.25;">Diagnostic Evaluation & Clinical Findings</h2>
-                <div style="font-size: 0.82rem; color: {text_secondary}; margin-top: 3px; font-weight: 500;">
+                <h2 style="font-size: 1.45rem; font-weight: 800; color: {text_primary}; margin: 0; line-height: 1.25; letter-spacing: -0.01em;">
+                    Diagnostic Evaluation & Clinical Findings
+                </h2>
+                <div style="font-size: 0.84rem; color: {text_secondary}; margin-top: 3px; font-weight: 500;">
                     {doc_name} • {doc_type_choice} • Age: {age_for_report} • Gender: {gender_for_report}
                 </div>
             </div>
         </div>
-        <div style="background: {badge_bg}; border: 1px solid {badge_border}; border-radius: 9999px; padding: 7px 16px; display: flex; align-items: center; gap: 10px;">
-            <div style="width: 22px; height: 22px; border-radius: 50%; background: #10B981; display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-            </div>
-            <div>
-                <div style="font-size: 0.72rem; font-weight: 800; color: {badge_title_c}; letter-spacing: 0.5px;">AI ANALYSIS COMPLETE</div>
-                <div style="font-size: 0.68rem; color: {text_secondary}; font-weight: 500;">Report analyzed successfully</div>
-            </div>
-        </div>
-    </div>
-    """)
+        """)
 
-    # =========================================================================
-    # 2. THREE KPI STAT CARDS
-    # =========================================================================
-    c1_info = kpi_data.get("card1", {})
-    c2_info = kpi_data.get("card2", {})
-    c3_info = kpi_data.get("card3", {})
-
-    k_col1, k_col2, k_col3 = st.columns(3)
-
-    # KPI 1: Total Evaluated
-    with k_col1:
-        render_html(f"""
-        <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 16px 18px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; min-height: 98px; box-sizing: border-box;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="width: 44px; height: 44px; min-width: 44px; border-radius: 12px; background: rgba(37, 99, 235, 0.14); border: 1px solid rgba(59, 130, 246, 0.3); display: flex; align-items: center; justify-content: center; color: #3B82F6; flex-shrink: 0;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        <polyline points="14 2 14 8 20 8"></polyline>
-                        <line x1="16" y1="13" x2="8" y2="13"></line>
-                        <line x1="16" y1="17" x2="8" y2="17"></line>
+    with hdr_col_right:
+        date_box_bg = "#1E293B" if is_dark else "#F8FAFC"
+        date_box_bd = "#334155" if is_dark else "#E2E8F0"
+        
+        c_right1, c_right2 = st.columns([1.1, 1.3], gap="small")
+        with c_right1:
+            render_html(f"""
+            <div style="background: {date_box_bg}; border: 1px solid {date_box_bd}; border-radius: 10px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; height: 42px; box-sizing: border-box;">
+                <div style="color: #3B82F6; display: flex; align-items: center;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
                     </svg>
                 </div>
                 <div>
-                    <div style="font-size: 0.68rem; font-weight: 800; color: {text_secondary}; letter-spacing: 0.5px; text-transform: uppercase;">{c1_info.get('label', 'TOTAL PARAMETERS EVALUATED')}</div>
-                    <div style="font-size: 1.55rem; font-weight: 800; color: {text_primary}; line-height: 1.2; margin: 2px 0;">{c1_info.get('val', 0)}</div>
-                    <div style="font-size: 0.70rem; font-weight: 600; color: #3B82F6; display: inline-flex; align-items: center; gap: 4px;">
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                        </svg>
-                        <span>{c1_info.get('sub', 'From Lab Report')}</span>
-                    </div>
+                    <div style="font-size: 0.64rem; font-weight: 600; color: {text_secondary}; line-height: 1;">Report Date</div>
+                    <div style="font-size: 0.82rem; font-weight: 800; color: {text_primary}; line-height: 1.2; margin-top: 2px;">{report_date_str}</div>
                 </div>
             </div>
-            <div style="opacity: 0.85; flex-shrink: 0;">
-                <svg width="24" height="20" viewBox="0 0 24 24" fill="#3B82F6">
-                    <rect x="3" y="10" width="4" height="14" rx="1.2"></rect>
-                    <rect x="10" y="4" width="4" height="20" rx="1.2"></rect>
-                    <rect x="17" y="14" width="4" height="10" rx="1.2"></rect>
-                </svg>
+            """)
+        with c_right2:
+            st.download_button(
+                label="Download Report",
+                icon=":material/download:",
+                data=pdf_buf.getvalue(),
+                file_name=pdf_filename,
+                mime="application/pdf",
+                key="btn_p2_hdr_download_pdf",
+                type="primary",
+                use_container_width=True
+            )
+
+    # =========================================================================
+    # 2. FOUR KPI STAT CARDS IN A ROW (Matching Image 3)
+    # =========================================================================
+    k1, k2, k3, k4 = st.columns(4, gap="small")
+
+    # KPI 1: Total Parameters Evaluated
+    with k1:
+        render_html(f"""
+        <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 12px; padding: 14px 16px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; min-height: 94px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 42px; height: 42px; min-width: 42px; border-radius: 10px; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center; color: #3B82F6; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">Total Parameters Evaluated</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: {text_primary}; line-height: 1.15; margin: 2px 0;">{total_detected}</div>
+                    <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(37, 99, 235, 0.10); color: #3B82F6; border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 700;">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>From Lab Report</span>
+                    </div>
+                </div>
             </div>
         </div>
         """)
 
     # KPI 2: Abnormal / Out-of-Range
-    with k_col2:
-        ab_val = c2_info.get('val', 0)
-        is_alert = ab_val > 0
-        pill_bg = "rgba(239, 68, 68, 0.18)" if is_alert else "rgba(16, 185, 129, 0.18)"
-        pill_color = "#F87171" if (is_alert and is_dark) else ("#DC2626" if is_alert else ("#34D399" if is_dark else "#059669"))
-        pill_border = "rgba(239, 68, 68, 0.35)" if is_alert else "rgba(16, 185, 129, 0.35)"
-        icon_bg = "rgba(239, 68, 68, 0.14)" if is_alert else "rgba(245, 158, 11, 0.14)"
-        icon_border = "rgba(239, 68, 68, 0.3)" if is_alert else "rgba(245, 158, 11, 0.3)"
-        icon_color = "#EF4444" if is_alert else "#F59E0B"
-        arrow_char = f"↑ {ab_val}" if is_alert else "↓ 0"
+    with k2:
+        is_abnormal = ab_count > 0
+        k2_bg = "rgba(239, 68, 68, 0.12)" if is_abnormal else "rgba(16, 185, 129, 0.12)"
+        k2_color = "#EF4444" if is_abnormal else "#10B981"
+        k2_val_c = "#EF4444" if is_abnormal else text_primary
+        k2_pill_text = f"+ {ab_count} High" if is_abnormal else "0 All Normal"
+        k2_pill_bg = "rgba(239, 68, 68, 0.14)" if is_abnormal else "rgba(16, 185, 129, 0.14)"
+        k2_pill_c = "#DC2626" if (is_abnormal and not is_dark) else ("#F87171" if is_abnormal else ("#34D399" if is_dark else "#059669"))
+        k2_pill_bd = "rgba(239, 68, 68, 0.30)" if is_abnormal else "rgba(16, 185, 129, 0.30)"
 
         render_html(f"""
-        <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 16px 18px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; min-height: 98px; box-sizing: border-box;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="width: 44px; height: 44px; min-width: 44px; border-radius: 12px; background: {icon_bg}; border: 1px solid {icon_border}; display: flex; align-items: center; justify-content: center; color: {icon_color}; flex-shrink: 0;">
+        <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 12px; padding: 14px 16px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; min-height: 94px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 42px; height: 42px; min-width: 42px; border-radius: 10px; background: {k2_bg}; display: flex; align-items: center; justify-content: center; color: {k2_color}; flex-shrink: 0;">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
                         <line x1="12" y1="9" x2="12" y2="13"></line>
@@ -282,109 +339,104 @@ def render_diagnostic_evaluation_view(
                     </svg>
                 </div>
                 <div>
-                    <div style="font-size: 0.68rem; font-weight: 800; color: {text_secondary}; letter-spacing: 0.5px; text-transform: uppercase;">{c2_info.get('label', 'ABNORMAL / OUT-OF-RANGE')}</div>
-                    <div style="font-size: 1.55rem; font-weight: 800; color: {'#EF4444' if is_alert else text_primary}; line-height: 1.2; margin: 2px 0;">{ab_val}</div>
-                    <div style="font-size: 0.70rem; font-weight: 700;">
-                        <span style="background: {pill_bg}; color: {pill_color}; border: 1px solid {pill_border}; padding: 2px 8px; border-radius: 6px; display: inline-block;">
-                            {arrow_char}
-                        </span>
+                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">Abnormal / Out-of-Range</div>
+                    <div style="font-size: 1.55rem; font-weight: 800; color: {k2_val_c}; line-height: 1.15; margin: 2px 0;">{ab_count}</div>
+                    <div style="display: inline-flex; align-items: center; gap: 4px; background: {k2_pill_bg}; color: {k2_pill_c}; border: 1px solid {k2_pill_bd}; border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 700;">
+                        <span>{k2_pill_text}</span>
                     </div>
                 </div>
-            </div>
-            <div style="opacity: 0.85; flex-shrink: 0;">
-                <svg width="24" height="20" viewBox="0 0 24 24" fill="{'#EF4444' if is_alert else '#3B82F6'}">
-                    <rect x="3" y="14" width="4" height="10" rx="1.2"></rect>
-                    <rect x="10" y="6" width="4" height="18" rx="1.2"></rect>
-                    <rect x="17" y="10" width="4" height="14" rx="1.2"></rect>
-                </svg>
             </div>
         </div>
         """)
 
-    # KPI 3: Overall Status
-    with k_col3:
-        status_val = c3_info.get('val', 'All Normal')
-        is_normal = status_val.lower() in ["all normal", "normal", "verified regimen", "low risk"]
-        status_pill_bg = "rgba(16, 185, 129, 0.18)" if is_normal else "rgba(245, 158, 11, 0.18)"
-        status_pill_color = "#34D399" if (is_normal and is_dark) else ("#059669" if is_normal else ("#FCD34D" if is_dark else "#D97706"))
-        status_pill_border = "rgba(16, 185, 129, 0.35)" if is_normal else "rgba(245, 158, 11, 0.35)"
-        status_sub_text = c3_info.get('sub', 'Within Reference Range' if is_normal else 'Review Recommended')
-        kpi3_icon_bg = "rgba(16, 185, 129, 0.14)" if is_normal else "rgba(245, 158, 11, 0.14)"
-        kpi3_icon_border = "rgba(16, 185, 129, 0.3)" if is_normal else "rgba(245, 158, 11, 0.3)"
-        kpi3_icon_color = "#10B981" if is_normal else "#F59E0B"
+    # KPI 3: Overall Clinical Status
+    with k3:
+        is_normal_status = status_overall.lower() in ["all normal", "normal", "low risk"]
+        k3_bg = "rgba(16, 185, 129, 0.12)" if is_normal_status else "rgba(245, 158, 11, 0.12)"
+        k3_color = "#10B981" if is_normal_status else "#F59E0B"
+        k3_pill_text = "Within Reference Range" if is_normal_status else "Review Recommended"
+        k3_pill_bg = "rgba(16, 185, 129, 0.14)" if is_normal_status else "rgba(245, 158, 11, 0.14)"
+        k3_pill_c = "#059669" if (is_normal_status and not is_dark) else ("#34D399" if is_normal_status else ("#FCD34D" if is_dark else "#D97706"))
+        k3_pill_bd = "rgba(16, 185, 129, 0.30)" if is_normal_status else "rgba(245, 158, 11, 0.30)"
 
         render_html(f"""
-        <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 16px 18px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; min-height: 98px; box-sizing: border-box;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="width: 44px; height: 44px; min-width: 44px; border-radius: 12px; background: {kpi3_icon_bg}; border: 1px solid {kpi3_icon_border}; display: flex; align-items: center; justify-content: center; color: {kpi3_icon_color}; flex-shrink: 0;">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+        <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 12px; padding: 14px 16px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; min-height: 94px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 42px; height: 42px; min-width: 42px; border-radius: 10px; background: {k3_bg}; display: flex; align-items: center; justify-content: center; color: {k3_color}; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
                 </div>
                 <div>
-                    <div style="font-size: 0.68rem; font-weight: 800; color: {text_secondary}; letter-spacing: 0.5px; text-transform: uppercase;">{c3_info.get('label', 'OVERALL CLINICAL STATUS')}</div>
-                    <div style="font-size: 1.25rem; font-weight: 800; color: {text_primary}; line-height: 1.25; margin: 2px 0;">{status_val}</div>
-                    <div style="font-size: 0.70rem; font-weight: 700;">
-                        <span style="background: {status_pill_bg}; color: {status_pill_color}; border: 1px solid {status_pill_border}; padding: 2px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">
-                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                            {status_sub_text}
-                        </span>
+                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">Overall Clinical Status</div>
+                    <div style="font-size: 1.25rem; font-weight: 800; color: {text_primary}; line-height: 1.2; margin: 2px 0;">{status_overall}</div>
+                    <div style="display: inline-flex; align-items: center; gap: 4px; background: {k3_pill_bg}; color: {k3_pill_c}; border: 1px solid {k3_pill_bd}; border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 700;">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>{k3_pill_text}</span>
                     </div>
                 </div>
             </div>
-            <div style="opacity: 0.85; flex-shrink: 0;">
-                <svg width="24" height="20" viewBox="0 0 24 24" fill="{'#10B981' if is_normal else '#F59E0B'}">
-                    <rect x="3" y="12" width="4" height="12" rx="1.2"></rect>
-                    <rect x="10" y="8" width="4" height="16" rx="1.2"></rect>
-                    <rect x="17" y="4" width="4" height="20" rx="1.2"></rect>
-                </svg>
+        </div>
+        """)
+
+    # KPI 4: AI Analysis Complete
+    with k4:
+        render_html(f"""
+        <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 12px; padding: 14px 16px; box-shadow: {card_shadow}; display: flex; align-items: center; justify-content: space-between; min-height: 94px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 42px; height: 42px; min-width: 42px; border-radius: 10px; background: rgba(16, 185, 129, 0.12); display: flex; align-items: center; justify-content: center; color: #10B981; flex-shrink: 0;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                        <polyline points="9 12 11 14 15 10"></polyline>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">AI Analysis Complete</div>
+                    <div style="font-size: 0.88rem; font-weight: 700; color: {text_primary}; line-height: 1.25; margin: 2px 0;">Report analyzed successfully</div>
+                    <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.10); color: {'#34D399' if is_dark else '#059669'}; border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 700;">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>All parameters processed</span>
+                    </div>
+                </div>
             </div>
         </div>
         """)
 
     # =========================================================================
-    # 3. AI GUIDE BANNER
+    # 3. LIGHTBULB CLINICAL GUIDE BANNER (Matching Image 3)
     # =========================================================================
     if report_category == "prescription":
-        guide_title = "Comprehensive Clinical AI Prescription Guide & Medication Plan"
-        guide_sub = "Automated Drug Purpose • Dosage Timing • Food Interactions • Safety Precautions"
+        banner_title = "Comprehensive Clinical AI Prescription Guide & Medication Plan"
+        banner_sub = "Automated Drug Purpose • Dosage Timing • Food Interactions • Safety Precautions"
     elif report_category == "radiology":
-        guide_title = "Comprehensive Clinical AI Radiology Interpretation & Guide"
-        guide_sub = "Plain-Language Scan Meaning • Anatomical Observations • Severity • Next Steps"
+        banner_title = "Comprehensive Clinical AI Radiology Interpretation & Guide"
+        banner_sub = "Plain-Language Scan Meaning • Anatomical Observations • Severity • Next Steps"
     else:
-        guide_title = "Comprehensive Clinical AI Patient Guide & Recovery Plan"
-        guide_sub = "Automated Plain-Language Interpretation • Organ Health • Dietary Recovery • Safety Precautions"
+        banner_title = "Comprehensive Clinical AI Patient Guide & Recovery Plan"
+        banner_sub = "Automated Plain-Language Interpretation • Organ Health • Dietary Recovery • Safety Precautions"
 
-    guide_banner_bg = "rgba(99, 102, 241, 0.12)" if is_dark else "rgba(99, 102, 241, 0.05)"
-    guide_banner_border = "rgba(99, 102, 241, 0.35)" if is_dark else "rgba(99, 102, 241, 0.25)"
+    bulb_bg = "rgba(37, 99, 235, 0.08)" if is_dark else "#F0F7FF"
+    bulb_border = "rgba(59, 130, 246, 0.30)" if is_dark else "#DBEAFE"
 
     render_html(f"""
-    <div style="background: {guide_banner_bg}; border: 1px solid {guide_banner_border}; border-left: 4px solid #6366F1; border-radius: 12px; padding: 14px 18px; margin: 18px 0 16px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="width: 38px; height: 38px; min-width: 38px; border-radius: 10px; background: rgba(99, 102, 241, 0.18); display: flex; align-items: center; justify-content: center; color: #818CF8; flex-shrink: 0;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="4" y="4" width="16" height="16" rx="4"></rect>
-                    <path d="M9 9h6"></path>
-                    <path d="M9 13h6"></path>
-                    <path d="M9 17h4"></path>
-                </svg>
-            </div>
-            <div>
-                <div style="font-size: 1.02rem; font-weight: 800; color: {text_primary}; line-height: 1.25;">{guide_title}</div>
-                <div style="font-size: 0.78rem; color: {text_secondary}; margin-top: 2px;">{guide_sub}</div>
-            </div>
-        </div>
-        <div style="border: 1.5px solid #818CF8; color: {'#A5B4FC' if is_dark else '#4F46E5'}; padding: 4px 12px; border-radius: 9999px; font-size: 0.74rem; font-weight: 800; display: inline-flex; align-items: center; gap: 6px; letter-spacing: 0.4px;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3z"></path>
+    <div style="background: {bulb_bg}; border: 1px solid {bulb_border}; border-radius: 12px; padding: 12px 18px; margin: 16px 0 16px 0; display: flex; align-items: center; gap: 14px;">
+        <div style="width: 36px; height: 36px; min-width: 36px; border-radius: 50%; background: rgba(37, 99, 235, 0.14); display: flex; align-items: center; justify-content: center; color: #2563EB; flex-shrink: 0;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18h6"></path>
+                <path d="M10 22h4"></path>
+                <path d="M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"></path>
+                <line x1="12" y1="9" x2="12" y2="12"></line>
             </svg>
-            <span>AI ANALYSIS</span>
+        </div>
+        <div>
+            <div style="font-size: 0.96rem; font-weight: 800; color: {'#93C5FD' if is_dark else '#1E3A8A'}; line-height: 1.25;">{banner_title}</div>
+            <div style="font-size: 0.78rem; color: {text_secondary}; margin-top: 2px;">{banner_sub}</div>
         </div>
     </div>
     """)
 
     # =========================================================================
-    # 4. FIVE NUMBERED CLINICAL GUIDE CARDS
+    # 4. PARSE SECTIONS 1 TO 5
     # =========================================================================
     sec_dict = parse_5_sections(breakdown_text)
     def_titles = {
@@ -395,18 +447,41 @@ def render_diagnostic_evaluation_view(
         5: "Medical Precautions & Red Flags"
     }
 
-    # CARD 1: Key Findings Overview
+    # =========================================================================
+    # SECTION 1: Key Findings Overview (Open by default - Matching Image 3)
+    # =========================================================================
     s1 = sec_dict.get(1, {"title": def_titles[1], "body": breakdown_text[:350] if not sec_dict else ""})
     s1_title = s1.get("title") or def_titles[1]
     s1_body = s1.get("body") or ""
-    s1_content_html = clean_body_html(s1_body, is_dark, "#3B82F6")
+
+    # Parse Normal Parameters vs Abnormal Parameters
+    m_norm = re.search(r'(?:-\s*)?\*\*Normal Parameters\s*:?\*\*\s*:?(.*?)(?=(?:-\s*)?\*\*Abnormal Parameters|$)', s1_body, re.DOTALL | re.IGNORECASE)
+    m_abnorm = re.search(r'(?:-\s*)?\*\*Abnormal Parameters\s*:?\*\*\s*:?(.*)', s1_body, re.DOTALL | re.IGNORECASE)
+
+    s1_intro = s1_body[:m_norm.start()].strip() if m_norm else s1_body
+    s1_intro_clean = s1_intro.lstrip("-•* ").replace("**", "").strip()
+    s1_norm_text = m_norm.group(1).strip() if m_norm else ""
+    s1_abnorm_text = m_abnorm.group(1).strip() if m_abnorm else ""
+
+    # Clean text of asterisks
+    s1_norm_clean = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', s1_norm_text)
+    s1_abnorm_clean = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', s1_abnorm_text)
+
+    # Fallbacks if regex didn't split
+    if not s1_norm_text and not s1_abnorm_text:
+        s1_norm_clean = "All evaluated parameters have been processed against standard clinical reference intervals."
+        s1_abnorm_clean = s1_body
+
+    s1_norm_bg = "rgba(16, 185, 129, 0.08)" if is_dark else "#F0FDF4"
+    s1_norm_bd = "rgba(16, 185, 129, 0.35)" if is_dark else "#BBF7D0"
+    s1_abnorm_bg = "rgba(239, 68, 68, 0.08)" if is_dark else "#FEF2F2"
+    s1_abnorm_bd = "rgba(239, 68, 68, 0.35)" if is_dark else "#FECACA"
 
     render_html(f"""
-    <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 20px 22px; margin-bottom: 14px; box-shadow: {card_shadow};">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: #2563EB; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 800; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);">1</div>
-                <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; background: rgba(37, 99, 235, 0.12); display: flex; align-items: center; justify-content: center; color: #3B82F6; flex-shrink: 0;">
+    <details class="mm-result-accordion" open style="background: {card_bg}; border: 1.5px solid {card_border}; border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: {card_shadow};">
+        <summary style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(37, 99, 235, 0.12); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                         <polyline points="14 2 14 8 20 8"></polyline>
@@ -414,64 +489,175 @@ def render_diagnostic_evaluation_view(
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                     </svg>
                 </div>
-                <h3 style="font-size: 1.08rem; font-weight: 800; color: {text_primary}; margin: 0;">{s1_title}</h3>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: {text_primary}; margin: 0;">{s1_title}</h3>
             </div>
-            <span style="background: {'rgba(37, 99, 235, 0.20)' if is_dark else 'rgba(37, 99, 235, 0.10)'}; color: {'#93C5FD' if is_dark else '#2563EB'}; border: 1px solid rgba(59, 130, 246, 0.3); padding: 3px 10px; border-radius: 6px; font-size: 0.70rem; font-weight: 800; letter-spacing: 0.5px;">SUMMARY</span>
+            <div class="mm-chevron-icon" style="color: #2563EB; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </summary>
+        <div style="padding: 4px 20px 20px 20px; border-top: 1px solid {inner_divider};">
+            <div style="margin-bottom: 12px;">
+                <div style="font-size: 0.88rem; font-weight: 800; color: {text_primary}; margin-bottom: 4px;">Summary</div>
+                <div style="font-size: 0.85rem; color: {text_secondary}; line-height: 1.5;">{s1_intro_clean}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
+                <div style="background: {s1_norm_bg}; border: 1.5px solid {s1_norm_bd}; border-radius: 12px; padding: 16px 18px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div style="width: 26px; height: 26px; border-radius: 50%; background: #10B981; display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </div>
+                        <span style="font-size: 0.95rem; font-weight: 800; color: {'#34D399' if is_dark else '#065F46'};">Normal Parameters</span>
+                    </div>
+                    <div style="font-size: 0.84rem; color: {'#CBD5E1' if is_dark else '#374151'}; line-height: 1.55;">
+                        {s1_norm_clean}
+                    </div>
+                </div>
+                <div style="background: {s1_abnorm_bg}; border: 1.5px solid {s1_abnorm_bd}; border-radius: 12px; padding: 16px 18px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                        <div style="width: 26px; height: 26px; border-radius: 6px; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center; color: #EF4444; flex-shrink: 0;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                                <line x1="12" y1="9" x2="12" y2="13"></line>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </div>
+                        <span style="font-size: 0.95rem; font-weight: 800; color: {'#F87171' if is_dark else '#991B1B'};">Abnormal Parameters</span>
+                    </div>
+                    <div style="font-size: 0.84rem; color: {'#CBD5E1' if is_dark else '#374151'}; line-height: 1.55;">
+                        {s1_abnorm_clean}
+                    </div>
+                </div>
+            </div>
         </div>
-        <div>{s1_content_html}</div>
-    </div>
+    </details>
     """)
 
-    # CARD 2: Biological Function in Plain Language
+    # =========================================================================
+    # SECTION 2: Biological Function in Plain Language (Open by default - Matching Image 3)
+    # =========================================================================
     s2 = sec_dict.get(2, {"title": def_titles[2], "body": ""})
     s2_title = s2.get("title") or def_titles[2]
     s2_body = s2.get("body") or ""
-    s2_content_html = clean_body_html(s2_body, is_dark, "#10B981")
+
+    # Parse mini cards from bullet points
+    mini_cards = []
+    bullet_pattern = r'(?:^|\n)(?:[-•*]\s*)?\*\*(.*?)\*\*\s*:?\s*(.*?)(?=(?:\n(?:[-•*]\s*)?\*\*)|$)'
+    m_cards = list(re.finditer(bullet_pattern, s2_body, re.DOTALL))
+    s2_intro_end = m_cards[0].start() if m_cards else len(s2_body)
+    s2_intro_text = s2_body[:s2_intro_end].strip().lstrip("-•* ").replace("**", "")
+
+    # Curated color palettes for the mini cards matching Image 3
+    card_colors = [
+        {"bg": "rgba(239, 68, 68, 0.08)", "bd": "rgba(239, 68, 68, 0.25)", "ic_bg": "rgba(239, 68, 68, 0.14)", "ic": "#EF4444", "type": "blood"},
+        {"bg": "rgba(244, 63, 94, 0.08)", "bd": "rgba(244, 63, 94, 0.25)", "ic_bg": "rgba(244, 63, 94, 0.14)", "ic": "#F43F5E", "type": "rbc"},
+        {"bg": "rgba(139, 92, 246, 0.08)", "bd": "rgba(139, 92, 246, 0.25)", "ic_bg": "rgba(139, 92, 246, 0.14)", "ic": "#8B5CF6", "type": "wbc"},
+        {"bg": "rgba(244, 63, 94, 0.08)", "bd": "rgba(244, 63, 94, 0.25)", "ic_bg": "rgba(244, 63, 94, 0.14)", "ic": "#E11D48", "type": "platelet"},
+        {"bg": "rgba(245, 158, 11, 0.08)", "bd": "rgba(245, 158, 11, 0.25)", "ic_bg": "rgba(245, 158, 11, 0.14)", "ic": "#D97706", "type": "dengue"}
+    ]
+
+    mini_cards_html = []
+    for idx, mc in enumerate(m_cards):
+        name = mc.group(1).strip().rstrip(':')
+        desc_full = mc.group(2).strip().replace('\n', ' ')
+        # 1-2 punchy sentences
+        sents = desc_full.split('. ')
+        short_desc = sents[0] + ('.' if not sents[0].endswith('.') else '')
+        if len(sents) > 1 and len(short_desc) < 45:
+            short_desc += " " + sents[1] + ('.' if not sents[1].endswith('.') else '')
+
+        theme = card_colors[idx % len(card_colors)]
+        
+        # Select SVG icon based on card type
+        if "crp" in name.lower() or "reactive" in name.lower() or theme["type"] == "blood":
+            svg_icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>'
+        elif "haemo" in name.lower() or "rbc" in name.lower() or theme["type"] == "rbc":
+            svg_icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>'
+        elif "white" in name.lower() or "wbc" in name.lower() or theme["type"] == "wbc":
+            svg_icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><circle cx="19" cy="8" r="2"/><circle cx="5" cy="8" r="2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>'
+        elif "platelet" in name.lower() or theme["type"] == "platelet":
+            svg_icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="8" r="2"/><circle cx="16" cy="8" r="2"/><circle cx="8" cy="16" r="2"/><circle cx="16" cy="16" r="2"/><circle cx="12" cy="12" r="2"/></svg>'
+        else:
+            svg_icon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>'
+
+        mini_cards_html.append(f"""
+        <div style="background: {theme['bg']}; border: 1.2px solid {theme['bd']}; border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: flex-start; min-height: 100px;">
+            <div style="width: 32px; height: 32px; border-radius: 8px; background: {theme['ic_bg']}; display: flex; align-items: center; justify-content: center; color: {theme['ic']}; margin-bottom: 8px; flex-shrink: 0;">
+                {svg_icon}
+            </div>
+            <div style="font-size: 0.82rem; font-weight: 800; color: {text_primary}; margin-bottom: 4px; line-height: 1.25;">{name}</div>
+            <div style="font-size: 0.74rem; color: {text_secondary}; line-height: 1.4;">{short_desc}</div>
+        </div>
+        """)
+
+    cards_grid_html = f'<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 14px;">{"".join(mini_cards_html)}</div>' if mini_cards_html else clean_body_html(s2_body, is_dark, "#10B981")
 
     render_html(f"""
-    <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 20px 22px; margin-bottom: 14px; box-shadow: {card_shadow};">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: #10B981; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 800; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);">2</div>
-                <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); display: flex; align-items: center; justify-content: center; color: #10B981; flex-shrink: 0;">
+    <details class="mm-result-accordion" open style="background: {card_bg}; border: 1.5px solid {card_border}; border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: {card_shadow};">
+        <summary style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(16, 185, 129, 0.12); color: #10B981; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
                 </div>
-                <h3 style="font-size: 1.08rem; font-weight: 800; color: {text_primary}; margin: 0;">{s2_title}</h3>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: {text_primary}; margin: 0;">{s2_title}</h3>
             </div>
-            <span style="background: {'rgba(16, 185, 129, 0.20)' if is_dark else 'rgba(16, 185, 129, 0.10)'}; color: {'#6EE7B7' if is_dark else '#059669'}; border: 1px solid rgba(16, 185, 129, 0.3); padding: 3px 10px; border-radius: 6px; font-size: 0.70rem; font-weight: 800; letter-spacing: 0.5px;">EXPLANATION</span>
+            <div class="mm-chevron-icon" style="color: #10B981; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </summary>
+        <div style="padding: 4px 20px 20px 20px; border-top: 1px solid {inner_divider};">
+            <div>
+                <div style="font-size: 0.88rem; font-weight: 800; color: {text_primary}; margin-bottom: 4px;">What These Tests Mean for Your Body</div>
+                <div style="font-size: 0.85rem; color: {text_secondary}; line-height: 1.5;">{s2_intro_text if s2_intro_text else "To help you understand what these tests mean for your body, here is a simple explanation of the key markers from your report:"}</div>
+            </div>
+            {cards_grid_html}
         </div>
-        <div>{s2_content_html}</div>
-    </div>
+    </details>
     """)
 
-    # CARD 3: Impact on the Body & Symptoms
+    # =========================================================================
+    # SECTION 3: Impact on the Body & Symptoms (Collapsible - Matching Image 3)
+    # =========================================================================
     s3 = sec_dict.get(3, {"title": def_titles[3], "body": ""})
     s3_title = s3.get("title") or def_titles[3]
     s3_body = s3.get("body") or ""
     s3_content_html = clean_body_html(s3_body, is_dark, "#8B5CF6")
 
     render_html(f"""
-    <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 20px 22px; margin-bottom: 14px; box-shadow: {card_shadow};">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: #8B5CF6; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 800; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 2px 6px rgba(139, 92, 246, 0.35);">3</div>
-                <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; background: rgba(139, 92, 246, 0.12); display: flex; align-items: center; justify-content: center; color: #8B5CF6; flex-shrink: 0;">
+    <details class="mm-result-accordion" style="background: {card_bg}; border: 1.5px solid {card_border}; border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: {card_shadow};">
+        <summary style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(139, 92, 246, 0.12); color: #8B5CF6; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
                     </svg>
                 </div>
-                <h3 style="font-size: 1.08rem; font-weight: 800; color: {text_primary}; margin: 0;">{s3_title}</h3>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: {text_primary}; margin: 0;">{s3_title}</h3>
             </div>
-            <span style="background: {'rgba(139, 92, 246, 0.20)' if is_dark else 'rgba(139, 92, 246, 0.10)'}; color: {'#C4B5FD' if is_dark else '#7C3AED'}; border: 1px solid rgba(139, 92, 246, 0.3); padding: 3px 10px; border-radius: 6px; font-size: 0.70rem; font-weight: 800; letter-spacing: 0.5px;">PATIENT IMPACT</span>
+            <div class="mm-chevron-icon" style="color: #8B5CF6; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </summary>
+        <div style="padding: 4px 20px 20px 20px; border-top: 1px solid {inner_divider};">
+            <div style="font-size: 0.88rem; font-weight: 800; color: {text_primary}; margin-bottom: 8px;">Patient Impact</div>
+            <div>{s3_content_html}</div>
         </div>
-        <div>{s3_content_html}</div>
-    </div>
+    </details>
     """)
 
-    # CARD 4: Actionable Diet & Nutrition Plan
+    # =========================================================================
+    # SECTION 4: Actionable Diet & Nutrition Plan (Collapsible - Matching Image 3)
+    # =========================================================================
     s4 = sec_dict.get(4, {"title": def_titles[4], "body": ""})
     s4_title = s4.get("title") or def_titles[4]
     s4_raw = s4.get("body") or ""
@@ -489,46 +675,54 @@ def render_diagnostic_evaluation_view(
     sub4_avoid_border = "rgba(239, 68, 68, 0.30)" if is_dark else "#FECACA"
 
     render_html(f"""
-    <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 20px 22px; margin-bottom: 14px; box-shadow: {card_shadow};">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: #F97316; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 800; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 2px 6px rgba(249, 115, 22, 0.35);">4</div>
-                <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; background: rgba(249, 115, 22, 0.12); display: flex; align-items: center; justify-content: center; color: #F97316; flex-shrink: 0;">
+    <details class="mm-result-accordion" style="background: {card_bg}; border: 1.5px solid {card_border}; border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: {card_shadow};">
+        <summary style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(249, 115, 22, 0.12); color: #F97316; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z"></path>
                         <path d="M10 2c1 .5 2 2 2 5"></path>
                     </svg>
                 </div>
-                <h3 style="font-size: 1.08rem; font-weight: 800; color: {text_primary}; margin: 0;">{s4_title}</h3>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: {text_primary}; margin: 0;">{s4_title}</h3>
             </div>
-            <span style="background: {'rgba(245, 158, 11, 0.20)' if is_dark else 'rgba(245, 158, 11, 0.12)'}; color: {'#FCD34D' if is_dark else '#D97706'}; border: 1px solid rgba(245, 158, 11, 0.3); padding: 3px 10px; border-radius: 6px; font-size: 0.70rem; font-weight: 800; letter-spacing: 0.5px;">LIFESTYLE GUIDANCE</span>
-        </div>
-        <div>{s4_intro_html}</div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px;">
-            <div style="background: {sub4_consume_bg}; border: 1.2px solid {sub4_consume_border}; border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 0.88rem; font-weight: 800; color: {'#34D399' if is_dark else '#059669'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    <span>Foods to Consume:</span>
+            <div class="mm-chevron-icon" style="color: #F97316; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </summary>
+        <div style="padding: 4px 20px 20px 20px; border-top: 1px solid {inner_divider};">
+            <div style="font-size: 0.88rem; font-weight: 800; color: {text_primary}; margin-bottom: 4px;">Lifestyle & Nutrition Guidance</div>
+            <div>{s4_intro_html}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px;">
+                <div style="background: {sub4_consume_bg}; border: 1.2px solid {sub4_consume_border}; border-radius: 12px; padding: 14px 16px;">
+                    <div style="font-size: 0.88rem; font-weight: 800; color: {'#34D399' if is_dark else '#059669'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Foods to Consume:</span>
+                    </div>
+                    {consume_bullets}
                 </div>
-                {consume_bullets}
-            </div>
-            <div style="background: {sub4_avoid_bg}; border: 1.2px solid {sub4_avoid_border}; border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 0.88rem; font-weight: 800; color: {'#F87171' if is_dark else '#DC2626'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
-                    </svg>
-                    <span>Foods and Habits to Avoid:</span>
+                <div style="background: {sub4_avoid_bg}; border: 1.2px solid {sub4_avoid_border}; border-radius: 12px; padding: 14px 16px;">
+                    <div style="font-size: 0.88rem; font-weight: 800; color: {'#F87171' if is_dark else '#DC2626'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                        </svg>
+                        <span>Foods and Habits to Avoid:</span>
+                    </div>
+                    {avoid_bullets}
                 </div>
-                {avoid_bullets}
             </div>
         </div>
-    </div>
+    </details>
     """)
 
-    # CARD 5: Medical Precautions & Red Flags
+    # =========================================================================
+    # SECTION 5: Medical Precautions & Red Flags (Collapsible - Matching Image 3)
+    # =========================================================================
     s5 = sec_dict.get(5, {"title": def_titles[5], "body": ""})
     s5_title = s5.get("title") or def_titles[5]
     s5_raw = s5.get("body") or ""
@@ -546,66 +740,58 @@ def render_diagnostic_evaluation_view(
     sub5_flag_border = "rgba(239, 68, 68, 0.35)" if is_dark else "#FECACA"
 
     render_html(f"""
-    <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; box-shadow: {card_shadow};">
-        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <div style="width: 28px; height: 28px; min-width: 28px; border-radius: 8px; background: #EF4444; display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 800; color: #FFFFFF; flex-shrink: 0; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);">5</div>
-                <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; background: rgba(239, 68, 68, 0.12); display: flex; align-items: center; justify-content: center; color: #EF4444; flex-shrink: 0;">
+    <details class="mm-result-accordion" style="background: {card_bg}; border: 1.5px solid {card_border}; border-radius: 14px; margin-bottom: 14px; overflow: hidden; box-shadow: {card_shadow};">
+        <summary style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(239, 68, 68, 0.12); color: #EF4444; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
                 </div>
-                <h3 style="font-size: 1.08rem; font-weight: 800; color: {text_primary}; margin: 0;">{s5_title}</h3>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: {text_primary}; margin: 0;">{s5_title}</h3>
             </div>
-            <span style="background: {'rgba(239, 68, 68, 0.20)' if is_dark else 'rgba(239, 68, 68, 0.10)'}; color: {'#FCA5A5' if is_dark else '#DC2626'}; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 10px; border-radius: 6px; font-size: 0.70rem; font-weight: 800; letter-spacing: 0.5px;">IMPORTANT</span>
-        </div>
-        <div>{s5_intro_html}</div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px;">
-            <div style="background: {sub5_next_bg}; border: 1.2px solid {sub5_next_border}; border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 0.88rem; font-weight: 800; color: {'#60A5FA' if is_dark else '#2563EB'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path>
-                        <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path>
-                        <circle cx="20" cy="10" r="2"></circle>
-                    </svg>
-                    <span>Next Steps:</span>
+            <div class="mm-chevron-icon" style="color: #EF4444; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </summary>
+        <div style="padding: 4px 20px 20px 20px; border-top: 1px solid {inner_divider};">
+            <div style="font-size: 0.88rem; font-weight: 800; color: {text_primary}; margin-bottom: 4px;">Clinical Precautions</div>
+            <div>{s5_intro_html}</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px;">
+                <div style="background: {sub5_next_bg}; border: 1.2px solid {sub5_next_border}; border-radius: 12px; padding: 14px 16px;">
+                    <div style="font-size: 0.88rem; font-weight: 800; color: {'#60A5FA' if is_dark else '#2563EB'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"></path>
+                            <path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"></path>
+                            <circle cx="20" cy="10" r="2"></circle>
+                        </svg>
+                        <span>Next Steps:</span>
+                    </div>
+                    {steps_bullets}
                 </div>
-                {steps_bullets}
-            </div>
-            <div style="background: {sub5_flag_bg}; border: 1.2px solid {sub5_flag_border}; border-left: 4px solid #EF4444; border-radius: 12px; padding: 14px 16px;">
-                <div style="font-size: 0.88rem; font-weight: 800; color: {'#F87171' if is_dark else '#DC2626'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                    <span>Red Flags (Seek Immediate Medical Attention):</span>
+                <div style="background: {sub5_flag_bg}; border: 1.2px solid {sub5_flag_border}; border-left: 4px solid #EF4444; border-radius: 12px; padding: 14px 16px;">
+                    <div style="font-size: 0.88rem; font-weight: 800; color: {'#F87171' if is_dark else '#DC2626'}; margin-bottom: 10px; display: flex; align-items: center; gap: 7px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        <span>Red Flags (Seek Immediate Medical Attention):</span>
+                    </div>
+                    {flags_bullets}
                 </div>
-                {flags_bullets}
             </div>
         </div>
-    </div>
+    </details>
     """)
 
     # =========================================================================
-    # 5. DETAILED PARAMETER BREAKDOWN TABLE (IMAGE 4 FIX)
+    # SECTION 6: Detailed Parameter Breakdown (Collapsible Table - Matching Image 3)
     # =========================================================================
-    render_html(f"""
-    <div style="display: flex; align-items: center; gap: 10px; margin: 22px 0 10px 0;">
-        <div style="color: #3B82F6; display: flex; align-items: center;">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-            </svg>
-        </div>
-        <b style="font-size: 1.12rem; color: {text_primary}; font-weight: 800;">Detailed Parameter Breakdown</b>
-    </div>
-    """)
-
     th_bg = "rgba(30, 41, 59, 0.75)" if is_dark else "#F8FAFC"
     tr_border = "rgba(255, 255, 255, 0.07)" if is_dark else "#F1F5F9"
-    td_val_c = text_primary
 
     table_rows_html = ""
     if report_category == "prescription":
@@ -659,7 +845,7 @@ def render_diagnostic_evaluation_view(
 <th colspan="2" style="padding: 11px 14px; font-weight: 700; color: {text_secondary}; font-size: 0.72rem; text-transform: uppercase;">Clinical Advice / Recommendation</th>
 </tr>"""
     else:
-        # Standard Clinical Lab Report Table (Matching Screenshot)
+        # Standard Clinical Lab Report Table (Matching Image 3)
         for item in findings:
             name = item.get("test_name", "Parameter")
             val = str(item.get("value", ""))
@@ -694,28 +880,50 @@ def render_diagnostic_evaluation_view(
 </tr>"""
 
     render_html(f"""
-    <div style="background: {card_bg}; border: 1px solid {card_border}; border-radius: 14px; overflow: hidden; box-shadow: {card_shadow}; margin-top: 10px; margin-bottom: 20px;">
-        <div style="overflow-x: auto; width: 100%;">
-            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 650px;">
-                <thead style="background: {th_bg};">
-                    {th_html}
-                </thead>
-                <tbody>
-                    {table_rows_html}
-                </tbody>
-            </table>
+    <details class="mm-result-accordion" style="background: {card_bg}; border: 1.5px solid {card_border}; border-radius: 14px; margin-bottom: 16px; overflow: hidden; box-shadow: {card_shadow};">
+        <summary style="padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(37, 99, 235, 0.12); color: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                    </svg>
+                </div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: {text_primary}; margin: 0;">Detailed Parameter Breakdown</h3>
+            </div>
+            <div class="mm-chevron-icon" style="color: #2563EB; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+        </summary>
+        <div style="padding: 4px 20px 20px 20px; border-top: 1px solid {inner_divider};">
+            <div style="overflow-x: auto; width: 100%; border: 1px solid {card_border}; border-radius: 10px; margin-top: 8px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.85rem; min-width: 650px;">
+                    <thead style="background: {th_bg};">
+                        {th_html}
+                    </thead>
+                    <tbody>
+                        {table_rows_html}
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    </details>
     """)
 
     # =========================================================================
-    # 6. CLINICAL ADVISORY BANNER
+    # 7. CLINICAL ADVISORY BANNER
     # =========================================================================
     advisory_bg = "rgba(234, 88, 12, 0.10)" if is_dark else "rgba(234, 88, 12, 0.06)"
     advisory_border = "rgba(234, 88, 12, 0.35)"
 
     render_html(f"""
-    <div style="background: {advisory_bg}; border: 1.2px solid {advisory_border}; border-left: 4px solid #EA580C; border-radius: 10px; padding: 12px 16px; margin: 18px 0 16px 0;">
+    <div style="background: {advisory_bg}; border: 1.2px solid {advisory_border}; border-left: 4px solid #EA580C; border-radius: 10px; padding: 12px 16px; margin: 16px 0 18px 0;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
@@ -731,22 +939,9 @@ def render_diagnostic_evaluation_view(
     """)
 
     # =========================================================================
-    # 7. THREE ACTION BUTTONS ROW
+    # 8. BOTTOM ACTION BUTTONS ROW (Download Report is in top header)
     # =========================================================================
-    pdf_buf = generate_diagnostic_evaluation_pdf(
-        doc_name=doc_name,
-        doc_type=doc_type_choice,
-        age_group=age_for_report,
-        gender=gender_for_report,
-        findings=findings,
-        breakdown_text=breakdown_text,
-        total_eval=c1_info.get('val', len(findings)),
-        abnormal_count=c2_info.get('val', 0),
-        overall_status=c3_info.get('val', 'All Normal')
-    )
-    pdf_filename = f"DocMindX_Diagnostic_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-
-    b_col1, b_col2, b_col3 = st.columns([1, 1, 1], gap="medium")
+    b_col1, b_col2 = st.columns(2, gap="medium")
 
     with b_col1:
         if st.button(
@@ -778,18 +973,7 @@ def render_diagnostic_evaluation_view(
             st.session_state["p2_doc_name"] = "Medical Document"
             st.session_state["p2_uploader_version"] = st.session_state.get("p2_uploader_version", 0) + 1
             st.session_state.pop("p2_doc_uploader", None)
-            keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_") or k.startswith("p2_saved_")]
+            keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_") or k.startswith("p2_saved_") or k.startswith("p2_analysis_")]
             for k in keys_to_clear:
                 st.session_state.pop(k, None)
             st.rerun()
-
-    with b_col3:
-        st.download_button(
-            label="Download Report (PDF)\nSave complete analysis",
-            icon=":material/download:",
-            data=pdf_buf.getvalue(),
-            file_name=pdf_filename,
-            mime="application/pdf",
-            key="btn_p2_download_pdf",
-            use_container_width=True
-        )

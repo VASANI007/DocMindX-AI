@@ -7524,7 +7524,7 @@ elif st.session_state["active_panel"] == "Medical Report":
         st.session_state["p2_doc_name"] = "Medical Document"
         st.session_state["p2_uploader_version"] = st.session_state.get("p2_uploader_version", 0) + 1
         st.session_state.pop("p2_doc_uploader", None)
-        keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_") or k.startswith("p2_saved_")]
+        keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_") or k.startswith("p2_saved_") or k.startswith("p2_analysis_")]
         for k in keys_to_clear:
             st.session_state.pop(k, None)
         st.rerun()
@@ -8035,107 +8035,133 @@ elif st.session_state["active_panel"] == "Medical Report":
         is_other = any(k in str(doc_type_choice).lower() for k in ["other", "अन्य", "અન્ય"])
         is_lab = not (is_prescription or is_imaging or is_other)
 
-        # Smart Clinical Pre-check & Auto-Recovery:
-        # If user selected an inappropriate category or left default "Blood Report",
-        # the engine auto-recovers to the true medical document type!
+        # Smart Clinical Pre-check & Auto-Recovery with Session Caching:
+        # Prevents re-scanning on theme switch, download, or tab navigation.
+        import hashlib
+        p2_scan_hash = hashlib.md5(f"{doc_name}_{len(doc_text_stream)}_{doc_type_choice}_{age_for_report}_{gender_for_report}_{lang_code}".encode("utf-8")).hexdigest()
+        p2_scan_cache_key = f"p2_analysis_eval_{p2_scan_hash}"
+
         gen_res = None
         lab_res = None
         presc_res = None
         rad_res = None
 
-        if is_prescription:
-            presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
-            total_meds = presc_res.get("total_medicines_identified", 0)
-            if total_meds == 0:
-                v_chk = verify_medical_document(doc_text_stream, expected_type="any")
-                if v_chk.get("is_valid", False):
-                    det = v_chk.get("detected_type", "")
-                    if det == "radiology":
-                        auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
-                        if auto_rad.get("total_findings", 0) > 0:
-                            is_imaging = True
-                            is_prescription = False
-                            rad_res = auto_rad
-                            st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
-                    elif det == "lab":
-                        auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                        if auto_lab.get("total_tests_detected", 0) > 0:
-                            is_lab = True
-                            is_prescription = False
-                            lab_res = auto_lab
-                            st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
-                    else:
-                        auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                        if auto_gen.get("total_findings", 0) > 0:
-                            is_other = True
-                            is_prescription = False
-                            gen_res = auto_gen
-                            st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
-
-        elif is_imaging:
-            with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
-                rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
-            total_findings = rad_res.get("total_findings", 0)
-            if total_findings == 0 or not rad_res.get("is_valid_radiology_report", True):
-                v_chk = verify_medical_document(doc_text_stream, expected_type="any")
-                if v_chk.get("is_valid", False):
-                    det = v_chk.get("detected_type", "")
-                    if det == "prescription":
-                        auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
-                        if auto_rx.get("total_medicines_identified", 0) > 0:
-                            is_prescription = True
-                            is_imaging = False
-                            presc_res = auto_rx
-                            st.info("Medical document automatically identified as Doctor Prescription.")
-                    elif det == "lab":
-                        auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                        if auto_lab.get("total_tests_detected", 0) > 0:
-                            is_lab = True
-                            is_imaging = False
-                            lab_res = auto_lab
-                            st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
-                    else:
-                        auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                        if auto_gen.get("total_findings", 0) > 0:
-                            is_other = True
-                            is_imaging = False
-                            gen_res = auto_gen
-                            st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
-
-        elif is_other:
-            with st.spinner("Analyzing clinical parameters, patient profile, and health summary..."):
-                gen_res = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-
+        cached_eval = st.session_state.get(p2_scan_cache_key)
+        if cached_eval is not None:
+            is_prescription = cached_eval.get("is_prescription", is_prescription)
+            is_imaging = cached_eval.get("is_imaging", is_imaging)
+            is_other = cached_eval.get("is_other", is_other)
+            is_lab = cached_eval.get("is_lab", is_lab)
+            presc_res = cached_eval.get("presc_res")
+            rad_res = cached_eval.get("rad_res")
+            gen_res = cached_eval.get("gen_res")
+            lab_res = cached_eval.get("lab_res")
         else:
-            # is_lab
-            with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
-                lab_res = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-            total_detected = lab_res.get("total_tests_detected", 0)
-            if total_detected == 0:
-                v_chk = verify_medical_document(doc_text_stream, expected_type="any")
-                if v_chk.get("is_valid", False):
-                    det = v_chk.get("detected_type", "")
-                    if det == "prescription":
-                        auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
-                        if auto_rx.get("total_medicines_identified", 0) > 0:
-                            is_prescription = True
-                            is_lab = False
-                            presc_res = auto_rx
-                            st.info("Medical document automatically identified as Doctor Prescription.")
-                    elif det == "radiology":
-                        auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
-                        if auto_rad.get("total_findings", 0) > 0:
-                            is_imaging = True
-                            is_lab = False
-                            rad_res = auto_rad
-                            st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
-                    else:
-                        auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                        if auto_gen.get("total_findings", 0) > 0:
-                            is_other = True
-                            is_lab = False
-                            gen_res = auto_gen
-                            st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+            if is_prescription:
+                presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
+                total_meds = presc_res.get("total_medicines_identified", 0)
+                if total_meds == 0:
+                    v_chk = verify_medical_document(doc_text_stream, expected_type="any")
+                    if v_chk.get("is_valid", False):
+                        det = v_chk.get("detected_type", "")
+                        if det == "radiology":
+                            auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+                            if auto_rad.get("total_findings", 0) > 0:
+                                is_imaging = True
+                                is_prescription = False
+                                rad_res = auto_rad
+                                st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
+                        elif det == "lab":
+                            auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                            if auto_lab.get("total_tests_detected", 0) > 0:
+                                is_lab = True
+                                is_prescription = False
+                                lab_res = auto_lab
+                                st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
+                        else:
+                            auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                            if auto_gen.get("total_findings", 0) > 0:
+                                is_other = True
+                                is_prescription = False
+                                gen_res = auto_gen
+                                st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+
+            elif is_imaging:
+                with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
+                    rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+                total_findings = rad_res.get("total_findings", 0)
+                if total_findings == 0 or not rad_res.get("is_valid_radiology_report", True):
+                    v_chk = verify_medical_document(doc_text_stream, expected_type="any")
+                    if v_chk.get("is_valid", False):
+                        det = v_chk.get("detected_type", "")
+                        if det == "prescription":
+                            auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
+                            if auto_rx.get("total_medicines_identified", 0) > 0:
+                                is_prescription = True
+                                is_imaging = False
+                                presc_res = auto_rx
+                                st.info("Medical document automatically identified as Doctor Prescription.")
+                        elif det == "lab":
+                            auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                            if auto_lab.get("total_tests_detected", 0) > 0:
+                                is_lab = True
+                                is_imaging = False
+                                lab_res = auto_lab
+                                st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
+                        else:
+                            auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                            if auto_gen.get("total_findings", 0) > 0:
+                                is_other = True
+                                is_imaging = False
+                                gen_res = auto_gen
+                                st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+
+            elif is_other:
+                with st.spinner("Analyzing clinical parameters, patient profile, and health summary..."):
+                    gen_res = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+
+            else:
+                # is_lab
+                with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
+                    lab_res = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                total_detected = lab_res.get("total_tests_detected", 0)
+                if total_detected == 0:
+                    v_chk = verify_medical_document(doc_text_stream, expected_type="any")
+                    if v_chk.get("is_valid", False):
+                        det = v_chk.get("detected_type", "")
+                        if det == "prescription":
+                            auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
+                            if auto_rx.get("total_medicines_identified", 0) > 0:
+                                is_prescription = True
+                                is_lab = False
+                                presc_res = auto_rx
+                                st.info("Medical document automatically identified as Doctor Prescription.")
+                        elif det == "radiology":
+                            auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+                            if auto_rad.get("total_findings", 0) > 0:
+                                is_imaging = True
+                                is_lab = False
+                                rad_res = auto_rad
+                                st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
+                        else:
+                            auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                            if auto_gen.get("total_findings", 0) > 0:
+                                is_other = True
+                                is_lab = False
+                                gen_res = auto_gen
+                                st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+
+            # Cache the evaluation so future reruns never repeat API calls
+            st.session_state[p2_scan_cache_key] = {
+                "is_prescription": is_prescription,
+                "is_imaging": is_imaging,
+                "is_other": is_other,
+                "is_lab": is_lab,
+                "presc_res": presc_res,
+                "rad_res": rad_res,
+                "gen_res": gen_res,
+                "lab_res": lab_res,
+            }
 
         # ==================== RENDER SELECTED OR AUTO-DETECTED RESULT ====================
         if is_prescription:
