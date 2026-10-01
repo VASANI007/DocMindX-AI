@@ -1640,7 +1640,7 @@ if is_dark:
     .st-key-top_profile_wrap,
     div.st-key-top_profile_wrap {
         width: 100% !important;
-        min-width: 90px !important;
+        min-width: 95px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -1649,7 +1649,7 @@ if is_dark:
     .st-key-top_profile_wrap div[data-testid="stPopover"],
     div.st-key-top_profile_wrap div[data-testid="stPopover"] {
         width: 100% !important;
-        min-width: 90px !important;
+        min-width: 95px !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -1660,7 +1660,7 @@ if is_dark:
     div[class*="st-key-top_profile_wrap"] button,
     .st-key-top_profile_wrap button {
         width: 100% !important;
-        min-width: 90px !important;
+        min-width: 95px !important;
         height: 38px !important;
         min-height: 38px !important;
         max-height: 38px !important;
@@ -1669,7 +1669,7 @@ if is_dark:
         align-items: center !important;
         justify-content: center !important;
         gap: 8px !important;
-        padding: 0 14px !important;
+        padding: 0 16px !important;
         background: #1E293B !important;
         border: 1px solid #334155 !important;
         color: #F8FAFC !important;
@@ -1839,9 +1839,9 @@ if is_dark:
         color: #F8FAFC !important;
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360A5FA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
         background-repeat: no-repeat !important;
-        background-position: left 9px center !important;
+        background-position: left 7px center !important;
         background-size: 16px 16px !important;
-        padding-left: 31px !important;
+        padding-left: 27px !important;
     }
     .st-key-m_lang_wrap [data-baseweb="select"] > div {
         background-color: #1E293B !important;
@@ -2594,7 +2594,7 @@ st.markdown("""
     background-color: """ + ('#1E293B' if is_dark else '#FFFFFF') + """ !important;
     background-image: url('""" + ("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2360A5FA%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%2222%22 y2=%2212%22/%3E%3Cpath d=%22M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z%22/%3E%3C/svg%3E" if is_dark else "data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232563EB%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%2210%22/%3E%3Cline x1=%222%22 y1=%2212%22 x2=%2222%22 y2=%2212%22/%3E%3Cpath d=%22M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z%22/%3E%3C/svg%3E") + """') !important;
     background-repeat: no-repeat !important;
-    background-position: left 9px center !important;
+    background-position: left 7px center !important;
     background-size: 16px 16px !important;
     color: """ + ('#F8FAFC' if is_dark else '#1E293B') + """ !important;
     box-shadow: none !important;
@@ -2602,7 +2602,7 @@ st.markdown("""
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 0 8px 0 31px !important;
+    padding: 0 6px 0 27px !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
     box-sizing: border-box !important;
@@ -2616,7 +2616,7 @@ st.markdown("""
     color: #F8FAFC !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2360A5FA' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='2' y1='12' x2='22' y2='12'/%3E%3Cpath d='M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
-    background-position: left 9px center !important;
+    background-position: left 7px center !important;
     background-size: 16px 16px !important;
 }
 .st-key-d_lang_wrap [data-baseweb="select"] span,
@@ -2786,7 +2786,7 @@ div.st-key-top_profile_wrap div[data-testid="stPopover"] > button,
 div[class*="st-key-top_profile_wrap"] button,
 .st-key-top_profile_wrap button {
     width: 100% !important;
-    min-width: 90px !important;
+    min-width: 95px !important;
     height: 38px !important;
     min-height: 38px !important;
     max-height: 38px !important;
@@ -2798,7 +2798,7 @@ div[class*="st-key-top_profile_wrap"] button,
     align-items: center !important;
     justify-content: center !important;
     gap: 8px !important;
-    padding: 0 14px !important;
+    padding: 0 16px !important;
     font-size: 0.80rem !important;
     font-weight: 700 !important;
     line-height: 1 !important;
@@ -2843,7 +2843,7 @@ div.st-key-top_profile_wrap div[data-testid="stPopover"] > button:hover {
 div.st-key-top_auth_signin_btn,
 div[class*="st-key-top_auth_signin_btn"] {
     width: 100% !important;
-    min-width: 90px !important;
+    min-width: 95px !important;
 }
 .st-key-top_auth_signin_btn button,
 div[class*="st-key-top_auth_signin_btn"] button {
@@ -2857,8 +2857,8 @@ div[class*="st-key-top_auth_signin_btn"] button {
     min-height: 38px !important;
     max-height: 38px !important;
     width: 100% !important;
-    min-width: 90px !important;
-    padding: 0 14px !important;
+    min-width: 95px !important;
+    padding: 0 16px !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -3695,7 +3695,7 @@ with st.container(key="dmx_master_header_card"):
     # 1. DESKTOP VIEW (Image 2 Design)
     
     with st.container(key="dmx_desktop_container"):
-        d_cols = st.columns([1.35, 1.15, 1.05, 1.15, 1.05, 1.15, 0.78, 0.95, 0.38, 0.85], vertical_alignment="center")
+        d_cols = st.columns([1.30, 1.10, 1.00, 1.10, 1.00, 1.10, 0.68, 1.05, 0.30, 0.95], vertical_alignment="center")
 
         # Col 0: Brand Logo & Title
         with d_cols[0]:

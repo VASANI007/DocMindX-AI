@@ -10563,27 +10563,27 @@ input:-webkit-autofill:active {
 }
 
 /* Dark Mode Overrides for Family Vault & Account Settings */
-.patient-hero-card {
+[data-theme="dark"] .patient-hero-card {
     background: linear-gradient(180deg, #0D1B36 0%, #081124 100%) !important;
     border-color: #1E3A8A !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
 }
-.patient-hero-card h2 {
+[data-theme="dark"] .patient-hero-card h2 {
     color: #F8FAFC !important;
 }
-.family-member-card {
+[data-theme="dark"] .family-member-card {
     background: rgba(30, 41, 59, 0.5) !important;
     border-color: rgba(51, 65, 85, 0.6) !important;
 }
-.family-member-card:hover {
+[data-theme="dark"] .family-member-card:hover {
     border-color: #38BDF8 !important;
 }
-.account-settings-card {
+[data-theme="dark"] .account-settings-card {
     background: rgba(15, 23, 42, 0.85) !important;
     border-color: rgba(59, 130, 246, 0.25) !important;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
 }
-.account-field-icon-box {
+[data-theme="dark"] .account-field-icon-box {
     background: rgba(30, 58, 138, 0.35) !important;
     border-color: rgba(59, 130, 246, 0.4) !important;
 }
@@ -10617,7 +10617,7 @@ input:-webkit-autofill:active {
 .st-key-btn_prof_logout_main button:hover p {
     color: #93C5FD !important;
 }
-.form-subcard {
+[data-theme="dark"] .form-subcard {
     background: rgba(30, 41, 59, 0.45) !important;
     border-color: rgba(51, 65, 85, 0.6) !important;
 }
@@ -10715,7 +10715,9 @@ input:-webkit-autofill:active {
 .adm-super-admin-badge {
     background: linear-gradient(135deg, rgba(225, 29, 72, 0.22), rgba(244, 63, 94, 0.15)) !important;
     border: 1.5px solid rgba(244, 63, 94, 0.5) !important;
-    color: #FDA4AF !important;[data-theme="dark"] .adm-user-row-card:hover,
+    color: #FDA4AF !important;
+}
+[data-theme="dark"] .adm-user-row-card:hover,
 [data-theme="dark"] .adm-scan-row-card:hover,
 [data-theme="dark"] .adm-audit-row-card:hover {
     border-color: rgba(96, 165, 250, 0.5) !important;

@@ -177,6 +177,36 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
         flex-shrink: 0;
     }
 
+    .dialog-rel-badge {
+        font-size: 0.74rem;
+        font-weight: 600;
+        color: #2563EB;
+        background: #EFF6FF;
+        border: 1px solid #DBEAFE;
+        padding: 1px 8px;
+        border-radius: 12px;
+        vertical-align: middle;
+    }
+    /* Tabs Layout & Overflow without White Gradient */
+    div[data-testid="stDialog"] .stTabs [data-baseweb="tab-list"] {
+        gap: 4px !important;
+        overflow-x: auto !important;
+        mask-image: none !important;
+        -webkit-mask-image: none !important;
+    }
+    div[data-testid="stDialog"] .stTabs [data-baseweb="tab"] {
+        padding: 8px 12px !important;
+        font-size: 0.84rem !important;
+    }
+    div[data-testid="stDialog"] .stTabs [data-baseweb="tab-border"] {
+        display: none !important;
+    }
+    div[data-testid="stDialog"] .stTabs div[class*="TabEndEnhancer"],
+    div[data-testid="stDialog"] .stTabs [data-baseweb="tab-list"] ~ div {
+        display: none !important;
+        background: transparent !important;
+    }
+
     /* ── 7. Dark mode ── */
     [data-theme="dark"] div[data-testid="stDialog"],
     [data-theme="dark"] div[data-modal-container="true"] {
@@ -195,6 +225,24 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
     }
     [data-theme="dark"] .profile-action-header {
         border-bottom-color: #334155 !important;
+    }
+    [data-theme="dark"] .dialog-rel-badge {
+        background: rgba(37, 99, 235, 0.22) !important;
+        color: #93C5FD !important;
+        border-color: rgba(59, 130, 246, 0.4) !important;
+    }
+    [data-theme="dark"] div[data-testid="stDialog"] .stTabs [data-baseweb="tab-highlight"] {
+        background-color: #3B82F6 !important;
+    }
+    [data-theme="dark"] div[data-testid="stDialog"] .stTabs [data-baseweb="tab-list"] {
+        border-bottom-color: #334155 !important;
+        background: transparent !important;
+    }
+    [data-theme="dark"] div[data-testid="stDialog"] .stTabs [data-baseweb="tab"] {
+        color: #94A3B8 !important;
+    }
+    [data-theme="dark"] div[data-testid="stDialog"] .stTabs [aria-selected="true"] {
+        color: #60A5FA !important;
     }
 
     /* ── 8. Mobile ── */
@@ -222,7 +270,7 @@ def render_profile_actions_dialog(m_id: int, m_name: str, user_id: int):
         </div>
         <div style="min-width: 0; flex: 1;">
             <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); line-height: 1.2;">
-                {m_name} <span style="font-size: 0.74rem; font-weight: 600; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 1px 8px; border-radius: 12px; vertical-align: middle;">{m_rel}</span>
+                {m_name} <span class="dialog-rel-badge">{m_rel}</span>
             </div>
             <div style="font-size: 0.75rem; color: var(--mm-text-secondary, #64748B); margin-top: 1px;">Manage details, conditions & medications</div>
         </div>
@@ -438,6 +486,115 @@ def render_family_management_view(user: dict):
                 st.session_state["active_panel"] = "Admin Panel"
                 st.rerun()
 
+
+    # Enterprise Clinical UI Dark Mode Engine for Family Vault
+    st.markdown('''
+    <style>
+    /* ============================================================
+       FAMILY VAULT & ACCOUNTS CLINICAL DARK THEME OVERRIDES
+       ============================================================ */
+    [data-theme="dark"] .patient-hero-card {
+        background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%) !important;
+        border: 1.5px solid #1E3A8A !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    }
+    [data-theme="dark"] .patient-hero-card h2,
+    [data-theme="dark"] .hero-patient-name {
+        color: #F8FAFC !important;
+    }
+    [data-theme="dark"] .patient-hero-card .hero-meta-email {
+        color: #94A3B8 !important;
+    }
+    [data-theme="dark"] .patient-hero-card .hero-slogan {
+        color: #60A5FA !important;
+    }
+    [data-theme="dark"] .patient-hero-card .hero-slogan span {
+        color: #93C5FD !important;
+    }
+    [data-theme="dark"] .patient-hero-card .hero-verified-badge {
+        background: rgba(16, 185, 129, 0.15) !important;
+        border: 1.5px solid rgba(16, 185, 129, 0.35) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+    }
+    [data-theme="dark"] .patient-hero-card .hero-verified-badge span {
+        color: #4ADE80 !important;
+    }
+
+    /* Family Member Cards & Badges */
+    [data-theme="dark"] .badge-fam-rel {
+        background: rgba(37, 99, 235, 0.20) !important;
+        color: #93C5FD !important;
+        border: 1px solid rgba(59, 130, 246, 0.38) !important;
+    }
+    [data-theme="dark"] .badge-fam-blood {
+        background: rgba(239, 68, 68, 0.18) !important;
+        color: #FCA5A5 !important;
+        border: 1px solid rgba(239, 68, 68, 0.38) !important;
+    }
+    [data-theme="dark"] .badge-fam-state {
+        background: rgba(51, 65, 85, 0.50) !important;
+        color: #CBD5E1 !important;
+        border: 1px solid rgba(71, 85, 105, 0.6) !important;
+    }
+    [data-theme="dark"] .fam-member-name {
+        color: #F8FAFC !important;
+    }
+    [data-theme="dark"] .fam-member-details {
+        color: #94A3B8 !important;
+    }
+    [data-theme="dark"] .fam-member-details strong {
+        color: #E2E8F0 !important;
+    }
+
+    /* Manage Family Profiles Bottom Info Banner */
+    [data-theme="dark"] .family-bottom-banner {
+        background: rgba(30, 41, 59, 0.50) !important;
+        border: 1.5px solid rgba(59, 130, 246, 0.3) !important;
+    }
+    [data-theme="dark"] .family-bottom-banner .banner-title {
+        color: #60A5FA !important;
+    }
+    [data-theme="dark"] .family-bottom-banner .banner-desc {
+        color: #94A3B8 !important;
+    }
+
+    /* Form Subcards (Add Family Member & Personal Information) */
+    [data-theme="dark"] .form-subcard {
+        background: rgba(30, 41, 59, 0.50) !important;
+        border: 1.2px solid rgba(51, 65, 85, 0.7) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+    }
+    [data-theme="dark"] .form-subcard .subcard-title {
+        color: #F8FAFC !important;
+    }
+    [data-theme="dark"] .form-subcard .subcard-desc {
+        color: #94A3B8 !important;
+    }
+    [data-theme="dark"] .form-subcard .subcard-icon {
+        background: rgba(37, 99, 235, 0.20) !important;
+        border-color: rgba(59, 130, 246, 0.35) !important;
+    }
+    [data-theme="dark"] .family-age-badge {
+        background: rgba(37, 99, 235, 0.20) !important;
+        color: #93C5FD !important;
+        border: 1px solid rgba(59, 130, 246, 0.4) !important;
+    }
+
+    /* Account Settings Card Dividers */
+    [data-theme="dark"] .account-settings-card {
+        background: rgba(15, 23, 42, 0.85) !important;
+        border-color: rgba(59, 130, 246, 0.25) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+    }
+    [data-theme="dark"] .account-settings-card div[style*="border-bottom: 1.5px solid"] {
+        border-bottom-color: rgba(51, 65, 85, 0.6) !important;
+    }
+    [data-theme="dark"] .account-settings-card h3 {
+        color: #F8FAFC !important;
+    }
+    </style>
+    ''', unsafe_allow_html=True)
+
     # 2. Patient Hero Card (Image 2 Design with Avatar Initial, Real Data, ECG line, and Verified Badge)
     if st.session_state.get("family_settings_open", False):
         with st.expander("Account Settings", expanded=True):
@@ -467,9 +624,9 @@ def render_family_management_view(user: dict):
                     {user_initial}
                 </div>
                 <div>
-                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.2px;">{user_display_name}</h2>
+                    <h2 class="hero-patient-name" style="margin: 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.2px;">{user_display_name}</h2>
                     <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 4px; font-size: 0.84rem; color: #64748B;">
-                        <span>{user_email}</span>
+                        <span class="hero-meta-email">{user_email}</span>
                         <span style="color: #CBD5E1;">|</span>
                         <span style="display: inline-flex; align-items: center; gap: 5px; color: #16A34A; font-weight: 700;">
                             <span style="width: 8px; height: 8px; border-radius: 50%; background: #16A34A; display: inline-block;"></span>
@@ -479,10 +636,10 @@ def render_family_management_view(user: dict):
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 18px; flex-wrap: wrap;">
-                <div style="font-family: cursive, 'Segoe Script', 'Brush Script MT', sans-serif; font-size: 0.96rem; color: #3B82F6; font-weight: 600; text-align: right; transform: rotate(-2deg); line-height: 1.25;">
+                <div class="hero-slogan" style="font-family: cursive, 'Segoe Script', 'Brush Script MT', sans-serif; font-size: 0.96rem; color: #3B82F6; font-weight: 600; text-align: right; transform: rotate(-2deg); line-height: 1.25;">
                     Better Health<br/><span style="font-size: 0.90rem; color: #2563EB;">Brighter Tomorrow</span>
                 </div>
-                <div style="background: rgba(240, 253, 244, 0.9); border: 1.5px solid #BBF7D0; border-radius: 24px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.08);">
+                <div class="hero-verified-badge" style="background: rgba(240, 253, 244, 0.9); border: 1.5px solid #BBF7D0; border-radius: 24px; padding: 6px 14px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.08);">
                     <div style="width: 16px; height: 16px; border-radius: 50%; background: #16A34A; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                     </div>
@@ -657,7 +814,7 @@ def render_family_management_view(user: dict):
                 # Blood group badge
                 blood_badge = ""
                 if m.get("blood_group"):
-                    blood_badge = f"""<span style="background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; padding: 2px 10px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="#DC2626"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg> Blood: {m.get('blood_group')}</span>"""
+                    blood_badge = f"""<span class="badge-fam-blood" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FEE2E2; padding: 2px 10px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="#DC2626"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg> Blood: {m.get('blood_group')}</span>"""
 
                 # Dynamic details list (Age, DOB, Gender, Height, Weight, Date)
                 details = []
@@ -677,7 +834,7 @@ def render_family_management_view(user: dict):
                 details_html = " <span style='color: #CBD5E1;'>|</span> ".join(details)
 
                 m_state = m.get("state")
-                state_badge = f"""<span style="background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; padding: 2px 10px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {m_state}</span>""" if m_state else ""
+                state_badge = f"""<span class="badge-fam-state" style="background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; padding: 2px 10px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg> {m_state}</span>""" if m_state else ""
                 if m_state:
                     details.append(f"State: <strong>{m_state}</strong>")
 
@@ -690,12 +847,12 @@ def render_family_management_view(user: dict):
                             f'<div style="width: 48px; height: 48px; border-radius: 50%; background: {avatar_bg}; color: {avatar_color}; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; font-weight: 800; flex-shrink: 0;">{m_initial}</div>'
                             f'<div style="min-width: 0; flex: 1;">'
                             f'<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">'
-                            f'<span style="font-size: 1.08rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">{m_name}</span>'
-                            f'<span style="background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; padding: 2px 10px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><span>{gender_glyph}</span>{m_rel}</span>'
+                            f'<span class="fam-member-name" style="font-size: 1.08rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">{m_name}</span>'
+                            f'<span class="badge-fam-rel" style="background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; padding: 2px 10px; border-radius: 20px; font-size: 0.74rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;"><span>{gender_glyph}</span>{m_rel}</span>'
                             f'{blood_badge}'
                             f'{state_badge}'
                             f'</div>'
-                            f'<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.80rem; color: var(--mm-text-secondary, #64748B);">{details_html}</div>'
+                            f'<div class="fam-member-details" style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 0.80rem; color: var(--mm-text-secondary, #64748B);">{details_html}</div>'
                             f'</div>'
                             f'</div>'
                         )
@@ -728,7 +885,7 @@ def render_family_management_view(user: dict):
 
         # Bottom Info Banner (Image 2 Design)
         st.markdown("""
-        <div style="background: rgba(239, 246, 255, 0.85); border: 1.5px solid #BFDBFE; border-radius: 14px; padding: 16px 20px; margin-top: 22px; margin-bottom: 22px; display: flex; align-items: center; gap: 16px;">
+        <div class="family-bottom-banner" style="background: rgba(239, 246, 255, 0.85); border: 1.5px solid #BFDBFE; border-radius: 14px; padding: 16px 20px; margin-top: 22px; margin-bottom: 22px; display: flex; align-items: center; gap: 16px;">
             <div style="width: 38px; height: 38px; border-radius: 50%; background: #2563EB; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
@@ -737,8 +894,8 @@ def render_family_management_view(user: dict):
                 </svg>
             </div>
             <div>
-                <div style="font-size: 0.95rem; font-weight: 800; color: #1D4ED8;">Manage Family Profiles</div>
-                <div style="font-size: 0.80rem; color: #475569; margin-top: 2px;">You can view, edit, or delete family medical profiles. Keep your family health information updated for better care.</div>
+                <div class="banner-title" style="font-size: 0.95rem; font-weight: 800; color: #1D4ED8;">Manage Family Profiles</div>
+                <div class="banner-desc" style="font-size: 0.80rem; color: #475569; margin-top: 2px;">You can view, edit, or delete family medical profiles. Keep your family health information updated for better care.</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -820,12 +977,12 @@ def render_family_management_view(user: dict):
             st.markdown("""
             <div class="form-subcard">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div class="subcard-icon" style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                     </div>
                     <div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Personal Information</div>
-                        <div style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">Basic details about your family member.</div>
+                        <div class="subcard-title" style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Personal Information</div>
+                        <div class="subcard-desc" style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">Basic details about your family member.</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -862,7 +1019,7 @@ def render_family_management_view(user: dict):
                 fam_dob = st.date_input("Date of Birth (DOB) *", value=fam_default_dob, min_value=fam_min_dob, max_value=fam_max_dob, key=f"fam_add_dob_{form_ver}", label_visibility="collapsed")
                 fam_calc_age = auth_db.calculate_age_from_dob(fam_dob)
                 st.markdown(f"""<div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 2px; margin-bottom: 6px;">
-                    <span style="font-size: 0.74rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 8px; border-radius: 12px;">
+                    <span class="family-age-badge" style="font-size: 0.74rem; font-weight: 700; color: #2563EB; background: #EFF6FF; border: 1px solid #DBEAFE; padding: 2px 8px; border-radius: 12px;">
                         Age: {fam_calc_age if fam_calc_age is not None else '--'} yrs (Auto-increments)
                     </span>
                 </div>""", unsafe_allow_html=True)
@@ -916,15 +1073,15 @@ def render_family_management_view(user: dict):
             st.markdown("""
             <div class="form-subcard">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div class="subcard-icon" style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
                             <path d="M3.22 12H9.5l1.5-3 2 6 1.5-3h4.78"/>
                         </svg>
                     </div>
                     <div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Existing Diseases / Medical Conditions</div>
-                        <div style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">Select known conditions and add any other relevant medical condition.</div>
+                        <div class="subcard-title" style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Existing Diseases / Medical Conditions</div>
+                        <div class="subcard-desc" style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">Select known conditions and add any other relevant medical condition.</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -949,12 +1106,12 @@ def render_family_management_view(user: dict):
             st.markdown("""
             <div class="form-subcard">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div class="subcard-icon" style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"></path><path d="m8.5 8.5 7 7"></path></svg>
                     </div>
                     <div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Current Medications</div>
-                        <div style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">List all current medications (one per line or comma separated).</div>
+                        <div class="subcard-title" style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Current Medications</div>
+                        <div class="subcard-desc" style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">List all current medications (one per line or comma separated).</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
@@ -971,12 +1128,12 @@ def render_family_management_view(user: dict):
             st.markdown("""
             <div class="form-subcard">
                 <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
-                    <div style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <div class="subcard-icon" style="width: 36px; height: 36px; border-radius: 9px; background: rgba(37, 99, 235, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect></svg>
                     </div>
                     <div>
-                        <div style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Allergies / Special Medical Notes</div>
-                        <div style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">Mention any allergies, intolerances or other important notes.</div>
+                        <div class="subcard-title" style="font-size: 1.05rem; font-weight: 800; color: var(--mm-text-primary, #0F172A);">Allergies / Special Medical Notes</div>
+                        <div class="subcard-desc" style="font-size: 0.76rem; color: var(--mm-text-secondary, #64748B);">Mention any allergies, intolerances or other important notes.</div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
