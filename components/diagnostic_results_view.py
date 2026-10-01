@@ -22,27 +22,53 @@ from ai.utils.report_generator import generate_diagnostic_evaluation_pdf
 
 
 def render_html(html_str: str):
-    """Safely renders HTML via st.markdown by stripping leading whitespace from all lines.
-    This strictly prevents CommonMark from accidentally parsing indented HTML tags as markdown code blocks.
+    """Safely renders HTML via st.markdown.
+    Filters out any empty lines so CommonMark never exits HTML block mode and never injects markdown <p> tags.
     """
     if not isinstance(html_str, str):
         html_str = str(html_str)
-    cleaned = "\n".join(line.strip() for line in html_str.strip().splitlines())
+    cleaned = "\n".join(line.strip() for line in html_str.strip().splitlines() if line.strip())
     st.markdown(cleaned, unsafe_allow_html=True)
 
 
+def clean_markdown_artifacts(text: str) -> str:
+    """Removes stray markdown artifacts like orphan asterisks, separators, and dangling bullets."""
+    if not text:
+        return ""
+    cleaned_lines = []
+    for line in text.split("\n"):
+        stripped = line.strip()
+        # Skip lines that are only asterisks, dashes, hashes, bullets, or empty
+        if not stripped or re.match(r'^(?:[*_~#-]{1,8}|•)\s*$', stripped):
+            continue
+        # Strip trailing orphaned asterisks/dashes at end of line (e.g. "text **" or "text ---")
+        line_clean = re.sub(r'\s+[*_~-]{2,}$', '', stripped)
+        # Strip leading orphaned asterisks (e.g. "** Schedule a follow-up...")
+        line_clean = re.sub(r'^\*\*\s*(?=[A-Za-z0-9])', '', line_clean)
+        cleaned_lines.append(line_clean)
+    res = "\n".join(cleaned_lines).strip()
+    res = re.sub(r'^(?:[*_~#-]{2,}\s*)+', '', res)
+    res = re.sub(r'(?:\s*[*_~#-]{2,})+$', '', res)
+    return res.strip()
+
+
 def format_bullets_to_html(raw_text: str, bullet_color: str = "#2563EB", is_dark: bool = False) -> str:
-    """Converts raw bullet lines into clean structured HTML with custom SVG bullets and bold highlights."""
+    """Converts raw bullet lines into clean structured HTML with custom inline-flex bullets and bold highlights."""
     if not raw_text:
         return ""
-    lines = raw_text.strip().split("\n")
+    cleaned_text = clean_markdown_artifacts(raw_text)
+    if not cleaned_text:
+        return ""
+
+    lines = cleaned_text.split("\n")
     items = []
     curr_item = []
+
     for line in lines:
         stripped = line.strip()
         if not stripped:
             continue
-        if stripped.startswith("- ") or stripped.startswith("• ") or stripped.startswith("* ") or (len(stripped) > 2 and stripped[0].isdigit() and stripped[1] in [".", ")"]):
+        if re.match(r'^(?:[-•*]|\d+[\.\)])\s+', stripped):
             if curr_item:
                 items.append(" ".join(curr_item))
                 curr_item = []
@@ -57,25 +83,35 @@ def format_bullets_to_html(raw_text: str, bullet_color: str = "#2563EB", is_dark
     if curr_item:
         items.append(" ".join(curr_item))
 
-    # Filter out empty items
-    items = [it.strip() for it in items if it and it.strip() and it.strip() not in ["-", "•", "*"]]
-
     text_c = "#CBD5E1" if is_dark else "#334155"
     bold_c = "#F8FAFC" if is_dark else "#0F172A"
 
+    # Filter out empty or artifact items
+    valid_items = []
+    for it in items:
+        it_clean = it.strip().strip("*_- ")
+        if it_clean:
+            valid_items.append(it_clean)
+    items = valid_items
+
     if not items:
-        cleaned_raw = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', raw_text)
-        return f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.6; color: {text_c};'>{cleaned_raw}</p>"
+        return ""
 
     html_items = []
     for it in items:
         it_clean = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', it)
+        it_clean = it_clean.replace("**", "").replace("---", "").strip()
+
         if "<strong>" not in it_clean and ":" in it_clean:
             parts = it_clean.split(":", 1)
             it_clean = f'<strong style="color: {bold_c}; font-weight: 700;">{parts[0].strip()}:</strong> {parts[1].strip()}'
 
-        dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; border-radius: 50%; background: {bullet_color}; margin-top: 7px; flex-shrink: 0;"></span>'
-        html_items.append(f'<div style="display: flex; align-items: flex-start; gap: 9px; margin-bottom: 8px; font-size: 0.85rem; line-height: 1.55; color: {text_c};">{dot}<div style="flex: 1;">{it_clean}</div></div>')
+        dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; max-width: 6px; border-radius: 50%; background: {bullet_color}; margin-top: 7px; flex-shrink: 0;"></span>'
+        html_items.append(
+            f'<div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; line-height: 1.55; color: {text_c};">'
+            f'{dot}<div style="flex: 1; min-width: 0;">{it_clean}</div>'
+            f'</div>'
+        )
 
     return "".join(html_items)
 
@@ -84,10 +120,14 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
     """Formats markdown paragraphs and bullet lines into clean HTML without breaking CommonMark."""
     if not text:
         return ""
+    cleaned_text = clean_markdown_artifacts(text)
+    if not cleaned_text:
+        return ""
+
     text_c = "#CBD5E1" if is_dark else "#334155"
     bold_c = "#F8FAFC" if is_dark else "#0F172A"
 
-    lines = text.strip().split("\n")
+    lines = cleaned_text.split("\n")
     formatted_parts = []
     bullet_items = []
 
@@ -96,11 +136,16 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
         if bullet_items:
             for b in bullet_items:
                 b_clean = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', b)
+                b_clean = b_clean.replace("**", "").replace("---", "").strip()
                 if "<strong>" not in b_clean and ":" in b_clean:
                     parts = b_clean.split(":", 1)
                     b_clean = f'<strong style="color: {bold_c}; font-weight: 700;">{parts[0].strip()}:</strong> {parts[1].strip()}'
-                dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; border-radius: 50%; background: {dot_color}; margin-top: 7px; flex-shrink: 0;"></span>'
-                formatted_parts.append(f'<div style="display: flex; align-items: flex-start; gap: 9px; margin-bottom: 7px; font-size: 0.86rem; line-height: 1.55; color: {text_c};">{dot}<div style="flex: 1;">{b_clean}</div></div>')
+                dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; max-width: 6px; border-radius: 50%; background: {dot_color}; margin-top: 7px; flex-shrink: 0;"></span>'
+                formatted_parts.append(
+                    f'<div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin-bottom: 7px; font-size: 0.86rem; line-height: 1.55; color: {text_c};">'
+                    f'{dot}<div style="flex: 1; min-width: 0;">{b_clean}</div>'
+                    f'</div>'
+                )
             bullet_items = []
 
     for line in lines:
@@ -108,14 +153,16 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
         if not stripped:
             flush_bullets()
             continue
-        if stripped.startswith("- ") or stripped.startswith("• ") or stripped.startswith("* ") or (len(stripped) > 2 and stripped[0].isdigit() and stripped[1] in [".", ")"]):
+        if re.match(r'^(?:[-•*]|\d+[\.\)])\s+', stripped):
             cleaned = re.sub(r'^(?:[-•*]|\d+[\.\)])\s*', '', stripped).strip()
             if cleaned:
                 bullet_items.append(cleaned)
         else:
             flush_bullets()
             para = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', stripped)
-            formatted_parts.append(f'<p style="margin: 0 0 10px 0; font-size: 0.86rem; line-height: 1.65; color: {text_c};">{para}</p>')
+            para = para.replace("**", "").replace("---", "").strip()
+            if para:
+                formatted_parts.append(f'<p style="margin: 0 0 10px 0; font-size: 0.86rem; line-height: 1.65; color: {text_c};">{para}</p>')
 
     flush_bullets()
     return "".join(formatted_parts)
@@ -123,9 +170,14 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
 
 def parse_sub_cards(text: str, split_patterns: list) -> tuple:
     """Splits a section into intro text and two sub-cards based on header patterns."""
+    if not text:
+        return "", "", ""
     p1, p2 = split_patterns
-    m1 = re.search(p1, text, re.IGNORECASE)
-    m2 = re.search(p2, text, re.IGNORECASE)
+    p1_expanded = rf'(?:^|\n)\s*(?:[-•*#\s]*)\*?\*?(?:{p1})\*?\*?\s*:?'
+    p2_expanded = rf'(?:^|\n)\s*(?:[-•*#\s]*)\*?\*?(?:{p2})\*?\*?\s*:?'
+
+    m1 = re.search(p1_expanded, text, re.IGNORECASE)
+    m2 = re.search(p2_expanded, text, re.IGNORECASE)
     if m1 and m2:
         if m1.start() < m2.start():
             intro = text[:m1.start()].strip()
@@ -135,8 +187,8 @@ def parse_sub_cards(text: str, split_patterns: list) -> tuple:
             intro = text[:m2.start()].strip()
             box2_raw = text[m2.end():m1.start()].strip()
             box1_raw = text[m1.end():].strip()
-        return intro, box1_raw, box2_raw
-    return text, "", ""
+        return clean_markdown_artifacts(intro), clean_markdown_artifacts(box1_raw), clean_markdown_artifacts(box2_raw)
+    return clean_markdown_artifacts(text), "", ""
 
 
 def parse_5_sections(text: str) -> dict:
@@ -150,7 +202,7 @@ def parse_5_sections(text: str) -> dict:
         start_pos = m.end()
         end_pos = matches[i+1].start() if i+1 < len(matches) else len(text)
         body = text[start_pos:end_pos].strip()
-        sections[num] = {"title": title, "body": body}
+        sections[num] = {"title": clean_markdown_artifacts(title), "body": clean_markdown_artifacts(body)}
     return sections
 
 
@@ -455,22 +507,13 @@ def render_diagnostic_evaluation_view(
     s1_body = s1.get("body") or ""
 
     # Parse Normal Parameters vs Abnormal Parameters
-    m_norm = re.search(r'(?:-\s*)?\*\*Normal Parameters\s*:?\*\*\s*:?(.*?)(?=(?:-\s*)?\*\*Abnormal Parameters|$)', s1_body, re.DOTALL | re.IGNORECASE)
-    m_abnorm = re.search(r'(?:-\s*)?\*\*Abnormal Parameters\s*:?\*\*\s*:?(.*)', s1_body, re.DOTALL | re.IGNORECASE)
-
-    s1_intro = s1_body[:m_norm.start()].strip() if m_norm else s1_body
-    s1_intro_clean = s1_intro.lstrip("-•* ").replace("**", "").strip()
-    s1_norm_text = m_norm.group(1).strip() if m_norm else ""
-    s1_abnorm_text = m_abnorm.group(1).strip() if m_abnorm else ""
-
-    # Clean text of asterisks
-    s1_norm_clean = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', s1_norm_text)
-    s1_abnorm_clean = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', s1_abnorm_text)
-
-    # Fallbacks if regex didn't split
-    if not s1_norm_text and not s1_abnorm_text:
-        s1_norm_clean = "All evaluated parameters have been processed against standard clinical reference intervals."
-        s1_abnorm_clean = s1_body
+    s1_intro, s1_norm_text, s1_abnorm_text = parse_sub_cards(s1_body, [
+        r'Normal Parameters|सामान्य पैरामीटर',
+        r'Abnormal Parameters|असामान्य पैरामीटर'
+    ])
+    s1_intro_clean = s1_intro if s1_intro else "Clinical evaluation summary based on patient diagnostic markers:"
+    s1_norm_clean = format_bullets_to_html(s1_norm_text, "#10B981", is_dark) if s1_norm_text else f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.55; color: {'#CBD5E1' if is_dark else '#374151'};'>All evaluated parameters have been processed against standard clinical reference intervals.</p>"
+    s1_abnorm_clean = format_bullets_to_html(s1_abnorm_text, "#EF4444", is_dark) if s1_abnorm_text else f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.55; color: {'#CBD5E1' if is_dark else '#374151'};'>No critical abnormalities were detected in this diagnostic panel.</p>"
 
     s1_norm_bg = "rgba(16, 185, 129, 0.08)" if is_dark else "#F0FDF4"
     s1_norm_bd = "rgba(16, 185, 129, 0.35)" if is_dark else "#BBF7D0"
@@ -548,7 +591,7 @@ def render_diagnostic_evaluation_view(
     bullet_pattern = r'(?:^|\n)(?:[-•*]\s*)?\*\*(.*?)\*\*\s*:?\s*(.*?)(?=(?:\n(?:[-•*]\s*)?\*\*)|$)'
     m_cards = list(re.finditer(bullet_pattern, s2_body, re.DOTALL))
     s2_intro_end = m_cards[0].start() if m_cards else len(s2_body)
-    s2_intro_text = s2_body[:s2_intro_end].strip().lstrip("-•* ").replace("**", "")
+    s2_intro_text = clean_markdown_artifacts(s2_body[:s2_intro_end])
 
     # Curated color palettes for the mini cards matching Image 3
     card_colors = [
@@ -561,8 +604,8 @@ def render_diagnostic_evaluation_view(
 
     mini_cards_html = []
     for idx, mc in enumerate(m_cards):
-        name = mc.group(1).strip().rstrip(':')
-        desc_full = mc.group(2).strip().replace('\n', ' ')
+        name = clean_markdown_artifacts(mc.group(1)).rstrip(':')
+        desc_full = clean_markdown_artifacts(mc.group(2)).replace('\n', ' ')
         # 1-2 punchy sentences
         sents = desc_full.split('. ')
         short_desc = sents[0] + ('.' if not sents[0].endswith('.') else '')
@@ -662,8 +705,8 @@ def render_diagnostic_evaluation_view(
     s4_title = s4.get("title") or def_titles[4]
     s4_raw = s4.get("body") or ""
     s4_intro, s4_consume, s4_avoid = parse_sub_cards(s4_raw, [
-        r'(?:-\s*)?Foods to Consume\s*:?|क्या खाएं\s*:?',
-        r'(?:-\s*)?Foods (?:and Habits )?to Avoid\s*:?|क्या न खाएं\s*:?'
+        r'Foods to Consume|क्या खाएं',
+        r'Foods (?:and Habits )?to Avoid|क्या न खाएं'
     ])
     s4_intro_html = clean_body_html(s4_intro, is_dark, "#F97316")
     consume_bullets = format_bullets_to_html(s4_consume if s4_consume else s4_raw, "#10B981", is_dark)
@@ -727,8 +770,8 @@ def render_diagnostic_evaluation_view(
     s5_title = s5.get("title") or def_titles[5]
     s5_raw = s5.get("body") or ""
     s5_intro, s5_steps, s5_flags = parse_sub_cards(s5_raw, [
-        r'(?:-\s*)?Next Steps\s*:?|अगले कदम\s*:?|डॉक्टर से परामर्श\s*:?',
-        r'(?:-\s*)?Red Flags[^\n:]*\s*:?|खतरे के लक्षण[^\n:]*\s*:?|सावधानियां[^\n:]*\s*:?'
+        r'Next Steps|अगले कदम|डॉक्टर से परामर्श',
+        r'Red Flags[^\n:]*|खतरे के लक्षण[^\n:]*|सावधानियां[^\n:]*'
     ])
     s5_intro_html = clean_body_html(s5_intro, is_dark, "#EF4444")
     steps_bullets = format_bullets_to_html(s5_steps if s5_steps else s5_raw, "#3B82F6", is_dark)
