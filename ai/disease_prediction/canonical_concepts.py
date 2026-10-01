@@ -150,7 +150,7 @@ ANATOMICAL_REGION_PATTERNS = {
         r"कंबर", r"पाठ", r"पाठीचा कणा",
         r"কোমর", r"இடுப்பு", r"ముதுகு", r"నడుము", r"వీపు", r"ಸೊಂಟ", r"ಬೆನ್ನು", r"ഇടുപ്പ്", r"പുറം",
         r"ਕਮਰ", r"ਪਿੱਠ", r"କଣ୍ଟା", r"କମର", r"کمر", r"پیٹھ",
-        r"kamar", r"peeth", r"pith", r"kambar"
+        r"kamar", r"peeth", r"pith", r"kambar", r"vaho", r"vanso", r"વાહો", r"વાંસો"
     ],
     "cervical_spine": [
         r"neck", r"cervical", r"nucha",
@@ -175,6 +175,18 @@ ANATOMICAL_REGION_PATTERNS = {
         r"सिर", r"सर", r"माथा", r"માથું", r"ડોકું", r"डोके",
         r"মাথা", r"தலை", r"తల", r"ತಲೆ", r"തല", r"ਸਿਰ", r"ମୁଣ୍ଡ", r"سر",
         r"sir", r"sar", r"mathu", r"mathe", r"doke"
+    ],
+    "ent_ear": [
+        r"ear", r"ears", r"earache", r"कान", r"કાન", r"કાને", r"कानों", r"কান", r"காது", r"చెవి", r"ಕಿವಿ", r"ചെവി", r"ਕੰਨ", r"କାନ", r"کان",
+        r"kan", r"kaan", r"kane"
+    ],
+    "eye_ocular": [
+        r"eye", r"eyes", r"vision", r"आंख", r"आंखें", r"આંખ", r"આંખો", r"डोळा", r"डोळे", r"চোখ", r"கண்", r"కన్ను", r"ಕಣ್ಣು", r"കണ്ണ്", r"ਅੱਖ", r"ଆଖି", r"آنکھ",
+        r"aankh", r"ankh", r"aankho", r"ankho"
+    ],
+    "throat_oral": [
+        r"throat", r"mouth", r"oral", r"tongue", r"tonsil", r"गला", r"गले", r"गळा", r"ગળું", r"ગળા", r"મોં", r"મુખ", r"मुंह",
+        r"gala", r"gale", r"galu"
     ]
 }
 
@@ -237,7 +249,8 @@ CANONICAL_CONCEPT_PATTERNS = {
             r"कंबरदुखी", r"कंबरे.*वेदना", r"वेदना.*कंबर", r"पाठी.*वेदना", r"वेदना.*पाठ",
             r"কোমর.*ব্যথা", r"இடுப்பு.*வலி", r"నడుము.*నొప్పి", r"ಸೊಂಟ.*ನೋವು", r"ഇടുപ്പ്.*വേദന",
             r"ਕਮਰ.*ਦਰਦ", r"କମର.*ଯନ୍ତ୍ରଣା", r"کمر.*درد",
-            r"kamar.*dard", r"dard.*kamar", r"kamar.*dukhav", r"dukhav.*kamar", r"kambar.*dukh", r"peeth.*dard"
+            r"kamar.*dard", r"dard.*kamar", r"kamar.*dukhav", r"dukhav.*kamar", r"kambar.*dukh", r"peeth.*dard",
+            r"વાહો.*દુખ", r"વાંસો.*દુખ", r"વાહોમાં.*દુખાવો", r"વાંસામાં.*દુખાવો", r"vaho.*dukh", r"vanso.*dukh", r"vaho.*dukhe", r"vanso.*dukhe"
         ],
         "category": "musculoskeletal",
         "red_flag": False
@@ -397,6 +410,49 @@ CANONICAL_CONCEPT_PATTERNS = {
         "category": "systemic_infectious",
         "red_flag": False
     },
+    # 5.3. Joint Pain & Upper Limb (S000131)
+    "joint_pain": {
+        "symptom_id": "S000131",
+        "patterns": [
+            r"joint.*pain", r"arthralgia", r"hand.*pain", r"arm.*pain", r"shoulder.*pain", r"wrist.*pain", r"elbow.*pain", r"finger.*pain",
+            r"जोड़ों.*दर्द", r"जोड़.*दर्द", r"हाथ.*दर्द", r"बांह.*दर्द", r"कंधे.*दर्द",
+            r"સાંધા.*દુખાવો", r"સાંધામાં.*દુખાવો", r"હાથ.*દુખાવો", r"હાથમાં.*દુખાવો", r"હાથ.*દુખ", r"ખભા.*દુખાવો",
+            r"hath.*dukh", r"hath.*ma.*dukh", r"haath.*dard", r"sandha.*dukh", r"sandha.*ma.*dukh", r"khabha.*dukh", r"shoulder.*pain"
+        ],
+        "category": "musculoskeletal",
+        "red_flag": False
+    },
+    # 5.4. Muscle Pain (S000133)
+    "muscle_pain": {
+        "symptom_id": "S000133",
+        "patterns": [
+            r"muscle.*pain", r"myalgia", r"मांसपेशियों.*दर्द", r"સ્નાયુ.*દુખાવો", r"સ્નાયુમાં.*દુખાવો",
+            r"snayu.*dukh", r"muscle.*cramp"
+        ],
+        "category": "musculoskeletal",
+        "red_flag": False
+    },
+    # 5.5. Neck Pain (S000136)
+    "neck_pain": {
+        "symptom_id": "S000136",
+        "patterns": [
+            r"neck.*pain", r"stiff.*neck", r"गर्दन.*दर्द", r"ગરદન.*દુખાવો", r"ગરદનમાં.*દુખાવો", r"ડોક.*દુખ",
+            r"gardan.*dard", r"gardan.*dukhav", r"dok.*dukh"
+        ],
+        "category": "musculoskeletal",
+        "red_flag": False
+    },
+    # 5.6. Ear Pain (S000167)
+    "ear_pain": {
+        "symptom_id": "S000167",
+        "patterns": [
+            r"ear.*pain", r"earache", r"otalgia", r"pain.*in.*ear",
+            r"कान.*दर्द", r"कानों.*दर्द", r"કાન.*દુખાવો", r"કાનમાં.*દુખાવો", r"કાન.*દુખ",
+            r"kan.*dard", r"kaan.*dard", r"kan.*dukh", r"kaan.*dukh", r"kan.*ma.*dukh"
+        ],
+        "category": "ent",
+        "red_flag": False
+    },
     # 6. Gastrointestinal
     "abdominal_pain": {
         "symptom_id": "S000092",
@@ -483,6 +539,33 @@ CANONICAL_CONCEPT_PATTERNS = {
             r"dhadhar", r"dadar", r"daadh", r"daad", r"lalchmbha", r"lal.*chambha"
         ],
         "category": "dermatological",
+        "red_flag": False
+    },
+    "blisters": {
+        "symptom_id": "S000120",
+        "patterns": [
+            r"blister", r"blisters", r"bullae", r"vesicle", r"vesicles",
+            r"छाले", r"ફોલ્લા", r"folla", r"fola", r"chhale", r"chala"
+        ],
+        "category": "dermatological",
+        "red_flag": False
+    },
+    "heartburn_acid_reflux": {
+        "symptom_id": "S000095",
+        "patterns": [
+            r"heartburn", r"acid.*reflux", r"reflux", r"pyrosis", r"hyperacidity",
+            r"सीने.*जलन", r"छाती.*बळतरा", r"છાતી.*બળતરા", r"chhati.*balatara", r"chhati.*ma.*balatara", r"seene.*jalan"
+        ],
+        "category": "gastrointestinal",
+        "red_flag": False
+    },
+    "nosebleed": {
+        "symptom_id": "S000172",
+        "patterns": [
+            r"nosebleed", r"epistaxis", r"bleeding.*nose", r"blood.*from.*nose",
+            r"नाक.*खून", r"નાક.*લોહી", r"nak.*lohi", r"nak.*khoon", r"nak.*mathi.*lohi"
+        ],
+        "category": "ent",
         "red_flag": False
     }
 }
@@ -586,7 +669,21 @@ class MultilingualClinicalNormalizer:
             r"(?:\b(?:but|however|except|excluding|parantu|lekin|pan|पण|પરંતુ|લેકિન|लेकिन|किन्तु|किंतु)\b)|"
             r"(?=\b(?:without|बिना|વિના)\b)"
         )
-        clauses = re.split(split_pattern, text, flags=re.IGNORECASE)
+        raw_clauses = re.split(split_pattern, text, flags=re.IGNORECASE)
+        clauses = []
+        verb_pat = r"\b(?:dukhtu|dukhe|thay|thatu|aavtu|lagtu|hotu|dukh|dukhta|hota|hoti|hote)\b"
+        for cl in raw_clauses:
+            # If negation is immediately attached to a verb of the same clause (e.g., 'mathu nathi dukhtu'), do not split
+            if re.search(r"(?:nathi|\u0aa8\u0aa5\u0ac0)\s+" + verb_pat, cl, re.IGNORECASE):
+                clauses.append(cl)
+                continue
+            # Split on complete copula negations like 'नहीं है', 'nahi hai', or 'nathi/નથી' when followed by another clause
+            parts = re.split(r"(?:^|\s+)(?:\u0928\u0939\u0940\u0902\s*\u0939\u0948|nahi\s*hai|\u0aa8\u0aa5\u0ac0|nathi)(?:\s+|$)", cl, flags=re.IGNORECASE)
+            if len(parts) > 1 and parts[1].strip():
+                clauses.append(parts[0].strip() + " nahi")
+                clauses.append(parts[1].strip())
+            else:
+                clauses.append(cl)
         affirmative = []
         negated = []
 
@@ -1072,14 +1169,15 @@ class MasterSymptomTaxonomyBridge:
         if st_clean in self.exact_name_to_id:
             sid = self.exact_name_to_id[st_clean]
             rec = self.id_to_record.get(sid)
-            return {
-                "dataset_match": True,
-                "dataset_name": rec.get("symptom_name") if rec else st,
-                "symptom_id": sid,
-                "match_type": "ALIAS MATCH",
-                "match_status": "Matched",
-                "record": rec
-            }
+            if not self.check_anatomical_conflict(st_clean, rec):
+                return {
+                    "dataset_match": True,
+                    "dataset_name": rec.get("symptom_name") if rec else st,
+                    "symptom_id": sid,
+                    "match_type": "ALIAS MATCH",
+                    "match_status": "Matched",
+                    "record": rec
+                }
 
         # Check concept patterns (e.g. lower_back_pain, chest_pain, animal_bite)
         for concept_name, info in CANONICAL_CONCEPT_PATTERNS.items():
@@ -1087,14 +1185,15 @@ class MasterSymptomTaxonomyBridge:
                 if re.search(p, st_clean, re.IGNORECASE):
                     sid = info["symptom_id"]
                     rec = self.id_to_record.get(sid)
-                    return {
-                        "dataset_match": True,
-                        "dataset_name": rec.get("symptom_name") if rec else concept_name.replace("_", " ").title(),
-                        "symptom_id": sid,
-                        "match_type": "ALIAS MATCH",
-                        "match_status": "Matched",
-                        "record": rec
-                    }
+                    if not self.check_anatomical_conflict(st_clean, rec):
+                        return {
+                            "dataset_match": True,
+                            "dataset_name": rec.get("symptom_name") if rec else concept_name.replace("_", " ").title(),
+                            "symptom_id": sid,
+                            "match_type": "ALIAS MATCH",
+                            "match_status": "Matched",
+                            "record": rec
+                        }
 
         # 3. Normalized Lexical Match (strip non-alphanumeric, collapse whitespace)
         norm_clean = re.sub(r"[^\w\s\u0900-\u0DFF]", " ", st_clean)
@@ -1102,14 +1201,15 @@ class MasterSymptomTaxonomyBridge:
         if norm_clean in self.exact_name_to_id:
             sid = self.exact_name_to_id[norm_clean]
             rec = self.id_to_record.get(sid)
-            return {
-                "dataset_match": True,
-                "dataset_name": rec.get("symptom_name") if rec else st,
-                "symptom_id": sid,
-                "match_type": "NORMALIZED MATCH",
-                "match_status": "Matched",
-                "record": rec
-            }
+            if not self.check_anatomical_conflict(st_clean, rec):
+                return {
+                    "dataset_match": True,
+                    "dataset_name": rec.get("symptom_name") if rec else st,
+                    "symptom_id": sid,
+                    "match_type": "NORMALIZED MATCH",
+                    "match_status": "Matched",
+                    "record": rec
+                }
 
         # 4. Semantic Match (Biomedical synonyms)
         biomed_synonyms = {
@@ -1123,20 +1223,22 @@ class MasterSymptomTaxonomyBridge:
             "dyspnea": "S000026", "breathlessness": "S000026", "shortness of breath": "S000026",
             "chest pain": "S000046", "angina": "S000046",
             "runny nose": "S000035", "rhinorrhea": "S000035", "cold": "S000035",
-            "abdominal bloating": "S000100", "bloating": "S000100", "stomach fullness": "S000100"
+            "abdominal bloating": "S000100", "bloating": "S000100", "stomach fullness": "S000100",
+            "bleeding wound": "S000114", "open wound": "S000114", "skin sore": "S000114", "skin ulcer": "S000126"
         }
         for k, v in biomed_synonyms.items():
             if k == st_clean or (len(k) > 4 and k in st_clean) or (len(st_clean) > 4 and st_clean in k):
                 sid = v
                 rec = self.id_to_record.get(sid)
-                return {
-                    "dataset_match": True,
-                    "dataset_name": rec.get("symptom_name") if rec else k.title(),
-                    "symptom_id": sid,
-                    "match_type": "SEMANTIC MATCH",
-                    "match_status": "Matched",
-                    "record": rec
-                }
+                if not self.check_anatomical_conflict(st_clean, rec):
+                    return {
+                        "dataset_match": True,
+                        "dataset_name": rec.get("symptom_name") if rec else k.title(),
+                        "symptom_id": sid,
+                        "match_type": "SEMANTIC MATCH",
+                        "match_status": "Matched",
+                        "record": rec
+                    }
 
         # 5. Controlled Fuzzy Match (difflib SequenceMatcher >= 0.82)
         import difflib
@@ -1150,14 +1252,15 @@ class MasterSymptomTaxonomyBridge:
         
         if best_ratio >= 0.82 and best_sid:
             rec = self.id_to_record.get(best_sid)
-            return {
-                "dataset_match": True,
-                "dataset_name": rec.get("symptom_name") if rec else st,
-                "symptom_id": best_sid,
-                "match_type": "FUZZY MATCH",
-                "match_status": "Matched",
-                "record": rec
-            }
+            if not self.check_anatomical_conflict(st_clean, rec):
+                return {
+                    "dataset_match": True,
+                    "dataset_name": rec.get("symptom_name") if rec else st,
+                    "symptom_id": best_sid,
+                    "match_type": "FUZZY MATCH",
+                    "match_status": "Matched",
+                    "record": rec
+                }
 
         # 6. UNMATCHED (No fabricated match)
         return {
@@ -1169,6 +1272,48 @@ class MasterSymptomTaxonomyBridge:
             "record": None
         }
 
+    def check_anatomical_conflict(self, phrase: str, record: Optional[Dict[str, Any]]) -> bool:
+        """
+        Validates that a symptom record does not violate explicit anatomical markers
+        in the user's phrase (e.g., 'hath ma dard' cannot map to 'Ear Pain').
+        Returns True if there is a conflict (i.e. INVALID match), False if compatible.
+        """
+        if not phrase or not record:
+            return False
+        p_lower = phrase.lower()
+        rec_name = str(record.get("symptom_name", "")).lower()
+        body_sys = str(record.get("body_system", "")).lower()
+
+        # 1. Upper limb (hath, haath, arm, hand, wrist, finger) vs ENT/Ear/Ophthalmic
+        upper_limb_tokens = [r"\bhath\b", r"\bhaath\b", r"\bhand\b", r"\barm\b", r"\bwrist\b", r"\bfinger\b", r"हाथ", r"હાથ"]
+        has_upper_limb = any(re.search(t, p_lower) for t in upper_limb_tokens)
+        if has_upper_limb:
+            if "ear" in rec_name or "eye" in rec_name or body_sys == "ent" or "hearing" in rec_name:
+                return True
+
+        # 2. Ear (kan, kaan, ear) vs Musculoskeletal limbs/leg/hand
+        ear_tokens = [r"\bkan\b", r"\bkaan\b", r"\bear\b", r"\bears\b", r"कान", r"કાન"]
+        has_ear = any(re.search(t, p_lower) for t in ear_tokens)
+        if has_ear:
+            if "leg" in rec_name or "hand" in rec_name or "joint" in rec_name or "walking" in rec_name:
+                return True
+
+        # 3. Lower limb (pag, pair, leg, foot, feet) vs Head/ENT/Eye
+        lower_limb_tokens = [r"\bpag\b", r"\bpair\b", r"\bleg\b", r"\bfoot\b", r"\bfeet\b", r"पैर", r"પગ"]
+        has_lower_limb = any(re.search(t, p_lower) for t in lower_limb_tokens)
+        if has_lower_limb:
+            if "headache" in rec_name or "ear" in rec_name or "eye" in rec_name or "throat" in rec_name:
+                return True
+
+        # 4. Head/Cranial (mathu, mathe, sir, sar, head) vs Lower Limb/Walking/Pelvis
+        head_tokens = [r"\bmathu\b", r"\bmathe\b", r"\bsir\b", r"\bsar\b", r"\bhead\b", r"सिर", r"માથું"]
+        has_head = any(re.search(t, p_lower) for t in head_tokens)
+        if has_head:
+            if "leg" in rec_name or "foot" in rec_name or "walking" in rec_name:
+                return True
+
+        return False
+
     def lookup_by_id(self, sid: str) -> Optional[Dict[str, Any]]:
         if not sid:
             return None
@@ -1178,6 +1323,47 @@ class MasterSymptomTaxonomyBridge:
 def get_taxonomy_bridge() -> MasterSymptomTaxonomyBridge:
     """Returns the singleton MasterSymptomTaxonomyBridge instance."""
     return canonical_normalizer.bridge
+
+
+def segment_clinical_phrases(text: str) -> List[str]:
+    """
+    Splits free-form multilingual patient text into distinct clinical phrases.
+    Strips non-clinical connectors ('and', 'ane', 'aur', 'or', 'with', 'sathe', 'સાથે', 'और', 'તથા', 'પણ', 'pan', 'pn', 'भी', etc.).
+    Preserves raw patient evidence intact.
+    """
+    if not text or not isinstance(text, str) or not text.strip():
+        return []
+
+    # 1. Primary boundaries: punctuation, commas, semicolons, full stops, danda, newlines
+    primary_delims = r"[,;\n।!?|]+|(?:\.\s+)"
+    raw_clauses = [c.strip() for c in re.split(primary_delims, text) if c and c.strip()]
+
+    # 2. Conjunction splitting for compound phrases
+    conj_pattern = r"(?:\s+(?:and|aur|ane|aani|તથા|तथा|અને|આણિ|आणि|or|with|sathe|સાથે|और)\s+)"
+    sub_clauses = []
+    for c in raw_clauses:
+        parts = [p.strip() for p in re.split(conj_pattern, c, flags=re.IGNORECASE) if p and p.strip()]
+        sub_clauses.extend(parts)
+
+    # 3. Clean non-clinical standalone connectors that shouldn't be symptoms
+    non_clinical_words = {
+        "and", "ane", "aur", "also", "pan", "pn", "bhi", "भी", "પણ", "with", "sathe", "સાથે", "or",
+        "chhe", "che", "hai", "aave", "ave", "chhe.", "che.", "hai.", "tha", "raha", "rahi", "hata"
+    }
+
+    cleaned_phrases = []
+    for sc in sub_clauses:
+        tokens = sc.split()
+        while tokens and tokens[0].lower().strip(".,!?") in non_clinical_words:
+            tokens.pop(0)
+        while tokens and tokens[-1].lower().strip(".,!?") in non_clinical_words:
+            tokens.pop(-1)
+        cleaned_phrase = " ".join(tokens).strip()
+        if len(cleaned_phrase) >= 2 and cleaned_phrase.lower() not in non_clinical_words:
+            cleaned_phrases.append(cleaned_phrase)
+
+    return cleaned_phrases if cleaned_phrases else [text.strip()]
+
 
 # RUNTIME CANONICAL TAXONOMY INTEGRITY VALIDATION
 # ==============================================================================

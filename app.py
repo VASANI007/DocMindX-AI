@@ -4395,6 +4395,28 @@ if st.session_state["active_panel"] == "Health Assessment":
                     return f"{s_name} (Major Condition)"
                 return s_name
 
+            def _canonicalize_and_dedup_selected(symptoms_list):
+                """Generic deduplication of selected symptoms using canonical symptom identity."""
+                if not symptoms_list:
+                    return []
+                seen_ids = set()
+                cleaned = []
+                for s in symptoms_list:
+                    if not s or not str(s).strip():
+                        continue
+                    s_str = str(s).strip()
+                    cid = canonical_normalizer.get_symptom_id(s_str)
+                    if not cid:
+                        match_det = canonical_normalizer.bridge.match_symptom_detailed(s_str)
+                        if match_det.get("dataset_match"):
+                            cid = match_det.get("symptom_id")
+                            s_str = match_det.get("dataset_name") or s_str
+                    key = cid if cid else s_str.lower()
+                    if key not in seen_ids:
+                        seen_ids.add(key)
+                        cleaned.append(s_str)
+                return cleaned
+
             # Build search options combining symptoms and 100+ major Indian diseases
             all_symptom_names = []
             if not symptoms_df.empty:
@@ -4435,6 +4457,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 if ds not in st.session_state["selected_symptoms_list"]:
                                     st.session_state["selected_symptoms_list"].append(ds)
                             st.session_state["detected_chief_condition"] = d_match.iloc[0].to_dict()
+                st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state["selected_symptoms_list"])
                 st.session_state["user_context"]["symptoms"] = list(st.session_state["selected_symptoms_list"])
 
             with s_col2:
@@ -4476,9 +4499,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                         extracted_nlp = symptom_extractor.extract_symptoms_and_medicines(query_text, user_lang=lang_code)
                         new_added = 0
                         for sname in extracted_nlp.get("symptom_labels", []):
-                            if sname not in st.session_state["selected_symptoms_list"]:
+                            if sname and sname not in st.session_state["selected_symptoms_list"]:
                                 st.session_state["selected_symptoms_list"].append(sname)
                                 new_added += 1
+                        st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state["selected_symptoms_list"])
                         
                         if extracted_nlp.get("normalized_symptoms"):
                             st.session_state["p1_normalized_symptoms"] = extracted_nlp["normalized_symptoms"]
@@ -4536,9 +4560,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                                 extracted_voice = symptom_extractor.extract_symptoms_and_medicines(transcribed_text, user_lang=lang_code)
                                 v_added = 0
                                 for sname in extracted_voice.get("symptom_labels", []):
-                                    if sname not in st.session_state["selected_symptoms_list"]:
+                                    if sname and sname not in st.session_state["selected_symptoms_list"]:
                                         st.session_state["selected_symptoms_list"].append(sname)
                                         v_added += 1
+                                st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state["selected_symptoms_list"])
                                 if extracted_voice.get("normalized_symptoms"):
                                     st.session_state["p1_normalized_symptoms"] = extracted_voice["normalized_symptoms"]
                                 if extracted_voice.get("duration_days"):
@@ -4554,6 +4579,60 @@ if st.session_state["active_panel"] == "Health Assessment":
                 if st.session_state.get("p1_voice_conf_audio"):
                     st.audio(st.session_state["p1_voice_conf_audio"])
 
+                # Clinical Photo Upload for Visual Symptoms
+                st.markdown(f"""
+                <div style='display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 700; color: var(--mm-text-primary); margin: 12px 0 6px 0;'>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                        <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    <span>{T.get('clinical_photo_prompt', 'Or Upload Photo of Affected Area (Skin, Rash, Injury, Eye, Throat):')}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                p1_clinical_photo = st.file_uploader(
+                    "Upload Photo of Affected Area",
+                    type=["jpg", "jpeg", "png", "webp"],
+                    key="p1_clinical_photo_uploader",
+                    label_visibility="collapsed"
+                )
+                if p1_clinical_photo:
+                    photo_bytes = p1_clinical_photo.getvalue() if hasattr(p1_clinical_photo, "getvalue") else b""
+                    if photo_bytes:
+                        cp_c1, cp_c2 = st.columns([1, 2.5], vertical_alignment="center")
+                        with cp_c1:
+                            st.image(photo_bytes, width=140, caption="Affected Area Preview")
+                        with cp_c2:
+                            if st.button("Extract Visual Findings with DocMindX AI", key="btn_run_vision_extract", type="primary", use_container_width=True):
+                                with st.spinner("Analyzing visible clinical findings (rash, redness, swelling, cut/wound)..."):
+                                    from ai.disease_prediction.visual_symptom_extractor import visual_symptom_extractor
+                                    vis_res = visual_symptom_extractor.extract_visual_symptoms(photo_bytes, user_lang=lang_code)
+                                    photo_added = 0
+                                    for sname in vis_res.get("symptom_labels", []):
+                                        if sname and sname not in st.session_state["selected_symptoms_list"]:
+                                            st.session_state["selected_symptoms_list"].append(sname)
+                                            photo_added += 1
+                                    st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state["selected_symptoms_list"])
+                                    
+                                    curr_norm = list(st.session_state.get("p1_normalized_symptoms", []))
+                                    for cs in vis_res.get("canonical_symptoms", []):
+                                        curr_norm.append({
+                                            "user_phrase": f"[Visual Finding: {cs.get('location') or 'Area'}] {cs.get('raw_finding')}",
+                                            "normalized_english": cs.get("canonical_name"),
+                                            "canonical_name": cs.get("canonical_name"),
+                                            "dataset_match": True,
+                                            "dataset_name": cs.get("canonical_name"),
+                                            "match_type": "VISUAL CLINICAL FINDING",
+                                            "match_status": "Matched",
+                                            "symptom_id": cs.get("symptom_id"),
+                                            "provenance": "GEMINI_VISION_THEN_DATASET_VALIDATED"
+                                        })
+                                    st.session_state["p1_normalized_symptoms"] = curr_norm
+                                    if photo_added > 0:
+                                        st.session_state["p1_nlp_msg"] = f"DocMindX AI Visual Analysis: Extracted {photo_added} clinical findings! ({vis_res.get('visual_summary')})"
+                                    else:
+                                        st.session_state["p1_nlp_msg"] = f"DocMindX AI: {vis_res.get('visual_summary', 'No new clinical symptoms identified from image.')}"
+                                st.rerun()
+
                 if st.session_state.get("p1_nlp_msg"):
                     st.success(st.session_state["p1_nlp_msg"])
 
@@ -4563,11 +4642,22 @@ if st.session_state["active_panel"] == "Health Assessment":
                     items_html = []
                     for ns in norm_syms_disp:
                         u_phr = html.escape(str(ns.get("user_phrase", "")))
-                        eng_nm = html.escape(str(ns.get("dataset_name") or ns.get("normalized_english", "Symptom")))
+                        eng_nm = html.escape(str(ns.get("dataset_name") or ns.get("canonical_name") or ns.get("normalized_english", "Symptom")))
                         is_m = ns.get("dataset_match", False)
+                        prov = str(ns.get("provenance", ""))
                         icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M20 6L9 17l-5-5"/></svg>' if is_m else '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-                        badge_style = "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.35);" if is_m else "background: rgba(245, 158, 11, 0.15); color: #D97706; border: 1px solid rgba(245, 158, 11, 0.35);"
-                        badge_txt = "Dataset: Matched" if is_m else "Dataset: Not Matched"
+                        if prov == "GEMINI_SEMANTIC_THEN_DATASET_VALIDATED":
+                            badge_style = "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.35);"
+                            badge_txt = "Gemini Normalized → Dataset Validated"
+                        elif prov == "GEMINI_VISION_THEN_DATASET_VALIDATED":
+                            badge_style = "background: rgba(37, 99, 235, 0.15); color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.35);"
+                            badge_txt = "Visual AI → Dataset Validated"
+                        elif is_m:
+                            badge_style = "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.35);"
+                            badge_txt = "Dataset: Matched"
+                        else:
+                            badge_style = "background: rgba(245, 158, 11, 0.15); color: #D97706; border: 1px solid rgba(245, 158, 11, 0.35);"
+                            badge_txt = "Unresolved"
                         items_html.append(
                             f'<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid var(--mm-border-color, #E2E8F0); border-radius: 8px; margin-bottom: 5px;">'
                             f'  <div><b>{icon}{eng_nm}</b> <span style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-left: 6px;">User phrase: "{u_phr}"</span></div>'
@@ -4607,10 +4697,13 @@ if st.session_state["active_panel"] == "Health Assessment":
                 p_label = p_item.get(lang_code, p_item["en"])
                 with pop_cols[p_idx]:
                     if st.button(p_label, key=f"pop_sym_chip_{p_idx}", type="primary", use_container_width=True):
-                        if p_key not in st.session_state["selected_symptoms_list"]:
-                            st.session_state["selected_symptoms_list"].append(p_key)
+                        curr_list = _canonicalize_and_dedup_selected(st.session_state.get("selected_symptoms_list", []))
+                        if p_key not in curr_list:
+                            curr_list.append(p_key)
                         else:
-                            st.session_state["selected_symptoms_list"].remove(p_key)
+                            curr_list.remove(p_key)
+                        st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(curr_list)
+                        st.session_state["user_context"]["symptoms"] = list(st.session_state["selected_symptoms_list"])
                         st.rerun()
 
             st.markdown(f"""
@@ -4626,11 +4719,12 @@ if st.session_state["active_panel"] == "Health Assessment":
                 <span>{T.get('selected_symptoms', 'Selected Symptoms:')}</span>
             </div>
             """, unsafe_allow_html=True)
+            st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state.get("selected_symptoms_list", []))
             if st.session_state["selected_symptoms_list"]:
-                sel_chips_html = "".join([f'<span style="background: rgba(37, 99, 235, 0.10); color: #2563EB; border: 1.2px solid rgba(37, 99, 235, 0.3); border-radius: 8px; padding: 5px 10px; font-size: 0.80rem; font-weight: 700; margin-right: 6px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px;">{format_symptom_display(s)}</span>' for s in st.session_state["selected_symptoms_list"]])
+                sel_chips_html = "".join([f'<span class="symptom-chip" style="background: rgba(37, 99, 235, 0.10); color: #2563EB; border: 1.2px solid rgba(37, 99, 235, 0.3); border-radius: 8px; padding: 5px 10px; font-size: 0.80rem; font-weight: 700; margin-right: 6px; margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px;">{format_symptom_display(s)}</span>' for s in st.session_state["selected_symptoms_list"]])
                 sel_col1, sel_col2 = st.columns([4, 1])
                 with sel_col1:
-                    st.markdown(f'<div style="display: flex; align-items: center; flex-wrap: wrap;">{sel_chips_html}</div>', unsafe_allow_html=True)
+                    st.markdown(f'<div class="selected-symptoms" style="display: flex; align-items: center; flex-wrap: wrap;">{sel_chips_html}</div>', unsafe_allow_html=True)
                 with sel_col2:
                     if st.button(T.get("clear_all", "Clear All"), key="clear_all_sym_btn", use_container_width=True):
                         st.session_state["selected_symptoms_list"] = []
@@ -4699,6 +4793,7 @@ if st.session_state["active_panel"] == "Health Assessment":
                 c_nm = c_d.get("name") or c_d.get("disease_name") or c_d.get("name_hi") or c_d.get("name_gu")
                 if c_nm:
                     step2_syms = [c_nm]
+            if step2_syms:
                 active_s_html = "".join([f'<span class="mm-symptom-tag" style="background: #EFF6FF; border: 1px solid #BFDBFE; color: #2563EB; font-weight: 700; font-size: 0.76rem; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">{str(s).upper()} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.75;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></span>' for s in step2_syms])
             else:
                 active_s_html = f"<span style='font-size: 0.80rem; color: var(--mm-text-muted); font-style: italic;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Return to Step 1 to add symptoms.')}</span>"
