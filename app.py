@@ -87,7 +87,7 @@ from components.diagnostic_results_view import \
     render_diagnostic_evaluation_view
 from components.google_map import generate_google_map_html
 from components.theme_toggle import theme_toggle_switch
-from config.language import get_text, load_translations, translate_dynamic_text
+from config.language import get_text, load_translations, translate_dynamic_text, is_valid_script_for_language, normalize_lang_code
 from config.settings import APP_NAME, APP_VERSION, SUPPORTED_LANGUAGES
 from config.theme import apply_theme
 from database.insert_data import (get_recent_report_history,
@@ -473,34 +473,16 @@ DURATION_LABEL_MAP = {
 }
 
 
-# Language Options Constants (All-India Multi-Lingual Architecture)
+# Language Options Constants (Strict 3-Language Architecture: English, Hindi, Gujarati)
 LANG_OPTIONS = [
     "English",
     "Hindi (हिंदी)",
-    "Gujarati (ગુજરાતી)",
-    "Marathi (मराठी)",
-    "Bengali (বাংলা)",
-    "Tamil (தமிழ்)",
-    "Telugu (తెలుగు)",
-    "Kannada (ಕನ್ನಡ)",
-    "Malayalam (മലയാളം)",
-    "Punjabi (ਪੰਜਾਬੀ)",
-    "Odia (ଓଡ଼ିଆ)",
-    "Urdu (اردو)"
+    "Gujarati (ગુજરાતી)"
 ]
 lang_code_map = {
     "English": "en",
     "Hindi (हिंदी)": "hi",
-    "Gujarati (ગુજરાતી)": "gu",
-    "Marathi (मराठी)": "mr",
-    "Bengali (বাংলা)": "bn",
-    "Tamil (தமிழ்)": "ta",
-    "Telugu (తెలుగు)": "te",
-    "Kannada (ಕನ್ನಡ)": "kn",
-    "Malayalam (മലയാളം)": "ml",
-    "Punjabi (ਪੰਜਾਬੀ)": "pa",
-    "Odia (ଓଡ଼ିଆ)": "or",
-    "Urdu (اردو)": "ur"
+    "Gujarati (ગુજરાતી)": "gu"
 }
 
 # Initialize language keys in session state to prevent default index conflicts
@@ -5473,8 +5455,10 @@ if st.session_state["active_panel"] == "Health Assessment":
                     "existing_conditions": u_ctx.get("conditions", []),
                     "current_medicines": u_ctx.get("medications", []),
                     "allergies": u_ctx.get("allergies", "None"),
-                    "symptoms": st.session_state.get("selected_symptoms_list", [])
+                    "symptoms": st.session_state.get("selected_symptoms_list", []),
+                    "language": lang_code
                 },
+                "language": lang_code,
                 "triage_result": t_res,
                 "care_recommendations": care_res,
                 "ranked_conditions": ranked_conds,
@@ -8226,9 +8210,9 @@ elif st.session_state["active_panel"] == "Medical Report":
             else:
                 # Automatic Clinical AI Patient Guide for Prescriptions
                 rx_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
-                if rx_cache_key in st.session_state and lang_code == "en":
+                if rx_cache_key in st.session_state:
                     _cached_c = str(st.session_state.get(rx_cache_key, ""))
-                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                    if not is_valid_script_for_language(_cached_c, lang_code):
                         st.session_state.pop(rx_cache_key, None)
                 if rx_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Guide & Medication Safety Plan..."):
@@ -8301,10 +8285,12 @@ elif st.session_state["active_panel"] == "Medical Report":
                         "breakdown": rx_breakdown,
                         "kpi_data": kpi_data,
                         "extracted_text": doc_text_stream,
+                        "language": lang_code,
                         "user_inputs": {
                             "age": age_for_report,
                             "gender": gender_for_report,
-                            "doc_type": doc_type_choice
+                            "doc_type": doc_type_choice,
+                            "language": lang_code
                         }
                     }
                     if curr_auth_user:
@@ -8368,9 +8354,9 @@ elif st.session_state["active_panel"] == "Medical Report":
                     print(f"Notice logging radiology report: {e}")
 
                 rad_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
-                if rad_cache_key in st.session_state and lang_code == "en":
+                if rad_cache_key in st.session_state:
                     _cached_c = str(st.session_state.get(rad_cache_key, ""))
-                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                    if not is_valid_script_for_language(_cached_c, lang_code):
                         st.session_state.pop(rad_cache_key, None)
                 if rad_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Radiology Interpretation..."):
@@ -8445,10 +8431,12 @@ elif st.session_state["active_panel"] == "Medical Report":
                         "breakdown": rad_breakdown,
                         "kpi_data": kpi_data,
                         "extracted_text": doc_text_stream,
+                        "language": lang_code,
                         "user_inputs": {
                             "age": age_for_report,
                             "gender": gender_for_report,
-                            "doc_type": doc_type_choice
+                            "doc_type": doc_type_choice,
+                            "language": lang_code
                         }
                     }
                     if curr_auth_user:
@@ -8515,9 +8503,9 @@ elif st.session_state["active_panel"] == "Medical Report":
                 sev_status = gen_res.get("overall_severity", "Normal")
 
                 gen_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
-                if gen_cache_key in st.session_state and lang_code == "en":
+                if gen_cache_key in st.session_state:
                     _cached_c = str(st.session_state.get(gen_cache_key, ""))
-                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                    if not is_valid_script_for_language(_cached_c, lang_code):
                         st.session_state.pop(gen_cache_key, None)
                 if gen_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Health Guide & Overview..."):
@@ -8590,10 +8578,12 @@ elif st.session_state["active_panel"] == "Medical Report":
                         "breakdown": gen_breakdown,
                         "kpi_data": kpi_data,
                         "extracted_text": doc_text_stream,
+                        "language": lang_code,
                         "user_inputs": {
                             "age": age_for_report,
                             "gender": gender_for_report,
-                            "doc_type": doc_type_choice
+                            "doc_type": doc_type_choice,
+                            "language": lang_code
                         }
                     }
                     if curr_auth_user:
@@ -8663,9 +8653,9 @@ elif st.session_state["active_panel"] == "Medical Report":
 
                 # Automatic Clinical AI Patient Guide for Blood / Pathology Lab Reports
                 lab_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
-                if lab_cache_key in st.session_state and lang_code == "en":
+                if lab_cache_key in st.session_state:
                     _cached_c = str(st.session_state.get(lab_cache_key, ""))
-                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                    if not is_valid_script_for_language(_cached_c, lang_code):
                         st.session_state.pop(lab_cache_key, None)
                 if lab_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Patient Guide & Recovery Plan..."):
@@ -8737,10 +8727,12 @@ elif st.session_state["active_panel"] == "Medical Report":
                         "breakdown": lab_breakdown,
                         "kpi_data": kpi_data,
                         "extracted_text": doc_text_stream,
+                        "language": lang_code,
                         "user_inputs": {
                             "age": age_for_report,
                             "gender": gender_for_report,
-                            "doc_type": doc_type_choice
+                            "doc_type": doc_type_choice,
+                            "language": lang_code
                         }
                     }
                     if curr_auth_user:
@@ -10008,9 +10000,9 @@ elif st.session_state["active_panel"] == "About":
             "stat_acc_sub": "Training Accuracy (97.8% 5-Fold CV)",
             "stat_algo": "Random Forest",
             "stat_algo_sub": "50 Decision Trees (Scikit-Learn)",
-            "stat_features": "280 Symptoms",
+            "stat_features": "280+ Symptoms",
             "stat_features_sub": "Binary Indicator Features",
-            "stat_classes": "101 Diseases",
+            "stat_classes": "101+ Diseases",
             "stat_classes_sub": "WHO ICD-11 Standard Classes",
             "ml_step1": "<b>1. Feature Engineering:</b> Bipartite mappings from <code>symptoms_master.csv</code> convert patient symptom sets into 280-dimensional binary vectors.",
             "ml_step2": "<b>2. Ensemble Training:</b> 50 specialized decision trees evaluate symptom combinations with Gini impurity optimization (<code>train.py</code>).",
@@ -10037,7 +10029,7 @@ elif st.session_state["active_panel"] == "About":
             "kg_item2": "<b>Emergency Red-Flag Protocols:</b> Instant detection of critical warning signs (e.g. chest pain with breathlessness).",
             "kg_item3": "<b>Demographic Clinical Filtering:</b> Automatic gender/age exclusions to eliminate biologically impossible diagnoses.",
             "llm_title": "5. Medical Foundation LLMs (Live AI Engine)",
-            "llm_sub": "High-speed reasoning via Groq (LLaMA-3.3 70B, Qwen 27B) and Google Gemini 2.5 Flash.",
+            "llm_sub": "High-speed reasoning via Groq (LLaMA-3.3 70B, Qwen 27B) and Google Gemini 3.5 Flash.",
             "llm_item1": "<b>Dynamic Care Prescriptions:</b> Calculates illness-specific medicines, exact food timing ('After Food' vs 'Empty Stomach'), and course duration.",
             "llm_item2": "<b>Drug-Drug & Allergy Shield:</b> Evaluates patient ongoing medications and allergies to prevent adverse drug reactions.",
             "llm_item3": "<b>Multilingual Generation:</b> Real-time native clinical advice generation in English, Hindi, and Gujarati.",
@@ -10045,6 +10037,14 @@ elif st.session_state["active_panel"] == "About":
             "ocr_sub": "Gemini Multimodal Vision API + Tesseract OCR for automated clinical entity extraction.",
             "ocr_item1": "<b>Blood Lab Report Analyzer:</b> Extracts CBC, LFT, KFT, Lipid, HbA1c values and highlights out-of-range biomarkers.",
             "ocr_item2": "<b>Prescription & Medicine Scanner:</b> Extracts drug names, dosages, and cross-references OpenFDA chemical profiles.",
+            "api_title": "7. Live Healthcare APIs & Cloud Integration Ecosystem",
+            "api_sub": "Official APIs powering real-time medical intelligence, geospatial discovery, and cloud security.",
+            "api_item1": "<b>Google Gemini Multimodal Vision & Flash API:</b> Scans lab reports (CBC, LFT, KFT, Lipid) & prescriptions via computer vision and generates deep clinical explanations.",
+            "api_item2": "<b>Groq Cloud LLM Engine (LLaMA-3.3 70B & Qwen):</b> Delivers sub-second clinical triage reasoning, drug-drug interaction checks, and personalized medicine schedules.",
+            "api_item3": "<b>OpenStreetMap Overpass Healthcare GIS API:</b> Dynamically locates registered 24/7 hospitals, emergency trauma units, clinics, and pharmacies near the user.",
+            "api_item4": "<b>WHO Disease Outbreak News (DON REST API):</b> Automated live ingestion of 100+ global & national epidemic alerts for real-time epidemiological surveillance.",
+            "api_item5": "<b>OpenFDA & DailyMed Drug Database APIs:</b> Cross-references pharmaceutical chemical compounds, NDC codes, adverse reactions, and contraindications.",
+            "api_item6": "<b>Supabase Cloud PostgreSQL & Auth API:</b> Provides encrypted medical scan persistence, family health circles, and tamper-proof security audit logging.",
             # Diseases Tab
             "dis_title": "100+ Official Major Indian Diseases Taxonomy",
             "dis_sub": "Curated clinical profiles spanning 18 official disease categories under MoHFW and WHO ICD-10/11 guidelines.",
@@ -10112,9 +10112,9 @@ elif st.session_state["active_panel"] == "About":
             "stat_acc_sub": "ट्रेनिंग सटीकता (97.8% 5-Fold CV)",
             "stat_algo": "Random Forest",
             "stat_algo_sub": "50 डिसीजन ट्री (Scikit-Learn)",
-            "stat_features": "280 लक्षण",
+            "stat_features": "280+ लक्षण",
             "stat_features_sub": "बाइनरी इंडिकेटर फीचर्स",
-            "stat_classes": "101 बीमारियाँ",
+            "stat_classes": "101+ बीमारियाँ",
             "stat_classes_sub": "WHO ICD-11 मानक श्रेणियाँ",
             "ml_step1": "<b>1. फीचर इंजीनियरिंग:</b> <code>symptoms_master.csv</code> से मरीज के लक्षणों को 280-आयामी बाइनरी वेक्टर में बदला जाता है।",
             "ml_step2": "<b>2. एन्सेम्बल ट्रेनिंग:</b> 50 विशेषज्ञ डिसीजन ट्री गिन्नी इम्प्योरिटी ऑप्टिमाइज़ेशन के साथ लक्षणों का मूल्यांकन करते हैं (<code>train.py</code>)।",
@@ -10141,7 +10141,7 @@ elif st.session_state["active_panel"] == "About":
             "kg_item2": "<b>इमरजेंसी रेड-फ्लैग प्रोटोकॉल:</b> गंभीर खतरों (जैसे सांस फूलने के साथ सीने में दर्द) की तुरंत पहचान।",
             "kg_item3": "<b>जनसांख्यिकीय क्लिनिकल फिल्टर:</b> जैविक रूप से असंभव रोगों को हटाने के लिए लिंग और आयु का स्वचालित फिल्टर।",
             "llm_title": "5. मेडिकल फाउंडेशन LLMs (लाइव AI इंजन)",
-            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) और Google Gemini 2.5 Flash द्वारा तेज़ तार्किक विश्लेषण।",
+            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) और Google Gemini 3.5 Flash द्वारा तेज़ तार्किक विश्लेषण।",
             "llm_item1": "<b>डायनामिक केयर प्रिस्क्रिप्शन:</b> बीमारी के अनुसार दवाइयां, भोजन का सही समय ('खाने के बाद' या 'खाली पेट') और कोर्स तय करता है।",
             "llm_item2": "<b>ड्रग इंटरेक्शन एवं एलर्जी शील्ड:</b> पुरानी दवाओं और एलर्जी से होने वाले नुकसान को रोकता है।",
             "llm_item3": "<b>त्रिभाषी जेनरेशन:</b> हिंदी, अंग्रेजी और गुजराती में सटीक मेडिकल सलाह प्रदान करता है।",
@@ -10149,6 +10149,14 @@ elif st.session_state["active_panel"] == "About":
             "ocr_sub": "ब्लड रिपोर्ट और डॉक्टर पर्चियों के स्वचालित विश्लेषण के लिए Gemini Vision + Tesseract OCR।",
             "ocr_item1": "<b>ब्लड लैब रिपोर्ट विश्लेषक:</b> CBC, LFT, KFT, लिपिड, HbA1c निकालता है और असामान्य मानों को हाइलाइट करता है।",
             "ocr_item2": "<b>दवा पर्ची स्कैनर:</b> दवाओं के नाम, खुराक पढ़कर OpenFDA डेटाबेस से मिलान करता है।",
+            "api_title": "7. लाइव हेल्थकेयर APIs एवं क्लाउड इंटीग्रेशन इकोसिस्टम",
+            "api_sub": "DocMindX AI को रियल-टाइम मेडिकल इंटेलिजेंस, लोकेशन खोज और क्लाउड सुरक्षा प्रदान करने वाली आधिकारिक APIs।",
+            "api_item1": "<b>Google Gemini Vision एवं Flash API:</b> ब्लड रिपोर्ट (CBC, LFT, KFT), पर्चों का कंप्यूटर विज़न विश्लेषण और गहन क्लिनिकल व्याख्या तैयार करता है।",
+            "api_item2": "<b>Groq Cloud LLM इंजन (LLaMA-3.3 70B / Qwen):</b> मिलीसेकंड्स में तेज़ क्लिनिकल ट्राइएज, दवा इंटरेक्शन शील्ड और व्यक्तिगत खुराक की योजना बनाता है।",
+            "api_item3": "<b>OpenStreetMap Overpass GIS API:</b> मरीज के निकटतम 24/7 अस्पताल, ट्रॉमा सेंटर, क्लीनिक और फार्मेसियों के लाइव निर्देशांक खोजता है।",
+            "api_item4": "<b>WHO Disease Outbreak News (DON REST API):</b> भारत और दुनिया भर में सक्रिय महामारियों और संक्रामक रोगों का लाइव अलर्ट डेटा प्राप्त करता है।",
+            "api_item5": "<b>OpenFDA एवं DailyMed APIs:</b> दवाओं के रासायनिक घटक, NDC कोड, साइड-इफेक्ट्स और सत्यापित सुरक्षा मानकों का मिलान करता है।",
+            "api_item6": "<b>Supabase Cloud PostgreSQL एवं Auth API:</b> मेडिकल स्कैन रिकॉर्ड्स, पारिवारिक स्वास्थ्य प्रोफाइल और सुरक्षा ऑडिट लॉग्स को सुरक्षित रखता है।",
             # Diseases Tab
             "dis_title": "भारत की 100+ प्रमुख बीमारियों की आधिकारिक टैक्सोनॉमी",
             "dis_sub": "MoHFW और WHO ICD-10/11 के तहत सभी 18 प्रमुख श्रेणियों का संपूर्ण डेटाबेस।",
@@ -10216,9 +10224,9 @@ elif st.session_state["active_panel"] == "About":
             "stat_acc_sub": "તાલીમ સચોટતા (97.8% 5-Fold CV)",
             "stat_algo": "Random Forest",
             "stat_algo_sub": "50 ડિસિઝન ટ્રી (Scikit-Learn)",
-            "stat_features": "280 લક્ષણો",
+            "stat_features": "280+ લક્ષણો",
             "stat_features_sub": "બાઈનરી ઇન્ડિકેટર ફીચર્સ",
-            "stat_classes": "101 રોગો",
+            "stat_classes": "101+ રોગો",
             "stat_classes_sub": "WHO ICD-11 માનક શ્રેણીઓ",
             "ml_step1": "<b>1. ફીચર એન્જિનિયરિંગ:</b> <code>symptoms_master.csv</code> માંથી દર્દીના લક્ષણોને 280-પરિમાણીય બાઈનરી વેક્ટરમાં રૂપાંતરિત કરવામાં આવે છે.",
             "ml_step2": "<b>2. એન્સેમ્બલ ટ્રેનિંગ:</b> 50 વિશેષ ડિસિઝન ટ્રી ગિની ઇમ્પ્યોરિટી ઑપ્ટિમાઇઝેશન સાથે લક્ષણોનું વિશ્લેષણ કરે છે (<code>train.py</code>).",
@@ -10245,7 +10253,7 @@ elif st.session_state["active_panel"] == "About":
             "kg_item2": "<b>ઇમરજન્સી રેડ-ફ્લેગ પ્રોટોકોલ:</b> ગંભીર જોખમો (જેમ કે શ્વાસ ચડવો અને છાતીમાં દુખાવો) ની તાત્કાલિક ઓળખ.",
             "kg_item3": "<b>વસ્તી વિષયક ક્લિનિકલ ફિલ્ટર:</b> જૈવિક રીતે અસંભવિત રોગોને દૂર કરવા માટે લિંગ અને વયનું ફિલ્ટર.",
             "llm_title": "5. મેડિકલ ફાઉન્ડેશન LLMs (લાઇવ AI એન્જિન)",
-            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) અને Google Gemini 2.5 Flash દ્વારા ઝડપી તાર્કિક વિશ્લેષણ.",
+            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) અને Google Gemini 3.5 Flash દ્વારા ઝડપી તાર્કિક વિશ્લેષણ.",
             "llm_item1": "<b>ડાયનેમિક કેર પ્રિસ્ક્રિપ્શન:</b> રોગ મુજબ દવાઓ, જમવાનો યોગ્ય સમય ('જમ્યા પછી' કે 'ખાલી પેટે') અને દિવસો નક્કી કરે છે.",
             "llm_item2": "<b>ડ્રગ ઇન્ટરેક્શન અને એલર્જી શીલ્ડ:</b> જૂની દવાઓ અને એલર્જીથી થતા નુકસાનને અટકાવે છે.",
             "llm_item3": "<b>ત્રિભાષી જનરેશન:</b> ગુજરાતી, હિન્દી અને અંગ્રેજીમાં સચોટ તબીબી સલાહ પ્રદાન કરે છે.",
@@ -10253,6 +10261,14 @@ elif st.session_state["active_panel"] == "About":
             "ocr_sub": "બ્લડ રિપોર્ટ અને ડૉક્ટરની પ્રિસ્ક્રિપ્શનના વિશ્લેષણ માટે Gemini Vision + Tesseract OCR.",
             "ocr_item1": "<b>બ્લડ લેબ રિપોર્ટ વિશ્લેષક:</b> CBC, LFT, KFT, લિપિડ, HbA1c ચકાસીને અસામાન્ય પરિણામો દર્શાવે છે.",
             "ocr_item2": "<b>દવા પ્રિસ્ક્રિપ્શન સ્કેનર:</b> દવાઓના નામ, ડોઝ વાંચીને OpenFDA ડેટાબેઝ સાથે સરખાવે છે.",
+            "api_title": "7. લાઈવ હેલ્થકેર APIs અને ક્લાઉડ ઇન્ટિગ્રેશન ઇકોસિસ્ટમ",
+            "api_sub": "DocMindX AI ને રિયલ-ટાઇમ મેડિકલ ઇન્ટેલિજન્સ, લોકેશન શોધ અને સુરક્ષા પૂરી પાડતી સત્તાવાર APIs.",
+            "api_item1": "<b>Google Gemini Vision અને Flash API:</b> બ્લડ રિપોર્ટ (CBC, LFT, KFT) અને પ્રિસ્ક્રિપ્શનનું કમ્પ્યુટર વિઝન સ્કેનિંગ અને વિગતવાર તબીબી સમજૂતી આપે છે.",
+            "api_item2": "<b>Groq Cloud LLM એન્જિન (LLaMA-3.3 70B / Qwen):</b> ક્ષણભરમાં ઝડપી ક્લિનિકલ ટ્રાયેજ, દવાઓની આડઅસર ચકાસણી અને સારવાર સલાહ જનરેટ કરે છે.",
+            "api_item3": "<b>OpenStreetMap Overpass GIS API:</b> દર્દીની નજીકની 24/7 ઇમરજન્સી હોસ્પિટલો, ક્લિનિક્સ અને મેડિકલ સ્ટોર્સના જીવંત ભૌગોલિક લોકેશન દર્શાવે છે.",
+            "api_item4": "<b>WHO Disease Outbreak News (DON REST API):</b> ભારતમાં અને વિશ્વસ્તરે ફેલાતા રોગચાળા અને વાયરસની સત્તાવાર લાઈવ ચેતવણીઓ મેળવે છે.",
+            "api_item5": "<b>OpenFDA અને DailyMed APIs:</b> દવાઓના રાસાયણિક ઘટકો, ફોર્મ્યુલા, NDC કોડ અને સલામતી માપદંડોની ચકાસણી કરે છે.",
+            "api_item6": "<b>Supabase Cloud PostgreSQL અને Auth API:</b> મેડિકલ સ્કેન હિસ્ટ્રી, કુટુંબ પ્રોફાઇલ અને સુરક્ષા ઓડિટ ટ્રેઇલને એન્ક્રિપ્ટેડ ક્લાઉડમાં સાચવે છે.",
             # Diseases Tab
             "dis_title": "ભારતના 100+ મુખ્ય રોગોની સત્તાવાર ટેક્સોનોમી",
             "dis_sub": "MoHFW અને WHO ICD-10/11 હેઠળ તમામ 18 શ્રેણીઓનો વ્યાપક ડેટાબેઝ.",
@@ -10327,6 +10343,8 @@ elif st.session_state["active_panel"] == "About":
             "knowledge_base": "Knowledge Base",
             "generative_ai": "Generative AI",
             "vision_ai": "Computer Vision",
+            "api_ecosystem": "Live APIs",
+            "live_connected": "Connected Healthcare APIs",
             "fast_reliable": "Fast, accurate and reliable local prediction engine",
             "ensure_stock": "Helps ensure medicine availability and reduce stockouts",
             "prevent_stockouts": "Prevent stockouts & ensure continuity",
@@ -10366,6 +10384,8 @@ elif st.session_state["active_panel"] == "About":
             "knowledge_base": "नॉलेज बेस",
             "generative_ai": "जनरेटिव AI",
             "vision_ai": "कंप्यूटर विज़न",
+            "api_ecosystem": "लाइव APIs",
+            "live_connected": "सत्यापित हेल्थकेयर APIs",
             "fast_reliable": "तेज़, सटीक एवं विश्वसनीय लोकल प्रेडिक्शन इंजन",
             "ensure_stock": "दवा उपलब्धता सुनिश्चित एवं कमी को कम करता है",
             "prevent_stockouts": "दवाओं की कमी रोकें और आपूर्ति बनाए रखें",
@@ -10405,6 +10425,8 @@ elif st.session_state["active_panel"] == "About":
             "knowledge_base": "નોલેજ બેઝ",
             "generative_ai": "જનરેટિવ AI",
             "vision_ai": "કમ્પ્યુટર વિઝન",
+            "api_ecosystem": "લાઈવ APIs",
+            "live_connected": "ચકાસાયેલ હેલ્થકેર APIs",
             "fast_reliable": "ઝડપી, સચોટ અને વિશ્વસનીય સ્થાનિક અનુમાન એન્જિન",
             "ensure_stock": "દવાની ઉપલબ્ધતા સુનિશ્ચિત કરે છે અને અછત ઘટાડે છે",
             "prevent_stockouts": "દવાની અછત અટકાવો અને પુરવઠો જાળવો",
@@ -10798,6 +10820,55 @@ elif st.session_state["active_panel"] == "About":
                         <div style="flex: 0 1 140px; min-width: 120px; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
                             <span style="font-size: 0.72rem; font-weight: 700; color: #8B5CF6; line-height: 1.3;">{L['automated_ocr']}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Card 7: Live Healthcare APIs & Cloud Integrations -->
+            <div class="mm-card" style="margin: 0; grid-column: 1 / -1; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #0D9488; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span style="width: 22px; height: 22px; border-radius: 50%; background: #0D9488; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">7</span>
+                            <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['api_title'])}</b>
+                            <span style="background: rgba(139, 92, 246, 0.1); color: #0D9488; border: 1px solid rgba(13, 148, 136, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['api_ecosystem']}</span>
+                        </div>
+                        <span style="font-size: 0.74rem; font-weight: 700; color: #0D9488; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25); border-radius: 8px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                            6 ACTIVE APIS
+                        </span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 14px 0;">{A['api_sub']}</p>
+                    <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 520px; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 10px 18px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.55;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#0D9488"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['api_item1']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#0D9488"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['api_item2']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#0D9488"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['api_item3']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#0D9488"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['api_item4']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#0D9488"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['api_item5']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#0D9488"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['api_item6']}</div>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 180px; min-width: 140px; background: rgba(13, 148, 136, 0.05); border: 1px solid rgba(13, 148, 136, 0.2); border-radius: 10px; padding: 14px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="13 14 16 11 19 14"/></svg>
+                            <span style="font-size: 0.74rem; font-weight: 700; color: #0D9488; line-height: 1.35;">{L['live_connected']}</span>
                         </div>
                     </div>
                 </div>

@@ -44,7 +44,7 @@ def clean_markdown_artifacts(text: str) -> str:
         # Strip trailing orphaned asterisks/dashes at end of line (e.g. "text **" or "text ---")
         line_clean = re.sub(r'\s+[*_~-]{2,}$', '', stripped)
         # Strip leading orphaned asterisks (e.g. "** Schedule a follow-up...")
-        line_clean = re.sub(r'^\*\*\s*(?=[A-Za-z0-9])', '', line_clean)
+        line_clean = re.sub(r'^\*\*\s*(?=[^\s*])', '', line_clean)
         cleaned_lines.append(line_clean)
     res = "\n".join(cleaned_lines).strip()
     res = re.sub(r'^(?:[*_~#-]{2,}\s*)+', '', res)
@@ -262,7 +262,8 @@ def render_diagnostic_evaluation_view(
         breakdown_text=breakdown_text,
         total_eval=total_detected,
         abnormal_count=ab_count,
-        overall_status=status_overall
+        overall_status=status_overall,
+        lang_code=lang_code
     )
     pdf_filename = f"DocMindX_Diagnostic_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     report_date_str = datetime.now().strftime("%d %b %Y")
@@ -508,8 +509,8 @@ def render_diagnostic_evaluation_view(
 
     # Parse Normal Parameters vs Abnormal Parameters
     s1_intro, s1_norm_text, s1_abnorm_text = parse_sub_cards(s1_body, [
-        r'Normal Parameters|सामान्य पैरामीटर',
-        r'Abnormal Parameters|असामान्य पैरामीटर'
+        r'Normal Parameters|सामान्य पैरामीटर|સામાન્ય પરિણામો|સામાન્ય પેરામીટર',
+        r'Abnormal Parameters|असामान्य पैरामीटर|અસામાન્ય પરિણામો|અસામાન્ય પેરામીટર'
     ])
     s1_intro_clean = s1_intro if s1_intro else "Clinical evaluation summary based on patient diagnostic markers:"
     s1_norm_clean = format_bullets_to_html(s1_norm_text, "#10B981", is_dark) if s1_norm_text else f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.55; color: {'#CBD5E1' if is_dark else '#374151'};'>All evaluated parameters have been processed against standard clinical reference intervals.</p>"
@@ -705,8 +706,8 @@ def render_diagnostic_evaluation_view(
     s4_title = s4.get("title") or def_titles[4]
     s4_raw = s4.get("body") or ""
     s4_intro, s4_consume, s4_avoid = parse_sub_cards(s4_raw, [
-        r'Foods to Consume|क्या खाएं',
-        r'Foods (?:and Habits )?to Avoid|क्या न खाएं'
+        r'Foods to Consume|क्या खाएं|કઈ વસ્તુઓ ખાવી|શું ખાવું',
+        r'Foods (?:and Habits )?to Avoid|क्या न खाएं|કઈ વસ્તુઓનો પરહેજ કરવો|શું ન ખાવું|ટાળવા જેવી વસ્તુઓ'
     ])
     s4_intro_html = clean_body_html(s4_intro, is_dark, "#F97316")
     consume_bullets = format_bullets_to_html(s4_consume if s4_consume else s4_raw, "#10B981", is_dark)
@@ -770,8 +771,8 @@ def render_diagnostic_evaluation_view(
     s5_title = s5.get("title") or def_titles[5]
     s5_raw = s5.get("body") or ""
     s5_intro, s5_steps, s5_flags = parse_sub_cards(s5_raw, [
-        r'Next Steps|अगले कदम|डॉक्टर से परामर्श',
-        r'Red Flags[^\n:]*|खतरे के लक्षण[^\n:]*|सावधानियां[^\n:]*'
+        r'Next Steps|अगले कदम|डॉक्टर से परामर्श|ડૉક્ટરની સલાહ|આગળનાં પગલાં',
+        r'Red Flags[^\n:]*|खतरे के लक्षण[^\n:]*|सावधानियां[^\n:]*|કટોકટીના લક્ષણો[^\n:]*|સાવચેતીઓ[^\n:]*'
     ])
     s5_intro_html = clean_body_html(s5_intro, is_dark, "#EF4444")
     steps_bullets = format_bullets_to_html(s5_steps if s5_steps else s5_raw, "#3B82F6", is_dark)

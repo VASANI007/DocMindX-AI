@@ -49,20 +49,11 @@ APP_NAME = "DocMindX AI"
 APP_VERSION = "2.0.0"
 APP_DESCRIPTION = "Intelligent Multilingual AI Healthcare System"
 
-# Supported Languages (All-India Multi-Lingual Architecture)
+# Supported Languages (Strict 3-Language Architecture: English, Hindi, Gujarati)
 SUPPORTED_LANGUAGES = {
     "English": "en",
     "हिन्दी (Hindi)": "hi",
-    "ગુજરાતી (Gujarati)": "gu",
-    "मराठी (Marathi)": "mr",
-    "বাংলা (Bengali)": "bn",
-    "தமிழ் (Tamil)": "ta",
-    "తెలుగు (Telugu)": "te",
-    "ಕನ್ನಡ (Kannada)": "kn",
-    "മലയാളം (Malayalam)": "ml",
-    "ਪੰਜਾਬੀ (Punjabi)": "pa",
-    "ଓଡ଼ିଆ (Odia)": "or",
-    "اردو (Urdu)": "ur"
+    "ગુજરાતી (Gujarati)": "gu"
 }
 
 # Database Configuration (Supabase PostgreSQL Only)

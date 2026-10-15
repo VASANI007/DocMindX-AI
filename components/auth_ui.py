@@ -420,7 +420,7 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
     init_auth_session_state()
     check_and_render_pending_popup()
     T = T or {}
-    LANG_OPTIONS = LANG_OPTIONS or ["English", "हिन्दी (Hindi)", "ગુજરાતી (Gujarati)"]
+    LANG_OPTIONS = LANG_OPTIONS or ["English", "Hindi (हिंदी)", "Gujarati (ગુજરાતી)"]
     is_dark = bool(st.session_state.get("dark_mode", False))
 
     # Redirect already logged-in users directly to their designated panel

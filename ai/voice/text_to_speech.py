@@ -22,9 +22,11 @@ logger = logging.getLogger("TextToSpeech")
 # Check if official Google Cloud Text-to-Speech library is available
 try:
     from google.cloud import texttospeech_v1 as texttospeech
+    from google.api_core.client_options import ClientOptions
     _GCP_TTS_AVAILABLE = True
 except ImportError:
     _GCP_TTS_AVAILABLE = False
+    ClientOptions = None
 
 def synthesize_speech(text: str, lang: str = "en") -> str:
     """
@@ -40,15 +42,11 @@ def synthesize_speech(text: str, lang: str = "en") -> str:
     clean = re.sub(r"\s+", " ", clean).strip()
     truncated_text = clean[:350]
 
-    # Map language codes
+    # Map language codes (hi, gu, en)
     lang_code_map = {
         "hi": "hi-IN",
         "gu": "gu-IN",
-        "en": "en-IN",
-        "mr": "mr-IN",
-        "bn": "bn-IN",
-        "ta": "ta-IN",
-        "te": "te-IN"
+        "en": "en-IN"
     }
     gcp_lang = lang_code_map.get(lang, "en-IN")
 
@@ -57,7 +55,8 @@ def synthesize_speech(text: str, lang: str = "en") -> str:
     if _GCP_TTS_AVAILABLE and has_gcp_creds:
         try:
             if GOOGLE_CLOUD_SPEECH_API_KEY and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-                client = texttospeech.TextToSpeechClient(client_options={"api_key": GOOGLE_CLOUD_SPEECH_API_KEY})
+                client_opts = ClientOptions(api_key=GOOGLE_CLOUD_SPEECH_API_KEY) if ClientOptions else {"api_key": GOOGLE_CLOUD_SPEECH_API_KEY}
+                client = texttospeech.TextToSpeechClient(client_options=client_opts)
             else:
                 client = texttospeech.TextToSpeechClient()
 

@@ -2,20 +2,11 @@
     DocMindX AI - Global Clinical and Application Constants
 """
 
-# Supported Languages (All-India Multi-Lingual Architecture)
+# Supported Languages (Strict 3-Language Architecture: English, Hindi, Gujarati)
 SUPPORTED_LANGUAGES = {
     "en": {"name": "English", "native": "English", "flag": ""},
     "hi": {"name": "Hindi", "native": "हिन्दी", "flag": ""},
-    "gu": {"name": "Gujarati", "native": "ગુજરાતી", "flag": ""},
-    "mr": {"name": "Marathi", "native": "मराठी", "flag": ""},
-    "bn": {"name": "Bengali", "native": "বাংলা", "flag": ""},
-    "ta": {"name": "Tamil", "native": "தமிழ்", "flag": ""},
-    "te": {"name": "Telugu", "native": "తెలుగు", "flag": ""},
-    "kn": {"name": "Kannada", "native": "ಕನ್ನಡ", "flag": ""},
-    "ml": {"name": "Malayalam", "native": "മലയാളം", "flag": ""},
-    "pa": {"name": "Punjabi", "native": "ਪੰਜਾਬੀ", "flag": ""},
-    "or": {"name": "Odia", "native": "ଓଡ଼ିଆ", "flag": ""},
-    "ur": {"name": "Urdu", "native": "اردو", "flag": ""}
+    "gu": {"name": "Gujarati", "native": "ગુજરાતી", "flag": ""}
 }
 
 # Age Demographic Groups

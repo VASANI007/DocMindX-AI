@@ -12,35 +12,89 @@ from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool
 TRANSLATIONS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "translations")
 DYNAMIC_CACHE_FILE = os.path.join(TRANSLATIONS_DIR, ".dynamic_cache.json")
 
+SUPPORTED_LANGUAGES = ["en", "hi", "gu"]
+
 LANGUAGE_FILE_MAP = {
     "en": "english.json",
     "hi": "hindi.json",
-    "gu": "gujarati.json",
-    "mr": "marathi.json",
-    "bn": "bengali.json",
-    "ta": "tamil.json",
-    "te": "telugu.json",
-    "kn": "kannada.json",
-    "ml": "malayalam.json",
-    "pa": "punjabi.json",
-    "or": "odia.json",
-    "ur": "urdu.json"
+    "gu": "gujarati.json"
 }
 
 LANGUAGE_NAME_MAP = {
     "en": "English",
     "hi": "Hindi",
-    "gu": "Gujarati",
-    "mr": "Marathi",
-    "bn": "Bengali",
-    "ta": "Tamil",
-    "te": "Telugu",
-    "kn": "Kannada",
-    "ml": "Malayalam",
-    "pa": "Punjabi",
-    "or": "Odia",
-    "ur": "Urdu"
+    "gu": "Gujarati"
 }
+
+LANGUAGE_DISPLAY_MAP = {
+    "en": "English",
+    "hi": "Hindi (हिंदी)",
+    "gu": "Gujarati (ગુજરાતી)"
+}
+
+LANGUAGE_REGISTRY = {
+    "en": {
+        "code": "en",
+        "name": "English",
+        "native": "English",
+        "display": "English",
+        "script": "Latn",
+        "font_family": "DocMindUnicode",
+        "heading_instruction": "Write strictly in clear, professional English."
+    },
+    "hi": {
+        "code": "hi",
+        "name": "Hindi",
+        "native": "हिंदी",
+        "display": "Hindi (हिंदी)",
+        "script": "Deva",
+        "font_family": "NotoDevanagari",
+        "heading_instruction": "Write strictly and completely in natural, authentic Hindi (हिंदी). All headings, paragraphs, dietary recommendations, and precautions must be in Hindi."
+    },
+    "gu": {
+        "code": "gu",
+        "name": "Gujarati",
+        "native": "ગુજરાતી",
+        "display": "Gujarati (ગુજરાતી)",
+        "script": "Gujr",
+        "font_family": "NotoGujarati",
+        "heading_instruction": "Write strictly and completely in natural, authentic Gujarati (ગુજરાતી). All headings, paragraphs, dietary recommendations, and precautions must be in Gujarati."
+    }
+}
+
+def normalize_lang_code(code: str) -> str:
+    """Normalizes any input language code to one of 'en', 'hi', or 'gu'."""
+    if not code or not isinstance(code, str):
+        return "en"
+    clean = code.strip().lower()
+    if clean in ("hi", "hindi", "hin"):
+        return "hi"
+    if clean in ("gu", "gujarati", "guj"):
+        return "gu"
+    return "en"
+
+def is_valid_script_for_language(text: str, lang_code: str) -> bool:
+    """
+    Verifies that the text actually contains the expected script for the requested language.
+    Prevents returning English when Hindi/Gujarati was selected, or Devanagari when English was selected.
+    """
+    if not text or len(text.strip()) < 40:
+        return True
+    
+    clean_code = normalize_lang_code(lang_code)
+    devanagari_count = sum(1 for c in text if 0x0900 <= ord(c) <= 0x097F)
+    gujarati_count = sum(1 for c in text if 0x0A80 <= ord(c) <= 0x0AFF)
+
+    if clean_code == "hi":
+        # Must have significant Devanagari characters and no Gujarati
+        return devanagari_count >= 15 and gujarati_count < 5
+    elif clean_code == "gu":
+        # Must have significant Gujarati characters
+        return gujarati_count >= 15
+    elif clean_code == "en":
+        # Must NOT be predominantly Devanagari or Gujarati
+        return devanagari_count < 15 and gujarati_count < 15
+    return True
 
 # In-memory caches for high-speed sub-millisecond lookups
 _LOADED_TRANSLATIONS = {}

@@ -28,15 +28,43 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 ICONS_DIR = os.path.join(BASE_DIR, "assets", "icons", "pdf")
 LOGO_PATH = os.path.join(BASE_DIR, "assets", "logo", "logo_light.png")
 
+FONTS_DIR = os.path.join(BASE_DIR, "assets", "fonts")
+
 PDF_FONT = "Helvetica"
 PDF_FONT_BOLD = "Helvetica-Bold"
 PDF_FONT_OBLIQUE = "Helvetica-Oblique"
 
 def _init_unicode_pdf_fonts():
     global PDF_FONT, PDF_FONT_BOLD, PDF_FONT_OBLIQUE
+
+    # 1. Register Noto Sans Devanagari for Hindi
+    dev_reg = os.path.join(FONTS_DIR, "NotoSansDevanagari-Regular.ttf")
+    dev_bld = os.path.join(FONTS_DIR, "NotoSansDevanagari-Bold.ttf")
+    if os.path.exists(dev_reg):
+        try:
+            pdfmetrics.registerFont(TTFont("NotoDevanagari", dev_reg))
+            pdfmetrics.registerFont(TTFont("NotoDevanagari-Bold", dev_bld if os.path.exists(dev_bld) else dev_reg))
+            registerFontFamily("NotoDevanagari", normal="NotoDevanagari", bold="NotoDevanagari-Bold")
+        except Exception as e:
+            print("Notice registering NotoDevanagari:", e)
+
+    # 2. Register Noto Sans Gujarati for Gujarati
+    guj_reg = os.path.join(FONTS_DIR, "NotoSansGujarati-Regular.ttf")
+    guj_bld = os.path.join(FONTS_DIR, "NotoSansGujarati-Bold.ttf")
+    if os.path.exists(guj_reg):
+        try:
+            pdfmetrics.registerFont(TTFont("NotoGujarati", guj_reg))
+            pdfmetrics.registerFont(TTFont("NotoGujarati-Bold", guj_bld if os.path.exists(guj_bld) else guj_reg))
+            registerFontFamily("NotoGujarati", normal="NotoGujarati", bold="NotoGujarati-Bold")
+        except Exception as e:
+            print("Notice registering NotoGujarati:", e)
+
+    # 3. Register Universal Unicode Font (Nirmala / Noto / DejaVu)
     font_candidates = [
         ("C:/Windows/Fonts/Nirmala.ttc", 0, 1),
         (os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "Nirmala.ttc"), 0, 1),
+        (os.path.join(FONTS_DIR, "NotoSansDevanagari-Regular.ttf"), None, None),
+        ("/usr/share/fonts/truetype/noto/NotoSansDevanagari-Regular.ttf", None, None),
         ("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", None, None),
         ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", None, None),
         ("/usr/share/fonts/truetype/freefont/FreeSans.ttf", None, None),
@@ -60,11 +88,36 @@ def _init_unicode_pdf_fonts():
                 PDF_FONT = "DocMindUnicode"
                 PDF_FONT_BOLD = "DocMindUnicode-Bold"
                 PDF_FONT_OBLIQUE = "DocMindUnicode"
-                return
+                break
             except Exception:
                 pass
 
 _init_unicode_pdf_fonts()
+
+
+def get_pdf_fonts_for_language(lang_code: str = "en") -> tuple:
+    """
+    Returns (regular_font, bold_font) matching the target language script.
+    Guarantees that Hindi uses Devanagari font and Gujarati uses Gujarati font,
+    completely preventing missing glyphs (black boxes / tofu).
+    """
+    clean = str(lang_code or "en").strip().lower()
+    reg_names = pdfmetrics.getRegisteredFontNames()
+
+    if clean in ("hi", "hindi"):
+        if "NotoDevanagari" in reg_names:
+            return ("NotoDevanagari", "NotoDevanagari-Bold")
+        if "DocMindUnicode" in reg_names:
+            return ("DocMindUnicode", "DocMindUnicode-Bold")
+    elif clean in ("gu", "gujarati"):
+        if "NotoGujarati" in reg_names:
+            return ("NotoGujarati", "NotoGujarati-Bold")
+        if "DocMindUnicode" in reg_names:
+            return ("DocMindUnicode", "DocMindUnicode-Bold")
+
+    if "DocMindUnicode" in reg_names:
+        return ("DocMindUnicode", "DocMindUnicode-Bold")
+    return (PDF_FONT, PDF_FONT_BOLD)
 
 
 def _clean_pdf_text(text) -> str:
@@ -298,14 +351,16 @@ def _make_section_banner(icon_filename: str, title_text: str, bg_color="#EFF6FF"
     return t
 
 
-def generate_pdf_report(user_context: dict, triage_result: dict, care_recommendations: dict = None) -> io.BytesIO:
+def generate_pdf_report(user_context: dict, triage_result: dict, care_recommendations: dict = None, lang_code: str = None) -> io.BytesIO:
     """
     Builds a complete, beautifully structured PDF clinical summary report matching the reference design.
+    Binds target language font (Noto Devanagari / Gujarati / Unicode) to prevent missing glyphs.
     
     Args:
         user_context: Dict containing patient demographics, symptoms, medical history.
         triage_result: Dict containing ranked conditions, urgency, emergency flags.
         care_recommendations: Dict containing medicines, recovery, yoga, physio, diet, compress.
+        lang_code: Target language code ('en', 'hi', 'gu').
         
     Returns:
         io.BytesIO buffer containing the PDF.
@@ -313,6 +368,16 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     user_context = user_context or {}
     triage_result = triage_result or {}
     care_res = care_recommendations or {}
+
+    scan_lang = lang_code or user_context.get("language") or care_res.get("lang_code") or "en"
+    clean_lang = str(scan_lang).strip().lower()
+    if clean_lang in ("hi", "hindi"):
+        target_lang = "hi"
+    elif clean_lang in ("gu", "gujarati"):
+        target_lang = "gu"
+    else:
+        target_lang = "en"
+    reg_font, bold_font = get_pdf_fonts_for_language(target_lang)
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -339,7 +404,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     body_style = ParagraphStyle(
         'BodyCustom',
         parent=styles['Normal'],
-        fontName=PDF_FONT,
+        fontName=reg_font,
         fontSize=8,
         leading=11,
         textColor=TEXT_DARK
@@ -348,7 +413,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     body_bold = ParagraphStyle(
         'BodyBoldCustom',
         parent=styles['Normal'],
-        fontName=PDF_FONT_BOLD,
+        fontName=bold_font,
         fontSize=8,
         leading=11,
         textColor=TEXT_DARK
@@ -357,7 +422,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     th_style = ParagraphStyle(
         'TableHeaderCustom',
         parent=styles['Normal'],
-        fontName=PDF_FONT_BOLD,
+        fontName=bold_font,
         fontSize=8,
         leading=11,
         textColor=colors.white
@@ -885,11 +950,14 @@ def generate_diagnostic_evaluation_pdf(
     breakdown_text: str = "",
     total_eval: int = 0,
     abnormal_count: int = 0,
-    overall_status: str = "All Normal"
+    overall_status: str = "All Normal",
+    lang_code: str = "en"
 ) -> io.BytesIO:
     """
     Builds a beautifully formatted PDF clinical evaluation report for Medical Reports,
     Prescriptions, and Radiology findings.
+    Dynamically binds Noto Devanagari/Gujarati fonts according to lang_code to guarantee
+    zero missing glyphs (no tofu/black boxes) across all languages.
     """
     findings = findings or []
     buffer = io.BytesIO()
@@ -902,6 +970,96 @@ def generate_diagnostic_evaluation_pdf(
         bottomMargin=36
     )
 
+    clean_lang = str(lang_code or "en").strip().lower()
+    if clean_lang in ("hi", "hindi"):
+        target_lang = "hi"
+    elif clean_lang in ("gu", "gujarati"):
+        target_lang = "gu"
+    else:
+        target_lang = "en"
+
+    reg_font, bold_font = get_pdf_fonts_for_language(target_lang)
+
+    # Localized strings dictionary for pure bilingual/vernacular fidelity
+    L_MAP = {
+        "en": {
+            "title": "DocMindX AI — Clinical Diagnostic Evaluation & Findings",
+            "report_id": "Report ID",
+            "generated": "Generated",
+            "document": "Document",
+            "report_type": "Report Type",
+            "age_group": "Age Group",
+            "gender": "Biological Gender",
+            "evaluated": "Parameters Evaluated",
+            "abnormal": "Abnormal / Out-of-Range",
+            "status": "Overall Clinical Status",
+            "ai_engine": "AI Engine",
+            "ai_engine_val": "DocMindX Clinical Pathologist Vision AI",
+            "sec_findings": "Detailed Evaluated Parameters & Findings",
+            "th_item": "Parameter / Item",
+            "th_val": "Value / Dose",
+            "th_ref": "Reference",
+            "th_status": "Status",
+            "th_exp": "Clinical Interpretation",
+            "sec_guide": "Comprehensive Clinical AI Patient Guide & Recovery Plan",
+            "advisory_title": "CLINICAL ADVISORY",
+            "advisory_text": "DocMindX AI can make mistakes. Do not rely solely on AI suggestions — always consult a certified doctor or licensed physician for clinical decisions.",
+            "all_normal": "All Normal",
+            "attention": "Attention Needed"
+        },
+        "hi": {
+            "title": "डॉकमाइंडएक्स एआई — नैदानिक मूल्यांकन और निष्कर्ष",
+            "report_id": "रिपोर्ट आईडी",
+            "generated": "जनरेट किया गया",
+            "document": "दस्तावेज़",
+            "report_type": "रिपोर्ट प्रकार",
+            "age_group": "आयु वर्ग",
+            "gender": "जैविक लिंग",
+            "evaluated": "मूल्यांकित पैरामीटर",
+            "abnormal": "असामान्य / सीमा से बाहर",
+            "status": "समग्र नैदानिक स्थिति",
+            "ai_engine": "एआई इंजन",
+            "ai_engine_val": "डॉकमाइंडएक्स क्लिनिकल पैथोलॉजिस्ट विज़न एआई",
+            "sec_findings": "विस्तृत मूल्यांकित पैरामीटर और निष्कर्ष",
+            "th_item": "पैरामीटर / मद",
+            "th_val": "मान / खुराक",
+            "th_ref": "संदर्भ सीमा",
+            "th_status": "स्थिति",
+            "th_exp": "नैदानिक व्याख्या",
+            "sec_guide": "व्यापक नैदानिक एआई रोगी मार्गदर्शिका और सुधार योजना",
+            "advisory_title": "चिकित्सीय सलाह",
+            "advisory_text": "डॉकमाइंडएक्स एआई त्रुटि कर सकता है। केवल एआई सुझावों पर निर्भर न रहें — चिकित्सीय निर्णयों के लिए हमेशा प्रमाणित चिकित्सक से परामर्श लें।",
+            "all_normal": "सभी सामान्य",
+            "attention": "ध्यान देने योग्य"
+        },
+        "gu": {
+            "title": "ડોકમાઇન્ડએક્સ એઆઇ — ક્લિનિકલ ડાયગ્નોસ્ટિક મૂલ્યાંકન અને તારણો",
+            "report_id": "રિપોર્ટ આઈડી",
+            "generated": "જનરેટ કર્યું",
+            "document": "દસ્તાવેજ",
+            "report_type": "રિપોર્ટ પ્રકાર",
+            "age_group": "વય જૂથ",
+            "gender": "જૈવિક લિંગ",
+            "evaluated": "મૂલ્યાંકન કરેલ પેરામીટર્સ",
+            "abnormal": "અસામાન્ય / મર્યાદા બહાર",
+            "status": "એકંદર ક્લિનિકલ સ્થિતિ",
+            "ai_engine": "એઆઇ એન્જિન",
+            "ai_engine_val": "ડોકમાઇન્ડએક્સ ક્લિનિકલ પેથોલોજિસ્ટ વિઝન એઆઇ",
+            "sec_findings": "વિગતવાર મૂલ્યાંકન કરેલા પેરામીટર્સ અને તારણો",
+            "th_item": "પેરામીટર / વિગત",
+            "th_val": "મૂલ્ય / માત્રા",
+            "th_ref": "સંદર્ભ મર્યાદા",
+            "th_status": "સ્થિતિ",
+            "th_exp": "ક્લિનિકલ અર્થઘટન",
+            "sec_guide": "વ્યાપક ક્લિનિકલ એઆઇ દર્દી માર્ગદર્શિકા અને સુધારણા યોજના",
+            "advisory_title": "તબીબી સલાહ",
+            "advisory_text": "ડોકમાઇન્ડએક્સ એઆઇ ભૂલ કરી શકે છે. માત્ર એઆઇ સૂચનો પર નિર્ભર રહેશો નહીં — તબીબી નિર્ણયો માટે હંમેશા પ્રમાણિત તબીબની સલાહ લો.",
+            "all_normal": "બધું સામાન્ય છે",
+            "attention": "ધ્યાન આપવાની જરૂર છે"
+        }
+    }
+    L = L_MAP.get(target_lang, L_MAP["en"])
+
     styles = getSampleStyleSheet()
     PRIMARY_BLUE = colors.HexColor("#2563EB")
     DARK_NAVY = colors.HexColor("#0F172A")
@@ -913,37 +1071,43 @@ def generate_diagnostic_evaluation_pdf(
     TEXT_MUTED = colors.HexColor("#64748B")
     TEXT_DARK = colors.HexColor("#1E293B")
 
-    body_style = ParagraphStyle('DiagBody', parent=styles['Normal'], fontName=PDF_FONT, fontSize=8.5, leading=12, textColor=TEXT_DARK)
-    body_bold = ParagraphStyle('DiagBodyBold', parent=body_style, fontName=PDF_FONT_BOLD)
-    title_style = ParagraphStyle('DiagTitle', parent=styles['Heading1'], fontName=PDF_FONT_BOLD, fontSize=14, leading=18, textColor=DARK_NAVY)
-    sec_hdr_style = ParagraphStyle('DiagSecHdr', parent=styles['Heading2'], fontName=PDF_FONT_BOLD, fontSize=10.5, leading=14, textColor=PRIMARY_BLUE)
+    body_style = ParagraphStyle('DiagBody', parent=styles['Normal'], fontName=reg_font, fontSize=8.5, leading=12, textColor=TEXT_DARK)
+    body_bold = ParagraphStyle('DiagBodyBold', parent=body_style, fontName=bold_font)
+    title_style = ParagraphStyle('DiagTitle', parent=styles['Heading1'], fontName=bold_font, fontSize=14, leading=18, textColor=DARK_NAVY)
+    sec_hdr_style = ParagraphStyle('DiagSecHdr', parent=styles['Heading2'], fontName=bold_font, fontSize=10.5, leading=14, textColor=PRIMARY_BLUE)
 
     story = []
     doc_id_str = f"DOCMINDX-DIAG-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
     # Header Title
-    story.append(Paragraph("<b>DocMindX AI — Clinical Diagnostic Evaluation & Findings</b>", title_style))
+    story.append(Paragraph(f"<b>{L['title']}</b>", title_style))
     story.append(Spacer(1, 4))
-    story.append(Paragraph(f"<font color='#64748B'>Report ID: {doc_id_str} | Generated: {datetime.now().strftime('%d %B %Y, %I:%M %p')}</font>", body_style))
+    story.append(Paragraph(f"<font color='#64748B'>{L['report_id']}: {doc_id_str} | {L['generated']}: {datetime.now().strftime('%d %B %Y, %I:%M %p')}</font>", body_style))
     story.append(Spacer(1, 10))
+
+    # Localized status string
+    if "Normal" in str(overall_status) and abnormal_count == 0:
+        loc_overall_status = L["all_normal"]
+    else:
+        loc_overall_status = L["attention"] if abnormal_count > 0 else _clean_pdf_text(overall_status)
 
     # Patient & Document Profile Table
     profile_data = [
         [
-            Paragraph(f"<b>Document:</b> {_clean_pdf_text(doc_name)}", body_style),
-            Paragraph(f"<b>Report Type:</b> {_clean_pdf_text(doc_type)}", body_style)
+            Paragraph(f"<b>{L['document']}:</b> {_clean_pdf_text(doc_name)}", body_style),
+            Paragraph(f"<b>{L['report_type']}:</b> {_clean_pdf_text(doc_type)}", body_style)
         ],
         [
-            Paragraph(f"<b>Age Group:</b> {_clean_pdf_text(age_group)}", body_style),
-            Paragraph(f"<b>Biological Gender:</b> {_clean_pdf_text(gender)}", body_style)
+            Paragraph(f"<b>{L['age_group']}:</b> {_clean_pdf_text(age_group)}", body_style),
+            Paragraph(f"<b>{L['gender']}:</b> {_clean_pdf_text(gender)}", body_style)
         ],
         [
-            Paragraph(f"<b>Parameters Evaluated:</b> {total_eval}", body_style),
-            Paragraph(f"<b>Abnormal / Out-of-Range:</b> {abnormal_count}", body_style)
+            Paragraph(f"<b>{L['evaluated']}:</b> {total_eval}", body_style),
+            Paragraph(f"<b>{L['abnormal']}:</b> {abnormal_count}", body_style)
         ],
         [
-            Paragraph(f"<b>Overall Clinical Status:</b> <b>{_clean_pdf_text(overall_status)}</b>", body_style),
-            Paragraph(f"<b>AI Engine:</b> DocMindX Clinical Pathologist Vision AI", body_style)
+            Paragraph(f"<b>{L['status']}:</b> <b>{loc_overall_status}</b>", body_style),
+            Paragraph(f"<b>{L['ai_engine']}:</b> {L['ai_engine_val']}", body_style)
         ]
     ]
     t_prof = Table(profile_data, colWidths=[270, 270])
@@ -959,16 +1123,16 @@ def generate_diagnostic_evaluation_pdf(
 
     # Detailed Findings / Parameters Table
     if findings:
-        story.append(Paragraph("<b>Detailed Evaluated Parameters & Findings</b>", sec_hdr_style))
+        story.append(Paragraph(f"<b>{L['sec_findings']}</b>", sec_hdr_style))
         story.append(Spacer(1, 6))
         
         table_rows = [
             [
-                Paragraph("<b>Parameter / Item</b>", body_bold),
-                Paragraph("<b>Value / Dose</b>", body_bold),
-                Paragraph("<b>Reference</b>", body_bold),
-                Paragraph("<b>Status</b>", body_bold),
-                Paragraph("<b>Clinical Interpretation</b>", body_bold)
+                Paragraph(f"<b>{L['th_item']}</b>", body_bold),
+                Paragraph(f"<b>{L['th_val']}</b>", body_bold),
+                Paragraph(f"<b>{L['th_ref']}</b>", body_bold),
+                Paragraph(f"<b>{L['th_status']}</b>", body_bold),
+                Paragraph(f"<b>{L['th_exp']}</b>", body_bold)
             ]
         ]
         for f in findings[:15]:
@@ -1002,7 +1166,7 @@ def generate_diagnostic_evaluation_pdf(
 
     # AI Clinical Guide Excerpt
     if breakdown_text and len(breakdown_text.strip()) > 30:
-        story.append(Paragraph("<b>Comprehensive Clinical AI Patient Guide & Recovery Plan</b>", sec_hdr_style))
+        story.append(Paragraph(f"<b>{L['sec_guide']}</b>", sec_hdr_style))
         story.append(Spacer(1, 6))
         # Add sanitized lines
         for para in breakdown_text.split("\n\n"):
@@ -1014,9 +1178,9 @@ def generate_diagnostic_evaluation_pdf(
 
     # Clinical Advisory
     advisory_content = [
-        Paragraph("<font color='#EA580C'><b>CLINICAL ADVISORY</b></font>", body_bold),
+        Paragraph(f"<font color='#EA580C'><b>{L['advisory_title']}</b></font>", body_bold),
         Spacer(1, 2),
-        Paragraph("DocMindX AI can make mistakes. Do not rely solely on AI suggestions — always consult a certified doctor or licensed physician for clinical decisions.", body_style)
+        Paragraph(L['advisory_text'], body_style)
     ]
     t_adv = Table([[advisory_content]], colWidths=[540])
     t_adv.setStyle(TableStyle([
@@ -1039,6 +1203,7 @@ def generate_scan_record_pdf(scan: dict) -> io.BytesIO:
     """
     Dynamically generates a professional clinical PDF report for any saved scan record
     (Health Assessment, Lab Report, Doctor Prescription, or Radiology / Diagnostic Imaging).
+    Honors the language in which the record was generated to bind the correct Unicode font.
     """
     if not scan:
         scan = {}
@@ -1051,6 +1216,7 @@ def generate_scan_record_pdf(scan: dict) -> io.BytesIO:
             
     scan_type = scan.get("scan_type", "Health Record")
     created_at = str(scan.get("created_at", datetime.now().strftime("%Y-%m-%d %H:%M:%S")))[:16]
+    scan_lang = details.get("user_inputs", {}).get("language") or details.get("language") or scan.get("language") or "en"
     
     # Check if this is an Assessment
     if "Assessment" in scan_type or "triage_result" in details:
@@ -1113,7 +1279,8 @@ def generate_scan_record_pdf(scan: dict) -> io.BytesIO:
             breakdown_text=breakdown_text,
             total_eval=total_eval,
             abnormal_count=abnormal_count,
-            overall_status=overall_status
+            overall_status=overall_status,
+            lang_code=scan_lang
         )
 
 

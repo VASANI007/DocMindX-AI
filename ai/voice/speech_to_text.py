@@ -25,9 +25,19 @@ logger = logging.getLogger("SpeechToText")
 # Check if official Google Cloud Speech library is available
 try:
     from google.cloud import speech_v1 as speech
+    from google.cloud.speech_v1.services.speech.client import SpeechClient
+    from google.api_core.client_options import ClientOptions
     _GCP_SPEECH_AVAILABLE = True
 except ImportError:
-    _GCP_SPEECH_AVAILABLE = False
+    try:
+        from google.cloud import speech_v1 as speech
+        SpeechClient = getattr(speech, "SpeechClient", None)
+        from google.api_core.client_options import ClientOptions
+        _GCP_SPEECH_AVAILABLE = SpeechClient is not None
+    except ImportError:
+        _GCP_SPEECH_AVAILABLE = False
+        SpeechClient = None
+        ClientOptions = None
 
 # Direct REST API used for Gemini Multimodal Audio
 import base64
@@ -65,15 +75,11 @@ def transcribe_audio(audio_data: Union[str, bytes, BinaryIO], language_code: str
         logger.debug("Audio data empty or too short for transcription.")
         return ""
 
-    # Normalize language codes
+    # Normalize language codes (hi, gu, en)
     lang_map = {
         "hi": "hi-IN",
         "gu": "gu-IN",
-        "en": "en-IN",
-        "mr": "mr-IN",
-        "bn": "bn-IN",
-        "ta": "ta-IN",
-        "te": "te-IN"
+        "en": "en-IN"
     }
     normalized_lang = lang_map.get(language_code, language_code)
 
@@ -134,9 +140,10 @@ def transcribe_audio(audio_data: Union[str, bytes, BinaryIO], language_code: str
     if _GCP_SPEECH_AVAILABLE and has_gcp_creds:
         try:
             if GOOGLE_CLOUD_SPEECH_API_KEY and not os.getenv("GOOGLE_APPLICATION_CREDENTIALS"):
-                client = speech.SpeechClient(client_options={"api_key": GOOGLE_CLOUD_SPEECH_API_KEY})
+                client_opts = ClientOptions(api_key=GOOGLE_CLOUD_SPEECH_API_KEY) if ClientOptions else {"api_key": GOOGLE_CLOUD_SPEECH_API_KEY}
+                client = SpeechClient(client_options=client_opts)
             else:
-                client = speech.SpeechClient()
+                client = SpeechClient()
 
             audio = speech.RecognitionAudio(content=raw_bytes)
             config = speech.RecognitionConfig(

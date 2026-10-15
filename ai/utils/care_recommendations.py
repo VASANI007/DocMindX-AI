@@ -2145,17 +2145,8 @@ def localize_care_recommendations(care_res: dict, target_lang_code: str) -> dict
         "en": "English",
         "hi": "Hindi (हिंदी)",
         "gu": "Gujarati (ગુજરાતી)",
-        "mr": "Marathi (मराठी)",
-        "bn": "Bengali (বাংলা)",
-        "ta": "Tamil (தமிழ்)",
-        "te": "Telugu (తెలుగు)",
-        "kn": "Kannada (ಕನ್ನಡ)",
-        "ml": "Malayalam (മലയാളം)",
-        "pa": "Punjabi (ਪੰਜਾਬੀ)",
-        "or": "Odia (ଓଡ଼ିଆ)",
-        "ur": "Urdu (اردو)",
     }
-    lang_name = _LANG_NAME_MAP.get(target_lang_code, target_lang_code.title())
+    lang_name = _LANG_NAME_MAP.get(target_lang_code, "English")
 
     # Update seasonal context
     st_val = care_res.get("state") or "Gujarat"
@@ -2167,20 +2158,11 @@ def localize_care_recommendations(care_res: dict, target_lang_code: str) -> dict
         "message": seasonal_data["alert_description"]
     }
 
-    # Food timing translation — all 12 supported languages
+    # Food timing translation — English, Hindi, Gujarati
     ft_map = {
         "en": {"after": "After Food", "before": "Before Food (Empty Stomach)", "water": "With Water (Sip Throughout Day)"},
         "hi": {"after": "भोजन के बाद", "before": "भोजन से पहले (खाली पेट)", "water": "पानी के साथ (दिन भर घूंट लें)"},
         "gu": {"after": "જમ્યા પછી", "before": "જમ્યા પહેલા (ખાલી પેટે)", "water": "પાણી સાથે (દિવસ દરમ્યાન)"},
-        "mr": {"after": "जेवणानंतर", "before": "जेवणापूर्वी (रिकाम्या पोटी)", "water": "पाण्यासोबत (दिवसभर)"},
-        "bn": {"after": "খাওয়ার পরে", "before": "খাওয়ার আগে (খালি পেটে)", "water": "জলের সাথে (সারাদিন)"},
-        "ta": {"after": "சாப்பிட்ட பிறகு", "before": "சாப்பிடுவதற்கு முன்பு (வெறும் வயிற்றில்)", "water": "தண்ணீருடன் (நாள் முழுவதும்)"},
-        "te": {"after": "భోజనం తర్వాత", "before": "భోజనానికి ముందు (ఖాళీ కడుపుతో)", "water": "నీటితో (రోజంతా)"},
-        "kn": {"after": "ಊಟದ ನಂತರ", "before": "ಊಟಕ್ಕೂ ಮುನ್ನ (ಖಾಲಿ ಹೊಟ್ಟೆಯಲ್ಲಿ)", "water": "ನೀರಿನೊಂದಿಗೆ (ದಿನವಿಡೀ)"},
-        "ml": {"after": "ഭക്ഷണത്തിനു ശേഷം", "before": "ഭക്ഷണത്തിനു മുമ്പ് (ശൂന്യ ഉദരത്തിൽ)", "water": "വെള്ളത്തോടൊപ്പം (ദിവസം മുഴുവൻ)"},
-        "pa": {"after": "ਖਾਣੇ ਤੋਂ ਬਾਅਦ", "before": "ਖਾਣੇ ਤੋਂ ਪਹਿਲਾਂ (ਖਾਲੀ ਪੇਟ)", "water": "ਪਾਣੀ ਨਾਲ (ਪੂਰਾ ਦਿਨ)"},
-        "or": {"after": "ଖାଇବା ପରେ", "before": "ଖାଇବା ପୂର୍ବରୁ (ଖାଲି ପେଟ)", "water": "ପାଣି ସହ (ଦିନ ସାରା)"},
-        "ur": {"after": "کھانے کے بعد", "before": "کھانے سے پہلے (خالی پیٹ)", "water": "پانی کے ساتھ (دن بھر)"},
     }
     target_ft = ft_map.get(target_lang_code, ft_map["en"])
     for med in care_res.get("medicine_gallery", []):

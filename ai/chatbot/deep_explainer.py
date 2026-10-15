@@ -8,6 +8,7 @@ import json
 import requests
 
 from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS, DEFAULT_GEMINI_MODELS
+from config.language import normalize_lang_code, is_valid_script_for_language
 
 
 def generate_deep_explanation(
@@ -22,6 +23,7 @@ def generate_deep_explanation(
     """
     Generates a structured, comprehensive, patient-friendly clinical deep explanation.
     """
+    lang = normalize_lang_code(lang)
     lang_name = "English" if lang == "en" else "Hindi (हिंदी)" if lang == "hi" else "Gujarati (ગુજરાતી)"
     
     med_names = [m.get("name", "") for m in (medicines or []) if isinstance(m, dict)]
@@ -75,7 +77,7 @@ Write in a reassuring, professional, and clear tone in {lang_name}."""
             candidates = res_data.get("candidates", [])
             if candidates:
                 txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                if txt and len(txt.strip()) > 100:
+                if txt and len(txt.strip()) > 100 and is_valid_script_for_language(txt, lang):
                     return txt.strip()
 
     # Groq remains only as a fallback for deep explanation outages.
@@ -95,7 +97,7 @@ Write in a reassuring, professional, and clear tone in {lang_name}."""
                 res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
                 if res.status_code == 200:
                     txt = res.json()["choices"][0]["message"]["content"]
-                    if txt and len(txt.strip()) > 100:
+                    if txt and len(txt.strip()) > 100 and is_valid_script_for_language(txt, lang):
                         return txt.strip()
             except Exception as e:
                 print(f"Deep explanation Groq fallback notice: {e}")
@@ -153,6 +155,7 @@ def answer_assessment_question(
     """
     Answers any follow-up question regarding the patient's assessment and medications.
     """
+    lang = normalize_lang_code(lang)
     lang_name = "English" if lang == "en" else "Hindi (हिंदी)" if lang == "hi" else "Gujarati (ગુજરાતી)"
     med_summary = ", ".join([f"{m.get('name')} ({m.get('food_timing', 'After Food')})"
         for m in (medicines or []) if isinstance(m, dict)])
@@ -189,7 +192,7 @@ INSTRUCTIONS:
             candidates = res_data.get("candidates", [])
             if candidates:
                 txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                if txt and len(txt.strip()) > 20:
+                if txt and len(txt.strip()) > 20 and is_valid_script_for_language(txt, lang):
                     return txt.strip()
 
     if GROQ_API_KEY:
@@ -208,7 +211,7 @@ INSTRUCTIONS:
                 res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=8)
                 if res.status_code == 200:
                     ans = res.json()["choices"][0]["message"]["content"].strip()
-                    if ans:
+                    if ans and is_valid_script_for_language(ans, lang):
                         return ans
             except Exception as e:
                 print(f"Q&A Groq notice ({groq_model}): {e}")
@@ -232,9 +235,10 @@ def generate_medical_report_comprehensive_breakdown(
     - What happens to the body when it is low or high
     - Actionable diet & lifestyle changes (foods to eat, foods to avoid)
     - Precautions & Red flags
-    Emits NO emojis.
+    Emits NO emojis. Guaranteed to return in the selected language (en, hi, or gu).
     """
     findings = findings or []
+    lang = normalize_lang_code(lang)
 
     if lang == "hi":
         lang_name = "Hindi (हिंदी)"
@@ -325,7 +329,31 @@ CRITICAL INSTRUCTIONS:
             if candidates:
                 txt = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                 if txt and len(txt.strip()) > 80:
-                    return txt.strip()
+                    if is_valid_script_for_language(txt, lang):
+                        return txt.strip()
+                    # If AI returned wrong script (e.g. English when Hindi/Gujarati was selected), repair via 1-shot translate
+                    try:
+                        trans_prompt = (
+                            f"Translate this medical breakdown strictly into natural, fluent {lang_name}. "
+                            f"Keep the exact 5 markdown sections (1 to 5) intact without emojis:\n\n{txt}"
+                        )
+                        trans_payload = {
+                            "contents": [{"parts": [{"text": trans_prompt}]}],
+                            "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1800}
+                        }
+                        t_data, _, _ = gemini_pool.execute_with_failover(
+                            payload=trans_payload,
+                            models=["gemini-3.6-flash", "gemini-3.5-flash-lite"],
+                            timeout=10
+                        )
+                        if t_data:
+                            t_cand = t_data.get("candidates", [])
+                            if t_cand:
+                                t_txt = t_cand[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+                                if t_txt and is_valid_script_for_language(t_txt, lang):
+                                    return t_txt
+                    except Exception as trans_e:
+                        print("Breakdown script repair notice:", trans_e)
 
     # 2. Groq AI (Fallback)
     if GROQ_API_KEY:
@@ -344,40 +372,44 @@ CRITICAL INSTRUCTIONS:
                 res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=10)
                 if res.status_code == 200:
                     txt = res.json()["choices"][0]["message"]["content"]
-                    if txt and len(txt.strip()) > 80:
+                    if txt and len(txt.strip()) > 80 and is_valid_script_for_language(txt, lang):
                         return txt.strip()
             except Exception as e:
                 print(f"Report breakdown Groq notice ({model}): {e}")
 
-    # 3. Local Rule-Based Fallback
+    # 3. Local Rule-Based Fallback with complete 5 sections
     if lang == "hi":
-        return f"""### 1. रिपोर्ट का मुख्य सारांश
+        return f"""### 1. रिपोर्ट का मुख्य सारांश (Key Findings Overview)
 आपकी इस रिपोर्ट में {len(findings)} मुख्य पैरामीटर्स का विश्लेषण किया गया है। कुछ मान सामान्य सीमा से बाहर हो सकते हैं जिन पर ध्यान देने की आवश्यकता है।
 
-### 2. यह पैरामीटर क्या है और शरीर में इसका क्या कार्य है?
+### 2. यह पैरामीटर क्या है और शरीर में इसका क्या कार्य है? (Biological Function in Plain Language)
 रक्त परीक्षण के घटक (जैसे हीमोग्लोबिन, श्वेत रक्त कोशिकाएं आदि) शरीर के विभिन्न अंगों के सुचारू संचालन, ऑक्सीजन परिवहन और रोग प्रतिरोधक क्षमता को बनाए रखने का काम करते हैं।
 
-### 3. शरीर पर असर और इसके लक्षण
+### 3. शरीर पर असर और इसके लक्षण (Impact on the Body & Symptoms)
 पैरामीटर्स में असंतुलन होने पर सामान्य थकान, ऊर्जा में कमी, हल्का सिरदर्द या कमजोरी जैसे लक्षण महसूस हो सकते हैं।
 
-### 4. आहार व जीवनशैली सुधार
+### 4. आहार व जीवनशैली सुधार (Actionable Diet & Nutrition Plan)
 - पोषक तत्वों से भरपूर ताजे फल, हरी पत्तेदार सब्जियां, दालें और पर्याप्त पानी का सेवन करें।
 - भोजन के तुरंत बाद चाय या कॉफी पीने से बचें ताकि पोषक तत्वों का अवशोषण ठीक से हो सके।
 
-### 5. चिकित्सीय सलाह
+### 5. चिकित्सीय सलाह (Medical Precautions & Red Flags)
 इस रिपोर्ट के विस्तृत विश्लेषण और उचित उपचार के लिए अपने डॉक्टर से अवश्य परामर्श लें।"""
     elif lang == "gu":
-        return f"""### 1. રિપોર્ટનો મુખ્ય સારાંશ
-તમારા રિપોર્ટમાં {len(findings)} પેરામીટર્સ તપાસવામાં આવ્યા છે.
+        return f"""### 1. રિપોર્ટનો મુખ્ય સારાંશ (Key Findings Overview)
+તમારા આ રિપોર્ટમાં {len(findings)} મુખ્ય પેરામીટર્સનું વિશ્લેષણ કરવામાં આવ્યું છે. અમુક પરિણામો સામાન્ય મર્યાદા બહાર હોઈ શકે છે જેના પર ધ્યાન આપવું જરૂરી છે.
 
-### 2. આ પરિણામોનું મહત્વ
-શરીરમાં જરૂરી પોષક તત્વો અને રક્તકણોનું યોગ્ય સ્તર સ્વાસ્થ્ય માટે અનિવાર્ય છે.
+### 2. આ પરિણામોનું મહત્વ અને શરીર પર અસર (Biological Function in Plain Language)
+રક્ત પરીક્ષણના વિવિધ ઘટકો શરીરમાં ઓક્સિજન પહોંચાડવા, રોગપ્રતિકારક શક્તિ જાળવવા અને અંગોના યોગ્ય સંચાલન માટે આવશ્યક છે.
 
-### 3. આહાર અને કાળજી
-લીલા શાકભાજી, તાજા ફળો અને પૂરતું પાણી લેવું હિતાવહ છે. ચા-કોફીનું સેવન ઘટાડો.
+### 3. શરીર પર અસર અને લક્ષણો (Impact on the Body & Symptoms)
+પેરામીટર્સમાં વધ-ઘટ થવાથી શરીરમાં થાક, અશક્તિ, ચક્કર આવવા કે સ્ફૂર્તિમાં ઘટાડો જેવા સામાન્ય લક્ષણો જોવા મળી શકે છે.
 
-### 4. ડૉક્ટરની સલાહ
-ચોક્કસ નિદાન માટે તમારા ફિઝિશિયનનો સંપર્ક કરવો જરૂરી છે."""
+### 4. આહાર અને જીવનશૈલીમાં સુધારો (Actionable Diet & Nutrition Plan)
+- આયર્ન અને વિટામિનથી ભરપૂર લીલા શાકભાજી, તાજા મોસમી ફળો અને પૂરતા પ્રમાણમાં પાણી પીવો.
+- જમ્યા પછી તરત ચા કે કોફી પીવાનું ટાળો જેથી પોષક તત્વોનું શોષણ બરાબર થઈ શકે.
+
+### 5. તબીબી સાવચેતીઓ અને ડૉક્ટરની સલાહ (Medical Precautions & Red Flags)
+ચોક્કસ નિદાન અને યોગ્ય સારવાર માટે હંમેશા તમારા તબીબ સાથે પરામર્શ કરો."""
     else:
         return f"""### 1. Key Findings Overview
 Evaluated {len(findings)} clinical parameters from your report. Certain values require clinical attention.
