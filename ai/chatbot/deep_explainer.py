@@ -234,8 +234,32 @@ def generate_medical_report_comprehensive_breakdown(
     - Precautions & Red flags
     Emits NO emojis.
     """
-    lang_name = "English" if lang == "en" else "Hindi (हिंदी)" if lang == "hi" else "Gujarati (ગુજરાતી)"
     findings = findings or []
+
+    if lang == "hi":
+        lang_name = "Hindi (हिंदी)"
+        lang_instruction = "Write 100% strictly in natural, patient-friendly Hindi (हिंदी). All headings, explanations, dietary advice, and cautions must be in Hindi. Do NOT write in English or Gujarati."
+        sec_1 = "### 1. रिपोर्ट का मुख्य सारांश (Key Findings Overview)\nसुरक्षित सामान्य पैरामीटर और जिन पर ध्यान देने की आवश्यकता है, उनका स्पष्ट सारांश दें।"
+        sec_2 = "### 2. यह पैरामीटर / टेस्ट क्या है और शरीर में इसका क्या कार्य है? (Biological Function in Plain Language)\nसरल शब्दों में समझाएं कि प्रत्येक मुख्य टेस्ट या दवा शरीर में क्या काम करती है।"
+        sec_3 = "### 3. शरीर पर असर और इसके लक्षण (Impact on the Body & Symptoms)\nइन मानों के असामान्य होने पर शरीर, ऊर्जा और अंगों पर क्या प्रभाव पड़ता है और क्या लक्षण दिख सकते हैं।"
+        sec_4 = "### 4. इसे सुधारने के लिए क्या खाएं और क्या न खाएं? (Actionable Diet & Nutrition Plan)\nविशिष्ट और व्यावहारिक आहार मार्गदर्शन दें:\n- कौन से खाद्य पदार्थ खाएं (जैसे आयरन युक्त, विटामिन सी, हरी पत्तेदार सब्जियां, पर्याप्त पानी आदि)।\n- किन चीजों से परहेज करें (जैसे भोजन के तुरंत बाद चाय/कॉफी, अत्यधिक तला-भुना, नमक आदि)।"
+        sec_5 = "### 5. सावधानियां व डॉक्टर से परामर्श (Medical Precautions & Red Flags)\nस्पष्ट बताएं कि मरीज को कब और किस विशेषज्ञ डॉक्टर से परामर्श लेना चाहिए, और किन आपातकालीन लक्षणों (Red Flags) पर तुरंत अस्पताल जाना चाहिए।"
+    elif lang == "gu":
+        lang_name = "Gujarati (ગુજરાતી)"
+        lang_instruction = "Write 100% strictly in natural, patient-friendly Gujarati (ગુજરાતી). All headings, explanations, dietary advice, and cautions must be in Gujarati. Do NOT write in English or Hindi."
+        sec_1 = "### 1. રિપોર્ટનો મુખ્ય સારાંશ (Key Findings Overview)\nસામાન્ય પરિણામો અને ધ્યાન આપવા જેવા અસામાન્ય પરિણામોનો સ્પષ્ટ સારાંશ આપો."
+        sec_2 = "### 2. આ પરિણામોનું મહત્વ અને શરીર પર અસર (Biological Function in Plain Language)\nસરળ ભાષામાં સમજાવો કે આ ટેસ્ટ અથવા દવાઓ શરીરમાં શું કાર્ય કરે છે."
+        sec_3 = "### 3. શરીર પર અસર અને લક્ષણો (Impact on the Body & Symptoms)\nપરિણામો અસામાન્ય હોવાથી શરીરમાં શું ફેરફાર થાય છે અને કેવા લક્ષણો જોવા મળે છે."
+        sec_4 = "### 4. આહાર અને જીવનશૈલીમાં સુધારો (Actionable Diet & Nutrition Plan)\nખોરાક અંગે સ્પષ્ટ માર્ગદર્શન:\n- કઈ વસ્તુઓ ખાવી જોઈએ (લીલા શાકભાજી, ફળો, પૂરતું પાણી વગેરે).\n- કઈ વસ્તુઓનો પરહેજ કરવો (ચા, કોફી, તળેલું ખોરાક વગેરે)."
+        sec_5 = "### 5. તબીબી સાવચેતીઓ અને ડૉક્ટરની સલાહ (Medical Precautions & Red Flags)\nક્યા નિષ્ણાત ડૉક્ટરનો સંપર્ક કરવો અને કઈ કટોકટીમાં તાત્કાલિક સારવાર લેવી."
+    else:
+        lang_name = "English"
+        lang_instruction = "Write strictly and 100% in pure English. Do NOT write in Hindi, Devanagari, Gujarati, or any non-English script anywhere in your response. All headings, explanations, bullet points, and clinical summaries MUST be entirely in English."
+        sec_1 = "### 1. Key Findings Overview\nSummarize which parameters are within safe normal limits and which ones require attention or are abnormal."
+        sec_2 = "### 2. Biological Function in Plain Language\nExplain in simple, everyday words what each key test or medicine actually is (e.g. what Hemoglobin is, what Creatinine is, what WBC is, etc.)."
+        sec_3 = "### 3. Impact on the Body & Symptoms\nExplain what happens to the patient's body, energy, and organs when these values are abnormal (e.g. fatigue, breathlessness, dizziness, weakness, fluid retention, etc.)."
+        sec_4 = "### 4. Actionable Diet & Nutrition Plan\nProvide specific, actionable dietary guidance:\n- Exactly which foods to consume to improve this condition (e.g. iron-rich items, Vitamin C, leafy greens, proteins, hydration).\n- Exactly which foods or habits to avoid (e.g. tea/coffee immediately after meals, junk food, high sodium, etc.)."
+        sec_5 = "### 5. Medical Precautions & Red Flags\nExplain next steps, which specialist physician to consult, and highlight danger signs (Red Flags) where urgent medical attention is required."
 
     # Summarize findings for prompt
     findings_lines = []
@@ -270,27 +294,20 @@ RAW EXTRACTED TEXT EXCERPT:
 \"\"\"{doc_text[:1200]}\"\"\"
 
 CRITICAL INSTRUCTIONS:
-1. Write strictly in {lang_name}.
+1. {lang_instruction}
 2. Do NOT use any emojis.
 3. Provide deep, clear, empathetic explanation so the patient fully understands their health without medical jargon.
 4. Structure the response into these 5 clear markdown sections:
 
-### 1. रिपोर्ट का मुख्य सारांश (Key Findings Overview)
-Summarize which parameters are within safe normal limits and which ones require attention or are abnormal.
+{sec_1}
 
-### 2. यह पैरामीटर / टेस्ट क्या है और शरीर में इसका क्या कार्य है? (Biological Function in Plain Language)
-Explain in simple, everyday words what each key test or medicine actually is (e.g. what Hemoglobin is, what Creatinine is, what WBC is, etc.).
+{sec_2}
 
-### 3. शरीर पर असर और इसके लक्षण (Impact on the Body & Symptoms)
-Explain what happens to the patient's body, energy, and organs when these values are abnormal (e.g. fatigue, breathlessness, dizziness, weakness, fluid retention, etc.).
+{sec_3}
 
-### 4. इसे सुधारने के लिए क्या खाएं और क्या न खाएं? (Actionable Diet & Nutrition Plan)
-Provide specific, actionable dietary guidance:
-- Exactly which foods to consume to improve this condition (e.g. iron-rich items, Vitamin C, leafy greens, proteins, hydration).
-- Exactly which foods or habits to avoid (e.g. tea/coffee immediately after meals, junk food, high sodium, etc.).
+{sec_4}
 
-### 5. सावधानियां व डॉक्टर से परामर्श (Medical Precautions & Red Flags)
-Explain next steps, which specialist physician to consult, and highlight danger signs (Red Flags) where urgent medical attention is required."""
+{sec_5}"""
 
     # 1. Gemini AI (Primary — Multi-Key Failover Pool)
     if gemini_pool.get_active_keys():
@@ -318,7 +335,7 @@ Explain next steps, which specialist physician to consult, and highlight danger 
                 body = {
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": f"You are DocMindX AI Senior Clinical Pathologist. Write comprehensive patient guides in {lang_name}. Do NOT use emojis."},
+                        {"role": "system", "content": f"You are DocMindX AI Senior Clinical Pathologist. {lang_instruction} Do NOT use emojis."},
                         {"role": "user", "content": prompt}
                     ],
                     "temperature": 0.2,

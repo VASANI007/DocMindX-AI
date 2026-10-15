@@ -20,10 +20,51 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image as RLImage, KeepTogether
 )
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase.pdfmetrics import registerFontFamily
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ICONS_DIR = os.path.join(BASE_DIR, "assets", "icons", "pdf")
 LOGO_PATH = os.path.join(BASE_DIR, "assets", "logo", "logo_light.png")
+
+PDF_FONT = "Helvetica"
+PDF_FONT_BOLD = "Helvetica-Bold"
+PDF_FONT_OBLIQUE = "Helvetica-Oblique"
+
+def _init_unicode_pdf_fonts():
+    global PDF_FONT, PDF_FONT_BOLD, PDF_FONT_OBLIQUE
+    font_candidates = [
+        ("C:/Windows/Fonts/Nirmala.ttc", 0, 1),
+        (os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts", "Nirmala.ttc"), 0, 1),
+        ("/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf", None, None),
+        ("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", None, None),
+        ("/usr/share/fonts/truetype/freefont/FreeSans.ttf", None, None),
+    ]
+    for cand, reg_sub, bld_sub in font_candidates:
+        if os.path.exists(cand):
+            try:
+                if reg_sub is not None:
+                    pdfmetrics.registerFont(TTFont("DocMindUnicode", cand, subfontIndex=reg_sub))
+                    pdfmetrics.registerFont(TTFont("DocMindUnicode-Bold", cand, subfontIndex=bld_sub))
+                else:
+                    pdfmetrics.registerFont(TTFont("DocMindUnicode", cand))
+                    pdfmetrics.registerFont(TTFont("DocMindUnicode-Bold", cand))
+                registerFontFamily(
+                    "DocMindUnicode",
+                    normal="DocMindUnicode",
+                    bold="DocMindUnicode-Bold",
+                    italic="DocMindUnicode",
+                    boldItalic="DocMindUnicode-Bold"
+                )
+                PDF_FONT = "DocMindUnicode"
+                PDF_FONT_BOLD = "DocMindUnicode-Bold"
+                PDF_FONT_OBLIQUE = "DocMindUnicode"
+                return
+            except Exception:
+                pass
+
+_init_unicode_pdf_fonts()
 
 
 def _clean_pdf_text(text) -> str:
@@ -46,6 +87,8 @@ def _clean_pdf_text(text) -> str:
     text = text.replace('\u2015', ' - ')
     text = text.replace('\u2212', '-')
     text = text.replace('■', '')
+    text = text.replace('□', '')
+    text = text.replace('\ufffd', '')
     
     # Replace spaces & quotes
     text = text.replace('\u202f', ' ')
@@ -171,10 +214,10 @@ class NumberedCanvas(canvas.Canvas):
                     self.drawImage(heart_icon_path, 36, 18, width=12, height=12, mask='auto', preserveAspectRatio=True)
                 except Exception:
                     pass
-            self.setFont("Helvetica-Bold", 8)
+            self.setFont(PDF_FONT_BOLD, 8)
             self.setFillColor(colors.HexColor("#1E40AF"))
             self.drawString(53, 20, "DocMindX AI")
-            self.setFont("Helvetica", 8)
+            self.setFont(PDF_FONT, 8)
             self.setFillColor(colors.HexColor("#64748B"))
             self.drawString(108, 20, "|   Clinical Intelligence for Everyone")
             self.drawRightString(576, 20, f"Page {page_num} of {page_count}")
@@ -187,14 +230,14 @@ class NumberedCanvas(canvas.Canvas):
                     self.drawImage(heart_icon_path, 36, 762, width=12, height=12, mask='auto', preserveAspectRatio=True)
                 except Exception:
                     pass
-            self.setFont("Helvetica-Bold", 8.5)
+            self.setFont(PDF_FONT_BOLD, 8.5)
             self.setFillColor(colors.HexColor("#1E40AF"))
             self.drawString(53, 764, "DocMindX AI")
-            self.setFont("Helvetica", 8.5)
+            self.setFont(PDF_FONT, 8.5)
             self.setFillColor(colors.HexColor("#0F172A"))
             self.drawString(110, 764, "—   Clinical Health Summary & Triage Report")
 
-            self.setFont("Helvetica", 8)
+            self.setFont(PDF_FONT, 8)
             self.setFillColor(colors.HexColor("#64748B"))
             self.drawRightString(576, 764, f"Report ID: {self.doc_id_str}   |   Page {page_num} of {page_count}")
 
@@ -206,7 +249,7 @@ class NumberedCanvas(canvas.Canvas):
             # Page 2+ Running Footer:
             # Left: "Better Data. Brighter Health."
             # Right: Heart Icon + "DocMindX AI"
-            self.setFont("Helvetica-Oblique", 8)
+            self.setFont(PDF_FONT_OBLIQUE, 8)
             self.setFillColor(colors.HexColor("#64748B"))
             self.drawString(36, 20, "Better Data. Brighter Health.")
 
@@ -215,7 +258,7 @@ class NumberedCanvas(canvas.Canvas):
                     self.drawImage(heart_icon_path, 502, 18, width=12, height=12, mask='auto', preserveAspectRatio=True)
                 except Exception:
                     pass
-            self.setFont("Helvetica-Bold", 8)
+            self.setFont(PDF_FONT_BOLD, 8)
             self.setFillColor(colors.HexColor("#1E40AF"))
             self.drawString(518, 20, "DocMindX AI")
 
@@ -236,7 +279,7 @@ def _make_section_banner(icon_filename: str, title_text: str, bg_color="#EFF6FF"
 
     title_p = Paragraph(f"<b>{title_text}</b>", ParagraphStyle(
         f'Banner_{icon_filename}',
-        fontName='Helvetica-Bold',
+        fontName=PDF_FONT_BOLD,
         fontSize=9.5,
         leading=13,
         textColor=colors.HexColor(text_color)
@@ -296,7 +339,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     body_style = ParagraphStyle(
         'BodyCustom',
         parent=styles['Normal'],
-        fontName='Helvetica',
+        fontName=PDF_FONT,
         fontSize=8,
         leading=11,
         textColor=TEXT_DARK
@@ -305,7 +348,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     body_bold = ParagraphStyle(
         'BodyBoldCustom',
         parent=styles['Normal'],
-        fontName='Helvetica-Bold',
+        fontName=PDF_FONT_BOLD,
         fontSize=8,
         leading=11,
         textColor=TEXT_DARK
@@ -314,7 +357,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     th_style = ParagraphStyle(
         'TableHeaderCustom',
         parent=styles['Normal'],
-        fontName='Helvetica-Bold',
+        fontName=PDF_FONT_BOLD,
         fontSize=8,
         leading=11,
         textColor=colors.white
@@ -337,13 +380,13 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
 
     title_block = [
         Paragraph("<b>DocMindX AI</b>", ParagraphStyle(
-            'HeaderTitle', fontName='Helvetica-Bold', fontSize=15, leading=18, textColor=colors.HexColor("#1E40AF")
+            'HeaderTitle', fontName=PDF_FONT_BOLD, fontSize=15, leading=18, textColor=colors.HexColor("#1E40AF")
         )),
         Paragraph("<b>Clinical Health Summary & Triage Report</b>", ParagraphStyle(
-            'HeaderSub', fontName='Helvetica-Bold', fontSize=9.5, leading=12, textColor=DARK_NAVY
+            'HeaderSub', fontName=PDF_FONT_BOLD, fontSize=9.5, leading=12, textColor=DARK_NAVY
         )),
         Paragraph("AI Powered Insights for a Healthier Tomorrow", ParagraphStyle(
-            'HeaderTag', fontName='Helvetica-Oblique', fontSize=7.5, leading=10, textColor=TEXT_MUTED
+            'HeaderTag', fontName=PDF_FONT_OBLIQUE, fontSize=7.5, leading=10, textColor=TEXT_MUTED
         ))
     ]
 
@@ -356,7 +399,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     header_mid_table = Table([
         [Paragraph(f"<b>Generated:</b> {_clean_rich_text(gen_time_str)}", body_style)],
         [Paragraph(f"<b>Report ID:</b> {_clean_rich_text(doc_id_str)}", body_style)],
-        [Paragraph("<b>Verified Healthcare Engine</b>", ParagraphStyle('Engine', fontName='Helvetica-Bold', fontSize=7.5, leading=10, textColor=SUCCESS_GREEN))]
+        [Paragraph("<b>Verified Healthcare Engine</b>", ParagraphStyle('Engine', fontName=PDF_FONT_BOLD, fontSize=7.5, leading=10, textColor=SUCCESS_GREEN))]
     ], colWidths=[165])
     header_mid_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#F8FAFC")),
@@ -369,7 +412,7 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
     pulse_img = RLImage(pulse_icon_path, width=44, height=13) if os.path.exists(pulse_icon_path) else ""
     header_right_table = Table([
         [pulse_img],
-        [Paragraph("<font color='#2563EB'><b>Smarter<br/>Insights<br/>Healthier Lives</b></font>", ParagraphStyle('PillText', fontName='Helvetica-Bold', fontSize=7, leading=8.5, alignment=1))]
+        [Paragraph("<font color='#2563EB'><b>Smarter<br/>Insights<br/>Healthier Lives</b></font>", ParagraphStyle('PillText', fontName=PDF_FONT_BOLD, fontSize=7, leading=8.5, alignment=1))]
     ], colWidths=[105])
     header_right_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#EFF6FF")),
@@ -453,11 +496,11 @@ def generate_pdf_report(user_context: dict, triage_result: dict, care_recommenda
             [
                 icon_warn_img,
                 Paragraph(f"<font color='#C2410C'><b>SEASONAL EPIDEMIOLOGICAL ADVISORY: {s_title}</b></font>", body_bold),
-                Paragraph(f"<font color='#EA580C'><b>RISK LEVEL: {s_risk}</b></font>", ParagraphStyle('Risk', fontName='Helvetica-Bold', fontSize=7.5, leading=10, alignment=2))
+                Paragraph(f"<font color='#EA580C'><b>RISK LEVEL: {s_risk}</b></font>", ParagraphStyle('Risk', fontName=PDF_FONT_BOLD, fontSize=7.5, leading=10, alignment=2))
             ],
             [
                 "",
-                Paragraph(s_desc, ParagraphStyle('WarnDesc', fontName='Helvetica', fontSize=7.5, leading=10.5, textColor=DARK_NAVY)),
+                Paragraph(s_desc, ParagraphStyle('WarnDesc', fontName=PDF_FONT, fontSize=7.5, leading=10.5, textColor=DARK_NAVY)),
                 ""
             ]
         ]
@@ -870,10 +913,10 @@ def generate_diagnostic_evaluation_pdf(
     TEXT_MUTED = colors.HexColor("#64748B")
     TEXT_DARK = colors.HexColor("#1E293B")
 
-    body_style = ParagraphStyle('DiagBody', parent=styles['Normal'], fontName='Helvetica', fontSize=8.5, leading=12, textColor=TEXT_DARK)
-    body_bold = ParagraphStyle('DiagBodyBold', parent=body_style, fontName='Helvetica-Bold')
-    title_style = ParagraphStyle('DiagTitle', parent=styles['Heading1'], fontName='Helvetica-Bold', fontSize=14, leading=18, textColor=DARK_NAVY)
-    sec_hdr_style = ParagraphStyle('DiagSecHdr', parent=styles['Heading2'], fontName='Helvetica-Bold', fontSize=10.5, leading=14, textColor=PRIMARY_BLUE)
+    body_style = ParagraphStyle('DiagBody', parent=styles['Normal'], fontName=PDF_FONT, fontSize=8.5, leading=12, textColor=TEXT_DARK)
+    body_bold = ParagraphStyle('DiagBodyBold', parent=body_style, fontName=PDF_FONT_BOLD)
+    title_style = ParagraphStyle('DiagTitle', parent=styles['Heading1'], fontName=PDF_FONT_BOLD, fontSize=14, leading=18, textColor=DARK_NAVY)
+    sec_hdr_style = ParagraphStyle('DiagSecHdr', parent=styles['Heading2'], fontName=PDF_FONT_BOLD, fontSize=10.5, leading=14, textColor=PRIMARY_BLUE)
 
     story = []
     doc_id_str = f"DOCMINDX-DIAG-{datetime.now().strftime('%Y%m%d%H%M%S')}"

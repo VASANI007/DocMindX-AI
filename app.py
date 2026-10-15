@@ -8226,6 +8226,10 @@ elif st.session_state["active_panel"] == "Medical Report":
             else:
                 # Automatic Clinical AI Patient Guide for Prescriptions
                 rx_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
+                if rx_cache_key in st.session_state and lang_code == "en":
+                    _cached_c = str(st.session_state.get(rx_cache_key, ""))
+                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                        st.session_state.pop(rx_cache_key, None)
                 if rx_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Guide & Medication Safety Plan..."):
                         rx_breakdown = generate_medical_report_comprehensive_breakdown(
@@ -8364,6 +8368,10 @@ elif st.session_state["active_panel"] == "Medical Report":
                     print(f"Notice logging radiology report: {e}")
 
                 rad_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
+                if rad_cache_key in st.session_state and lang_code == "en":
+                    _cached_c = str(st.session_state.get(rad_cache_key, ""))
+                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                        st.session_state.pop(rad_cache_key, None)
                 if rad_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Radiology Interpretation..."):
                         rad_breakdown = generate_medical_report_comprehensive_breakdown(
@@ -8507,6 +8515,10 @@ elif st.session_state["active_panel"] == "Medical Report":
                 sev_status = gen_res.get("overall_severity", "Normal")
 
                 gen_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
+                if gen_cache_key in st.session_state and lang_code == "en":
+                    _cached_c = str(st.session_state.get(gen_cache_key, ""))
+                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                        st.session_state.pop(gen_cache_key, None)
                 if gen_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Health Guide & Overview..."):
                         gen_breakdown = generate_medical_report_comprehensive_breakdown(
@@ -8651,6 +8663,10 @@ elif st.session_state["active_panel"] == "Medical Report":
 
                 # Automatic Clinical AI Patient Guide for Blood / Pathology Lab Reports
                 lab_cache_key = f"p2_breakdown_{doc_name}_{lang_code}"
+                if lab_cache_key in st.session_state and lang_code == "en":
+                    _cached_c = str(st.session_state.get(lab_cache_key, ""))
+                    if sum(1 for c in _cached_c if 0x0900 <= ord(c) <= 0x097F) > 10:
+                        st.session_state.pop(lab_cache_key, None)
                 if lab_cache_key not in st.session_state:
                     with st.spinner("Generating Comprehensive Clinical AI Patient Guide & Recovery Plan..."):
                         lab_breakdown = generate_medical_report_comprehensive_breakdown(
