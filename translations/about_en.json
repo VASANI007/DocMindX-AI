@@ -1,9 +1,9 @@
 {
   "creator_badge": "Founder, Architect & Creator",
-  "creator_name": "Developed by Daksh Vasani",
+  "creator_name": "Developed by DocMindX AI Team",
   "creator_sub": "M.Sc. Data Science Student | Python & Machine Learning Enthusiast · Gujarat, India",
   "mission_title": "Project Vision & Architecture",
-  "mission_body": "DocMindX AI was conceptualized and developed by <b>Daksh Vasani</b> (M.Sc. Data Science student) to create an evidence-based, transparent, and audited AI healthcare platform. The system integrates a <b>Random Forest Disease Classifier (99.01% train accuracy, 97.8% CV)</b>, a <b>Demand Forecaster (6.53% WAPE, 0.9839 R²)</b>, an <b>Official WHO Outbreak Intelligence pipeline</b>, a <b>100+ Major Indian Diseases Knowledge Graph</b>, and <b>Multimodal Generative AI (Groq / Gemini)</b> with strict clinical provenance standards.",
+  "mission_body": "DocMindX AI was conceptualized and developed by <b>DocMindX AI Team</b> (M.Sc. Data Science students) to create an evidence-based, transparent, and audited AI healthcare platform. The system integrates a <b>Random Forest Disease Classifier (99.01% train accuracy, 97.8% CV)</b>, a <b>Demand Forecaster (6.53% WAPE, 0.9839 R²)</b>, an <b>Official WHO Outbreak Intelligence pipeline</b>, a <b>100+ Major Indian Diseases Knowledge Graph</b>, and <b>Multimodal Generative AI (Groq / Gemini)</b> with strict clinical provenance standards.",
   "tab_models": "AI & ML Models & Accuracy",
   "tab_diseases": "100+ Major Indian Diseases",
   "tab_datasources": "Authentic Data Sources & Live APIs",

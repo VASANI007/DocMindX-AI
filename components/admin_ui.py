@@ -5,6 +5,7 @@ and security audit logs with strict server-side authorization enforcement.
 """
 import streamlit as st
 import json
+import html
 import database.auth_db as auth_db
 import services.auth_service as auth_svc
 from config.database import get_database_engine_name
@@ -168,6 +169,148 @@ def render_pagination_toolbar(total_items: int, current_page_key: str, default_p
     return curr_page, page_size, offset
 
 
+def _render_extracted_biomarkers_cards(parsed_dt: dict):
+    """
+    Renders extracted biomarkers, inputs, and clinical parameters as
+    uniform, equal-sized colored cards instead of raw code/JSON.
+    """
+    if not parsed_dt or not isinstance(parsed_dt, dict):
+        st.info("No structured biomarker parameters detected.")
+        return
+
+    cards = []
+
+    # 1. Check for Health Assessment user_inputs
+    u_inputs = parsed_dt.get("user_inputs")
+    if isinstance(u_inputs, dict):
+        if u_inputs.get("age"):
+            cards.append({"label": "Patient Age", "value": f"{u_inputs['age']} Years", "sub": "Demographic Data"})
+        if u_inputs.get("gender"):
+            cards.append({"label": "Gender", "value": str(u_inputs['gender']).capitalize(), "sub": "Biological Sex"})
+        if u_inputs.get("blood_group") and str(u_inputs["blood_group"]).lower() != "unknown":
+            cards.append({"label": "Blood Group", "value": str(u_inputs['blood_group']), "sub": "ABO / Rh Type"})
+        if u_inputs.get("duration"):
+            cards.append({"label": "Symptom Duration", "value": str(u_inputs['duration']), "sub": "Clinical Presentation"})
+        if u_inputs.get("severity"):
+            cards.append({"label": "Reported Severity", "value": str(u_inputs['severity']).capitalize(), "sub": "Triage Acuity"})
+        if u_inputs.get("height"):
+            cards.append({"label": "Height", "value": f"{u_inputs['height']} cm", "sub": "Anthropometric"})
+        if u_inputs.get("weight"):
+            cards.append({"label": "Weight", "value": f"{u_inputs['weight']} kg", "sub": "Anthropometric"})
+        if u_inputs.get("existing_conditions"):
+            c_val = u_inputs["existing_conditions"]
+            c_str = ", ".join(str(x) for x in c_val) if isinstance(c_val, list) else str(c_val)
+            if c_str.strip() and c_str.lower() != "none":
+                cards.append({"label": "Prior Conditions", "value": c_str, "sub": "Medical History"})
+        if u_inputs.get("current_medicines"):
+            m_val = u_inputs["current_medicines"]
+            m_str = ", ".join(str(x) for x in m_val) if isinstance(m_val, list) else str(m_val)
+            if m_str.strip() and m_str.lower() != "none":
+                cards.append({"label": "Active Medications", "value": m_str, "sub": "Current Therapy"})
+        if u_inputs.get("reported_symptoms") or u_inputs.get("symptoms"):
+            s_val = u_inputs.get("reported_symptoms") or u_inputs.get("symptoms")
+            s_str = ", ".join(str(x) for x in s_val) if isinstance(s_val, list) else str(s_val)
+            if s_str.strip():
+                cards.append({"label": "Chief Symptoms", "value": s_str, "sub": "Patient Presentation"})
+
+    # 2. Check for Lab Findings
+    findings = parsed_dt.get("findings")
+    if isinstance(findings, list):
+        for f in findings:
+            if isinstance(f, dict):
+                f_name = f.get("test_name") or f.get("finding_name") or f.get("name") or "Marker"
+                f_val = f"{f.get('value', '')} {f.get('unit', '')}".strip() or str(f.get("severity", "Observed"))
+                f_sub = f"Status: {f.get('status')}" if f.get("status") else (f"Ref: {f.get('reference_range')}" if f.get("reference_range") else "Lab Finding")
+                cards.append({"label": f_name, "value": f_val, "sub": f_sub})
+
+    # 3. Check for Prescribed Medicines
+    meds = parsed_dt.get("medicines")
+    if isinstance(meds, list):
+        for m in meds:
+            if isinstance(m, dict):
+                m_name = m.get("name") or "Medicine"
+                m_dose = f"{m.get('dosage', '')} • {m.get('frequency', '')}".strip(" •") or "Prescribed"
+                m_sub = m.get("timing") or m.get("duration") or "Dosage Protocol"
+                cards.append({"label": m_name, "value": m_dose, "sub": m_sub})
+
+    # 4. Check for other top-level keys
+    skip_keys = {"user_inputs", "findings", "medicines", "scan_type", "scan_mode", "patient_name", "raw_text", "extracted_text", "summary", "document_text", "analysis_timestamp"}
+    for k, v in parsed_dt.items():
+        if k not in skip_keys and v:
+            if isinstance(v, (str, int, float, bool)):
+                cards.append({"label": k.replace("_", " ").title(), "value": str(v), "sub": "Clinical Metric"})
+            elif isinstance(v, list) and all(isinstance(x, (str, int, float)) for x in v):
+                cards.append({"label": k.replace("_", " ").title(), "value": ", ".join(str(x) for x in v), "sub": "Clinical Metric"})
+
+    if not cards:
+        st.json(parsed_dt)
+        return
+
+    # Harmonious distinct color palettes for equal-sized cards
+    PALETTES = [
+        {"bg": "rgba(37, 99, 235, 0.08)", "bd": "rgba(59, 130, 246, 0.40)", "tag": "#2563EB", "tag_bg": "rgba(37, 99, 235, 0.12)"},
+        {"bg": "rgba(16, 185, 129, 0.08)", "bd": "rgba(16, 185, 129, 0.40)", "tag": "#059669", "tag_bg": "rgba(16, 185, 129, 0.12)"},
+        {"bg": "rgba(245, 158, 11, 0.08)", "bd": "rgba(245, 158, 11, 0.40)", "tag": "#D97706", "tag_bg": "rgba(245, 158, 11, 0.12)"},
+        {"bg": "rgba(147, 51, 234, 0.08)", "bd": "rgba(147, 51, 234, 0.40)", "tag": "#9333EA", "tag_bg": "rgba(147, 51, 234, 0.12)"},
+        {"bg": "rgba(239, 68, 68, 0.08)", "bd": "rgba(239, 68, 68, 0.40)", "tag": "#DC2626", "tag_bg": "rgba(239, 68, 68, 0.12)"},
+        {"bg": "rgba(13, 148, 136, 0.08)", "bd": "rgba(13, 148, 136, 0.40)", "tag": "#0D9488", "tag_bg": "rgba(13, 148, 136, 0.12)"},
+        {"bg": "rgba(2, 132, 199, 0.08)", "bd": "rgba(2, 132, 199, 0.40)", "tag": "#0284C7", "tag_bg": "rgba(2, 132, 199, 0.12)"},
+        {"bg": "rgba(225, 29, 72, 0.08)", "bd": "rgba(225, 29, 72, 0.40)", "tag": "#E11D48", "tag_bg": "rgba(225, 29, 72, 0.12)"},
+    ]
+
+    card_items_html = []
+    for idx, c in enumerate(cards):
+        theme = PALETTES[idx % len(PALETTES)]
+        c_label = html.escape(str(c["label"]))
+        c_val = html.escape(str(c["value"]))
+        c_sub = html.escape(str(c["sub"]))
+
+        card_items_html.append(f"""
+        <div style="
+            background: {theme['bg']};
+            border: 1.5px solid {theme['bd']};
+            border-radius: 12px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 98px;
+            height: 100%;
+            box-sizing: border-box;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        ">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                <span style="font-size: 0.68rem; font-weight: 700; color: {theme['tag']}; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80%;">
+                    {c_label}
+                </span>
+                <span style="font-size: 0.62rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: {theme['tag_bg']}; color: {theme['tag']};">
+                    #{idx + 1}
+                </span>
+            </div>
+            <div style="font-size: 0.95rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.3; margin: 4px 0; word-break: break-word;">
+                {c_val}
+            </div>
+            <div style="font-size: 0.70rem; color: #64748B; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                {c_sub}
+            </div>
+        </div>
+        """)
+
+    cards_wrapper = f"""
+    <div style="
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+        gap: 12px;
+        margin: 10px 0 16px 0;
+    ">
+        {''.join(card_items_html)}
+    </div>
+    """
+    st.markdown(cards_wrapper, unsafe_allow_html=True)
+    with st.expander("🔍 View Raw Technical JSON", expanded=False):
+        st.json(parsed_dt)
+
+
 def render_admin_dashboard_view():
     """
     Renders the Administrator Governance Console.
@@ -181,6 +324,18 @@ def render_admin_dashboard_view():
             st.session_state["active_panel"] = "Health Assessment"
             st.rerun()
         return
+
+    # Injected styles for Admin Popovers & Modals
+    st.markdown("""
+    <style>
+    div[data-testid="stPopoverBody"] {
+        max-width: 680px !important;
+        width: 90vw !important;
+        border-radius: 14px !important;
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28) !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     # Admin Top Header Banner matching Image 2
     admin_email = user.get("email", "docmindxai@gmail.com") if user else "docmindxai@gmail.com"
@@ -617,29 +772,51 @@ def render_admin_dashboard_view():
 
                 with btn_cols[1]:
                     with st.popover("Edit", use_container_width=True):
-                        st.markdown(f"**Edit User #{uid}**")
+                        eu_hdr_c1, eu_hdr_c2 = st.columns([4.5, 1], vertical_alignment="center")
+                        with eu_hdr_c1:
+                            st.markdown(f"<div style='font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary);'>Edit User #{uid}</div>", unsafe_allow_html=True)
+                        with eu_hdr_c2:
+                            if st.button("✕", key=f"btn_close_eu_{uid}", help="Close popup", use_container_width=True):
+                                st.rerun()
+                        st.markdown("<div style='height: 1px; background: rgba(148,163,184,0.2); margin: 6px 0 12px 0;'></div>", unsafe_allow_html=True)
                         eu_name = st.text_input("Name", value=u["full_name"], key=f"eu_name_{uid}")
                         eu_stat = st.selectbox("Status", ["ACTIVE", "DISABLED", "PENDING"], index=["ACTIVE", "DISABLED", "PENDING"].index(u["account_status"]) if u["account_status"] in ["ACTIVE", "DISABLED", "PENDING"] else 0, key=f"eu_stat_{uid}")
                         eu_ver = st.checkbox("Email Verified", value=bool(u["email_verified"]), key=f"eu_ver_{uid}")
-                        if st.button("Save Changes", key=f"btn_save_eu_{uid}", type="primary"):
-                            auth_db.update_user_profile(uid, eu_name)
-                            auth_db.update_user_status(uid, eu_stat, 1 if eu_ver else 0)
-                            _invalidate_admin_caches()
-                            auth_db.log_security_event("USER_MODIFIED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Updated status to {eu_stat}")
-                            st.success("User updated!")
-                            st.rerun()
+                        eu_act1, eu_act2 = st.columns(2)
+                        with eu_act1:
+                            if st.button("Save Changes", key=f"btn_save_eu_{uid}", type="primary", use_container_width=True):
+                                auth_db.update_user_profile(uid, eu_name)
+                                auth_db.update_user_status(uid, eu_stat, 1 if eu_ver else 0)
+                                _invalidate_admin_caches()
+                                auth_db.log_security_event("USER_MODIFIED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Updated status to {eu_stat}")
+                                st.success("User updated!")
+                                st.rerun()
+                        with eu_act2:
+                            if st.button("Cancel", key=f"btn_cancel_eu_{uid}", use_container_width=True):
+                                st.rerun()
 
                 with btn_cols[2]:
                     with st.popover("Delete", use_container_width=True):
-                        st.markdown(f"**Delete User #{uid}**")
+                        du_hdr_c1, du_hdr_c2 = st.columns([4.5, 1], vertical_alignment="center")
+                        with du_hdr_c1:
+                            st.markdown(f"<div style='font-size: 1.15rem; font-weight: 800; color: #EF4444;'>Delete User #{uid}</div>", unsafe_allow_html=True)
+                        with du_hdr_c2:
+                            if st.button("✕", key=f"btn_close_del_{uid}", help="Close popup", use_container_width=True):
+                                st.rerun()
+                        st.markdown("<div style='height: 1px; background: rgba(148,163,184,0.2); margin: 6px 0 12px 0;'></div>", unsafe_allow_html=True)
                         st.warning(f"This affects {u['family_count']} family member(s) and {u['scan_count']} scan record(s).")
                         del_perm = st.checkbox("Permanently Purge Records", key=f"perm_del_{uid}")
-                        if st.button("Confirm Delete", key=f"btn_confirm_del_{uid}", type="primary"):
-                            auth_db.admin_delete_user(uid, permanent=del_perm)
-                            _invalidate_admin_caches()
-                            auth_db.log_security_event("USER_DELETED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Permanent: {del_perm}")
-                            st.success("User deleted.")
-                            st.rerun()
+                        du_act1, du_act2 = st.columns(2)
+                        with du_act1:
+                            if st.button("Confirm Delete", key=f"btn_confirm_del_{uid}", type="primary", use_container_width=True):
+                                auth_db.admin_delete_user(uid, permanent=del_perm)
+                                _invalidate_admin_caches()
+                                auth_db.log_security_event("USER_DELETED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Permanent: {del_perm}")
+                                st.success("User deleted.")
+                                st.rerun()
+                        with du_act2:
+                            if st.button("Cancel", key=f"btn_cancel_del_{uid}", use_container_width=True):
+                                st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
 
                 # User Details & Family Members Drill-Down
@@ -734,7 +911,13 @@ def render_admin_dashboard_view():
                         """, unsafe_allow_html=True)
                     with f_hcol2:
                         with st.popover("+ Add Family Member"):
-                            st.markdown(f"**Add Family Member for {u['full_name']}**")
+                            afm_hdr1, afm_hdr2 = st.columns([4.5, 1], vertical_alignment="center")
+                            with afm_hdr1:
+                                st.markdown(f"<div style='font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary);'>Add Family Member for {u['full_name']}</div>", unsafe_allow_html=True)
+                            with afm_hdr2:
+                                if st.button("✕", key=f"btn_close_afm_{uid}", help="Close popup", use_container_width=True):
+                                    st.rerun()
+                            st.markdown("<div style='height: 1px; background: rgba(148,163,184,0.2); margin: 6px 0 12px 0;'></div>", unsafe_allow_html=True)
                             afm_name = st.text_input("Full Name *", key=f"afm_name_{uid}")
                             afm_rel = st.selectbox("Relationship *", ["Self", "Spouse", "Child", "Parent", "Sibling", "Grandparent", "Other"], key=f"afm_rel_{uid}")
                             afm_c1, afm_c2 = st.columns(2)
@@ -751,25 +934,30 @@ def render_admin_dashboard_view():
                                 afm_bg = st.selectbox("Blood Group", ["Unknown", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], key=f"afm_bg_{uid}")
                                 afm_em = st.text_input("Emergency Contact", key=f"afm_em_{uid}")
                             afm_notes = st.text_area("Allergies / Medical Notes", key=f"afm_notes_{uid}", height=70)
-                            if st.button("Save Member", key=f"btn_add_fm_{uid}", type="primary", use_container_width=True):
-                                if not afm_name.strip():
-                                    st.error("Please enter a name for the family member.")
-                                elif afm_age is None or afm_age < 10:
-                                    st.warning("Clinical Protocol: Minimum age must be at least 10 years.")
-                                else:
-                                    auth_db.add_family_member(uid, {
-                                        "name": afm_name.strip(),
-                                        "relationship": afm_rel,
-                                        "age": afm_age,
-                                        "dob": afm_dob.strftime("%Y-%m-%d"),
-                                        "gender": afm_gen,
-                                        "blood_group": afm_bg if afm_bg != "Unknown" else "",
-                                        "emergency_contact": afm_em.strip(),
-                                        "notes": afm_notes.strip()
-                                    })
-                                    _invalidate_admin_caches()
-                                    auth_db.log_security_event("FAMILY_MEMBER_ADDED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin added {afm_name} ({afm_rel})")
-                                    st.success(f"Family member '{afm_name}' added successfully!")
+                            afm_act1, afm_act2 = st.columns(2)
+                            with afm_act1:
+                                if st.button("Save Member", key=f"btn_add_fm_{uid}", type="primary", use_container_width=True):
+                                    if not afm_name.strip():
+                                        st.error("Please enter a name for the family member.")
+                                    elif afm_age is None or afm_age < 10:
+                                        st.warning("Clinical Protocol: Minimum age must be at least 10 years.")
+                                    else:
+                                        auth_db.add_family_member(uid, {
+                                            "name": afm_name.strip(),
+                                            "relationship": afm_rel,
+                                            "age": afm_age,
+                                            "dob": afm_dob.strftime("%Y-%m-%d"),
+                                            "gender": afm_gen,
+                                            "blood_group": afm_bg if afm_bg != "Unknown" else "",
+                                            "emergency_contact": afm_em.strip(),
+                                            "notes": afm_notes.strip()
+                                        })
+                                        _invalidate_admin_caches()
+                                        auth_db.log_security_event("FAMILY_MEMBER_ADDED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin added {afm_name} ({afm_rel})")
+                                        st.success(f"Family member '{afm_name}' added successfully!")
+                                        st.rerun()
+                            with afm_act2:
+                                if st.button("Cancel", key=f"btn_cancel_afm_{uid}", use_container_width=True):
                                     st.rerun()
 
                     # 3. Family Members List
@@ -816,7 +1004,13 @@ def render_admin_dashboard_view():
                                     fm_btn_col1, fm_btn_col2 = st.columns(2)
                                     with fm_btn_col1:
                                         with st.popover("Edit"):
-                                            st.markdown(f"**Edit {fm['name']}**")
+                                            efm_hdr1, efm_hdr2 = st.columns([4.5, 1], vertical_alignment="center")
+                                            with efm_hdr1:
+                                                st.markdown(f"<div style='font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary);'>Edit {fm['name']}</div>", unsafe_allow_html=True)
+                                            with efm_hdr2:
+                                                if st.button("✕", key=f"btn_close_efm_{fmid}", help="Close popup", use_container_width=True):
+                                                    st.rerun()
+                                            st.markdown("<div style='height: 1px; background: rgba(148,163,184,0.2); margin: 6px 0 12px 0;'></div>", unsafe_allow_html=True)
                                             efm_name = st.text_input("Name *", value=fm['name'], key=f"efm_name_{fmid}")
                                             rel_options = ["Self", "Spouse", "Child", "Parent", "Sibling", "Grandparent", "Other"]
                                             curr_rel = fm.get("relationship", "Other")
@@ -836,34 +1030,50 @@ def render_admin_dashboard_view():
                                                 efm_bg = st.selectbox("Blood Group", bg_opts, index=bg_idx, key=f"efm_bg_{fmid}")
                                                 efm_em = st.text_input("Emergency Contact", value=fm.get("emergency_contact") or "", key=f"efm_em_{fmid}")
                                             efm_notes = st.text_area("Allergies / Notes", value=fm.get("notes") or "", key=f"efm_notes_{fmid}", height=70)
-                                            if st.button("Save Changes", key=f"btn_save_efm_{fmid}", type="primary", use_container_width=True):
-                                                if not efm_name.strip():
-                                                    st.error("Name cannot be empty.")
-                                                else:
-                                                    auth_db.update_family_member(fmid, uid, {
-                                                        "name": efm_name.strip(),
-                                                        "relationship": efm_rel,
-                                                        "age": efm_age,
-                                                        "gender": efm_gen,
-                                                        "blood_group": efm_bg if efm_bg != "Unknown" else "",
-                                                        "emergency_contact": efm_em.strip(),
-                                                        "notes": efm_notes.strip()
-                                                    })
-                                                    _invalidate_admin_caches()
-                                                    auth_db.log_security_event("FAMILY_MEMBER_MODIFIED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin updated member {efm_name}")
-                                                    st.success("Family member updated successfully!")
+                                            efm_act1, efm_act2 = st.columns(2)
+                                            with efm_act1:
+                                                if st.button("Save Changes", key=f"btn_save_efm_{fmid}", type="primary", use_container_width=True):
+                                                    if not efm_name.strip():
+                                                        st.error("Name cannot be empty.")
+                                                    else:
+                                                        auth_db.update_family_member(fmid, uid, {
+                                                            "name": efm_name.strip(),
+                                                            "relationship": efm_rel,
+                                                            "age": efm_age,
+                                                            "gender": efm_gen,
+                                                            "blood_group": efm_bg if efm_bg != "Unknown" else "",
+                                                            "emergency_contact": efm_em.strip(),
+                                                            "notes": efm_notes.strip()
+                                                        })
+                                                        _invalidate_admin_caches()
+                                                        auth_db.log_security_event("FAMILY_MEMBER_MODIFIED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin updated member {efm_name}")
+                                                        st.success("Family member updated successfully!")
+                                                        st.rerun()
+                                            with efm_act2:
+                                                if st.button("Cancel", key=f"btn_cancel_efm_{fmid}", use_container_width=True):
                                                     st.rerun()
 
                                     with fm_btn_col2:
                                         with st.popover("Delete"):
-                                            st.markdown(f"**Delete {fm['name']}?**")
+                                            dfm_hdr1, dfm_hdr2 = st.columns([4.5, 1], vertical_alignment="center")
+                                            with dfm_hdr1:
+                                                st.markdown(f"<div style='font-size: 1.15rem; font-weight: 800; color: #EF4444;'>Delete {fm['name']}?</div>", unsafe_allow_html=True)
+                                            with dfm_hdr2:
+                                                if st.button("✕", key=f"btn_close_dfm_{fmid}", help="Close popup", use_container_width=True):
+                                                    st.rerun()
+                                            st.markdown("<div style='height: 1px; background: rgba(148,163,184,0.2); margin: 6px 0 12px 0;'></div>", unsafe_allow_html=True)
                                             st.caption("This action will remove this family profile permanently.")
-                                            if st.button("Confirm", key=f"btn_del_fm_{fmid}", type="primary", use_container_width=True):
-                                                auth_db.delete_family_member(fmid, uid)
-                                                _invalidate_admin_caches()
-                                                auth_db.log_security_event("FAMILY_MEMBER_DELETED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin deleted member #{fmid}")
-                                                st.success("Family member deleted.")
-                                                st.rerun()
+                                            dfm_act1, dfm_act2 = st.columns(2)
+                                            with dfm_act1:
+                                                if st.button("Confirm", key=f"btn_del_fm_{fmid}", type="primary", use_container_width=True):
+                                                    auth_db.delete_family_member(fmid, uid)
+                                                    _invalidate_admin_caches()
+                                                    auth_db.log_security_event("FAMILY_MEMBER_DELETED_BY_ADMIN", email=u["email"], user_id=uid, details=f"Admin deleted member #{fmid}")
+                                                    st.success("Family member deleted.")
+                                                    st.rerun()
+                                            with dfm_act2:
+                                                if st.button("Cancel", key=f"btn_cancel_dfm_{fmid}", use_container_width=True):
+                                                    st.rerun()
 
 
     
@@ -1074,9 +1284,14 @@ def render_admin_dashboard_view():
                         with r_c2:
                             with st.container(key=f"wrap_sc_btn_{sid}"):
                                 with st.popover("›", help="Click to open scan report & inspection"):
-                                    st.markdown(f"#### Scan Inspection Record #{sid}")
-                                    st.caption(f"Recorded: **{s.get('created_at')}** &bull; Type: **{s.get('scan_type')}**")
-                                    st.markdown("---")
+                                    sc_hdr_c1, sc_hdr_c2 = st.columns([5.5, 1], vertical_alignment="center")
+                                    with sc_hdr_c1:
+                                        st.markdown(f"<div style='font-size: 1.28rem; font-weight: 800; color: var(--mm-text-primary); margin: 0;'>Scan Inspection Record #{sid}</div>", unsafe_allow_html=True)
+                                        st.caption(f"Recorded: **{s.get('created_at')}** &bull; Type: **{s.get('scan_type')}**")
+                                    with sc_hdr_c2:
+                                        if st.button("✕", key=f"btn_close_sc_top_{sid}", help="Close inspection", use_container_width=True):
+                                            st.rerun()
+                                    st.markdown("<div style='height: 1px; background: rgba(148,163,184,0.2); margin: 6px 0 14px 0;'></div>", unsafe_allow_html=True)
                                 
                                     inf_c1, inf_c2 = st.columns(2)
                                     with inf_c1:
@@ -1097,7 +1312,7 @@ def render_admin_dashboard_view():
                                         st.markdown("##### Document / Reference")
                                         st.code(s.get("result_reference"), language="text")
 
-                                    # Parse details_json safely
+                                    # Parse details_json safely and render as colored cards
                                     raw_details = s.get("details_json")
                                     if raw_details:
                                         try:
@@ -1106,20 +1321,36 @@ def render_admin_dashboard_view():
                                             else:
                                                 parsed_dt = raw_details
                                             if parsed_dt:
-                                                st.markdown("##### Extracted Biomarkers & Parameters")
-                                                st.json(parsed_dt)
+                                                st.markdown("<div style='font-size: 0.98rem; font-weight: 800; color: var(--mm-text-primary); margin: 16px 0 6px 0; display: flex; align-items: center; gap: 8px;'><svg width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='#2563EB' stroke-width='2.2'><rect x='2' y='7' width='20' height='14' rx='2' ry='2'/><path d='M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'/></svg><span>Extracted Biomarkers &amp; Parameters</span></div>", unsafe_allow_html=True)
+                                                _render_extracted_biomarkers_cards(parsed_dt)
                                         except Exception:
                                             st.markdown("##### Details")
                                             st.text(str(raw_details))
 
-                                    st.markdown("---")
-                                    with st.popover(f"Delete Scan #{sid}", use_container_width=True):
-                                        st.warning(f"Are you sure you want to permanently delete Scan #{sid}?")
-                                        if st.button("Confirm Delete", key=f"btn_del_sc_{sid}", type="primary", use_container_width=True):
-                                            auth_db.admin_delete_scan(sid)
-                                            _invalidate_admin_caches()
-                                            auth_db.log_security_event("SCAN_DELETED_BY_ADMIN", email=s.get("user_email"), details=f"Admin deleted scan #{sid}")
-                                            st.success(f"Scan #{sid} deleted successfully!")
+                                    st.markdown("<div style='height: 1px; background: rgba(148,163,184,0.2); margin: 16px 0 12px 0;'></div>", unsafe_allow_html=True)
+                                    sc_bot_c1, sc_bot_c2 = st.columns([1.2, 1], vertical_alignment="center")
+                                    with sc_bot_c1:
+                                        with st.popover(f"Delete Scan #{sid}", use_container_width=True):
+                                            del_sc_h1, del_sc_h2 = st.columns([4, 1], vertical_alignment="center")
+                                            with del_sc_h1:
+                                                st.markdown(f"**Delete Scan #{sid}**")
+                                            with del_sc_h2:
+                                                if st.button("✕", key=f"btn_close_delsc_{sid}", help="Close", use_container_width=True):
+                                                    st.rerun()
+                                            st.warning(f"Are you sure you want to permanently delete Scan #{sid}?")
+                                            del_sc_a1, del_sc_a2 = st.columns(2)
+                                            with del_sc_a1:
+                                                if st.button("Confirm Delete", key=f"btn_del_sc_{sid}", type="primary", use_container_width=True):
+                                                    auth_db.admin_delete_scan(sid)
+                                                    _invalidate_admin_caches()
+                                                    auth_db.log_security_event("SCAN_DELETED_BY_ADMIN", email=s.get("user_email"), details=f"Admin deleted scan #{sid}")
+                                                    st.success(f"Scan #{sid} deleted successfully!")
+                                                    st.rerun()
+                                            with del_sc_a2:
+                                                if st.button("Cancel", key=f"btn_cancel_delsc_{sid}", use_container_width=True):
+                                                    st.rerun()
+                                    with sc_bot_c2:
+                                        if st.button("Close Inspection ✕", key=f"btn_close_sc_bot_{sid}", use_container_width=True):
                                             st.rerun()
 
 
@@ -1278,7 +1509,7 @@ def render_admin_dashboard_view():
                         <div class="adm-session-avatar">{admin_initial}</div>
                         <div>
                             <div style="font-size: 0.70rem; color: #94A3B8; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Active Admin</div>
-                            <div style="font-size: 0.96rem; color: #FFFFFF; font-weight: 700; margin: 1px 0 4px 0;">Daksh Vasani</div>
+                            <div style="font-size: 0.96rem; color: #FFFFFF; font-weight: 700; margin: 1px 0 4px 0;">DocMindX AI Team</div>
                             <div class="adm-session-crown-badge">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2DD4BF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/>

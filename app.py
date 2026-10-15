@@ -9992,10 +9992,10 @@ elif st.session_state["active_panel"] == "About":
         return {
             "en": {
                 "creator_badge": "Founder, Architect & Creator",
-            "creator_name": "Developed by Daksh Vasani",
+            "creator_name": "Developed by DocMindX AI Team",
             "creator_sub": "M.Sc. Data Science Student | Python & Machine Learning Enthusiast · Gujarat, India",
             "mission_title": "Project Vision & Architecture",
-            "mission_body": "DocMindX AI was conceptualized and developed by <b>Daksh Vasani</b> (M.Sc. Data Science student) to create an evidence-based, transparent, and audited AI healthcare platform. The system integrates a <b>Random Forest Disease Classifier (99.01% train accuracy, 97.8% CV)</b>, a <b>Demand Forecaster (6.53% WAPE, 0.9839 R²)</b>, an <b>Official WHO Outbreak Intelligence pipeline</b>, a <b>100+ Major Indian Diseases Knowledge Graph</b>, and <b>Multimodal Generative AI (Groq / Gemini)</b> with strict clinical provenance standards.",
+            "mission_body": "DocMindX AI was conceptualized and developed by <b>DocMindX AI Team</b> (M.Sc. Data Science students) to create an evidence-based, transparent, and audited AI healthcare platform. The system integrates a <b>Random Forest Disease Classifier (99.01% train accuracy, 97.8% CV)</b>, a <b>Demand Forecaster (6.53% WAPE, 0.9839 R²)</b>, an <b>Official WHO Outbreak Intelligence pipeline</b>, a <b>100+ Major Indian Diseases Knowledge Graph</b>, and <b>Multimodal Generative AI (Groq / Gemini)</b> with strict clinical provenance standards.",
             "tab_models": "AI & ML Models & Accuracy",
             "tab_diseases": "100+ Major Indian Diseases",
             "tab_datasources": "Authentic Data Sources & Live APIs",
@@ -10096,7 +10096,7 @@ elif st.session_state["active_panel"] == "About":
         },
         "hi": {
             "creator_badge": "संस्थापक, आर्किटेक्ट एवं निर्माता",
-            "creator_name": "दक्ष वसानी (Daksh Vasani) द्वारा विकसित",
+            "creator_name": "डॉकमाइंडएक्स एआई टीम(DocMindX AI Team) द्वारा विकसित",
             "creator_sub": "एम.एससी. डेटा साइंस छात्र | पायथन एवं मशीन लर्निंग उत्साही · गुजरात, भारत",
             "mission_title": "प्रोजेक्ट का उद्देश्य एवं वास्तुकला (Architecture)",
             "mission_body": "DocMindX AI की परिकल्पना और विकास <b>दक्ष वसानी</b> (M.Sc. Data Science छात्र) द्वारा एक प्रामाणिक, पारदर्शी और सत्यापित AI हेल्थकेयर प्लेटफॉर्म के रूप में किया गया है। यह प्लेटफॉर्म <b>कस्टम-ट्रेन्ड रैंडम फॉरेस्ट डिजीज मॉडल (99.01% ट्रेनिंग सटीकता)</b>, <b>दवा मांग पूर्वानुमान मॉडल (6.53% WAPE, 0.9839 R²)</b>, <b>WHO आउटब्रेक API पाइपलाइन</b>, <b>भारत की 100+ प्रमुख बीमारियों का नॉलेज बेस</b>, और <b>Groq / Gemini AI</b> को जोड़ता है।",
@@ -10200,7 +10200,7 @@ elif st.session_state["active_panel"] == "About":
         },
         "gu": {
             "creator_badge": "સ્થાપક, આર્કિટેક્ટ અને સર્જક",
-            "creator_name": "દક્ષ વસાણી (Daksh Vasani) દ્વારા નિર્મિત",
+            "creator_name": "ડોકમાઇન્ડએક્સ એઆઈ ટીમ(DocMindX AI Team) દ્વારા નિર્મિત",
             "creator_sub": "એમ.એસસી. ડેટા સાયન્સ વિદ્યાર્થી | પાયથોન અને મશીન લર્નિંગ ઉત્સાહી · ગુજરાત, ભારત",
             "mission_title": "પ્રોજેક્ટ વિઝન અને આર્કિટેક્ચર",
             "mission_body": "DocMindX AI ની કલ્પના અને વિકાસ <b>દક્ષ વસાણી</b> (M.Sc. Data Science વિદ્યાર્થી) દ્વારા એક પારદર્શક અને ચકાસાયેલ AI હેલ્થકેર પ્લેટફોર્મ તરીકે કરવામાં આવ્યો છે. આ સિસ્ટમ <b>કસ્ટમ-ટ્રેઇન્ડ રેન્ડમ ફોરેસ્ટ ML મોડેલ (99.01% સચોટતા)</b>, <b>દવા માંગ પૂર્વાનુમાન મોડેલ (6.53% WAPE, 0.9839 R²)</b>, <b>સત્તાવાર WHO API આઉટબ્રેક ડેટા</b>, <b>ભારતના 100+ મુખ્ય રોગોનો ડેટાબેઝ</b>, અને <b>Groq / Gemini AI</b> ને જોડે છે.",
@@ -10334,7 +10334,7 @@ elif st.session_state["active_panel"] == "About":
             "natural_advice": "Natural, safe & personalized advice",
             "automated_ocr": "Automated clinical report analysis",
             "quote": "AI for Accessible, Accurate and Equitable Healthcare for Everyone.",
-            "quote_author": "— Daksh Vasani",
+            "quote_author": "— DocMindX AI Team",
             "doc_btn": "View Project Documentation",
             "official_cats_sub": "Official Categories",
             "major_diseases_sub": "Major Indian Diseases",

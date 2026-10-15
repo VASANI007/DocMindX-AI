@@ -39,18 +39,18 @@ class TestEmailServiceTemplates(unittest.TestCase):
     def test_login_success_dispatch(self):
         res = email_service.send_login_success_notice(
             email="testuser@example.com",
-            full_name="Daksh Vasani"
+            full_name="DocMindX AI Team"
         )
         self.assertIsInstance(res, bool)
         if "testuser@example.com" in email_service.DEV_EMAIL_INBOX:
             msg = email_service.DEV_EMAIL_INBOX["testuser@example.com"]
             self.assertIn("Successful Account Login", msg["subject"])
-            self.assertIn("Daksh Vasani", msg["html"])
+            self.assertIn("DocMindX AI Team", msg["html"])
 
     def test_login_failed_dispatch(self):
         res = email_service.send_login_failed_alert(
             email="testuser@example.com",
-            full_name="Daksh Vasani",
+            full_name="DocMindX AI Team",
             reason="Invalid credentials entered"
         )
         self.assertIsInstance(res, bool)

@@ -1,7 +1,7 @@
 """
 ================================================================================
                     DocMindX AI - Clinical ML Model Benchmark & Verification
-                Developed by Daksh Vasani | M.Sc. Data Science
+                Developed by DocMindX AI Team | M.Sc. Data Science
 ================================================================================
 This script performs a rigorous mathematical and clinical audit of the trained
 Random Forest Disease Prediction Model (`models/disease_model.pkl`).
