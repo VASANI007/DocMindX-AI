@@ -527,6 +527,7 @@ def switch_active_panel(target_panel, **extra_state):
     st.session_state["active_panel"] = target_panel
     st.session_state["mobile_nav_open"] = False
     st.session_state["top_profile_open"] = False
+    st.session_state["top_profile_nonce"] = st.session_state.get("top_profile_nonce", 0) + 1
     try:
         st.session_state["clinical_module_nav_radio"] = target_panel
     except Exception:
@@ -3794,7 +3795,8 @@ with st.container(key="dmx_master_header_card"):
                 else:
                     _ini = "DV"
 
-                with st.container(key="top_profile_wrap"):
+                _prof_nonce = st.session_state.get("top_profile_nonce", 0)
+                with st.container(key=f"top_profile_wrap_{_prof_nonce}"):
                     with st.popover(f"{_ini}", help=f"{_pname} account menu", use_container_width=True):
                         _is_adm   = auth_svc.is_admin_session(top_auth_user)
                         _role_lbl = "ADMINISTRATOR" if _is_adm else "PATIENT"
@@ -10020,24 +10022,7 @@ elif st.session_state["active_panel"] == "About":
             "demand_step1": "<b>1. Data Ingestion:</b> 20,904 institutional consumption records from MoHFW HMIS partitioned with zero chronological leakage.",
             "demand_step2": "<b>2. Feature Lagging:</b> Rolling 4-week, 12-week consumption trends and seasonal epidemiological indices.",
             "demand_step3": "<b>3. Model File:</b> Serialized in <code>models/demand_model.pkl</code> with empirical residual uncertainty standard error (±19.50 units).",
-            "stockout_title": "3. Operational Stockout Risk Engine (Honest Rule-Based Engine)",
-            "stockout_sub": "Deterministic inventory risk thresholding based on days-of-stock buffer calculations.",
-            "stockout_desc": "<b>Operational Decision Thresholds:</b><br/>• <b>Critical Risk:</b> Stock < 3 Days remaining (Immediate Red Flag)<br/>• <b>Urgent Risk:</b> Stock < 7 Days remaining (Priority Replenishment)<br/>• <b>Watchlist:</b> Stock < 14 Days remaining (Normal Tracking)<br/>• <b>Safe Buffer:</b> Stock ≥ 14 Days remaining (Operational Stability)<br/><i>Note: Categorized honestly as 'RULE_BASED' to eliminate misleading classification claims.</i>",
-            "kg_title": "4. Clinical Knowledge Graph & Triage Engine",
-            "kg_sub": "Deterministic expert system ensuring clinical safety, emergency triggers, and demographic exclusions.",
-            "kg_item1": "<b>ICD-11 Bipartite Scoring:</b> Weighted matching with 1.6x multiplier for mandatory primary clinical symptoms.",
-            "kg_item2": "<b>Emergency Red-Flag Protocols:</b> Instant detection of critical warning signs (e.g. chest pain with breathlessness).",
-            "kg_item3": "<b>Demographic Clinical Filtering:</b> Automatic gender/age exclusions to eliminate biologically impossible diagnoses.",
-            "llm_title": "5. Medical Foundation LLMs (Live AI Engine)",
-            "llm_sub": "High-speed reasoning via Groq (LLaMA-3.3 70B, Qwen 27B) and Google Gemini 3.5 Flash.",
-            "llm_item1": "<b>Dynamic Care Prescriptions:</b> Calculates illness-specific medicines, exact food timing ('After Food' vs 'Empty Stomach'), and course duration.",
-            "llm_item2": "<b>Drug-Drug & Allergy Shield:</b> Evaluates patient ongoing medications and allergies to prevent adverse drug reactions.",
-            "llm_item3": "<b>Multilingual Generation:</b> Real-time native clinical advice generation in English, Hindi, and Gujarati.",
-            "ocr_title": "6. Computer Vision & Medical Document OCR",
-            "ocr_sub": "Gemini Multimodal Vision API + Tesseract OCR for automated clinical entity extraction.",
-            "ocr_item1": "<b>Blood Lab Report Analyzer:</b> Extracts CBC, LFT, KFT, Lipid, HbA1c values and highlights out-of-range biomarkers.",
-            "ocr_item2": "<b>Prescription & Medicine Scanner:</b> Extracts drug names, dosages, and cross-references OpenFDA chemical profiles.",
-            "api_title": "7. Live Healthcare APIs & Cloud Integration Ecosystem",
+            "api_title": "3. Live Healthcare APIs & Cloud Integration Ecosystem",
             "api_sub": "Official APIs powering real-time medical intelligence, geospatial discovery, and cloud security.",
             "api_item1": "<b>Google Gemini Multimodal Vision & Flash API:</b> Scans lab reports (CBC, LFT, KFT, Lipid) & prescriptions via computer vision and generates deep clinical explanations.",
             "api_item2": "<b>Groq Cloud LLM Engine (LLaMA-3.3 70B & Qwen):</b> Delivers sub-second clinical triage reasoning, drug-drug interaction checks, and personalized medicine schedules.",
@@ -10045,6 +10030,23 @@ elif st.session_state["active_panel"] == "About":
             "api_item4": "<b>WHO Disease Outbreak News (DON REST API):</b> Automated live ingestion of 100+ global & national epidemic alerts for real-time epidemiological surveillance.",
             "api_item5": "<b>OpenFDA & DailyMed Drug Database APIs:</b> Cross-references pharmaceutical chemical compounds, NDC codes, adverse reactions, and contraindications.",
             "api_item6": "<b>Supabase Cloud PostgreSQL & Auth API:</b> Provides encrypted medical scan persistence, family health circles, and tamper-proof security audit logging.",
+            "stockout_title": "4. Operational Stockout Risk Engine (Rule-Based Engine)",
+            "stockout_sub": "Deterministic inventory risk thresholding based on days-of-stock buffer calculations.",
+            "stockout_desc": "<b>Operational Decision Thresholds:</b><br/>• <b>Critical Risk:</b> Stock < 3 Days remaining (Immediate Red Flag)<br/>• <b>Urgent Risk:</b> Stock < 7 Days remaining (Priority Replenishment)<br/>• <b>Watchlist:</b> Stock < 14 Days remaining (Normal Tracking)<br/>• <b>Safe Buffer:</b> Stock ≥ 14 Days remaining (Operational Stability)<br/><i>Note: Categorized honestly as 'RULE_BASED' to eliminate misleading classification claims.</i>",
+            "kg_title": "5. Clinical Knowledge Graph & Triage Engine",
+            "kg_sub": "Deterministic expert system ensuring clinical safety, emergency triggers, and demographic exclusions.",
+            "kg_item1": "<b>ICD-11 Bipartite Scoring:</b> Weighted matching with 1.6x multiplier for mandatory primary clinical symptoms.",
+            "kg_item2": "<b>Emergency Red-Flag Protocols:</b> Instant detection of critical warning signs (e.g. chest pain with breathlessness).",
+            "kg_item3": "<b>Demographic Clinical Filtering:</b> Automatic gender/age exclusions to eliminate biologically impossible diagnoses.",
+            "llm_title": "6. Medical Foundation LLMs (Live AI Engine)",
+            "llm_sub": "High-speed reasoning via Groq (LLaMA-3.3 70B, Qwen 27B) and Google Gemini 3.5 Flash.",
+            "llm_item1": "<b>Dynamic Care Prescriptions:</b> Calculates illness-specific medicines, exact food timing ('After Food' vs 'Empty Stomach'), and course duration.",
+            "llm_item2": "<b>Drug-Drug & Allergy Shield:</b> Evaluates patient ongoing medications and allergies to prevent adverse drug reactions.",
+            "llm_item3": "<b>Multilingual Generation:</b> Real-time native clinical advice generation in English, Hindi, and Gujarati.",
+            "ocr_title": "7. Computer Vision & Medical Document OCR",
+            "ocr_sub": "Gemini Multimodal Vision API + Tesseract OCR for automated clinical entity extraction.",
+            "ocr_item1": "<b>Blood Lab Report Analyzer:</b> Extracts CBC, LFT, KFT, Lipid, HbA1c values and highlights out-of-range biomarkers.",
+            "ocr_item2": "<b>Prescription & Medicine Scanner:</b> Extracts drug names, dosages, and cross-references OpenFDA chemical profiles.",
             # Diseases Tab
             "dis_title": "100+ Official Major Indian Diseases Taxonomy",
             "dis_sub": "Curated clinical profiles spanning 18 official disease categories under MoHFW and WHO ICD-10/11 guidelines.",
@@ -10132,24 +10134,7 @@ elif st.session_state["active_panel"] == "About":
             "demand_step1": "<b>1. डेटा इनजेशन:</b> MoHFW HMIS के 20,904 रिकॉर्ड्स से समयबद्ध विभाजन।",
             "demand_step2": "<b>2. ट्रेंड एनालिसिस:</b> 4-हफ्ते और 12-हफ्ते के रोलिंग ट्रेंड्स और मौसमी बदलावों का विश्लेषण।",
             "demand_step3": "<b>3. मॉडल फाइल:</b> <code>models/demand_model.pkl</code> में अनिश्चितता मानक त्रुटि (±19.50 यूनिट्स) के साथ सहेजा गया।",
-            "stockout_title": "3. ऑपरेशनल स्टॉकाउट रिस्क इंजन (सटीक रूल-बेस्ड सिस्टम)",
-            "stockout_sub": "बफर दिनों के आधार पर दवाओं की कमी का पारदर्शी और ईमानदार आकलन।",
-            "stockout_desc": "<b>ऑपरेशनल सीमाएं:</b><br/>• <b>क्रिटिकल रिस्क:</b> 3 दिन से कम का स्टॉक (तुरंत रेड अलर्ट)<br/>• <b>अर्जेंट रिस्क:</b> 7 दिन से कम का स्टॉक (प्राथमिकता से आपूर्ति)<br/>• <b>वॉचलिस्ट:</b> 14 दिन से कम का स्टॉक (सामान्य निगरानी)<br/>• <b>सुरक्षित बफर:</b> 14 दिन या अधिक का स्टॉक (स्थिर स्थिति)<br/><i>पारदर्शिता: इसे पूरी ईमानदारी से 'RULE_BASED' श्रेणी में रखा गया है (कोई झूठा दावा नहीं)।</i>",
-            "kg_title": "4. क्लिनिकल नॉलेज ग्राफ एवं ट्राइएज इंजन",
-            "kg_sub": "क्लिनिकल सुरक्षा, आपातकालीन चेतावनी और जनसांख्यिकीय नियमों को सुनिश्चित करने वाला विशेषज्ञ सिस्टम।",
-            "kg_item1": "<b>ICD-11 बाइपार्टाइट स्कोरिंग:</b> मुख्य प्राथमिक लक्षणों के लिए 1.6x गुणक के साथ भारित मिलान।",
-            "kg_item2": "<b>इमरजेंसी रेड-फ्लैग प्रोटोकॉल:</b> गंभीर खतरों (जैसे सांस फूलने के साथ सीने में दर्द) की तुरंत पहचान।",
-            "kg_item3": "<b>जनसांख्यिकीय क्लिनिकल फिल्टर:</b> जैविक रूप से असंभव रोगों को हटाने के लिए लिंग और आयु का स्वचालित फिल्टर।",
-            "llm_title": "5. मेडिकल फाउंडेशन LLMs (लाइव AI इंजन)",
-            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) और Google Gemini 3.5 Flash द्वारा तेज़ तार्किक विश्लेषण।",
-            "llm_item1": "<b>डायनामिक केयर प्रिस्क्रिप्शन:</b> बीमारी के अनुसार दवाइयां, भोजन का सही समय ('खाने के बाद' या 'खाली पेट') और कोर्स तय करता है।",
-            "llm_item2": "<b>ड्रग इंटरेक्शन एवं एलर्जी शील्ड:</b> पुरानी दवाओं और एलर्जी से होने वाले नुकसान को रोकता है।",
-            "llm_item3": "<b>त्रिभाषी जेनरेशन:</b> हिंदी, अंग्रेजी और गुजराती में सटीक मेडिकल सलाह प्रदान करता है।",
-            "ocr_title": "6. कंप्यूटर विज़न एवं मेडिकल डॉक्यूमेंट OCR",
-            "ocr_sub": "ब्लड रिपोर्ट और डॉक्टर पर्चियों के स्वचालित विश्लेषण के लिए Gemini Vision + Tesseract OCR।",
-            "ocr_item1": "<b>ब्लड लैब रिपोर्ट विश्लेषक:</b> CBC, LFT, KFT, लिपिड, HbA1c निकालता है और असामान्य मानों को हाइलाइट करता है।",
-            "ocr_item2": "<b>दवा पर्ची स्कैनर:</b> दवाओं के नाम, खुराक पढ़कर OpenFDA डेटाबेस से मिलान करता है।",
-            "api_title": "7. लाइव हेल्थकेयर APIs एवं क्लाउड इंटीग्रेशन इकोसिस्टम",
+            "api_title": "3. लाइव हेल्थकेयर APIs एवं क्लाउड इंटीग्रेशन इकोसिस्टम",
             "api_sub": "DocMindX AI को रियल-टाइम मेडिकल इंटेलिजेंस, लोकेशन खोज और क्लाउड सुरक्षा प्रदान करने वाली आधिकारिक APIs।",
             "api_item1": "<b>Google Gemini Vision एवं Flash API:</b> ब्लड रिपोर्ट (CBC, LFT, KFT), पर्चों का कंप्यूटर विज़न विश्लेषण और गहन क्लिनिकल व्याख्या तैयार करता है।",
             "api_item2": "<b>Groq Cloud LLM इंजन (LLaMA-3.3 70B / Qwen):</b> मिलीसेकंड्स में तेज़ क्लिनिकल ट्राइएज, दवा इंटरेक्शन शील्ड और व्यक्तिगत खुराक की योजना बनाता है।",
@@ -10157,6 +10142,23 @@ elif st.session_state["active_panel"] == "About":
             "api_item4": "<b>WHO Disease Outbreak News (DON REST API):</b> भारत और दुनिया भर में सक्रिय महामारियों और संक्रामक रोगों का लाइव अलर्ट डेटा प्राप्त करता है।",
             "api_item5": "<b>OpenFDA एवं DailyMed APIs:</b> दवाओं के रासायनिक घटक, NDC कोड, साइड-इफेक्ट्स और सत्यापित सुरक्षा मानकों का मिलान करता है।",
             "api_item6": "<b>Supabase Cloud PostgreSQL एवं Auth API:</b> मेडिकल स्कैन रिकॉर्ड्स, पारिवारिक स्वास्थ्य प्रोफाइल और सुरक्षा ऑडिट लॉग्स को सुरक्षित रखता है।",
+            "stockout_title": "4. ऑपरेशनल स्टॉकाउट रिस्क इंजन (सटीक रूल-बेस्ड सिस्टम)",
+            "stockout_sub": "बफर दिनों के आधार पर दवाओं की कमी का पारदर्शी और ईमानदार आकलन।",
+            "stockout_desc": "<b>ऑपरेशनल सीमाएं:</b><br/>• <b>क्रिटिकल रिस्क:</b> 3 दिन से कम का स्टॉक (तुरंत रेड अलर्ट)<br/>• <b>अर्जेंट रिस्क:</b> 7 दिन से कम का स्टॉक (प्राथमिकता से आपूर्ति)<br/>• <b>वॉचलिस्ट:</b> 14 दिन से कम का स्टॉक (सामान्य निगरानी)<br/>• <b>सुरक्षित बफर:</b> 14 दिन या अधिक का स्टॉक (स्थिर स्थिति)<br/><i>पारदर्शिता: इसे पूरी ईमानदारी से 'RULE_BASED' श्रेणी में रखा गया है (कोई झूठा दावा नहीं)।</i>",
+            "kg_title": "5. क्लिनिकल नॉलेज ग्राफ एवं ट्राइएज इंजन",
+            "kg_sub": "क्लिनिकल सुरक्षा, आपातकालीन चेतावनी और जनसांख्यिकीय नियमों को सुनिश्चित करने वाला विशेषज्ञ सिस्टम।",
+            "kg_item1": "<b>ICD-11 बाइपार्टाइट स्कोरिंग:</b> मुख्य प्राथमिक लक्षणों के लिए 1.6x गुणक के साथ भारित मिलान।",
+            "kg_item2": "<b>इमरजेंसी रेड-फ्लैग प्रोटोकॉल:</b> गंभीर खतरों (जैसे सांस फूलने के साथ सीने में दर्द) की तुरंत पहचान।",
+            "kg_item3": "<b>जनसांख्यिकीय क्लिनिकल फिल्टर:</b> जैविक रूप से असंभव रोगों को हटाने के लिए लिंग और आयु का स्वचालित फिल्टर।",
+            "llm_title": "6. मेडिकल फाउंडेशन LLMs (लाइव AI इंजन)",
+            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) और Google Gemini 3.5 Flash द्वारा तेज़ तार्किक विश्लेषण।",
+            "llm_item1": "<b>डायनामिक केयर प्रिस्क्रिप्शन:</b> बीमारी के अनुसार दवाइयां, भोजन का सही समय ('खाने के बाद' या 'खाली पेट') और कोर्स तय करता है।",
+            "llm_item2": "<b>ड्रग इंटरेक्शन एवं एलर्जी शील्ड:</b> पुरानी दवाओं और एलर्जी से होने वाले नुकसान को रोकता है।",
+            "llm_item3": "<b>त्रिभाषी जेनरेशन:</b> हिंदी, अंग्रेजी और गुजराती में सटीक मेडिकल सलाह प्रदान करता है।",
+            "ocr_title": "7. कंप्यूटर विज़न एवं मेडिकल डॉक्यूमेंट OCR",
+            "ocr_sub": "ब्लड रिपोर्ट और डॉक्टर पर्चियों के स्वचालित विश्लेषण के लिए Gemini Vision + Tesseract OCR।",
+            "ocr_item1": "<b>ब्लड लैब रिपोर्ट विश्लेषक:</b> CBC, LFT, KFT, लिपिड, HbA1c निकालता है और असामान्य मानों को हाइलाइट करता है।",
+            "ocr_item2": "<b>दवा पर्ची स्कैनर:</b> दवाओं के नाम, खुराक पढ़कर OpenFDA डेटाबेस से मिलान करता है।",
             # Diseases Tab
             "dis_title": "भारत की 100+ प्रमुख बीमारियों की आधिकारिक टैक्सोनॉमी",
             "dis_sub": "MoHFW और WHO ICD-10/11 के तहत सभी 18 प्रमुख श्रेणियों का संपूर्ण डेटाबेस।",
@@ -10244,24 +10246,7 @@ elif st.session_state["active_panel"] == "About":
             "demand_step1": "<b>1. ડેટા ઇન્જેશન:</b> MoHFW HMIS ના 20,904 અધિકૃત રેકોર્ડ્સમાંથી વિશ્લેષણ.",
             "demand_step2": "<b>2. ટ્રેન્ડ એનાલિસિસ:</b> 4-અઠવાડિયા અને 12-અઠવાડિયાના રોલિંગ ટ્રેન્ડ્સનું આકલન.",
             "demand_step3": "<b>3. મોડેલ ફાઇલ:</b> <code>models/demand_model.pkl</code> માં અનિશ્ચિતતા સ્ટાન્ડર્ડ એરર (±19.50) સાથે સુરક્ષિત.",
-            "stockout_title": "3. ઓપરેશનલ સ્ટોકઆઉટ રિસ્ક એન્જિન (રૂલ-બેઝ્ડ સિસ્ટમ)",
-            "stockout_sub": "સ્ટોકના બાકી દિવસોના આધારે પારદર્શક ચેતવણી પ્રણાલી.",
-            "stockout_desc": "<b>ઓપરેશનલ મર્યાદાઓ:</b><br/>• <b>ક્રિટિકલ રિસ્ક:</b> 3 દિવસથી ઓછો સ્ટોક (તાત્કાલિક લાલ ચેતવણી)<br/>• <b>અર્જન્ટ રિસ્ક:</b> 7 દિવસથી ઓછો સ્ટોક (પ્રાથમિકતા પુરવઠો)<br/>• <b>વોચલિસ્ટ:</b> 14 દિવસથી ઓછો સ્ટોક (સામાન્ય ટ્રેકિંગ)<br/>• <b>સલામત બફર:</b> 14 દિવસ કે તેથી વધુ સ્ટોક (સ્થિર પરિસ્થિતિ)<br/><i>નોંધ: સંપૂર્ણ પારદર્શિતા માટે તેને 'RULE_BASED' તરીકે વર્ગીકૃત કરવામાં આવ્યું છે.</i>",
-            "kg_title": "4. ક્લિનિકલ નોલેજ ગ્રાફ અને ટ્રાયેજ એન્જિન",
-            "kg_sub": "ક્લિનિકલ સલામતી, કટોકટીની ચેતવણીઓ અને વસ્તી વિષયક નિયમો સુનિશ્ચિત કરતી સિસ્ટમ.",
-            "kg_item1": "<b>ICD-11 બાયપાર્ટાઇટ સ્કોરિંગ:</b> મુખ્ય પ્રાથમિક લક્ષણો માટે 1.6x ગુણક સાથે મેચિંગ.",
-            "kg_item2": "<b>ઇમરજન્સી રેડ-ફ્લેગ પ્રોટોકોલ:</b> ગંભીર જોખમો (જેમ કે શ્વાસ ચડવો અને છાતીમાં દુખાવો) ની તાત્કાલિક ઓળખ.",
-            "kg_item3": "<b>વસ્તી વિષયક ક્લિનિકલ ફિલ્ટર:</b> જૈવિક રીતે અસંભવિત રોગોને દૂર કરવા માટે લિંગ અને વયનું ફિલ્ટર.",
-            "llm_title": "5. મેડિકલ ફાઉન્ડેશન LLMs (લાઇવ AI એન્જિન)",
-            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) અને Google Gemini 3.5 Flash દ્વારા ઝડપી તાર્કિક વિશ્લેષણ.",
-            "llm_item1": "<b>ડાયનેમિક કેર પ્રિસ્ક્રિપ્શન:</b> રોગ મુજબ દવાઓ, જમવાનો યોગ્ય સમય ('જમ્યા પછી' કે 'ખાલી પેટે') અને દિવસો નક્કી કરે છે.",
-            "llm_item2": "<b>ડ્રગ ઇન્ટરેક્શન અને એલર્જી શીલ્ડ:</b> જૂની દવાઓ અને એલર્જીથી થતા નુકસાનને અટકાવે છે.",
-            "llm_item3": "<b>ત્રિભાષી જનરેશન:</b> ગુજરાતી, હિન્દી અને અંગ્રેજીમાં સચોટ તબીબી સલાહ પ્રદાન કરે છે.",
-            "ocr_title": "6. કમ્પ્યુટર વિઝન અને મેડિકલ ડોક્યુમેન્ટ OCR",
-            "ocr_sub": "બ્લડ રિપોર્ટ અને ડૉક્ટરની પ્રિસ્ક્રિપ્શનના વિશ્લેષણ માટે Gemini Vision + Tesseract OCR.",
-            "ocr_item1": "<b>બ્લડ લેબ રિપોર્ટ વિશ્લેષક:</b> CBC, LFT, KFT, લિપિડ, HbA1c ચકાસીને અસામાન્ય પરિણામો દર્શાવે છે.",
-            "ocr_item2": "<b>દવા પ્રિસ્ક્રિપ્શન સ્કેનર:</b> દવાઓના નામ, ડોઝ વાંચીને OpenFDA ડેટાબેઝ સાથે સરખાવે છે.",
-            "api_title": "7. લાઈવ હેલ્થકેર APIs અને ક્લાઉડ ઇન્ટિગ્રેશન ઇકોસિસ્ટમ",
+            "api_title": "3. લાઈવ હેલ્થકેર APIs અને ક્લાઉડ ઇન્ટિગ્રેશન ઇકોસિસ્ટમ",
             "api_sub": "DocMindX AI ને રિયલ-ટાઇમ મેડિકલ ઇન્ટેલિજન્સ, લોકેશન શોધ અને સુરક્ષા પૂરી પાડતી સત્તાવાર APIs.",
             "api_item1": "<b>Google Gemini Vision અને Flash API:</b> બ્લડ રિપોર્ટ (CBC, LFT, KFT) અને પ્રિસ્ક્રિપ્શનનું કમ્પ્યુટર વિઝન સ્કેનિંગ અને વિગતવાર તબીબી સમજૂતી આપે છે.",
             "api_item2": "<b>Groq Cloud LLM એન્જિન (LLaMA-3.3 70B / Qwen):</b> ક્ષણભરમાં ઝડપી ક્લિનિકલ ટ્રાયેજ, દવાઓની આડઅસર ચકાસણી અને સારવાર સલાહ જનરેટ કરે છે.",
@@ -10269,6 +10254,23 @@ elif st.session_state["active_panel"] == "About":
             "api_item4": "<b>WHO Disease Outbreak News (DON REST API):</b> ભારતમાં અને વિશ્વસ્તરે ફેલાતા રોગચાળા અને વાયરસની સત્તાવાર લાઈવ ચેતવણીઓ મેળવે છે.",
             "api_item5": "<b>OpenFDA અને DailyMed APIs:</b> દવાઓના રાસાયણિક ઘટકો, ફોર્મ્યુલા, NDC કોડ અને સલામતી માપદંડોની ચકાસણી કરે છે.",
             "api_item6": "<b>Supabase Cloud PostgreSQL અને Auth API:</b> મેડિકલ સ્કેન હિસ્ટ્રી, કુટુંબ પ્રોફાઇલ અને સુરક્ષા ઓડિટ ટ્રેઇલને એન્ક્રિપ્ટેડ ક્લાઉડમાં સાચવે છે.",
+            "stockout_title": "4. ઓપરેશનલ સ્ટોકઆઉટ રિસ્ક એન્જિન (રૂલ-બેઝ્ડ સિસ્ટમ)",
+            "stockout_sub": "સ્ટોકના બાકી દિવસોના આધારે પારદર્શક ચેતવણી પ્રણાલી.",
+            "stockout_desc": "<b>ઓપરેશનલ મર્યાદાઓ:</b><br/>• <b>ક્રિટિકલ રિસ્ક:</b> 3 દિવસથી ઓછો સ્ટોક (તાત્કાલિક લાલ ચેતવણી)<br/>• <b>અર્જન્ટ રિસ્ક:</b> 7 દિવસથી ઓછો સ્ટોક (પ્રાથમિકતા પુરવઠો)<br/>• <b>વોચલિસ્ટ:</b> 14 દિવસથી ઓછો સ્ટોક (સામાન્ય ટ્રેકિંગ)<br/>• <b>સલામત બફર:</b> 14 દિવસ કે તેથી વધુ સ્ટોક (સ્થિર પરિસ્થિતિ)<br/><i>નોંધ: સંપૂર્ણ પારદર્શિતા માટે તેને 'RULE_BASED' તરીકે વર્ગીકૃત કરવામાં આવ્યું છે.</i>",
+            "kg_title": "5. ક્લિનિકલ નોલેજ ગ્રાફ અને ટ્રાયેજ એન્જિન",
+            "kg_sub": "ક્લિનિકલ સલામતી, કટોકટીની ચેતવણીઓ અને વસ્તી વિષયક નિયમો સુનિશ્ચિત કરતી સિસ્ટમ.",
+            "kg_item1": "<b>ICD-11 બાયપાર્ટાઇટ સ્કોરિંગ:</b> મુખ્ય પ્રાથમિક લક્ષણો માટે 1.6x ગુણક સાથે મેચિંગ.",
+            "kg_item2": "<b>ઇમરજન્સી રેડ-ફ્લેગ પ્રોટોકોલ:</b> ગંભીર જોખમો (જેમ કે શ્વાસ ચડવો અને છાતીમાં દુખાવો) ની તાત્કાલિક ઓળખ.",
+            "kg_item3": "<b>વસ્તી વિષયક ક્લિનિકલ ફિલ્ટર:</b> જૈવિક રીતે અસંભવિત રોગોને દૂર કરવા માટે લિંગ અને વયનું ફિલ્ટર.",
+            "llm_title": "6. મેડિકલ ફાઉન્ડેશન LLMs (લાઇવ AI એન્જિન)",
+            "llm_sub": "Groq (LLaMA-3.3 70B, Qwen 27B) અને Google Gemini 3.5 Flash દ્વારા ઝડપી તાર્કિક વિશ્લેષણ.",
+            "llm_item1": "<b>ડાયનેમિક કેર પ્રિસ્ક્રિપ્શન:</b> રોગ મુજબ દવાઓ, જમવાનો યોગ્ય સમય ('જમ્યા પછી' કે 'ખાલી પેટે') અને દિવસો નક્કી કરે છે.",
+            "llm_item2": "<b>ડ્રગ ઇન્ટરેક્શન અને એલર્જી શીલ્ડ:</b> જૂની દવાઓ અને એલર્જીથી થતા નુકસાનને અટકાવે છે.",
+            "llm_item3": "<b>ત્રિભાષી જનરેશન:</b> ગુજરાતી, હિન્દી અને અંગ્રેજીમાં સચોટ તબીબી સલાહ પ્રદાન કરે છે.",
+            "ocr_title": "7. કમ્પ્યુટર વિઝન અને મેડિકલ ડોક્યુમેન્ટ OCR",
+            "ocr_sub": "બ્લડ રિપોર્ટ અને ડૉક્ટરની પ્રિસ્ક્રિપ્શનના વિશ્લેષણ માટે Gemini Vision + Tesseract OCR.",
+            "ocr_item1": "<b>બ્લડ લેબ રિપોર્ટ વિશ્લેષક:</b> CBC, LFT, KFT, લિપિડ, HbA1c ચકાસીને અસામાન્ય પરિણામો દર્શાવે છે.",
+            "ocr_item2": "<b>દવા પ્રિસ્ક્રિપ્શન સ્કેનર:</b> દવાઓના નામ, ડોઝ વાંચીને OpenFDA ડેટાબેઝ સાથે સરખાવે છે.",
             # Diseases Tab
             "dis_title": "ભારતના 100+ મુખ્ય રોગોની સત્તાવાર ટેક્સોનોમી",
             "dis_sub": "MoHFW અને WHO ICD-10/11 હેઠળ તમામ 18 શ્રેણીઓનો વ્યાપક ડેટાબેઝ.",
@@ -10718,120 +10720,14 @@ elif st.session_state["active_panel"] == "About":
         # 4-Card Unified 2x2 Grid (Strictly 2 per row on desktop, flexible on mobile)
         st.markdown(f"""
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; margin-top: 14px; align-items: stretch;">
-            <!-- Card 3: Operational Stockout Risk Engine -->
-            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #EF4444; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
-                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #EF4444; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">3</span>
-                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['stockout_title'])}</b>
-                        <span style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['risk_detect']}</span>
-                    </div>
-                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['stockout_sub']}</p>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
-                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                            {_format_stockout_bullets(A['stockout_desc'])}
-                        </div>
-                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #EF4444; line-height: 1.3;">{L['prevent_stockouts']}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #3B82F6; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
-                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #3B82F6; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">4</span>
-                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['kg_title'])}</b>
-                        <span style="background: rgba(59, 130, 246, 0.1); color: #2563EB; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['knowledge_base']}</span>
-                    </div>
-                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['kg_sub']}</p>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
-                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
-                                {blue_check_svg}
-                                <div>{A['kg_item1']}</div>
-                            </div>
-                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
-                                {blue_check_svg}
-                                <div>{A['kg_item2']}</div>
-                            </div>
-                            <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                {blue_check_svg}
-                                <div>{A['kg_item3']}</div>
-                            </div>
-                        </div>
-                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="9" y1="9" x2="15" y2="9"/></svg>
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #2563EB; line-height: 1.3;">{L['safe_triage']}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #EA580C; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
-                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #EA580C; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">5</span>
-                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['llm_title'])}</b>
-                        <span style="background: rgba(234, 88, 12, 0.1); color: #EA580C; border: 1px solid rgba(234, 88, 12, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['generative_ai']}</span>
-                    </div>
-                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['llm_sub']}</p>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
-                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                <div>{A['llm_item1']}</div>
-                            </div>
-                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                <div>{A['llm_item2']}</div>
-                            </div>
-                            <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                <div>{A['llm_item3']}</div>
-                            </div>
-                        </div>
-                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(234, 88, 12, 0.05); border: 1px solid rgba(234, 88, 12, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #EA580C; line-height: 1.3;">{L['natural_advice']}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #8B5CF6; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
-                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #8B5CF6; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">6</span>
-                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['ocr_title'])}</b>
-                        <span style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['vision_ai']}</span>
-                    </div>
-                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['ocr_sub']}</p>
-                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
-                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
-                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#8B5CF6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                <div>{A['ocr_item1']}</div>
-                            </div>
-                            <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#8B5CF6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                                <div>{A['ocr_item2']}</div>
-                            </div>
-                        </div>
-                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
-                            <span style="font-size: 0.72rem; font-weight: 700; color: #8B5CF6; line-height: 1.3;">{L['automated_ocr']}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Card 7: Live Healthcare APIs & Cloud Integrations -->
+            <!-- Card 3: Live Healthcare APIs & Cloud Integration Ecosystem -->
             <div class="mm-card" style="margin: 0; grid-column: 1 / -1; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #0D9488; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
                 <div>
                     <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 4px;">
                         <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                            <span style="width: 22px; height: 22px; border-radius: 50%; background: #0D9488; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">7</span>
+                            <span style="width: 22px; height: 22px; border-radius: 50%; background: #0D9488; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">3</span>
                             <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['api_title'])}</b>
-                            <span style="background: rgba(139, 92, 246, 0.1); color: #0D9488; border: 1px solid rgba(13, 148, 136, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['api_ecosystem']}</span>
+                            <span style="background: rgba(13, 148, 136, 0.1); color: #0D9488; border: 1px solid rgba(13, 148, 136, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['api_ecosystem']}</span>
                         </div>
                         <span style="font-size: 0.74rem; font-weight: 700; color: #0D9488; background: rgba(13, 148, 136, 0.08); border: 1px solid rgba(13, 148, 136, 0.25); border-radius: 8px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 5px;">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -10869,6 +10765,115 @@ elif st.session_state["active_panel"] == "About":
                         <div style="flex: 0 1 180px; min-width: 140px; background: rgba(13, 148, 136, 0.05); border: 1px solid rgba(13, 148, 136, 0.2); border-radius: 10px; padding: 14px 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
                             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0D9488" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 8px;"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="13 14 16 11 19 14"/></svg>
                             <span style="font-size: 0.74rem; font-weight: 700; color: #0D9488; line-height: 1.35;">{L['live_connected']}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Card 4: Operational Stockout Risk Engine -->
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #EF4444; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #EF4444; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">4</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['stockout_title'])}</b>
+                        <span style="background: rgba(239, 68, 68, 0.1); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['risk_detect']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['stockout_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            {_format_stockout_bullets(A['stockout_desc'])}
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #EF4444; line-height: 1.3;">{L['prevent_stockouts']}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Card 5: Clinical Knowledge Graph & Triage Engine -->
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #3B82F6; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #3B82F6; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">5</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['kg_title'])}</b>
+                        <span style="background: rgba(59, 130, 246, 0.1); color: #2563EB; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['knowledge_base']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['kg_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                {blue_check_svg}
+                                <div>{A['kg_item1']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                {blue_check_svg}
+                                <div>{A['kg_item2']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                {blue_check_svg}
+                                <div>{A['kg_item3']}</div>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="9" y1="9" x2="15" y2="9"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #2563EB; line-height: 1.3;">{L['safe_triage']}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Card 6: Medical Foundation LLMs -->
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #EA580C; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #EA580C; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">6</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['llm_title'])}</b>
+                        <span style="background: rgba(234, 88, 12, 0.1); color: #EA580C; border: 1px solid rgba(234, 88, 12, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['generative_ai']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['llm_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['llm_item1']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['llm_item2']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#EA580C"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['llm_item3']}</div>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(234, 88, 12, 0.05); border: 1px solid rgba(234, 88, 12, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #EA580C; line-height: 1.3;">{L['natural_advice']}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Card 7: Computer Vision & Medical Document OCR -->
+            <div class="mm-card" style="margin: 0; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid #8B5CF6; border-radius: 12px; padding: 18px 20px; background: var(--mm-card-bg);">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;">
+                        <span style="width: 22px; height: 22px; border-radius: 50%; background: #8B5CF6; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.74rem; flex-shrink: 0;">7</span>
+                        <b style="font-size: 1.02rem; color: var(--mm-text-primary);">{_strip_num(A['ocr_title'])}</b>
+                        <span style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 12px; font-size: 0.70rem; font-weight: 700; padding: 2px 8px;">{L['vision_ai']}</span>
+                    </div>
+                    <p style="font-size: 0.79rem; color: var(--mm-text-secondary); margin: 2px 0 12px 0;">{A['ocr_sub']}</p>
+                    <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: stretch;">
+                        <div style="flex: 1 1 260px; font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.6;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#8B5CF6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['ocr_item1']}</div>
+                            </div>
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10" fill="#8B5CF6"/><path d="M8 12.5l2.5 2.5L16 9.5" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                <div>{A['ocr_item2']}</div>
+                            </div>
+                        </div>
+                        <div style="flex: 0 1 140px; min-width: 120px; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 10px; padding: 12px 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 6px;"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/><line x1="7" y1="12" x2="17" y2="12"/></svg>
+                            <span style="font-size: 0.72rem; font-weight: 700; color: #8B5CF6; line-height: 1.3;">{L['automated_ocr']}</span>
                         </div>
                     </div>
                 </div>

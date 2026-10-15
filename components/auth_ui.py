@@ -1526,6 +1526,8 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
             # VIEW 7: ADMINISTRATOR SIGN IN
             # -------------------------------------------------------------
             elif view == "ADMIN_LOGIN":
+                adm_email = "docmindxai@gmail.com"
+
                 st.markdown("""
                 <div class="auth-center-icon-badge" style="background: rgba(239, 68, 68, 0.10); border-color: rgba(239, 68, 68, 0.30);">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -1539,14 +1541,6 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
 
                 st.markdown("""
                 <div class="auth-clean-label">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span>Administrator Identity</span>
-                </div>
-                """, unsafe_allow_html=True)
-                adm_email = st.text_input("Administrator Identity", placeholder="e.g. docmindxai@gmail.com", key="panel_adm_email", label_visibility="collapsed")
-
-                st.markdown("""
-                <div class="auth-clean-label">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                     <span>Master Security Password</span>
                 </div>
@@ -1555,24 +1549,22 @@ def render_auth_portal_panel(T: dict = None, lang_code: str = "en", LANG_OPTIONS
 
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
                 if st.button("Verify Credentials & Request Admin Key →", type="primary", use_container_width=True, key="panel_btn_adm_cred"):
-                    if not adm_email or not adm_email.strip() or not adm_pass:
-                        st.session_state["auth_err_adm_email"] = not bool(adm_email and adm_email.strip())
-                        st.session_state["auth_err_adm_pass"] = not bool(adm_pass)
-                        trigger_popup("Admin Credentials Required", "Please enter your administrator ID and master password.", "warning")
+                    if not adm_pass or not adm_pass.strip():
+                        st.session_state["auth_err_adm_pass"] = True
+                        trigger_popup("Password Required", "Please enter the master security password.", "warning")
                         st.rerun()
                     else:
-                        st.session_state.pop("auth_err_adm_email", None)
                         st.session_state.pop("auth_err_adm_pass", None)
                         with st.spinner("Authorizing admin credentials..."):
                             ok, msg = auth_svc.authenticate_admin_credentials(adm_email, adm_pass)
                         if ok:
-                            st.session_state["auth_temp_email"] = adm_email.strip().lower()
+                            st.session_state["auth_temp_email"] = adm_email
                             auth_svc.send_admin_login_otp_code(adm_email)
                             trigger_popup("Admin Credentials Verified", f"Security key dispatched to {adm_email}.", "success")
                             st.session_state["auth_view"] = "ADMIN_OTP"
                             st.rerun()
                         else:
-                            trigger_popup("Admin Access Denied", msg or "Invalid administrator credentials.", "error")
+                            trigger_popup("Admin Access Denied", msg or "Invalid master security password.", "error")
                             st.rerun()
 
                 # Clean Bottom Navigation (No emojis, hides current view)
