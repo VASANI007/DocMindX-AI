@@ -949,13 +949,25 @@ with st.sidebar:
     <div style='font-size: 0.71rem; font-weight: 700; color: #94A3B8; letter-spacing: 0.06em; text-transform: uppercase; margin: 4px 0 6px 0;'>{T.get('clinical_navigation', 'CLINICAL MODULE NAVIGATION')}</div>
     """, unsafe_allow_html=True)
     
+    # Check admin authentication status for clinical sidebar navigation
+    curr_sb_user = auth_ui.get_current_user()
+    is_sb_admin = bool(curr_sb_user and auth_ui.is_authenticated() and auth_svc.is_admin_session(curr_sb_user))
+
     panel_map = {
         "Health Assessment": T.get("nav_health_assessment", "Health Assessment"),
         "Medical Report": T.get("nav_medical_report", "Medical Report"),
         "Nearby Healthcare": T.get("nav_nearby_healthcare", "Nearby Healthcare"),
         "Health Records": T.get("nav_health_records", "Health Records"),
-        "National Command": T.get("nav_command_center", "National Command"),
         "About": T.get("nav_about", "About")
+    }
+    if is_sb_admin:
+        panel_map = {
+            "Health Assessment": T.get("nav_health_assessment", "Health Assessment"),
+            "Medical Report": T.get("nav_medical_report", "Medical Report"),
+            "Nearby Healthcare": T.get("nav_nearby_healthcare", "Nearby Healthcare"),
+            "Health Records": T.get("nav_health_records", "Health Records"),
+            "National Command": T.get("nav_command_center", "National Command"),
+            "About": T.get("nav_about", "About")
         }
     panel_keys = list(panel_map.keys())
 
@@ -983,7 +995,6 @@ with st.sidebar:
     )
 
     # Clinical Identity & Profile Card in Sidebar
-    curr_sb_user = auth_ui.get_current_user()
     if curr_sb_user and auth_ui.is_authenticated():
         is_sb_admin = auth_svc.is_admin_session(curr_sb_user)
         badge_text = T.get("badge_administrator", "ADMINISTRATOR") if is_sb_admin else T.get("badge_patient", "PATIENT")
@@ -1068,26 +1079,46 @@ current_lang_str = st.session_state.get("app_language", "English")
 curr_lang_idx = LANG_OPTIONS.index(current_lang_str) if current_lang_str in LANG_OPTIONS else 0
 top_auth_user = auth_ui.get_current_user()
 is_logged_in = bool(top_auth_user and auth_ui.is_authenticated())
+is_admin_user = bool(is_logged_in and auth_svc.is_admin_session(top_auth_user))
 
 panel_keys = [
     "Health Assessment",
     "Medical Report",
     "Nearby Healthcare",
     "Health Records",
-    "National Command",
     "About"
 ]
+if is_admin_user:
+    panel_keys = [
+        "Health Assessment",
+        "Medical Report",
+        "Nearby Healthcare",
+        "Health Records",
+        "National Command",
+        "About"
+    ]
 
 panel_map = {
     "Health Assessment": T.get("nav_health_assessment", "Health Assessment"),
     "Medical Report": T.get("nav_medical_report", "Medical Report"),
     "Nearby Healthcare": T.get("nav_nearby_healthcare", "Nearby Healthcare"),
     "Health Records": T.get("nav_health_records", "Health Records"),
-    "National Command": T.get("nav_command_center", "National Command"),
     "About": T.get("nav_about", "About")
 }
+if is_admin_user:
+    panel_map = {
+        "Health Assessment": T.get("nav_health_assessment", "Health Assessment"),
+        "Medical Report": T.get("nav_medical_report", "Medical Report"),
+        "Nearby Healthcare": T.get("nav_nearby_healthcare", "Nearby Healthcare"),
+        "Health Records": T.get("nav_health_records", "Health Records"),
+        "National Command": T.get("nav_command_center", "National Command"),
+        "About": T.get("nav_about", "About")
+    }
 
 active_p = st.session_state.get("active_panel", "Health Assessment")
+if active_p == "National Command" and not is_admin_user:
+    st.session_state["active_panel"] = "Health Assessment"
+    active_p = "Health Assessment"
 
 
 # Direct Dark Mode CSS Overrides - Guarantees High-Contrast Text & Background across all UI
@@ -3704,7 +3735,11 @@ with st.container(key="dmx_master_header_card"):
     # 1. DESKTOP VIEW (Image 2 Design)
     
     with st.container(key="dmx_desktop_container"):
-        d_cols = st.columns([1.30, 1.10, 1.00, 1.10, 1.00, 1.10, 0.68, 1.05, 0.30, 0.95], vertical_alignment="center")
+        if is_admin_user:
+            col_widths = [1.30, 1.10, 1.00, 1.10, 1.00, 1.10, 0.68, 1.05, 0.30, 0.95]
+        else:
+            col_widths = [1.35, 1.15, 1.05, 1.15, 1.05, 0.72, 1.05, 0.30, 0.95]
+        d_cols = st.columns(col_widths, vertical_alignment="center")
 
         # Col 0: Brand Logo & Title
         with d_cols[0]:
@@ -3719,15 +3754,14 @@ with st.container(key="dmx_master_header_card"):
             </div>
             """, unsafe_allow_html=True)
 
-        # Col 1-6: Navigation Buttons with Unique Colored Material Icons (1: Health, 2: Medical, 3: Nearby, 4: Records, 5: National, 6: About)
-        _nav_icons = [
-            ":material/home:",
-            ":material/description:",
-            ":material/location_on:",
-            ":material/folder:",
-            ":material/groups:",
-            ":material/info:"
-        ]
+        _nav_icons_dict = {
+            "Health Assessment": ":material/home:",
+            "Medical Report": ":material/description:",
+            "Nearby Healthcare": ":material/location_on:",
+            "Health Records": ":material/folder:",
+            "National Command": ":material/groups:",
+            "About": ":material/info:"
+        }
         for idx, p_key in enumerate(panel_keys, start=1):
             with d_cols[idx]:
                 with st.container(key=f"d_nav_{idx}"):
@@ -3735,15 +3769,16 @@ with st.container(key="dmx_master_header_card"):
                     st.button(
                         panel_map[p_key],
                         key=f"d_nav_btn_{idx}",
-                        icon=_nav_icons[idx - 1],
+                        icon=_nav_icons_dict.get(p_key, ":material/circle:"),
                         type="primary" if is_active else "secondary",
                         use_container_width=True,
                         on_click=switch_active_panel,
                         args=(p_key,)
                     )
 
-        # Col 7: Language Selector with Globe Icon
-        with d_cols[7]:
+        # Col: Language Selector with Globe Icon
+        lang_col_idx = len(panel_keys) + 1
+        with d_cols[lang_col_idx]:
             with st.container(key="d_lang_wrap"):
                 st.selectbox(
                     "Language",
@@ -3756,16 +3791,16 @@ with st.container(key="dmx_master_header_card"):
                     args=("d_top_lang_select",)
                 )
 
-        # Col 8: Light/Dark Mode Icon (Pure Moon in light mode, Sun in dark mode)
-        with d_cols[8]:
+        # Col: Light/Dark Mode Icon (Pure Moon in light mode, Sun in dark mode)
+        with d_cols[lang_col_idx + 1]:
             st.button(
                 "",
                 key="d_theme_toggle_btn",
                 on_click=toggle_app_theme
             )
 
-        # Col 9: Profile Avatar 'Dv' or 'Sign In' Button
-        with d_cols[9]:
+        # Col: Profile Avatar 'Dv' or 'Sign In' Button
+        with d_cols[lang_col_idx + 2]:
             if is_logged_in:
                 _pname = str(top_auth_user.get("full_name", "User")).strip() or "User"
                 _pemail = str(top_auth_user.get("email", ""))
@@ -3865,20 +3900,20 @@ with st.container(key="dmx_master_header_card"):
             </div>
             """, unsafe_allow_html=True)
 
-            _m_nav_icons = [
-                ":material/home:",
-                ":material/description:",
-                ":material/location_on:",
-                ":material/folder:",
-                ":material/groups:",
-                ":material/info:"
-            ]
+            _m_nav_icons_dict = {
+                "Health Assessment": ":material/home:",
+                "Medical Report": ":material/description:",
+                "Nearby Healthcare": ":material/location_on:",
+                "Health Records": ":material/folder:",
+                "National Command": ":material/groups:",
+                "About": ":material/info:"
+            }
             for m_idx, p_key in enumerate(panel_keys, start=1):
                 with st.container(key=f"m_nav_{m_idx}"):
                     st.button(
                         panel_map[p_key],
                         key=f"m_nav_btn_{m_idx}",
-                        icon=_m_nav_icons[m_idx - 1],
+                        icon=_m_nav_icons_dict.get(p_key, ":material/circle:"),
                         type="primary" if active_p == p_key else "secondary",
                         use_container_width=True,
                         on_click=switch_active_panel,
@@ -11599,6 +11634,12 @@ elif st.session_state["active_panel"] == "About":
 # MODULE 6: NATIONAL HEALTH RESOURCE COMMAND CENTER (HACKATHON TRACK)
 # ==============================================================================
 elif st.session_state["active_panel"] == "National Command":
+    curr_nc_user = auth_ui.get_current_user()
+    if not (curr_nc_user and auth_svc.is_admin_session(curr_nc_user)):
+        st.error("Admin session required to access National Command Center.")
+        st.session_state["active_panel"] = "Account / Authentication"
+        st.session_state["auth_view"] = "ADMIN_LOGIN"
+        st.rerun()
     cc_icon_html = '<div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(16, 185, 129, 0.08); border: 1.5px solid #10B981; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25); flex-shrink: 0;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg></div>'
     with st.container(key="mm_top_header_card_6"):
         hdr6_c1, hdr6_c2 = st.columns([3.5, 1.2], vertical_alignment="center")
