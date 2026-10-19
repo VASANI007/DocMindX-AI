@@ -38,6 +38,7 @@ class CanonicalClinicalRepresentation:
     symptom_ids: List[str] = field(default_factory=list)
     exposure_ids: List[str] = field(default_factory=list)
     anatomical_regions: List[str] = field(default_factory=list)
+    body_locations: List[str] = field(default_factory=list)
     laterality: List[str] = field(default_factory=list)  # 'left', 'right', 'bilateral'
     severity: str = "moderate"  # 'mild', 'moderate', 'severe', 'critical'
     duration: str = "1-3 days"  # 'today', '1-3 days', '4-7 days', '1-2 weeks', '>2 weeks'
@@ -66,6 +67,7 @@ class CanonicalClinicalRepresentation:
             "symptom_ids": list(self.symptom_ids),
             "exposure_ids": list(self.exposure_ids),
             "anatomical_regions": list(self.anatomical_regions),
+            "body_locations": list(self.body_locations),
             "laterality": list(self.laterality),
             "severity": self.severity,
             "duration": self.duration,
@@ -219,7 +221,7 @@ BITE_TOKENS = [
     r"કરડ્યું", r"કરડવું", r"કરડ", r"બટકું", r"બટકા", r"બટક", r"બટકું.*ભર્યું", r"બટકું.*ભર્યુ",
     r"ચાवला", r"चावले", r"चावा", r"चावणे", r"चावा.*घेतला",
     r"কামড়েছে", r"கடித்தது", r"கடி", r"కాటు", r"కరిచింది", r"ಕಡಿತ", r"ಕಚ್ಚಿದೆ", r"കടിച്ചു", r"ਵੱਢਿਆ", r"କାମୁଡ଼ିଛି", r"کاٹا",
-    r"batku", r"batku.*bharyu", r"bataku", r"bataku.*bhariyu", r"kardyu", r"karadyu", r"karadyo", r"kaata", r"kata", r"chava", r"chavla", r"chawa", r"chaava"
+    r"batku", r"batku.*bharyu", r"bataku", r"bataku.*bhariyu", r"kardyu", r"karadyu", r"karadyo", r"chaava.*ghetla", r"chawla"
 ]
 
 EXPOSURE_PATTERNS = {
@@ -375,6 +377,16 @@ CANONICAL_CONCEPT_PATTERNS = {
         "category": "respiratory",
         "red_flag": False
     },
+    # 4.2. Wheezing (S000028)
+    "wheezing": {
+        "symptom_id": "S000028",
+        "patterns": [
+            r"wheez", r"whistling.*sound", r"whistling.*breath",
+            r"सीटी.*आवाज़", r"સીટી.*અવાજ", r"घुरघुराहट"
+        ],
+        "category": "respiratory",
+        "red_flag": False
+    },
     # 5. Neurological Headache
     "headache": {
         "symptom_id": "S000061",
@@ -402,22 +414,22 @@ CANONICAL_CONCEPT_PATTERNS = {
     "body_ache_myalgia": {
         "symptom_id": "S000011",
         "patterns": [
-            r"body.*pain", r"body.*ache", r"myalgia", r"generalized.*pain", r"muscle.*pain", r"leg.*pain", r"foot.*pain", r"heel.*pain",
-            r"बदन.*दर्द", r"शरीर.*दर्द", r"અંગ.*દુખાવો", r"પગ.*દુખાવો", r"પગમાં.*દુખાવો", r"પગ.*દુખ", r"अंगदुखी",
+            r"body.*pain", r"body.*ache", r"myalgia", r"generalized.*pain", r"whole.*body.*pain",
+            r"बदन.*दर्द", r"शरीर.*दर्द", r"અંગ.*દુખાવો", r"આખા.*શરીરમાં.*દુખાવો", r"अंगदुखी",
             r"গায়ে.*ব্যথা", r"உடல்.*வலி", r"శరీర.*నొప్పులు", r"ಮೈಕೈ.*ನೋವು", r"ശരീരവേദന",
-            r"badan.*dard", r"ang.*dukhav", r"pag.*dukh", r"pag.*ma.*dukh", r"pag.*ma.*adiye.*dukh", r"sarir.*dard", r"udal.*vali"
+            r"badan.*dard", r"ang.*dukhav", r"sarir.*dard", r"udal.*vali", r"aakha.*sarir.*dukh"
         ],
         "category": "systemic_infectious",
         "red_flag": False
     },
-    # 5.3. Joint Pain & Upper Limb (S000131)
+    # 5.3. Joint Pain & Upper/Lower Limb Arthralgia (S000131)
     "joint_pain": {
         "symptom_id": "S000131",
         "patterns": [
-            r"joint.*pain", r"arthralgia", r"hand.*pain", r"arm.*pain", r"shoulder.*pain", r"wrist.*pain", r"elbow.*pain", r"finger.*pain",
-            r"जोड़ों.*दर्द", r"जोड़.*दर्द", r"हाथ.*दर्द", r"बांह.*दर्द", r"कंधे.*दर्द",
-            r"સાંધા.*દુખાવો", r"સાંધામાં.*દુખાવો", r"હાથ.*દુખાવો", r"હાથમાં.*દુખાવો", r"હાથ.*દુખ", r"ખભા.*દુખાવો",
-            r"hath.*dukh", r"hath.*ma.*dukh", r"haath.*dard", r"sandha.*dukh", r"sandha.*ma.*dukh", r"khabha.*dukh", r"shoulder.*pain"
+            r"joint.*pain", r"arthralgia", r"knee.*pain", r"hand.*pain", r"arm.*pain", r"shoulder.*pain", r"wrist.*pain", r"elbow.*pain", r"finger.*pain",
+            r"जोड़ों.*दर्द", r"जोड़.*दर्द", r"घुटने.*दर्द", r"घुटना.*दर्द", r"हाथ.*दर्द", r"बांह.*दर्द", r"कंधे.*दर्द",
+            r"સાંધા.*દુખાવો", r"સાંધામાં.*દુખાવો", r"ઘૂંટણ.*દુખાવો", r"ગોઠણ.*દુખાવો", r"હાથ.*દુખાવો", r"હાથમાં.*દુખાવો", r"હાથ.*દુખ", r"ખભા.*દુખાવો",
+            r"hath.*dukh", r"hath.*ma.*dukh", r"haath.*dard", r"sandha.*dukh", r"sandha.*ma.*dukh", r"gothan.*dukh", r"ghuntan.*dukh", r"khabha.*dukh", r"shoulder.*pain"
         ],
         "category": "musculoskeletal",
         "red_flag": False
@@ -491,10 +503,10 @@ CANONICAL_CONCEPT_PATTERNS = {
     "skin_rash": {
         "symptom_id": "S000109",
         "patterns": [
-            r"\brash\b", r"skin.*eruption", r"hives", r"erythema", r"itching",
-            r"चकत्ते", r"खुजली", r"दाने", r"ગુમડાં", r"ખંજવાળ", r"લાલ.*ચકામા", r"खाज", r"पुरळ",
-            r"ফুসকুড়ি", r"அரிப்பு", r"దద్దుర్లు", r"ತುರಿಕೆ", r"ചൊറിച്ചിൽ", r"ਖੁਜਲੀ", r"କୁଣ୍ଡାଇ",
-            r"khujli", r"khanjwal", r"chakama", r"\brash\b"
+            r"\brash\b", r"skin.*rash", r"skin.*eruption", r"hives",
+            r"चकत्ते", r"दाने", r"ગુમડાં", r"લાલ.*ચકામા", r"पुरळ",
+            r"ফুসকুড়ি", r"దద్దుర్లు",
+            r"chakama", r"\brash\b"
         ],
         "category": "dermatological",
         "red_flag": False
@@ -531,6 +543,16 @@ CANONICAL_CONCEPT_PATTERNS = {
         "category": "dermatological",
         "red_flag": False
     },
+    # 9.0. Skin Redness / Erythema (S000112)
+    "skin_redness": {
+        "symptom_id": "S000112",
+        "patterns": [
+            r"skin.*redness", r"redness.*skin", r"erythema",
+            r"लाल.*त्वचा", r"લાલ.*ચામડી", r"લાલ.*ત્વચા", r"त्वचा.*लाल"
+        ],
+        "category": "dermatological",
+        "red_flag": False
+    },
     "fungal_skin_infection": {
         "symptom_id": "S000124",
         "patterns": [
@@ -544,8 +566,8 @@ CANONICAL_CONCEPT_PATTERNS = {
     "blisters": {
         "symptom_id": "S000120",
         "patterns": [
-            r"blister", r"blisters", r"bullae", r"vesicle", r"vesicles",
-            r"छाले", r"ફોલ્લા", r"folla", r"fola", r"chhale", r"chala"
+            r"\bblisters?\b", r"\bbullae\b", r"\bvesicles?\b",
+            r"छाले", r"ફોલ્લા", r"\bfolla\b", r"\bfola\b", r"\bchhale\b", r"\bchala\b"
         ],
         "category": "dermatological",
         "red_flag": False
@@ -802,8 +824,10 @@ class MultilingualClinicalNormalizer:
         has_dog_token = self._any_token_match(aff_text, DOG_TOKENS)
         has_cat_token = self._any_token_match(aff_text, CAT_TOKENS)
         has_monkey_token = self._any_token_match(aff_text, MONKEY_TOKENS)
+        has_general_animal = self._any_token_match(aff_text, [r"\banimal\b", r"जानवर", r"પ્રાણી", r"\bpraani\b", r"\bjanwar\b", r"\bkutta\b", r"\bkutro\b", r"\bkutra\b"])
+        has_any_animal = has_dog_token or has_cat_token or has_monkey_token or has_general_animal
 
-        if has_bite_action or (has_dog_token and "bite" in aff_text) or (has_dog_token and any(k in aff_text for k in ["karad", "batk", "chaav", "kaat", "kata"])):
+        if (has_any_animal and has_bite_action) or any(k in aff_text for k in ["dog bite", "cat bite", "monkey bite", "animal bite", "kutraae batku", "kutra batku", "kutta kata"]):
             canonical_concepts.add("animal_bite_exposure")
             symptom_ids.add("S000265")  # S000265 = Animal Bite with Wound (NEVER S000280)
             exposure_ids.add("EXP_ANIMAL_BITE")
@@ -837,6 +861,13 @@ class MultilingualClinicalNormalizer:
         # 4. Extract Anatomy & Laterality
         anatomy = self._extract_anatomy(clean)
         laterality = self._extract_laterality(clean)
+        loc, reg = extract_anatomical_location(clean)
+        body_locations = [loc] if loc else []
+        if loc:
+            clinical_attributes["body_location"] = loc
+            clinical_attributes["body_region"] = reg
+            if reg and reg not in anatomy:
+                anatomy.append(reg)
         if laterality:
             clinical_attributes["laterality"] = laterality[0]
 
@@ -927,6 +958,7 @@ class MultilingualClinicalNormalizer:
             symptom_ids=sorted(list(symptom_ids)),
             exposure_ids=sorted(list(exposure_ids)),
             anatomical_regions=anatomy,
+            body_locations=body_locations,
             laterality=laterality,
             severity=severity_label,
             duration=duration_label,
@@ -980,26 +1012,273 @@ class MultilingualClinicalNormalizer:
 # ==============================================================================
 # GENERALIZED 280-SYMPTOM MASTER TAXONOMY BRIDGE
 # ==============================================================================
+
+# Anatomical Region Keywords for Strict Medical Validation
+ANATOMICAL_REGION_TOKENS: Dict[str, List[str]] = {
+    "lower_limb": [
+        r"\bleg\b", r"\blegs\b", r"\bknee\b", r"\bknees\b", r"\bfoot\b", r"\bfeet\b",
+        r"\bankle\b", r"\bankles\b", r"\bcalf\b", r"\bcalves\b", r"\bthigh\b", r"\bthighs\b",
+        r"\btoe\b", r"\btoes\b", r"\bheel\b", r"\bheels\b", r"\bshin\b", r"\bshins\b",
+        r"\bpatella\b", r"\btibia\b", r"\bfibula\b",
+        r"\bgothan\b", r"\bghutan\b", r"\bghutna\b", r"\bpag\b", r"\bpair\b", r"\bpaanv\b", r"\bpaav\b",
+        r"\btang\b", r"\btaang\b", r"\bsathal\b", r"\bghunti\b", r"\bpani\b",
+        r"पैर", r"पांव", r"टांग", r"जांघ", r"पिंडली", r"घुटना", r"टखना",
+        r"પગ", r"સાથળ", r"ઘૂંટણ", r"ઘૂંટી", r"પાની", r"ગોઠણ"
+    ],
+    "upper_limb": [
+        r"\barm\b", r"\barms\b", r"\bhand\b", r"\bhands\b", r"\bwrist\b", r"\bwrists\b",
+        r"\bfinger\b", r"\bfingers\b", r"\belbow\b", r"\belbows\b", r"\bshoulder\b", r"\bshoulders\b",
+        r"\bforearm\b", r"\bforearms\b", r"\bpalm\b", r"\bpalms\b",
+        r"\bhath\b", r"\bhaath\b", r"\bkhandha\b", r"\bkhabho\b", r"\bkhadha\b", r"\bkoni\b", r"\bkandu\b", r"\bangli\b",
+        r"हाथ", r"बांह", r"कंधा", r"कोहनी", r"कलाई", r"उंगली",
+        r"હાથ", r"ખભા", r"ખભો", r"કોણી", r"કાંડું", r"આંગળી"
+    ],
+    "eye": [
+        r"\beye\b", r"\beyes\b", r"\bvision\b", r"\bvisual\b", r"\bocular\b", r"\bsight\b",
+        r"\bpupil\b", r"\bpupils\b", r"\bcornea\b", r"\bretina\b", r"\beyelid\b", r"\beyelids\b",
+        r"\baankh\b", r"\bankh\b", r"\baankho\b", r"\bankho\b", r"\bdola\b", r"\bdole\b",
+        r"आंख", r"आंखें", r"આંખ", r"આંખો"
+    ],
+    "ear": [
+        r"\bear\b", r"\bears\b", r"\bhearing\b", r"\beardrum\b", r"\botic\b",
+        r"\bkan\b", r"\bkaan\b", r"\bkane\b",
+        r"कान", r"कानों", r"કાન", r"કાને"
+    ],
+    "head": [
+        r"\bhead\b", r"\bheadache\b", r"\bskull\b", r"\bscalp\b", r"\bbrain\b", r"\bforehead\b", r"\btemple\b",
+        r"\bmathu\b", r"\bmathe\b", r"\bsir\b", r"\bsar\b", r"\bdoke\b",
+        r"सिर", r"सर", r"माथा", r"માથું", r"ડોકું"
+    ],
+    "throat_oral": [
+        r"\bthroat\b", r"\bmouth\b", r"\btongue\b", r"\btonsil\b", r"\btonsils\b", r"\btooth\b", r"\bteeth\b",
+        r"\bgala\b", r"\bgale\b", r"\bgalu\b", r"\bdaant\b", r"\bdaat\b",
+        r"गला", r"गले", r"मुंह", r"दांत", r"ગળું", r"ગળા", r"મોં", r"દાંત"
+    ],
+    "chest": [
+        r"\bchest\b", r"\bheart\b", r"\bcardiac\b", r"\bbreast\b",
+        r"\bchhati\b", r"\bchaati\b", r"\bseena\b", r"\bseene\b",
+        r"छाती", r"सीना", r"हार्ट", r"છાતી", r"હૃદય"
+    ],
+    "abdomen": [
+        r"\babdomen\b", r"\babdominal\b", r"\bstomach\b", r"\bbelly\b", r"\btummy\b", r"\bgut\b",
+        r"\bpet\b", r"\bpeta\b", r"\bpot\b",
+        r"पेट", r"उदर", r"પેટ", r"पोट"
+    ],
+    "spine": [
+        r"\bback\b", r"\bspine\b", r"\bspinal\b", r"\blumbar\b", r"\bwaist\b",
+        r"\bkamar\b", r"\bpeeth\b", r"\bpith\b", r"\bvaho\b", r"\bvanso\b",
+        r"कमर", r"पीठ", r"रीढ़", r"કમર", r"પીઠ", r"વાહો", r"વાંસો"
+    ],
+    "skin": [
+        r"\bskin\b", r"\brash\b", r"\bitching\b", r"\bpruritus\b", r"\bblister\b", r"\bblisters\b",
+        r"\bchamadi\b", r"\btvacha\b", r"\bkhujli\b", r"\bkhanjwal\b", r"\bfolla\b",
+        r"त्वचा", r"खुजली", r"चामड़ी", r"ખંજવાળ", r"ફોલ્લા"
+    ]
+}
+
+REGION_TO_SYSTEM_COMPATIBILITY: Dict[str, Optional[Set[str]]] = {
+    "lower_limb": {"musculoskeletal", "general", "skin", "cardiovascular", "neurology"},
+    "upper_limb": {"musculoskeletal", "general", "skin", "cardiovascular", "neurology"},
+    "eye": {"eye", "general", "neurology"},
+    "ear": {"ent", "respiratory", "general"},
+    "ent": {"ent", "respiratory", "general"},
+    "head": {"neurology", "mental health", "general", "ent", "eye"},
+    "throat_oral": {"ent", "respiratory", "gastrointestinal", "general"},
+    "chest": {"cardiovascular", "respiratory", "musculoskeletal", "general"},
+    "abdomen": {"gastrointestinal", "urinary", "women's health", "men's health", "general", "endocrine"},
+    "spine": {"musculoskeletal", "neurology", "general", "urinary"},
+    "skin": {"skin", "general", "infectious diseases"},
+    "general": None
+}
+
+INCOMPATIBLE_REGION_PAIRS: Set[Tuple[str, str]] = {
+    ("lower_limb", "eye"), ("eye", "lower_limb"),
+    ("lower_limb", "ear"), ("ear", "lower_limb"),
+    ("lower_limb", "throat_oral"), ("throat_oral", "lower_limb"),
+    ("lower_limb", "chest"), ("chest", "lower_limb"),
+    ("lower_limb", "abdomen"), ("abdomen", "lower_limb"),
+    ("upper_limb", "eye"), ("eye", "upper_limb"),
+    ("upper_limb", "ear"), ("ear", "upper_limb"),
+    ("upper_limb", "throat_oral"), ("throat_oral", "upper_limb"),
+    ("upper_limb", "abdomen"), ("abdomen", "upper_limb"),
+    ("upper_limb", "lower_limb"), ("lower_limb", "upper_limb"),
+    ("spine", "lower_limb"), ("lower_limb", "spine"),
+    ("spine", "upper_limb"), ("upper_limb", "spine"),
+    ("spine", "eye"), ("eye", "spine"),
+    ("spine", "ear"), ("ear", "spine"),
+    ("spine", "throat_oral"), ("throat_oral", "spine"),
+    ("eye", "ear"), ("ear", "eye"),
+    ("eye", "chest"), ("chest", "eye"),
+    ("eye", "abdomen"), ("abdomen", "eye"),
+    ("ear", "abdomen"), ("abdomen", "ear"),
+    ("ear", "chest"), ("chest", "ear"),
+    ("head", "lower_limb"), ("lower_limb", "head"),
+    ("head", "abdomen"), ("abdomen", "head")
+}
+
+def extract_anatomical_regions(text: str) -> Set[str]:
+    """Identifies all anatomical regions mentioned in a text using regex boundaries."""
+    if not text:
+        return set()
+    t_clean = text.lower()
+    found = set()
+    for region, patterns in ANATOMICAL_REGION_TOKENS.items():
+        for p in patterns:
+            if re.search(p, t_clean, re.IGNORECASE):
+                found.add(region)
+                break
+    return found
+
+
+BODY_LOCATION_PATTERNS: Dict[str, Dict[str, Any]] = {
+    "knee": {
+        "region": "lower_limb",
+        "tokens": [r"\bknee\b", r"\bknees\b", r"\bgothan\b", r"\bghutan\b", r"\bghutna\b", r"ઘૂંટણ", r"ગોઠણ", r"घुटना", r"\bdhincham\b", r"\bdhinchan\b"]
+    },
+    "ankle": {
+        "region": "lower_limb",
+        "tokens": [r"\bankle\b", r"\bankles\b", r"\bghunti\b", r"ઘૂંટી", r"टखना"]
+    },
+    "foot": {
+        "region": "lower_limb",
+        "tokens": [r"\bfoot\b", r"\bfeet\b", r"\bpag\b", r"\bpani\b", r"પાની", r"पांव", r"पैर"]
+    },
+    "leg": {
+        "region": "lower_limb",
+        "tokens": [r"\bleg\b", r"\blegs\b", r"\btang\b", r"\btaang\b", r"ટાંગ", r"टांग"]
+    },
+    "thigh": {
+        "region": "lower_limb",
+        "tokens": [r"\bthigh\b", r"\bthighs\b", r"\bsathal\b", r"સાથળ", r"जांघ"]
+    },
+    "shoulder": {
+        "region": "upper_limb",
+        "tokens": [r"\bshoulder\b", r"\bshoulders\b", r"\bkhabho\b", r"\bkhandha\b", r"ખભો", r"ખભા", r"कंधा"]
+    },
+    "elbow": {
+        "region": "upper_limb",
+        "tokens": [r"\belbow\b", r"\belbows\b", r"\bkoni\b", r"કોણી", r"कोहनी"]
+    },
+    "wrist": {
+        "region": "upper_limb",
+        "tokens": [r"\bwrist\b", r"\bwrists\b", r"\bkandu\b", r"કાંડું", r"कलाई"]
+    },
+    "hand": {
+        "region": "upper_limb",
+        "tokens": [r"\bhand\b", r"\bhands\b", r"\bhath\b", r"\bhaath\b", r"હાથ", r"हाथ"]
+    },
+    "finger": {
+        "region": "upper_limb",
+        "tokens": [r"\bfinger\b", r"\bfingers\b", r"\bangli\b", r"આંગળી", r"उंगली"]
+    },
+    "lower_back": {
+        "region": "spine",
+        "tokens": [r"\blower back\b", r"\blumbago\b", r"\bkamar\b", r"\bvaho\b", r"\bvanso\b", r"વાહો", r"વાંસો", r"કમર", r"कमर"]
+    },
+    "upper_back": {
+        "region": "spine",
+        "tokens": [r"\bupper back\b", r"\bpeeth\b", r"\bpith\b", r"પીઠ", r"पीठ"]
+    },
+    "neck": {
+        "region": "spine",
+        "tokens": [r"\bneck\b", r"\bcervical\b", r"\bgardan\b", r"\bmaan\b", r"ગરદન", r"गर्दन", r"માન"]
+    },
+    "chest": {
+        "region": "chest",
+        "tokens": [r"\bchest\b", r"\bchhati\b", r"\bseena\b", r"છાતી", r"छाती", r"सीना"]
+    },
+    "abdomen": {
+        "region": "abdomen",
+        "tokens": [r"\babdomen\b", r"\bstomach\b", r"\bbelly\b", r"\bpet\b", r"પેટ", r"पेट"]
+    },
+    "head": {
+        "region": "head",
+        "tokens": [r"\bhead\b", r"\bforehead\b", r"\bmathu\b", r"\bsir\b", r"\bsar\b", r"માથું", r"सिर"]
+    },
+    "eye": {
+        "region": "eye",
+        "tokens": [r"\beye\b", r"\beyes\b", r"\baankh\b", r"આંખ", r"आंख"]
+    },
+    "ear": {
+        "region": "ear",
+        "tokens": [r"\bear\b", r"\bears\b", r"\bkan\b", r"કાન", r"कान"]
+    },
+    "throat": {
+        "region": "throat_oral",
+        "tokens": [r"\bthroat\b", r"\bgala\b", r"\bgalu\b", r"ગળું", r"गला"]
+    }
+}
+
+
+def extract_anatomical_location(text: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extracts specific anatomical location and its associated body region from text.
+    Returns (body_location, body_region), e.g. ('knee', 'lower_limb').
+    """
+    if not text or not isinstance(text, str):
+        return None, None
+    t_lower = text.lower()
+    for loc_name, loc_info in BODY_LOCATION_PATTERNS.items():
+        for pat in loc_info["tokens"]:
+            if re.search(pat, t_lower, re.IGNORECASE):
+                return loc_name, loc_info["region"]
+    return None, None
+
+
+def extract_laterality_from_text(text: str) -> Optional[str]:
+    """Detects explicit laterality ('left', 'right', 'bilateral') from text."""
+    if not text or not isinstance(text, str):
+        return None
+    t_lower = text.lower()
+    for lat, patterns in LATERALITY_PATTERNS.items():
+        for pat in patterns:
+            if re.search(pat, t_lower, re.IGNORECASE):
+                return lat
+    return None
+
+
+
 class MasterSymptomTaxonomyBridge:
     """
-    Generalized Multilingual Bridge covering all 280 symptoms in symptoms_master.csv.
+    Generalized Multilingual Bridge covering all 280 symptoms in symptoms_master.csv
+    and extensible aliases in symptom_aliases.csv.
     Provides fast bidirectional lookup:
       user_text / multilingual phrase -> canonical symptom ID (S000001..S000280) -> metadata.
-    Enforces semantic validation so fuzzy candidates must pass an attribute check.
+    Enforces strict anatomical and semantic validation so impossible cross-body matches are rejected.
     """
     def __init__(self, csv_path: Optional[str] = None):
         if not csv_path:
             base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             csv_path = os.path.join(base_dir, "datasets", "symptoms", "symptoms_master.csv")
+            aliases_path = os.path.join(base_dir, "datasets", "symptoms", "symptom_aliases.csv")
+            learned_path = os.path.join(base_dir, "datasets", "symptoms", "learned_symptoms.csv")
+        else:
+            aliases_path = os.path.join(os.path.dirname(csv_path), "symptom_aliases.csv")
+            learned_path = os.path.join(os.path.dirname(csv_path), "learned_symptoms.csv")
         self.csv_path = csv_path
+        self.aliases_path = aliases_path
+        self.learned_path = learned_path
         self.id_to_record: Dict[str, Dict[str, Any]] = {}
         self.exact_name_to_id: Dict[str, str] = {}
+        self.alias_name_to_id: Dict[str, str] = {}
+        self.dataset_fingerprint: str = ""
         self._load_master_taxonomy()
+
+    def _compute_fingerprint(self) -> str:
+        import hashlib
+        h = hashlib.sha256()
+        for path in [self.csv_path, self.aliases_path, self.learned_path]:
+            if os.path.exists(path):
+                stat = os.stat(path)
+                h.update(f"{path}:{stat.st_mtime}:{stat.st_size}".encode("utf-8"))
+        return h.hexdigest()[:16]
 
     def _load_master_taxonomy(self):
         if not os.path.exists(self.csv_path):
             _logger.warning("[MasterSymptomTaxonomyBridge] Master symptoms file not found at: %s", self.csv_path)
             return
+
+        self.dataset_fingerprint = self._compute_fingerprint()
 
         with open(self.csv_path, mode="r", encoding="utf-8-sig") as f:
             reader = csv.DictReader(f)
@@ -1021,6 +1300,10 @@ class MasterSymptomTaxonomyBridge:
                     "emergency_flag": row.get("emergency_flag", "").strip(),
                     "description": row.get("description", "").strip()
                 }
+                for col_name, val in row.items():
+                    if col_name.startswith("symptom_name_") and val:
+                        record[col_name] = str(val).strip()
+
                 self.id_to_record[sid] = record
 
                 # Index English exact & cleaned
@@ -1036,21 +1319,160 @@ class MasterSymptomTaxonomyBridge:
                             if p_clean and p_clean not in self.exact_name_to_id:
                                 self.exact_name_to_id[p_clean] = sid
 
-                # Index Hindi & Gujarati
-                if name_hi:
-                    self.exact_name_to_id[name_hi.strip().lower()] = sid
-                    for h_part in name_hi.split('/'):
-                        h_clean = re.sub(r'\(.*?\)', '', h_part).strip().lower()
-                        if h_clean and h_clean not in self.exact_name_to_id:
-                            self.exact_name_to_id[h_clean] = sid
-                if name_gu:
-                    self.exact_name_to_id[name_gu.strip().lower()] = sid
-                    for g_part in name_gu.split('/'):
-                        g_clean = re.sub(r'\(.*?\)', '', g_part).strip().lower()
-                        if g_clean and g_clean not in self.exact_name_to_id:
-                            self.exact_name_to_id[g_clean] = sid
+                # Index localized columns dynamically
+                for col_key, val in record.items():
+                    if col_key.startswith("symptom_name_") and val:
+                        v_str = str(val).strip().lower()
+                        if v_str and v_str != "nan":
+                            self.exact_name_to_id[v_str] = sid
+                            for v_part in v_str.split('/'):
+                                v_clean = re.sub(r'\(.*?\)', '', v_part).strip().lower()
+                                if v_clean and v_clean not in self.exact_name_to_id:
+                                    self.exact_name_to_id[v_clean] = sid
 
-    def resolve_symptom(self, symptom_text: str) -> Optional[str]:
+        # Load extensible aliases dataset dynamically
+        if os.path.exists(self.aliases_path):
+            try:
+                with open(self.aliases_path, mode="r", encoding="utf-8-sig") as af:
+                    a_reader = csv.DictReader(af)
+                    for a_row in a_reader:
+                        a_sid = a_row.get("symptom_id", "").strip().upper()
+                        a_name = str(a_row.get("alias_text") or a_row.get("alias_name") or "").strip().lower()
+                        if a_sid and a_name and a_sid in self.id_to_record:
+                            self.alias_name_to_id[a_name] = a_sid
+                            if a_name not in self.exact_name_to_id:
+                                self.exact_name_to_id[a_name] = a_sid
+            except Exception as e:
+                _logger.warning("[MasterSymptomTaxonomyBridge] Failed loading aliases: %s", e)
+
+        # Load learned symptoms dataset dynamically (Tier 2 learned storage)
+        if os.path.exists(self.learned_path):
+            try:
+                with open(self.learned_path, mode="r", encoding="utf-8-sig") as lf:
+                    l_reader = csv.DictReader(lf)
+                    for l_row in l_reader:
+                        l_sid = l_row.get("symptom_id", "").strip().upper()
+                        l_name = str(l_row.get("alias_text") or l_row.get("alias_name") or "").strip().lower()
+                        if l_sid and l_name and l_sid in self.id_to_record:
+                            self.alias_name_to_id[l_name] = l_sid
+                            if l_name not in self.exact_name_to_id:
+                                self.exact_name_to_id[l_name] = l_sid
+            except Exception as e:
+                _logger.warning("[MasterSymptomTaxonomyBridge] Failed loading learned symptoms: %s", e)
+
+    def register_learned_symptom(
+        self,
+        alias_text: str,
+        symptom_id: str,
+        language_code: str = "en",
+        script_type: str = "Latin",
+        notes: str = "Learned via Gemini+Groq consensus"
+    ) -> bool:
+        """
+        Dynamically records a new verified alias in datasets/symptoms/learned_symptoms.csv
+        and updates the in-memory lookup cache in real-time.
+        """
+        if not alias_text or not symptom_id:
+            return False
+        clean_text = str(alias_text).strip()
+        clean_sid = str(symptom_id).strip().upper()
+        if clean_sid not in self.id_to_record:
+            return False
+
+        norm_key = clean_text.lower()
+        # Even if already in index, ensure mapping is consistent
+        self.alias_name_to_id[norm_key] = clean_sid
+        self.exact_name_to_id[norm_key] = clean_sid
+
+        try:
+            file_exists = os.path.exists(self.learned_path)
+            next_idx = 1
+            if file_exists and os.path.getsize(self.learned_path) > 0:
+                with open(self.learned_path, mode="r", encoding="utf-8-sig") as f:
+                    lines = [line for line in f if line.strip()]
+                    next_idx = max(1, len(lines))
+            alias_id = f"LSA{next_idx:06d}"
+
+            # Check if this exact alias is already written to file to prevent duplicate rows
+            already_in_file = False
+            if file_exists and os.path.getsize(self.learned_path) > 0:
+                with open(self.learned_path, mode="r", encoding="utf-8-sig") as f:
+                    reader = csv.DictReader(f)
+                    for r in reader:
+                        if str(r.get("alias_text", "")).strip().lower() == norm_key:
+                            already_in_file = True
+                            break
+
+            if not already_in_file:
+                with open(self.learned_path, mode="a", encoding="utf-8-sig", newline="") as f:
+                    writer = csv.writer(f)
+                    if not file_exists or os.path.getsize(self.learned_path) == 0:
+                        writer.writerow([
+                            "alias_id", "symptom_id", "language_code", "script_type",
+                            "alias_text", "alias_kind", "match_status", "source_file",
+                            "source_column", "review_status", "notes"
+                        ])
+                    writer.writerow([
+                        alias_id, clean_sid, language_code, script_type,
+                        clean_text, "learned_consensus", "ACTIVE_CONSENSUS_LEARNED",
+                        "learned_symptoms.csv", "alias_text",
+                        "approved_dual_llm_consensus", notes
+                    ])
+                _logger.info("[TaxonomyBridge] Successfully persisted learned symptom alias: '%s' -> %s (%s)", clean_text, clean_sid, alias_id)
+            return True
+        except Exception as exc:
+            _logger.error("[TaxonomyBridge] Error appending to learned_symptoms.csv: %s", exc)
+            return False
+
+    def check_anatomical_conflict(
+        self,
+        phrase_or_cand: str,
+        record: Optional[Dict[str, Any]],
+        candidate_region: Optional[str] = None
+    ) -> bool:
+        """
+        Validates that a symptom record does not violate explicit anatomical markers
+        in the user's phrase or proposed candidate.
+        Returns True if there is an INVALID CONFLICT, False if compatible.
+        """
+        if not phrase_or_cand or not record:
+            return False
+
+        rec_name = str(record.get("symptom_name", "")).lower()
+        rec_sys = str(record.get("body_system", "")).strip().lower()
+
+        # 1. Candidate region vs Record body_system check
+        if candidate_region:
+            c_reg = candidate_region.strip().lower()
+            allowed_systems = REGION_TO_SYSTEM_COMPATIBILITY.get(c_reg)
+            if allowed_systems is not None:
+                if rec_sys and rec_sys not in allowed_systems:
+                    return True
+
+        # 2. Check if candidate_region directly conflicts with user phrase regions
+        phrase_regions = extract_anatomical_regions(phrase_or_cand)
+        if candidate_region:
+            c_reg = candidate_region.strip().lower()
+            for p_reg in phrase_regions:
+                if (p_reg, c_reg) in INCOMPATIBLE_REGION_PAIRS:
+                    return True
+
+        # 3. Extract anatomical regions from target record and check incompatibilities
+        target_text = f"{rec_name} {rec_sys}"
+        target_regions = extract_anatomical_regions(target_text)
+
+        src_regions = set(phrase_regions)
+        if candidate_region and candidate_region.lower() in REGION_TO_SYSTEM_COMPATIBILITY:
+            src_regions.add(candidate_region.lower())
+
+        for s_reg in src_regions:
+            for t_reg in target_regions:
+                if (s_reg, t_reg) in INCOMPATIBLE_REGION_PAIRS:
+                    return True
+
+        return False
+
+    def resolve_symptom(self, symptom_text: str, candidate_region: Optional[str] = None) -> Optional[str]:
         if not symptom_text:
             return None
         st = str(symptom_text).strip()
@@ -1060,72 +1482,61 @@ class MasterSymptomTaxonomyBridge:
 
         st_clean = st.lower()
         if st_clean in self.exact_name_to_id:
-            return self.exact_name_to_id[st_clean]
+            sid = self.exact_name_to_id[st_clean]
+            rec = self.id_to_record.get(sid)
+            if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                return sid
 
         # Normalized without punctuation
         norm_clean = re.sub(r"[^\w\s\u0900-\u0DFF]", " ", st_clean)
         norm_clean = re.sub(r"\s+", " ", norm_clean).strip()
         if norm_clean in self.exact_name_to_id:
-            return self.exact_name_to_id[norm_clean]
+            sid = self.exact_name_to_id[norm_clean]
+            rec = self.id_to_record.get(sid)
+            if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                return sid
 
         # Check canonical concept patterns directly
         for concept_name, info in CANONICAL_CONCEPT_PATTERNS.items():
             for p in info["patterns"]:
                 if re.search(p, st_clean, re.IGNORECASE):
-                    return info["symptom_id"]
+                    sid = info["symptom_id"]
+                    rec = self.id_to_record.get(sid)
+                    if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                        return sid
 
-        # Biomedical synonyms map
+        # Controlled biomedical synonyms map
         biomed_synonyms = {
             "pyrexia": "S000001", "hyperthermia": "S000001", "fever": "S000001", "febrile": "S000001",
             "cephalalgia": "S000061", "headache": "S000061", "migraine": "S000063",
             "pharyngitis": "S000032", "sore throat": "S000032", "throat pain": "S000032",
             "dizziness": "S000064", "vertigo": "S000065", "lightheadedness": "S000064",
-            "myalgia": "S000011", "body ache": "S000011", "muscle pain": "S000011", "arthralgia": "S000011",
+            "myalgia": "S000011", "body ache": "S000011", "muscle pain": "S000011", "arthralgia": "S000131",
             "nausea": "S000086", "vomiting": "S000087", "emesis": "S000087",
             "diarrhea": "S000089", "loose motion": "S000089",
             "dyspnea": "S000026", "breathlessness": "S000026", "shortness of breath": "S000026",
             "chest pain": "S000046", "angina": "S000046"
         }
         for k, v in biomed_synonyms.items():
-            if k in st_clean or st_clean in k:
-                return v
-
-        # Fuzzy token search across exact_name_to_id
-        st_tokens = set(re.findall(r'\b\w{3,}\b', st_clean))
-        if st_tokens:
-            best_match = None
-            best_overlap = 0
-            for name, sid in self.exact_name_to_id.items():
-                name_tokens = set(re.findall(r'\b\w{3,}\b', name))
-                overlap = len(st_tokens & name_tokens)
-                if overlap > best_overlap:
-                    best_overlap = overlap
-                    best_match = sid
-            if best_overlap >= 1 and best_match:
-                return best_match
+            if k == st_clean or (len(k) > 4 and k in st_clean) or (len(st_clean) > 4 and st_clean in k):
+                rec = self.id_to_record.get(v)
+                if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                    return v
 
         return None
 
-    def match_symptom_detailed(self, symptom_text: str) -> Dict[str, Any]:
+    def match_symptom_detailed(self, symptom_text: str, candidate_region: Optional[str] = None) -> Dict[str, Any]:
         """
-        Validates an extracted symptom phrase or normalized English name against
-        symptoms_master.csv following the strict matching hierarchy:
+        Validates an extracted symptom phrase or candidate against symptoms_master.csv
+        following strict clinical matching hierarchy:
         1. Exact match (symptom_name exact)
-        2. Alias match (Hindi/Gujarati/Parenthetical/Known Concept patterns)
-        3. Normalized lexical match (punctuation/whitespace/stem)
-        4. Controlled fuzzy match (SequenceMatcher >= 0.82)
-        5. Semantic match (Biomedical synonym dictionary)
-        6. Otherwise UNMATCHED
+        2. Alias match (Hindi/Gujarati/symptom_aliases.csv/Concept patterns)
+        3. Normalized lexical match (whitespace/punctuation stripped)
+        4. Controlled semantic match (biomedical synonyms)
+        5. Controlled high-precision fuzzy match (threshold >= 0.90, separation margin >= 0.10)
+        6. Otherwise UNMATCHED.
         
-        Returns:
-        {
-            "dataset_match": bool,
-            "dataset_name": Optional[str],
-            "symptom_id": Optional[str],
-            "match_type": "EXACT MATCH" | "ALIAS MATCH" | "NORMALIZED MATCH" | "FUZZY MATCH" | "SEMANTIC MATCH" | "UNMATCHED",
-            "match_status": "Matched" | "Not Matched",
-            "record": Optional[dict]
-        }
+        Strictly enforces that anatomical conflicts are rejected across all stages.
         """
         if not symptom_text or not str(symptom_text).strip():
             return {
@@ -1144,32 +1555,34 @@ class MasterSymptomTaxonomyBridge:
         if re.match(r"^S[0-9]{6}$", st.upper()):
             sid = st.upper()
             rec = self.id_to_record.get(sid)
-            return {
-                "dataset_match": True,
-                "dataset_name": rec.get("symptom_name", st) if rec else st,
-                "symptom_id": sid,
-                "match_type": "EXACT MATCH",
-                "match_status": "Matched",
-                "record": rec
-            }
-
-        # 1. Exact Match against master English names
-        for sid, rec in self.id_to_record.items():
-            if rec.get("symptom_name", "").lower() == st_clean:
+            if rec and not self.check_anatomical_conflict(st_clean, rec, candidate_region):
                 return {
                     "dataset_match": True,
-                    "dataset_name": rec.get("symptom_name"),
+                    "dataset_name": rec.get("symptom_name", st),
                     "symptom_id": sid,
                     "match_type": "EXACT MATCH",
                     "match_status": "Matched",
                     "record": rec
                 }
 
-        # 2. Alias Match (Hindi, Gujarati, Parenthetical aliases)
+        # 1. Exact Match against master English names
+        for sid, rec in self.id_to_record.items():
+            if rec.get("symptom_name", "").lower() == st_clean:
+                if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                    return {
+                        "dataset_match": True,
+                        "dataset_name": rec.get("symptom_name"),
+                        "symptom_id": sid,
+                        "match_type": "EXACT MATCH",
+                        "match_status": "Matched",
+                        "record": rec
+                    }
+
+        # 2. Alias Match (symptom_aliases.csv, Hindi, Gujarati, clean English aliases)
         if st_clean in self.exact_name_to_id:
             sid = self.exact_name_to_id[st_clean]
             rec = self.id_to_record.get(sid)
-            if not self.check_anatomical_conflict(st_clean, rec):
+            if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
                 return {
                     "dataset_match": True,
                     "dataset_name": rec.get("symptom_name") if rec else st,
@@ -1185,7 +1598,7 @@ class MasterSymptomTaxonomyBridge:
                 if re.search(p, st_clean, re.IGNORECASE):
                     sid = info["symptom_id"]
                     rec = self.id_to_record.get(sid)
-                    if not self.check_anatomical_conflict(st_clean, rec):
+                    if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
                         return {
                             "dataset_match": True,
                             "dataset_name": rec.get("symptom_name") if rec else concept_name.replace("_", " ").title(),
@@ -1195,13 +1608,47 @@ class MasterSymptomTaxonomyBridge:
                             "record": rec
                         }
 
+        # 2b. Clinical Laterality & Severity Modifier Stripping (left, right, both, bilateral, severe, mild, moderate, high, etc.)
+        core_unmodified = re.sub(
+            r"^(?:(?:left|right|both|bilateral|severe|mild|moderate|chronic|acute|slight|intense|high|तेज|तेज़|ખૂબ|તીવ્ર|हल्का|સખત|डावा|दायां|જમણો|ડાબો)\s+)+",
+            "",
+            st_clean
+        ).strip()
+        if core_unmodified and core_unmodified != st_clean:
+            if core_unmodified in self.exact_name_to_id:
+                sid = self.exact_name_to_id[core_unmodified]
+                rec = self.id_to_record.get(sid)
+                if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                    return {
+                        "dataset_match": True,
+                        "dataset_name": rec.get("symptom_name") if rec else core_unmodified.title(),
+                        "symptom_id": sid,
+                        "match_type": "ALIAS MATCH",
+                        "match_status": "Matched",
+                        "record": rec
+                    }
+            for concept_name, info in CANONICAL_CONCEPT_PATTERNS.items():
+                for p in info["patterns"]:
+                    if re.search(p, core_unmodified, re.IGNORECASE):
+                        sid = info["symptom_id"]
+                        rec = self.id_to_record.get(sid)
+                        if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                            return {
+                                "dataset_match": True,
+                                "dataset_name": rec.get("symptom_name") if rec else concept_name.replace("_", " ").title(),
+                                "symptom_id": sid,
+                                "match_type": "ALIAS MATCH",
+                                "match_status": "Matched",
+                                "record": rec
+                            }
+
         # 3. Normalized Lexical Match (strip non-alphanumeric, collapse whitespace)
         norm_clean = re.sub(r"[^\w\s\u0900-\u0DFF]", " ", st_clean)
         norm_clean = re.sub(r"\s+", " ", norm_clean).strip()
         if norm_clean in self.exact_name_to_id:
             sid = self.exact_name_to_id[norm_clean]
             rec = self.id_to_record.get(sid)
-            if not self.check_anatomical_conflict(st_clean, rec):
+            if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
                 return {
                     "dataset_match": True,
                     "dataset_name": rec.get("symptom_name") if rec else st,
@@ -1211,26 +1658,28 @@ class MasterSymptomTaxonomyBridge:
                     "record": rec
                 }
 
-        # 4. Semantic Match (Biomedical synonyms)
+        # 4. Controlled Semantic Match (Biomedical synonyms)
         biomed_synonyms = {
             "pyrexia": "S000001", "hyperthermia": "S000001", "fever": "S000001", "febrile": "S000001",
             "burning throat": "S000032", "sore throat": "S000032", "throat irritation": "S000032", "pharyngitis": "S000032", "throat pain": "S000032",
             "cephalalgia": "S000061", "headache": "S000061", "migraine": "S000063",
             "dizziness": "S000064", "vertigo": "S000065", "lightheadedness": "S000064", "giddiness": "S000064",
-            "myalgia": "S000011", "body ache": "S000011", "body pain": "S000011", "muscle pain": "S000011", "arthralgia": "S000011",
+            "myalgia": "S000011", "body ache": "S000011", "body pain": "S000011", "arthralgia": "S000131",
             "nausea": "S000086", "vomiting": "S000087", "emesis": "S000087",
             "diarrhea": "S000089", "loose motion": "S000089",
             "dyspnea": "S000026", "breathlessness": "S000026", "shortness of breath": "S000026",
             "chest pain": "S000046", "angina": "S000046",
-            "runny nose": "S000035", "rhinorrhea": "S000035", "cold": "S000035",
-            "abdominal bloating": "S000100", "bloating": "S000100", "stomach fullness": "S000100",
-            "bleeding wound": "S000114", "open wound": "S000114", "skin sore": "S000114", "skin ulcer": "S000126"
+            "wheezing": "S000028", "wheeze": "S000028", "chest wheezing": "S000028",
+            "skin redness": "S000112", "erythema": "S000112",
+            "runny nose": "S000035", "rhinorrhea": "S000035",
+            "abdominal bloating": "S000100", "bloating": "S000100",
+            "bleeding wound": "S000114", "open wound": "S000114"
         }
         for k, v in biomed_synonyms.items():
             if k == st_clean or (len(k) > 4 and k in st_clean) or (len(st_clean) > 4 and st_clean in k):
                 sid = v
                 rec = self.id_to_record.get(sid)
-                if not self.check_anatomical_conflict(st_clean, rec):
+                if not self.check_anatomical_conflict(st_clean, rec, candidate_region):
                     return {
                         "dataset_match": True,
                         "dataset_name": rec.get("symptom_name") if rec else k.title(),
@@ -1240,27 +1689,41 @@ class MasterSymptomTaxonomyBridge:
                         "record": rec
                     }
 
-        # 5. Controlled Fuzzy Match (difflib SequenceMatcher >= 0.82)
+        # 5. Controlled High-Precision Fuzzy Match (threshold >= 0.90, margin >= 0.10)
         import difflib
-        best_ratio = 0.0
-        best_sid = None
+        candidates_scored = []
         for name, sid in self.exact_name_to_id.items():
+            rec = self.id_to_record.get(sid)
+            # Pre-filter: anatomical conflict is strictly disqualified from fuzzy matching
+            if self.check_anatomical_conflict(st_clean, rec, candidate_region):
+                continue
             ratio = difflib.SequenceMatcher(None, st_clean, name).ratio()
-            if ratio > best_ratio:
-                best_ratio = ratio
-                best_sid = sid
-        
-        if best_ratio >= 0.82 and best_sid:
-            rec = self.id_to_record.get(best_sid)
-            if not self.check_anatomical_conflict(st_clean, rec):
-                return {
-                    "dataset_match": True,
-                    "dataset_name": rec.get("symptom_name") if rec else st,
-                    "symptom_id": best_sid,
-                    "match_type": "FUZZY MATCH",
-                    "match_status": "Matched",
-                    "record": rec
-                }
+            if ratio >= 0.90:
+                candidates_scored.append((ratio, sid, rec))
+
+        if candidates_scored:
+            candidates_scored.sort(key=lambda x: x[0], reverse=True)
+            best_ratio, best_sid, best_rec = candidates_scored[0]
+            if len(candidates_scored) > 1:
+                second_ratio = candidates_scored[1][0]
+                if (best_ratio - second_ratio) < 0.10 and best_sid != candidates_scored[1][1]:
+                    return {
+                        "dataset_match": False,
+                        "dataset_name": None,
+                        "symptom_id": None,
+                        "match_type": "AMBIGUOUS",
+                        "match_status": "Not Matched",
+                        "record": None
+                    }
+
+            return {
+                "dataset_match": True,
+                "dataset_name": best_rec.get("symptom_name") if best_rec else st,
+                "symptom_id": best_sid,
+                "match_type": "FUZZY MATCH",
+                "match_status": "Matched",
+                "record": best_rec
+            }
 
         # 6. UNMATCHED (No fabricated match)
         return {
@@ -1271,48 +1734,6 @@ class MasterSymptomTaxonomyBridge:
             "match_status": "Not Matched",
             "record": None
         }
-
-    def check_anatomical_conflict(self, phrase: str, record: Optional[Dict[str, Any]]) -> bool:
-        """
-        Validates that a symptom record does not violate explicit anatomical markers
-        in the user's phrase (e.g., 'hath ma dard' cannot map to 'Ear Pain').
-        Returns True if there is a conflict (i.e. INVALID match), False if compatible.
-        """
-        if not phrase or not record:
-            return False
-        p_lower = phrase.lower()
-        rec_name = str(record.get("symptom_name", "")).lower()
-        body_sys = str(record.get("body_system", "")).lower()
-
-        # 1. Upper limb (hath, haath, arm, hand, wrist, finger) vs ENT/Ear/Ophthalmic
-        upper_limb_tokens = [r"\bhath\b", r"\bhaath\b", r"\bhand\b", r"\barm\b", r"\bwrist\b", r"\bfinger\b", r"हाथ", r"હાથ"]
-        has_upper_limb = any(re.search(t, p_lower) for t in upper_limb_tokens)
-        if has_upper_limb:
-            if "ear" in rec_name or "eye" in rec_name or body_sys == "ent" or "hearing" in rec_name:
-                return True
-
-        # 2. Ear (kan, kaan, ear) vs Musculoskeletal limbs/leg/hand
-        ear_tokens = [r"\bkan\b", r"\bkaan\b", r"\bear\b", r"\bears\b", r"कान", r"કાન"]
-        has_ear = any(re.search(t, p_lower) for t in ear_tokens)
-        if has_ear:
-            if "leg" in rec_name or "hand" in rec_name or "joint" in rec_name or "walking" in rec_name:
-                return True
-
-        # 3. Lower limb (pag, pair, leg, foot, feet) vs Head/ENT/Eye
-        lower_limb_tokens = [r"\bpag\b", r"\bpair\b", r"\bleg\b", r"\bfoot\b", r"\bfeet\b", r"पैर", r"પગ"]
-        has_lower_limb = any(re.search(t, p_lower) for t in lower_limb_tokens)
-        if has_lower_limb:
-            if "headache" in rec_name or "ear" in rec_name or "eye" in rec_name or "throat" in rec_name:
-                return True
-
-        # 4. Head/Cranial (mathu, mathe, sir, sar, head) vs Lower Limb/Walking/Pelvis
-        head_tokens = [r"\bmathu\b", r"\bmathe\b", r"\bsir\b", r"\bsar\b", r"\bhead\b", r"सिर", r"માથું"]
-        has_head = any(re.search(t, p_lower) for t in head_tokens)
-        if has_head:
-            if "leg" in rec_name or "foot" in rec_name or "walking" in rec_name:
-                return True
-
-        return False
 
     def lookup_by_id(self, sid: str) -> Optional[Dict[str, Any]]:
         if not sid:
@@ -1334,9 +1755,13 @@ def segment_clinical_phrases(text: str) -> List[str]:
     if not text or not isinstance(text, str) or not text.strip():
         return []
 
+    # 0. Pre-process clause boundaries: vernacular verb terminals followed by letters
+    verb_clause_pattern = r'\b(chhe|che|hai|હતી|હતો|છે|है)\b\s+(?=[a-zA-Z\u0900-\u0D7F])'
+    prep_text = re.sub(verb_clause_pattern, r'\1, ', text, flags=re.IGNORECASE)
+
     # 1. Primary boundaries: punctuation, commas, semicolons, full stops, danda, newlines
     primary_delims = r"[,;\n।!?|]+|(?:\.\s+)"
-    raw_clauses = [c.strip() for c in re.split(primary_delims, text) if c and c.strip()]
+    raw_clauses = [c.strip() for c in re.split(primary_delims, prep_text) if c and c.strip()]
 
     # 2. Conjunction splitting for compound phrases
     conj_pattern = r"(?:\s+(?:and|aur|ane|aani|તથા|तथा|અને|આણિ|आणि|or|with|sathe|સાથે|और)\s+)"

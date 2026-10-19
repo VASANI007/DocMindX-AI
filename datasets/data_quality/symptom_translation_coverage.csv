@@ -1,0 +1,4 @@
+﻿language_code,source_column,total_symptom_rows,nonempty_labels,missing_labels,coverage_percent,duplicate_label_values,status
+en,symptom_name,280,280,0,100.0,0,UNIQUE
+hi,symptom_name_hi,280,280,0,100.0,0,UNIQUE
+gu,symptom_name_gu,280,280,0,100.0,0,UNIQUE

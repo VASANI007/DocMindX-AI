@@ -1,0 +1,127 @@
+﻿gap_type,record_id,record_name,status,action
+DISEASE_WITHOUT_MAPPING,D0102,Kidney Stones (Nephrolithiasis),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0103,Hemorrhoids (Piles),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0104,Constipation (Functional),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0105,Chronic Constipation with Anal Fissure,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0106,Gallstones (Cholelithiasis),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0107,Celiac Disease,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0108,Lactose Intolerance,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0109,Ankylosing Spondylitis,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0110,Carpal Tunnel Syndrome,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0111,Plantar Fasciitis,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0112,Bell's Palsy,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0113,Vertigo (BPPV / Benign Paroxysmal Positional Vertigo),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0114,Dry Eye Syndrome,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0115,Blepharitis,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0116,Acne Vulgaris,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0117,Urticaria (Hives),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0118,Contact Dermatitis,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0119,Iron Overload (Hemochromatosis),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0120,Varicose Veins,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0121,Peripheral Neuropathy,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0122,Gastroenteritis (Viral),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0123,Frozen Shoulder (Adhesive Capsulitis),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0124,Oral Aphthous Ulcers (Canker Sores),REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+DISEASE_WITHOUT_MAPPING,D0125,Chronic Pharyngitis,REVIEW_REQUIRED,Review source evidence; do not auto-create mappings.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000012,Malaise,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000022,Severe Dehydration with Reduced Consciousness,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000027,Severe Difficulty Breathing,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000031,Noisy Breathing (Stridor),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000033,Hoarseness,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000038,Snoring with Breathing Pauses,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000039,Bluish Lips or Face (Cyanosis),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000043,Choking Sensation,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000044,Rattling Sound in Chest,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000045,Sudden Severe Breathlessness with Blue Lips,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000049,Irregular Heartbeat (Arrhythmia),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000050,Fainting (Syncope),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000051,Dizziness on Standing (Orthostatic),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000053,Cold Hands and Feet,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000054,Bluish Fingertips (Peripheral Cyanosis),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000056,Rapid Heart Rate (Tachycardia),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000057,Slow Heart Rate (Bradycardia),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000058,Leg Pain While Walking (Claudication),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000059,Fluttering Sensation in Chest,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000062,Sudden Severe Headache (Thunderclap),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000065,Vertigo (Spinning Sensation),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000075,Loss of Balance or Coordination,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000082,Head Injury with Vomiting,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000083,Persistent Headache with Vomiting,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000084,Weakness in Limbs,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000085,Pins and Needles Sensation,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000088,Vomiting Blood (Hematemesis),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000090,Bloody Diarrhea,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000093,Severe Abdominal Pain with Rigidity,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000097,Blood in Stool,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000099,Persistent Vomiting in Children,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000100,Rectal Pain,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000103,Indigestion,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000104,Difficulty Passing Stool,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000105,Mucus in Stool,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000106,Loose Motions with Fever,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000111,Hives (Urticaria),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000115,Boils,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000122,"Nail Changes (Color, Shape, Texture)",REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000123,Severe Allergic Skin Swelling (Angioedema),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000126,Skin Ulcers,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000128,Severe Burns,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000130,"Redness, Warmth, and Swelling of Skin (Cellulitis Signs)",REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000133,Muscle Pain,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000142,Difficulty Walking,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000144,Lower Back Pain Radiating to Leg (Sciatica),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000147,Growing Pains in Children,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000148,Joint Deformity,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000165,Aggressive Behavior,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000166,Self-Harm Behavior,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000169,Ringing in Ears (Tinnitus),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000171,Nasal Blockage,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000172,Nosebleed,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000173,Loss of Taste,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000174,Swollen Tonsils,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000175,Bad Breath (Halitosis),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000177,Ear Fullness or Blocked Sensation,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000178,Throat Swelling,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000180,Foreign Body Sensation in Throat,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000184,Missed Period,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000186,Vaginal Itching,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000194,Lower Abdominal Pain in Pregnancy,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000198,Heavy Vaginal Bleeding with Dizziness (Emergency),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000203,Blood in Semen,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000204,Groin Pain,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000207,Penile Discharge,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000208,Scrotal Swelling,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000209,Breast Enlargement in Men (Gynecomastia),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000211,Sudden Vision Loss (Eye),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000213,Eye Redness,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000214,Eye Discharge,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000216,Double Vision,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000217,Light Sensitivity,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000218,Eye Swelling,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000220,Excessive Tearing,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000221,Floaters in Vision,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000222,Flashes of Light in Vision,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000225,Excessive Thirst (Polydipsia),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000230,Skin Darkening,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000232,Slow Growth in Children (Hormonal),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000233,"Low Blood Sugar Symptoms (Shakiness, Sweating, Confusion)",REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000236,Sudden Severe Weakness with Sweating (Hypoglycemia Emergency),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000239,Difficulty Urinating,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000240,Urinary Incontinence,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000245,Bedwetting in Children,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000246,Flank Pain,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000248,Complete Inability to Urinate,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000249,Severe Flank Pain with Vomiting (Possible Kidney Stone),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000256,Fever with Neck Stiffness (Possible Meningitis),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000257,Fever with Severe Body Ache,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000261,Fever with Rash and Bleeding Gums (Emergency),REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000262,Fever After Mosquito-Prone Area Travel,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000267,Poor Feeding in Infant,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000268,Excessive Crying in Infant,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000269,Delayed Developmental Milestones,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000270,High Fever in Infant Under 3 Months,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000271,Bulging Soft Spot in Infant,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000272,Lethargy in Infant,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000274,Refusal to Feed,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000276,Rash with Fever in Child,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000279,Irritability in Infant,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.
+SYMPTOM_WITHOUT_DISEASE_MAPPING,S000280,Bluish Lips in Infant,REVIEW_REQUIRED,May be intentionally unmapped; do not infer disease associations.

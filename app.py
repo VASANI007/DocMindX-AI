@@ -400,8 +400,10 @@ def show_deep_ai_report_dialog(report_text: str, report_type: str, lang_code: st
 
 if "triage_result"not in st.session_state:
     st.session_state["triage_result"] = None
-if "selected_symptoms_list"not in st.session_state:
+if "selected_symptoms_list" not in st.session_state:
     st.session_state["selected_symptoms_list"] = []
+if "symptom_provenance_map" not in st.session_state:
+    st.session_state["symptom_provenance_map"] = {}
 if "user_location_cache" not in st.session_state:
     st.session_state["user_location_cache"] = None
 if "user_context"not in st.session_state:
@@ -4540,15 +4542,34 @@ if st.session_state["active_panel"] == "Health Assessment":
                     query_text = free_sym_input.strip()
                     with st.spinner("DocMindX AI analyzing keywords and extracting clinical symptoms..."):
                         extracted_nlp = symptom_extractor.extract_symptoms_and_medicines(query_text, user_lang=lang_code)
-                        new_added = 0
-                        for sname in extracted_nlp.get("symptom_labels", []):
-                            if sname and sname not in st.session_state["selected_symptoms_list"]:
-                                st.session_state["selected_symptoms_list"].append(sname)
-                                new_added += 1
-                        st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state["selected_symptoms_list"])
                         
-                        if extracted_nlp.get("normalized_symptoms"):
-                            st.session_state["p1_normalized_symptoms"] = extracted_nlp["normalized_symptoms"]
+                        # Provenance separation: Refresh prior auto-extracted text symptoms while preserving manual symptoms
+                        curr_selected = list(st.session_state.get("selected_symptoms_list", []))
+                        prov_map = dict(st.session_state.get("symptom_provenance_map", {}))
+
+                        # Remove previously auto-extracted text symptoms
+                        curr_selected = [s for s in curr_selected if prov_map.get(s) != "extracted_text"]
+                        for s in list(prov_map.keys()):
+                            if prov_map.get(s) == "extracted_text":
+                                prov_map.pop(s, None)
+
+                        new_nlp_symptoms = extracted_nlp.get("symptom_labels", [])
+                        for sname in new_nlp_symptoms:
+                            if sname:
+                                if sname not in curr_selected:
+                                    curr_selected.append(sname)
+                                prov_map[sname] = "extracted_text"
+
+                        st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(curr_selected)
+                        st.session_state["symptom_provenance_map"] = prov_map
+                        st.session_state["user_context"]["symptoms"] = list(st.session_state["selected_symptoms_list"])
+                        
+                        # Store rich structured context
+                        st.session_state["p1_original_text"] = query_text
+                        st.session_state["p1_normalized_english_text"] = extracted_nlp.get("normalized_english_text", "")
+                        st.session_state["p1_clinical_request"] = extracted_nlp.get("clinical_request")
+                        st.session_state["p1_normalized_symptoms"] = extracted_nlp.get("normalized_symptoms", [])
+
                         if extracted_nlp.get("duration_days"):
                             st.session_state["user_context"]["duration_days"] = extracted_nlp["duration_days"]
                             d_days = extracted_nlp["duration_days"]
@@ -4571,9 +4592,9 @@ if st.session_state["active_panel"] == "Health Assessment":
                         if extracted_nlp.get("detected_disease"):
                             d_info = extracted_nlp["detected_disease"]
                             d_disp_name = d_info.get("name_hi") if lang_code == "hi" else (d_info.get("name_gu") if lang_code == "gu" else d_info.get("name"))
-                            st.session_state["p1_nlp_msg"] = f"DocMindX AI Detected: **{d_disp_name}** ({d_info.get('category')}) — {len(extracted_nlp.get('symptom_labels', []))} clinical symptoms mapped!"
-                        elif new_added > 0:
-                            st.session_state["p1_nlp_msg"] = f"DocMindX AI Extracted {new_added} clinical symptoms from your description!"
+                            st.session_state["p1_nlp_msg"] = f"DocMindX AI Detected: **{d_disp_name}** ({d_info.get('category')}) — {len(new_nlp_symptoms)} clinical symptoms mapped!"
+                        elif len(new_nlp_symptoms) > 0:
+                            st.session_state["p1_nlp_msg"] = f"DocMindX AI Extracted {len(new_nlp_symptoms)} clinical symptoms from your description!"
                         else:
                             st.session_state["p1_nlp_msg"] = "DocMindX AI: No matching symptoms found. Try describing symptoms like fever, headache, etc."
                         st.rerun()
@@ -4601,19 +4622,37 @@ if st.session_state["active_panel"] == "Health Assessment":
                         if transcribed_text:
                             with st.spinner("Extracting clinical symptoms from voice input..."):
                                 extracted_voice = symptom_extractor.extract_symptoms_and_medicines(transcribed_text, user_lang=lang_code)
-                                v_added = 0
-                                for sname in extracted_voice.get("symptom_labels", []):
-                                    if sname and sname not in st.session_state["selected_symptoms_list"]:
-                                        st.session_state["selected_symptoms_list"].append(sname)
-                                        v_added += 1
-                                st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(st.session_state["selected_symptoms_list"])
-                                if extracted_voice.get("normalized_symptoms"):
-                                    st.session_state["p1_normalized_symptoms"] = extracted_voice["normalized_symptoms"]
+                                curr_selected = list(st.session_state.get("selected_symptoms_list", []))
+                                prov_map = dict(st.session_state.get("symptom_provenance_map", {}))
+
+                                # Remove previously auto-extracted voice symptoms
+                                curr_selected = [s for s in curr_selected if prov_map.get(s) != "extracted_voice"]
+                                for s in list(prov_map.keys()):
+                                    if prov_map.get(s) == "extracted_voice":
+                                        prov_map.pop(s, None)
+
+                                new_voice_symptoms = extracted_voice.get("symptom_labels", [])
+                                for sname in new_voice_symptoms:
+                                    if sname:
+                                        if sname not in curr_selected:
+                                            curr_selected.append(sname)
+                                        prov_map[sname] = "extracted_voice"
+
+                                st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(curr_selected)
+                                st.session_state["symptom_provenance_map"] = prov_map
+                                st.session_state["user_context"]["symptoms"] = list(st.session_state["selected_symptoms_list"])
+
+                                # Store rich structured context
+                                st.session_state["p1_original_text"] = transcribed_text
+                                st.session_state["p1_normalized_english_text"] = extracted_voice.get("normalized_english_text", "")
+                                st.session_state["p1_clinical_request"] = extracted_voice.get("clinical_request")
+                                st.session_state["p1_normalized_symptoms"] = extracted_voice.get("normalized_symptoms", [])
+
                                 if extracted_voice.get("duration_days"):
                                     st.session_state["user_context"]["duration_days"] = extracted_voice["duration_days"]
                                 if extracted_voice.get("detected_disease"):
                                     st.session_state["detected_chief_condition"] = extracted_voice["detected_disease"]
-                                st.session_state["p1_nlp_msg"] = f"Voice Transcribed: \"{transcribed_text}\" — Mapped {v_added} clinical symptoms!"
+                                st.session_state["p1_nlp_msg"] = f"Voice Transcribed: \"{transcribed_text}\" — Mapped {len(new_voice_symptoms)} clinical symptoms!"
                                 conf_speech = synthesize_speech(f"Recorded symptoms: {transcribed_text}", lang=lang_code)
                                 if conf_speech:
                                     st.session_state["p1_voice_conf_audio"] = conf_speech
@@ -4679,32 +4718,72 @@ if st.session_state["active_panel"] == "Health Assessment":
                 if st.session_state.get("p1_nlp_msg"):
                     st.success(st.session_state["p1_nlp_msg"])
 
+                # Display Faithful Clinical English Translation if user entered vernacular/transliterated text
+                eng_narrative = st.session_state.get("p1_normalized_english_text")
+                orig_narrative = st.session_state.get("p1_original_text")
+                if eng_narrative and orig_narrative and eng_narrative.strip().lower() != orig_narrative.strip().lower():
+                    st.markdown(
+                        f'<div style="display: flex; align-items: flex-start; gap: 10px; background: rgba(37, 99, 235, 0.07); border: 1px solid rgba(37, 99, 235, 0.22); border-left: 4px solid #2563EB; border-radius: 8px; padding: 10px 14px; margin: 10px 0 12px 0;">'
+                        f'  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
+                        f'  <div>'
+                        f'    <div style="font-size: 0.76rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #1D4ED8; margin-bottom: 2px;">DocMindX AI English Translation (Understood Meaning):</div>'
+                        f'    <div style="font-size: 0.88rem; font-weight: 500; color: var(--mm-text-primary, #1E293B); font-style: italic;">"{html.escape(eng_narrative)}"</div>'
+                        f'  </div>'
+                        f'</div>',
+                        unsafe_allow_html=True
+                    )
+
                 # Transparent Match Display (Part 6): Display detected symptoms with user phrase & dataset match status (zero internal IDs)
                 norm_syms_disp = st.session_state.get("p1_normalized_symptoms", [])
                 if norm_syms_disp:
                     items_html = []
                     for ns in norm_syms_disp:
                         u_phr = html.escape(str(ns.get("user_phrase", "")))
-                        eng_nm = html.escape(str(ns.get("dataset_name") or ns.get("canonical_name") or ns.get("normalized_english", "Symptom")))
-                        is_m = ns.get("dataset_match", False)
+                        eng_nm = html.escape(str(ns.get("normalized_english") or ns.get("canonical_name") or ns.get("dataset_name") or "Symptom"))
+                        is_m = ns.get("dataset_match", False) or (ns.get("validation_status") == "Validated")
                         prov = str(ns.get("provenance", ""))
                         icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M20 6L9 17l-5-5"/></svg>' if is_m else '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 4px;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
-                        if prov == "GEMINI_SEMANTIC_THEN_DATASET_VALIDATED":
+                        if prov in ["GEMINI_ONLINE_CLINICAL_KEYWORD", "GEMINI_SEMANTIC_THEN_DATASET_VALIDATED"]:
                             badge_style = "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.35);"
-                            badge_txt = "Gemini Normalized → Dataset Validated"
+                            badge_txt = "Clinical Finding: Active"
                         elif prov == "GEMINI_VISION_THEN_DATASET_VALIDATED":
                             badge_style = "background: rgba(37, 99, 235, 0.15); color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.35);"
-                            badge_txt = "Visual AI → Dataset Validated"
+                            badge_txt = "Visual AI → Validated"
                         elif is_m:
                             badge_style = "background: rgba(16, 185, 129, 0.15); color: #059669; border: 1px solid rgba(16, 185, 129, 0.35);"
                             badge_txt = "Dataset: Matched"
                         else:
                             badge_style = "background: rgba(245, 158, 11, 0.15); color: #D97706; border: 1px solid rgba(245, 158, 11, 0.35);"
                             badge_txt = "Unresolved"
+                        loc_badge = ""
+                        b_loc = ns.get("body_location")
+                        lat = ns.get("laterality")
+                        if b_loc:
+                            loc_parts = []
+                            if lat:
+                                loc_parts.append(str(lat).capitalize())
+                            loc_parts.append(str(b_loc).replace("_", " ").capitalize())
+                            loc_label = html.escape(" ".join(loc_parts))
+                            loc_badge = f' <span style="border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; font-weight: 700; background: rgba(37, 99, 235, 0.10); color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.28); margin-left: 6px;">Location: {loc_label}</span>'
+                        elif ns.get("body_region") and ns.get("body_region") not in ["general", "unknown"]:
+                            reg_label = html.escape(str(ns.get("body_region")).replace("_", " ").capitalize())
+                            loc_badge = f' <span style="border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; font-weight: 700; background: rgba(37, 99, 235, 0.10); color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.28); margin-left: 6px;">Region: {reg_label}</span>'
+                        
+                        med_term_badge = ""
+                        if ns.get("medical_term"):
+                            med_term_badge = f' <span style="border-radius: 4px; padding: 1px 6px; font-size: 0.68rem; font-weight: 700; background: rgba(16, 185, 129, 0.10); color: #059669; border: 1px solid rgba(16, 185, 129, 0.28); margin-left: 6px;">Medical Term: {html.escape(str(ns.get("medical_term")))}</span>'
+
+                        factor_div = ""
+                        if ns.get("aggravating_factors"):
+                            factor_div = f'<div style="font-size: 0.74rem; color: var(--mm-text-secondary); margin-top: 2px;">Factors: <i>{html.escape(str(ns.get("aggravating_factors")))}</i></div>'
+
                         items_html.append(
-                            f'<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid var(--mm-border-color, #E2E8F0); border-radius: 8px; margin-bottom: 5px;">'
-                            f'  <div><b>{icon}{eng_nm}</b> <span style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-left: 6px;">User phrase: "{u_phr}"</span></div>'
-                            f'  <span style="border-radius: 999px; padding: 2px 8px; font-size: 0.70rem; font-weight: 700; {badge_style}">{badge_txt}</span>'
+                            f'<div style="padding: 8px 12px; background: var(--mm-card-bg, #FFFFFF); border: 1px solid var(--mm-border-color, #E2E8F0); border-radius: 8px; margin-bottom: 6px;">'
+                            f'  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">'
+                            f'    <div><b>{icon}{eng_nm}</b>{loc_badge}{med_term_badge} <span style="font-size: 0.78rem; color: var(--mm-text-secondary); margin-left: 6px;">User phrase: "{u_phr}"</span></div>'
+                            f'    <span style="border-radius: 999px; padding: 2px 8px; font-size: 0.70rem; font-weight: 700; {badge_style}">{badge_txt}</span>'
+                            f'  </div>'
+                            f'  {factor_div}'
                             f'</div>'
                         )
                     st.markdown(f'<div style="margin-top: 8px; margin-bottom: 10px;"><div style="font-size: 0.80rem; font-weight: 700; color: var(--mm-text-secondary); margin-bottom: 4px;">Detected Symptoms:</div>{"".join(items_html)}</div>', unsafe_allow_html=True)
@@ -4741,11 +4820,15 @@ if st.session_state["active_panel"] == "Health Assessment":
                 with pop_cols[p_idx]:
                     if st.button(p_label, key=f"pop_sym_chip_{p_idx}", type="primary", use_container_width=True):
                         curr_list = _canonicalize_and_dedup_selected(st.session_state.get("selected_symptoms_list", []))
+                        prov_map = dict(st.session_state.get("symptom_provenance_map", {}))
                         if p_key not in curr_list:
                             curr_list.append(p_key)
+                            prov_map[p_key] = "manual"
                         else:
                             curr_list.remove(p_key)
+                            prov_map.pop(p_key, None)
                         st.session_state["selected_symptoms_list"] = _canonicalize_and_dedup_selected(curr_list)
+                        st.session_state["symptom_provenance_map"] = prov_map
                         st.session_state["user_context"]["symptoms"] = list(st.session_state["selected_symptoms_list"])
                         st.rerun()
 
@@ -4774,9 +4857,13 @@ if st.session_state["active_panel"] == "Health Assessment":
                 with sel_col2:
                     if st.button(T.get("clear_all", "Clear All"), key="clear_all_sym_btn", use_container_width=True):
                         st.session_state["selected_symptoms_list"] = []
+                        st.session_state["symptom_provenance_map"] = {}
                         st.session_state["detected_chief_condition"] = None
                         st.session_state["p1_nlp_msg"] = None
                         st.session_state["p1_normalized_symptoms"] = []
+                        st.session_state["p1_original_text"] = ""
+                        st.session_state["p1_normalized_english_text"] = ""
+                        st.session_state["p1_clinical_request"] = None
                         st.rerun()
             else:
                 st.markdown(f"<div style='font-size: 0.82rem; color: var(--mm-text-secondary); margin-top: 4px; margin-bottom: 14px;'>{T.get('no_symptoms_selected', 'No symptoms selected yet. Type to search or select common symptoms above.')}</div>", unsafe_allow_html=True)
@@ -5372,7 +5459,11 @@ if st.session_state["active_panel"] == "Health Assessment":
                         "symptom_names": s_list_names,
                         "chief_condition": chief_name,
                         "negative_findings": negative_findings,
-                        "lang_code": lang_code
+                        "lang_code": lang_code,
+                        "original_text": st.session_state.get("p1_original_text", ""),
+                        "normalized_english_text": st.session_state.get("p1_normalized_english_text", ""),
+                        "validated_symptoms": st.session_state.get("p1_normalized_symptoms", []),
+                        "clinical_request": st.session_state.get("p1_clinical_request", {}),
                     },
                     chief_condition=chief_name,
                     run_bioportal=True,
@@ -5417,9 +5508,17 @@ if st.session_state["active_panel"] == "Health Assessment":
             st.session_state["care_recommendations"] = care_res
         elif not care_res:
             # Defensive fallback only if pipeline run omitted care recommendations
+            fallback_u_ctx = dict(u_ctx) if isinstance(u_ctx, dict) else {}
+            fallback_u_ctx.update({
+                "original_text": st.session_state.get("p1_original_text", ""),
+                "normalized_english_text": st.session_state.get("p1_normalized_english_text", ""),
+                "validated_symptoms": st.session_state.get("p1_normalized_symptoms", []),
+                "clinical_request": st.session_state.get("p1_clinical_request", {}),
+                "negative_findings": negative_findings,
+            })
             care_res = get_dynamic_clinical_recommendations(
                 symptoms=st.session_state.get("selected_symptoms_list", []),
-                user_context=u_ctx,
+                user_context=fallback_u_ctx,
                 top_condition=top_disease_name,
                 lang_code=lang_code
             )

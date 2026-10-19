@@ -16,11 +16,18 @@ import os
 import re
 import json
 import ast
+import uuid
 import requests
 import pandas as pd
 from typing import Dict, Any, List, Optional
 from config.settings import GEMINI_API_KEY, GROQ_API_KEY, gemini_pool, GROQ_MODELS, DEFAULT_GEMINI_MODELS
-from ai.disease_prediction.canonical_concepts import canonical_normalizer, CanonicalClinicalRepresentation, segment_clinical_phrases
+from ai.disease_prediction.canonical_concepts import (
+    canonical_normalizer,
+    CanonicalClinicalRepresentation, 
+    segment_clinical_phrases,
+    extract_anatomical_location,
+    extract_laterality_from_text,
+)
 
 DATASETS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "datasets")
 _logger = logging.getLogger("DocMindX.TriageEngine.SymptomExtractor")
@@ -171,6 +178,28 @@ class MultilingualSymptomExtractor:
 
         return fallback_id or None, concept_name
 
+    def _detect_disease_from_text(self, text: str) -> Optional[dict]:
+        """
+        Detects if the patient explicitly mentioned a known disease in their input.
+        Does NOT invent or diagnose a disease if not explicitly stated.
+        """
+        if not text or not isinstance(text, str):
+            return None
+        text_lower = text.lower()
+        for d in self.disease_keyword_map:
+            for kw in d.get("keywords", []):
+                if kw and len(kw) >= 4 and re.search(r"\b" + re.escape(kw) + r"\b", text_lower, re.IGNORECASE):
+                    return {
+                        "name": d.get("disease_name"),
+                        "name_hi": d.get("disease_name_hi"),
+                        "name_gu": d.get("disease_name_gu"),
+                        "category": d.get("category"),
+                        "icd_code": d.get("icd_code"),
+                        "specialist": d.get("specialist"),
+                        "urgency": d.get("urgency")
+                    }
+        return None
+
     def _extract_via_llm(self, user_text: str, user_lang: str = "en") -> Optional[dict]:
         """
         Uses Groq or Gemini to understand complex multilingual medical text.
@@ -235,33 +264,9 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                         _logger.info("[SymptomExtractor] Gemini %s SUCCESS via pool", model_used)
                         return self._format_llm_result(parsed, user_lang, source="Gemini AI Extraction")
 
-        # Secondary: Groq
-        if GROQ_API_KEY:
-            for groq_model in _GROQ_MODELS:
-                try:
-                    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-                    body = {
-                        "model": groq_model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": 0.05
-                    }
-                    res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=7)
-                    if res.status_code == 200:
-                        content = res.json()["choices"][0]["message"]["content"]
-                        parsed = _safe_parse_json(content)
-                        if parsed and (parsed.get("symptoms") or parsed.get("detected_disease")):
-                            _logger.info("[SymptomExtractor] Groq %s SUCCESS", groq_model)
-                            return self._format_llm_result(parsed, user_lang, source="Groq AI Extraction")
-                    else:
-                        _logger.warning("[SymptomExtractor] Groq %s returned HTTP %s", groq_model, res.status_code)
-                except requests.exceptions.Timeout:
-                    _logger.warning("[SymptomExtractor] Groq %s TIMEOUT", groq_model)
-                except requests.exceptions.ConnectionError:
-                    _logger.warning("[SymptomExtractor] Groq %s CONNECTION ERROR", groq_model)
-                except Exception as exc:
-                    _logger.error("[SymptomExtractor] Groq %s error: %s", groq_model, exc)
-
-        _logger.warning("[SymptomExtractor] All AI providers failed — returning None")
+        # Per clinical safety requirements, no intermediate LLM (Groq) is used for symptom extraction.
+        # If Gemini is unavailable or fails, fallback directly to local canonical dataset.
+        _logger.info("[SymptomExtractor] Gemini unavailable or produced no output — falling back to local canonical dataset")
         return None
 
     def _format_llm_result(self, parsed: dict, user_lang: str, source: str = "AI Extraction") -> dict:
@@ -373,14 +378,20 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
 
         return detected_items, matched_symptom_ids, matched_symptom_labels
 
-    def extract_symptoms_and_medicines(self, user_text: str, user_lang: str = "en") -> dict:
+    def extract_symptoms_and_medicines(
+        self,
+        user_text: str,
+        user_lang: str = "en",
+        offline: bool = False,
+        patient_context: Optional[dict] = None
+    ) -> dict:
         """
-        Parses free-text input via Online Generative LLM (Groq / Gemini) with
+        Parses free-text input via Online Generative LLM (Gemini) with
         local clinical knowledge base fallback.
 
         ANTI-FABRICATION:
         - AI is instructed to extract only what user described
-        - Offline fallback extracts only symptoms found in user's text
+        - Offline mode makes ZERO network requests and extracts only validated dataset symptoms
         - Medicines are not generated by this module
         - Fallback is clearly labeled
         """
@@ -401,8 +412,14 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                 "fallback_reason": "No input text"
             }
 
+        p_ctx = dict(patient_context or {})
+        if user_lang:
+            p_ctx["lang_code"] = user_lang
+        if offline:
+            p_ctx["offline"] = True
+
         # 1. Generic Multilingual Normalization & Dataset Matching
-        norm_symptoms = normalize_user_symptoms(user_text, patient_context={"lang_code": user_lang})
+        norm_symptoms = normalize_user_symptoms(user_text, patient_context=p_ctx, offline=offline)
         
         # Extract duration days
         dur_label, dur_days = canonical_normalizer._extract_duration(user_text)
@@ -410,57 +427,7 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
         # 1. Canonical Semantic Normalization (Language-Independent)
         canonical_res = canonical_normalizer.normalize(user_text, user_context={"lang": user_lang})
 
-        # 2. Primary: Try Online Generative AI (Gemini → Groq)
-        llm_result = self._extract_via_llm(user_text, user_lang=user_lang)
-        if llm_result and (llm_result.get("detected_symptoms") or llm_result.get("detected_disease")):
-            # ANTI-HALLUCINATION & NEGATION ENFORCEMENT:
-            filtered_syms = []
-            filtered_ids = []
-            filtered_labels = []
-            neg_set = set(canonical_res.negative_findings)
-            for s in llm_result.get("detected_symptoms", []):
-                concept_lower = s.get("concept", "").lower()
-                official_lower = (s.get("official_name") or "").lower()
-                if any(neg in concept_lower or neg in official_lower for neg in neg_set):
-                    continue
-                filtered_syms.append(s)
-
-            # Build canonical labels and IDs strictly from norm_symptoms that are validated against master taxonomy
-            for ns in norm_symptoms:
-                if ns.get("dataset_match") and ns.get("symptom_id"):
-                    sid = ns["symptom_id"]
-                    rec = canonical_normalizer.bridge.lookup_by_id(sid)
-                    sname = rec.get("symptom_name") if rec else (ns.get("dataset_name") or ns.get("normalized_english"))
-                    if sid not in filtered_ids:
-                        filtered_ids.append(sid)
-                    if sname and sname not in filtered_labels:
-                        filtered_labels.append(sname)
-
-            # If norm_symptoms didn't produce items, fallback to valid filtered_syms that have valid dataset IDs
-            if not filtered_labels:
-                for s in filtered_syms:
-                    sid = s.get("symptom_id")
-                    if sid:
-                        rec = canonical_normalizer.bridge.lookup_by_id(sid)
-                        c_name = rec.get("symptom_name") if (rec and rec.get("symptom_name")) else s.get("official_name")
-                        if sid not in filtered_ids:
-                            filtered_ids.append(sid)
-                        if c_name and c_name not in filtered_labels:
-                            filtered_labels.append(c_name)
-
-            llm_result["detected_symptoms"] = filtered_syms
-            llm_result["symptom_ids"] = filtered_ids
-            llm_result["symptom_labels"] = filtered_labels
-            llm_result["normalized_symptoms"] = norm_symptoms
-            llm_result["duration_days"] = dur_days
-            llm_result["negative_findings"] = canonical_res.negative_findings
-            llm_result["canonical_representation"] = canonical_res.to_dict()
-            if canonical_res.clinical_attributes.get("has_emergency_red_flags") or canonical_res.clinical_attributes.get("bite_exposure"):
-                llm_result["is_emergency"] = True
-            return llm_result
-
-        # 3. Canonical & Knowledge Base Fallback
-        _logger.info("[SymptomExtractor] Using canonical normalization fallback (LOCAL)")
+        # Check if clinical normalization completely failed
         if canonical_res.normalization_status == "failed" and not canonical_res.canonical_concepts and not canonical_res.exposure_ids and not norm_symptoms:
             return {
                 "clinical_status": "insufficient_information",
@@ -481,54 +448,89 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                 "negative_findings": canonical_res.negative_findings
             }
 
-        # Build detected items strictly from validated canonical concepts and norm_symptoms
+        # Explicitly detected disease from patient text (no hallucination)
+        detected_disease = self._detect_disease_from_text(user_text)
+
+        # Build detected items strictly from validated norm_symptoms and canonical concepts
         detected_items = []
         matched_symptom_ids = []
         matched_symptom_labels = []
 
         for ns in norm_symptoms:
-            if ns.get("dataset_match") and ns.get("symptom_id"):
-                sid = ns["symptom_id"]
-                rec = canonical_normalizer.bridge.lookup_by_id(sid)
-                sname = rec.get("symptom_name") if rec else (ns.get("dataset_name") or ns.get("normalized_english"))
-                if sid not in matched_symptom_ids:
+            if ns.get("dataset_match") or ns.get("validation_status") == "Validated":
+                sid = ns.get("symptom_id")
+                # Preserve exact specific clinical symptom name (e.g. "Knee Pain")
+                sname = ns.get("normalized_english") or ns.get("canonical_name") or ns.get("dataset_name")
+                if sid and sid not in matched_symptom_ids:
                     matched_symptom_ids.append(sid)
                 if sname and sname not in matched_symptom_labels:
                     matched_symptom_labels.append(sname)
+                rec = canonical_normalizer.bridge.lookup_by_id(sid) if sid else None
+                cat = rec.get("body_system", "Clinical Symptom") if rec else str(ns.get("body_region") or "Clinical Finding").replace("_", " ").title()
                 detected_items.append({
                     "concept": sname,
                     "icon": "",
                     "symptom_id": sid,
                     "official_name": sname,
                     "display_name": sname,
-                    "category": "Clinical Symptom"
+                    "medical_term": ns.get("medical_term"),
+                    "aggravating_factors": ns.get("aggravating_factors"),
+                    "body_location": ns.get("body_location"),
+                    "body_region": ns.get("body_region"),
+                    "laterality": ns.get("laterality"),
+                    "category": cat
                 })
 
-        for concept in canonical_res.canonical_concepts:
-            label = concept.replace("_", " ").title()
-            sid = self.id_lookup.get(label.lower()) or self.id_lookup.get(concept.lower())
-            if not sid:
-                sid = canonical_normalizer.get_symptom_id(label) or canonical_normalizer.get_symptom_id(concept)
-            if sid:
-                rec = canonical_normalizer.bridge.lookup_by_id(sid)
-                c_name = rec.get("symptom_name") if rec else label
-                if sid not in matched_symptom_ids:
-                    matched_symptom_ids.append(sid)
-                if c_name not in matched_symptom_labels:
-                    matched_symptom_labels.append(c_name)
-                if not any(d.get("symptom_id") == sid for d in detected_items):
-                    detected_items.append({
-                        "concept": c_name,
-                        "icon": "",
-                        "symptom_id": sid,
-                        "official_name": c_name,
-                        "display_name": c_name,
-                        "category": "Clinical Finding"
-                    })
+        # Fallback to rule-based canonical concepts ONLY if norm_symptoms produced 0 matches
+        if not detected_items:
+            for concept in canonical_res.canonical_concepts:
+                label = concept.replace("_", " ").title()
+                sid = self.id_lookup.get(label.lower()) or self.id_lookup.get(concept.lower())
+                if not sid:
+                    sid = canonical_normalizer.get_symptom_id(label) or canonical_normalizer.get_symptom_id(concept)
+                if sid:
+                    rec = canonical_normalizer.bridge.lookup_by_id(sid)
+                    c_name = rec.get("symptom_name") if rec else label
+                    if sid not in matched_symptom_ids:
+                        matched_symptom_ids.append(sid)
+                    if c_name not in matched_symptom_labels:
+                        matched_symptom_labels.append(c_name)
+                    if not any(d.get("symptom_id") == sid for d in detected_items):
+                        detected_items.append({
+                            "concept": c_name,
+                            "icon": "",
+                            "symptom_id": sid,
+                            "official_name": c_name,
+                            "display_name": c_name,
+                            "body_location": canonical_res.clinical_attributes.get("body_location"),
+                            "body_region": canonical_res.clinical_attributes.get("anatomical_region"),
+                            "laterality": canonical_res.clinical_attributes.get("laterality"),
+                            "category": "Clinical Finding"
+                        })
+                        norm_symptoms.append({
+                            "user_phrase": user_text,
+                            "normalized_english": c_name,
+                            "canonical_name": c_name,
+                            "dataset_match": True,
+                            "dataset_name": c_name,
+                            "match_type": "RULE_CANONICAL_MATCH",
+                            "match_status": "Matched",
+                            "symptom_id": sid,
+                            "provenance": "DATASET_FALLBACK",
+                            "detected_language": detect_input_language(user_text, default=user_lang),
+                            "detected_script": detect_input_script(user_text),
+                            "body_region": canonical_res.clinical_attributes.get("anatomical_region") or "general",
+                            "body_location": canonical_res.clinical_attributes.get("body_location"),
+                            "laterality": canonical_res.clinical_attributes.get("laterality"),
+                            "source": "PATIENT_INPUT",
+                            "confidence": 0.85,
+                            "validation_status": "Validated"
+                        })
 
         is_emergency = bool(
             canonical_res.clinical_attributes.get("has_emergency_red_flags")
             or canonical_res.clinical_attributes.get("bite_exposure")
+            or (detected_disease and "urgent" in str(detected_disease.get("urgency", "")).lower())
         )
 
         summary_parts = []
@@ -545,125 +547,364 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
 
         summary_text = " ".join(summary_parts) if summary_parts else "Clinical pattern extracted from description."
 
+        is_live = not offline and any(ns.get("provenance") == "GEMINI_SEMANTIC_THEN_DATASET_VALIDATED" for ns in norm_symptoms)
+        fallback_used = not is_live and (offline or any(ns.get("provenance", "").startswith("DATASET") for ns in norm_symptoms))
+        fallback_reason = "Offline mode active" if offline else ("Canonical normalization used" if fallback_used else "")
+
+        norm_eng = ""
+        for ns in norm_symptoms:
+            if ns.get("narrative_english"):
+                norm_eng = ns["narrative_english"]
+                break
+        detected_lang = detect_input_language(user_text, default=user_lang or "en")
+        detected_script = detect_input_script(user_text)
+        if not norm_eng:
+            if detected_lang == "en":
+                norm_eng = user_text
+            elif matched_symptom_labels:
+                norm_eng = ", ".join(matched_symptom_labels)
+
+        validated_symptoms_list = [
+            {
+                "symptom_id": s["symptom_id"],
+                "symptom_name": s["canonical_name"],
+                "canonical_name": s["canonical_name"],
+                "body_location": s.get("body_location"),
+                "body_region": s.get("body_region"),
+                "laterality": s.get("laterality"),
+                "user_phrase": s.get("user_phrase"),
+                "validation_status": s.get("validation_status", "Validated"),
+                "provenance": s.get("provenance", "DATASET_VALIDATED")
+            }
+            for s in norm_symptoms if s.get("dataset_match") and s.get("symptom_id")
+        ]
+
+        clinical_request = {
+            "original_text": user_text,
+            "normalized_english_text": norm_eng,
+            "detected_language": detected_lang,
+            "detected_script": detected_script,
+            "validated_symptoms": validated_symptoms_list,
+            "unresolved_findings": [
+                s.get("user_phrase") for s in norm_symptoms if not s.get("dataset_match")
+            ],
+            "duration_days": dur_days,
+            "negative_findings": canonical_res.negative_findings,
+            "clinical_attributes": canonical_res.clinical_attributes,
+            "is_emergency": is_emergency,
+            "provenance": "GEMINI_ONLINE" if is_live else ("OFFLINE_DATASET" if offline else "DATASET_FALLBACK"),
+            "validation_status": "Validated" if matched_symptom_ids else "Unresolved",
+            "fallback_used": fallback_used,
+            "fallback_reason": fallback_reason
+        }
+
         return {
-            "detected_disease": None,
+            "detected_disease": detected_disease,
             "detected_symptoms": detected_items,
             "symptom_ids": matched_symptom_ids,
+            "matched_symptom_ids": matched_symptom_ids,
             "symptom_labels": matched_symptom_labels,
             "normalized_symptoms": norm_symptoms,
             "duration_days": dur_days,
             "recommended_medicines": [],
             "is_emergency": is_emergency,
             "summary_text": summary_text,
-            "source": "DocMindX Canonical Normalizer (API Fallback)",
-            "is_live": False,
-            "fallback_used": True,
-            "fallback_reason": "AI providers unavailable; canonical normalization used",
-            "canonical_representation": canonical_res.to_dict()
+            "source": "Gemini AI Extraction" if is_live else "DocMindX Canonical Normalizer",
+            "is_live": is_live,
+            "fallback_used": fallback_used,
+            "fallback_reason": fallback_reason,
+            "canonical_representation": canonical_res.to_dict(),
+            "negative_findings": canonical_res.negative_findings,
+            "original_text": user_text,
+            "normalized_english_text": norm_eng,
+            "detected_language": detected_lang,
+            "detected_script": detected_script,
+            "validated_symptoms": validated_symptoms_list,
+            "clinical_request": clinical_request
         }
+
+
+def get_supported_language_codes() -> List[str]:
+    """Dynamically discover supported language codes from project configuration."""
+    try:
+        from config.settings import SUPPORTED_LANGUAGES as SL_CONF
+        if isinstance(SL_CONF, dict):
+            return list(SL_CONF.values())
+        if isinstance(SL_CONF, (list, tuple, set)):
+            return list(SL_CONF)
+    except Exception:
+        pass
+    try:
+        from config.language import SUPPORTED_LANGUAGES as LL_CONF
+        return list(LL_CONF)
+    except Exception:
+        pass
+    return ["en", "hi", "gu"]
+
+
+def detect_input_language(text: str, default: str = "en") -> str:
+    """
+    Dynamically detect input language from text:
+    - Indic scripts: Gujarati, Devanagari (Hindi/Marathi), Bengali, Tamil, Telugu, Kannada, Malayalam, Punjabi, Oriya, Urdu
+    - Romanized / transliterated vernacular markers for Indian languages
+    """
+    if not text or not isinstance(text, str):
+        return default
+
+    # 1. Indic Native Scripts
+    if re.search(r"[\u0A80-\u0AFF]", text):
+        return "gu"
+    if re.search(r"[\u0900-\u097F]", text):
+        if any(w in text for w in ["आहे", "नाही", "वेदना", "चावला"]):
+            return "mr"
+        return "hi"
+    if re.search(r"[\u0980-\u09FF]", text):
+        return "bn"
+    if re.search(r"[\u0B80-\u0BFF]", text):
+        return "ta"
+    if re.search(r"[\u0C00-\u0C7F]", text):
+        return "te"
+    if re.search(r"[\u0C80-\u0CFF]", text):
+        return "kn"
+    if re.search(r"[\u0D00-\u0D7F]", text):
+        return "ml"
+    if re.search(r"[\u0A00-\u0A7F]", text):
+        return "pa"
+    if re.search(r"[\u0B00-\u0B7F]", text):
+        return "or"
+    if re.search(r"[\u0600-\u06FF]", text):
+        return "ur"
+
+    # 2. Romanized markers
+    lower = text.lower()
+    gu_markers = ["chhe", "che", "ma dukhe", "ma dukhavo", "nathi", "vaho", "pag", "gothan", "mathu", "aankh", "dant", "pet", "thak", "tav", "lohi", "khaj", "dhincham", "sandha"]
+    hi_markers = ["hai", "ho raha", "dard", "mein", "nahin", "nahi", "bukhar", "sir dard", "pet dard", "chhati", "khansi", "khoon", "kamzor"]
+    
+    gu_hits = sum(1 for m in gu_markers if m in lower)
+    hi_hits = sum(1 for m in hi_markers if m in lower)
+    if gu_hits > hi_hits and gu_hits > 0:
+        return "gu"
+    if hi_hits > gu_hits and hi_hits > 0:
+        return "hi"
+
+    return default
+
+
+def detect_input_script(text: str) -> str:
+    """Detects script code: Latn, Gujr, Deva, Beng, Taml, Telu, Knda, Mlym, Guru, Orya, Arab."""
+    if not text or not isinstance(text, str):
+        return "Unknown"
+    if re.search(r"[\u0A80-\u0AFF]", text):
+        return "Gujr"
+    if re.search(r"[\u0900-\u097F]", text):
+        return "Deva"
+    if re.search(r"[\u0980-\u09FF]", text):
+        return "Beng"
+    if re.search(r"[\u0B80-\u0BFF]", text):
+        return "Taml"
+    if re.search(r"[\u0C00-\u0C7F]", text):
+        return "Telu"
+    if re.search(r"[\u0C80-\u0CFF]", text):
+        return "Knda"
+    if re.search(r"[\u0D00-\u0D7F]", text):
+        return "Mlym"
+    if re.search(r"[\u0A00-\u0A7F]", text):
+        return "Guru"
+    if re.search(r"[\u0B00-\u0B7F]", text):
+        return "Orya"
+    if re.search(r"[\u0600-\u06FF]", text):
+        return "Arab"
+    if re.search(r"[a-zA-Z]", text):
+        return "Latn"
+    return "Unknown"
 
 
 _symptom_norm_cache: Dict[str, List[Dict[str, Any]]] = {}
 
 
-def normalize_user_symptoms(user_text: str, patient_context: Optional[dict] = None) -> List[Dict[str, Any]]:
+def clear_symptom_norm_cache():
+    """Invalidates the runtime symptom normalization cache."""
+    _symptom_norm_cache.clear()
+
+
+def verify_with_groq_consensus(
+    user_phrase: str,
+    gemini_concept: str,
+    candidate_region: Optional[str] = None
+) -> Optional[Dict[str, Any]]:
+    """
+    Dual-Model Consensus Validator (Gemini + Groq).
+    When Gemini extracts a candidate symptom that is NOT yet in the master dataset,
+    this function consults Groq (LLaMA-3 / Qwen) to verify clinical validity.
+    If BOTH agree and confidence is high, the symptom is dynamically registered in
+    datasets/symptoms/learned_symptoms.csv.
+    """
+    if not GROQ_API_KEY or not _GROQ_MODELS:
+        return None
+    if not user_phrase and not gemini_concept:
+        return None
+
+    phrase_to_check = (user_phrase or gemini_concept).strip()
+    concept_to_check = (gemini_concept or user_phrase).strip()
+
+    prompt = f"""You are a strict medical validator for DocMindX AI.
+A patient reported the phrase: "{phrase_to_check}"
+An initial clinical model translated/extracted it as: "{concept_to_check}"
+Target body region: "{candidate_region or 'General'}"
+
+Your clinical task:
+1. Is "{phrase_to_check}" a genuine human symptom, sign, or clinical complaint?
+2. Does "{concept_to_check}" accurately reflect that clinical complaint?
+3. What is the standard English canonical medical symptom name (e.g., "Fever", "Cough", "Headache", "Joint Pain", "Nausea", "Fatigue", "Chest Pain", "Abdominal Pain", etc.)?
+
+Respond STRICTLY in valid JSON:
+{{
+  "is_genuine_symptom": true,
+  "meaning_agrees": true,
+  "canonical_symptom_name": "Standard English Medical Name",
+  "confidence": 0.95,
+  "clinical_reasoning": "brief explanation"
+}}
+"""
+
+    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    for model_name in _GROQ_MODELS:
+        try:
+            body = {
+                "model": model_name,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.0,
+                "max_tokens": 200
+            }
+            res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=5)
+            if res.status_code == 200:
+                raw_content = res.json()["choices"][0]["message"]["content"]
+                parsed = _safe_parse_json(raw_content)
+                if parsed and parsed.get("is_genuine_symptom") and parsed.get("meaning_agrees"):
+                    c_name = str(parsed.get("canonical_symptom_name") or "").strip()
+                    conf = float(parsed.get("confidence") or 0.85)
+                    _logger.info("[ConsensusEngine] Groq model '%s' confirmed clinical consensus for '%s' -> '%s' (conf=%.2f)",
+                                 model_name, phrase_to_check, c_name, conf)
+                    return {
+                        "verified": True,
+                        "canonical_name": c_name or concept_to_check,
+                        "confidence": conf,
+                        "groq_model": model_name,
+                        "reasoning": parsed.get("clinical_reasoning", "")
+                    }
+                else:
+                    _logger.warning("[ConsensusEngine] Groq rejected symptom consensus: %s", parsed)
+                    return None
+        except Exception as exc:
+            _logger.warning("[ConsensusEngine] Groq model '%s' failed: %s", model_name, exc)
+            continue
+
+    return None
+
+
+def normalize_user_symptoms(
+    user_text: str,
+    patient_context: Optional[dict] = None,
+    offline: bool = False
+) -> List[Dict[str, Any]]:
     """
     Centralized Universal Multilingual Symptom Normalization & Dataset Validation Layer.
-    Pipeline:
-      Step 1: Preserve original patient raw text and individual raw phrases.
-      Step 2: Phrase Segmentation using segment_clinical_phrases (handles commas, conjunctions, and connectors).
-      Step 3: Dataset-First Match — deterministic lookup against symptoms_master.csv & canonical_concepts.
-      Step 4: Gemini Fallback ONLY for unresolved phrases (returns structured candidate: candidate_canonical_name, body_region, confidence).
-      Step 5: Master Dataset Validation — Candidate is re-validated against symptoms_master.csv. If valid -> Canonical ID + DATASET_VALIDATED. If invalid -> marked UNRESOLVED (preserved as evidence, NEVER added to selected symptoms).
-      Step 6: Authoritative provenance (DATASET_DIRECT, DATASET_ALIAS, GEMINI_SEMANTIC_THEN_DATASET_VALIDATED, UNRESOLVED).
+    Strictly adheres to:
+      1. Preserves patient evidence (original phrase, detected language, canonical name, symptom ID, confidence, provenance).
+      2. Online Mode: Gemini semantic normalization FIRST → Master dataset validation.
+         If Gemini candidate passes dataset & anatomical validation -> accepted as GEMINI_SEMANTIC_THEN_DATASET_VALIDATED.
+         If Gemini fails, errors, rate limits, times out, or proposes an invalid candidate -> switch to Dataset Fallback.
+         If dataset fallback cannot resolve the phrase -> marked UNRESOLVED (never guessed, never added to selected symptoms).
+      3. Offline Mode: ZERO network requests. Local master dataset & alias lookup only.
+         If offline dataset cannot resolve phrase confidently -> marked UNRESOLVED.
+      4. Cache Safety: Cache key incorporates normalized text, input language, online/offline mode, and dataset fingerprint.
     """
     if not user_text or not isinstance(user_text, str) or not user_text.strip():
         return []
 
-    clean_key = user_text.strip().lower()
-    if clean_key in _symptom_norm_cache:
-        return [dict(x) for x in _symptom_norm_cache[clean_key]]
-
     patient_context = patient_context or {}
-    user_lang = patient_context.get("lang_code") or patient_context.get("lang", "en")
+    is_offline = bool(offline or patient_context.get("offline") or not gemini_pool.get_active_keys())
+    detected_lang = detect_input_language(user_text, default=patient_context.get("lang_code") or patient_context.get("lang", "en"))
+    user_lang = patient_context.get("lang_code") or patient_context.get("lang") or detected_lang
+
+    ds_fp = canonical_normalizer.bridge.dataset_fingerprint
+    clean_norm_text = user_text.strip().lower()
+    cache_key = f"{clean_norm_text}::lang={user_lang}::mode={'offline' if is_offline else 'online'}::fp={ds_fp}"
+
+    if cache_key in _symptom_norm_cache:
+        return [dict(x) for x in _symptom_norm_cache[cache_key]]
 
     canonical_res = canonical_normalizer.normalize(user_text, user_context={"lang": user_lang})
     neg_set = {n.lower().replace("_", " ") for n in canonical_res.negative_findings}
 
-    # Step 1 & 2: Segment into meaningful clinical phrases
+    # Step 1: Segment into meaningful clinical phrases
     segmented_phrases = segment_clinical_phrases(user_text)
+
+    # Filter out negated phrases
+    active_phrases = []
+    for p in segmented_phrases:
+        p_clean = p.strip()
+        if not p_clean:
+            continue
+        if any(neg in p_clean.lower() for neg in neg_set):
+            continue
+        active_phrases.append(p_clean)
+
+    if not active_phrases:
+        _symptom_norm_cache[cache_key] = []
+        return []
 
     normalized_list = []
     seen_sids = set()
-    unresolved_phrases = []
+    unresolved_phrases = list(active_phrases)
 
-    # Step 3: Dataset-First Match for each phrase
-    for phrase in segmented_phrases:
-        p_clean = phrase.strip()
-        if not p_clean:
-            continue
+    # --------------------------------------------------------------------------
+    # ONLINE MODE: Gemini API FIRST -> Direct Clinical Understanding -> Fallback only on failure
+    # --------------------------------------------------------------------------
+    if not is_offline:
+        op_id = f"symnorm_{uuid.uuid4().hex[:8]}"
+        _logger.info("[SymptomNormalizer][op=%s] Normalizing narrative (len=%d, lang=%s, mode=%s)", op_id, len(user_text), user_lang, "online")
+        gemini_candidates = []
+        gemini_translation = ""
+        gemini_prompt = f"""You are the Chief Clinical Language Normalization Engine of DocMindX AI.
+Analyze this patient symptom narrative written in any Indian vernacular or colloquial speech (Hindi, Gujarati, Romanized, Hinglish, Marathi, etc.):
+"{user_text.strip()}"
 
-        # Check negation
-        if any(neg in p_clean.lower() for neg in neg_set):
-            continue
+TASK:
+1. Translate the patient narrative into concise, clear clinical English ("english_translation").
+2. Extract the specific medical keywords and clinical findings (only active complaints/pain):
+   - Pain/Symptom Location: The specific anatomical site where pain or symptom is occurring (e.g., "Knee", "Chest", "Lower Back", "Throat", "Right Shoulder").
+   - Medical Term / Specific Symptom: The specific clinical term/symptom (e.g., "Knee Pain", "Positional Knee Pain", "Chest Pain", "Migraine", "Sore Throat"). Do NOT collapse specific joint/body pain into overly generic terms if a specific location is known (e.g., use "Knee Pain" rather than generic "Joint Pain", "Lower Back Pain" rather than generic "Body Pain").
+   - Aggravating / Relieving / Trigger Factors: Any functional triggers or movements (e.g., "aggravated by walking or bending, relieved by straightening").
 
-        det_match = canonical_normalizer.bridge.match_symptom_detailed(p_clean)
-        if det_match.get("dataset_match") and det_match.get("symptom_id"):
-            sid = det_match["symptom_id"]
-            rec = canonical_normalizer.bridge.lookup_by_id(sid)
-            cname = rec.get("symptom_name") if rec else (det_match.get("dataset_name") or p_clean)
-            mtype = det_match.get("match_type", "ALIAS MATCH")
-            provenance = "DATASET_DIRECT" if mtype == "EXACT MATCH" else "DATASET_ALIAS"
-
-            if sid not in seen_sids:
-                seen_sids.add(sid)
-                normalized_list.append({
-                    "user_phrase": p_clean,
-                    "normalized_english": cname,
-                    "canonical_name": cname,
-                    "dataset_match": True,
-                    "dataset_name": cname,
-                    "match_type": mtype,
-                    "match_status": "Matched",
-                    "symptom_id": sid,
-                    "provenance": provenance,
-                    "source": "PATIENT_INPUT",
-                    "confidence": 1.0
-                })
-        else:
-            unresolved_phrases.append(p_clean)
-
-    # Step 4: Gemini Fallback ONLY for unresolved phrases
-    if unresolved_phrases:
-        unresolved_text = "; ".join(unresolved_phrases)
-        gemini_prompt = f"""You are the Clinical Language Normalization Engine of DocMindX AI.
-Analyze these unresolved patient symptom phrase(s) written in Indian vernacular/colloquial speech (Hindi, Gujarati, Romanized, Hinglish, Marathi, etc.):
-"{unresolved_text}"
-
-For each phrase, identify the standard English clinical symptom candidate.
-
-CRITICAL RULES:
-1. UNDERSTAND PATIENT LANGUAGE ONLY: Map colloquial expressions to a candidate English clinical symptom (e.g. "vaho dukhe chhe" -> "Back Pain", "mathu halaku halakhu dukhe chhe" -> "Headache", "hath ma dukhe chhe" -> "Hand Pain" or "Joint Pain", "pag ma dukhe" -> "Leg Pain", "loy nikale chhe" -> "Bleeding" or "Skin Sores or Lesions").
-2. ZERO DISEASE DIAGNOSIS: Do NOT output disease names (no 'Malaria', 'Typhoid', 'Arthritis'). Normalization is NOT diagnosis.
-3. DO NOT INVENT SYMPTOMS: Extract ONLY what the user described.
-4. SPECIFY BODY REGION: head | upper_limb | lower_limb | spine | chest | abdomen | ent | eye | skin | general.
+CRITICAL CLINICAL RULES:
+1. UNDERSTAND PATIENT LANGUAGE FIRST: Correctly understand colloquial expressions in Gujarati, Hindi, Romanized text.
+   - Gujarati/Hindi anatomy: gothan/dhincham = knee, vaho/vanso = back/spine, kamar/peeth = lower back/back, mathu = head, aankh = eye, kaan = ear, hath = hand/arm, pag = leg/foot, pet = abdomen/stomach, chaati = chest, gala = throat.
+2. FUNCTIONAL AGGRAVATING FACTORS: When a patient describes pain with movement or posture (e.g. pain when walking, pain when bending the leg or knee, relieved when straight), this is the AGGRAVATING/RELIEVING FACTOR of the specific pain (e.g. Knee Pain). Do NOT invent separate symptoms or 'Generalized Body Ache' or 'Blisters' from movement descriptions of the affected joint!
+3. ZERO DISEASE DIAGNOSIS: Do NOT output disease names (no 'Malaria', 'Typhoid', 'Arthritis'). Normalization is NOT diagnosis.
+4. DO NOT INVENT SYMPTOMS: Extract ONLY what the user actually described.
+5. SPECIFY BODY REGION: head | upper_limb | lower_limb | spine | chest | abdomen | ent | eye | skin | general.
+6. SPECIFY BODY LOCATION: knee | ankle | foot | leg | thigh | shoulder | elbow | wrist | hand | finger | lower_back | upper_back | neck | chest | abdomen | head | eye | ear | throat | null.
+7. SPECIFY LATERALITY: left | right | bilateral | null.
 
 Output strictly valid JSON with this structure:
 {{
+  "english_translation": "Faithful clinical English translation of patient narrative",
   "candidates": [
     {{
-      "raw_phrase": "vaho dukhe chhe",
-      "candidate_canonical_name": "Back Pain",
+      "raw_phrase": "exact phrase from input describing the symptom",
+      "candidate_canonical_name": "Specific Clinical Symptom (e.g. Knee Pain, Headache, Chest Pain)",
+      "medical_term": "Medical term (e.g. Knee Arthralgia, Cephalalgia, Angina)",
       "semantic_type": "symptom",
-      "body_region": "spine",
-      "confidence": 0.95,
-      "reason": "Colloquial Gujarati for backache"
+      "body_region": "lower_limb",
+      "body_location": "knee",
+      "laterality": null,
+      "aggravating_or_relieving_factors": "aggravated by walking or bending, relieved when straight",
+      "confidence": 0.95
     }}
   ]
 }}"""
-
-        gemini_candidates = []
-        if gemini_pool.get_active_keys():
+        try:
             gem_body = {
                 "contents": [{"parts": [{"text": gemini_prompt}]}],
                 "generationConfig": {"temperature": 0.05, "responseMimeType": "application/json"}
@@ -678,72 +919,246 @@ Output strictly valid JSON with this structure:
                 if candidates:
                     raw_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                     parsed = _safe_parse_json(raw_text)
-                    if parsed and isinstance(parsed.get("candidates"), list):
-                        gemini_candidates = parsed["candidates"]
-
-        # Secondary fallback to Groq if Gemini gave no candidates
-        if not gemini_candidates and GROQ_API_KEY:
-            for groq_model in _GROQ_MODELS:
-                try:
-                    headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
-                    body = {
-                        "model": groq_model,
-                        "messages": [{"role": "user", "content": gemini_prompt}],
-                        "temperature": 0.05
-                    }
-                    res = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=body, timeout=7)
-                    if res.status_code == 200:
-                        content = res.json()["choices"][0]["message"]["content"]
-                        parsed = _safe_parse_json(content)
-                        if parsed and isinstance(parsed.get("candidates"), list) and parsed["candidates"]:
+                    if parsed:
+                        gemini_translation = str(parsed.get("english_translation") or "").strip()
+                        if isinstance(parsed.get("candidates"), list):
                             gemini_candidates = parsed["candidates"]
-                            break
-                except Exception:
-                    pass
+        except Exception as exc:
+            _logger.warning("[SymptomNormalizer][op=%s] Gemini API call failed: %s; falling back to dataset", op_id, exc)
+            gemini_candidates = []
 
-        # Step 5: Master Dataset Validation of Candidates
-        processed_unresolved_phrases = set()
+        seen_cnames = set()
         for cand in gemini_candidates:
             if not isinstance(cand, dict):
                 continue
             raw_p = str(cand.get("raw_phrase") or "").strip()
-            cand_name = str(cand.get("candidate_canonical_name") or "").strip()
-            conf = float(cand.get("confidence") or 0.8)
-            processed_unresolved_phrases.add(raw_p.lower())
+            cand_name = str(cand.get("candidate_canonical_name") or cand.get("symptom_name") or "").strip()
+            cand_med_term = str(cand.get("medical_term") or "").strip() or None
+            cand_factors = str(cand.get("aggravating_or_relieving_factors") or "").strip() or None
+            cand_reg = str(cand.get("body_region") or "").strip()
+            cand_loc = str(cand.get("body_location") or "").strip() or None
+            cand_lat = str(cand.get("laterality") or "").strip() or None
+            conf = float(cand.get("confidence") or 0.90)
 
             if not cand_name:
                 continue
 
-            # Validate against master taxonomy
-            match_det = canonical_normalizer.bridge.match_symptom_detailed(cand_name)
-            if match_det.get("dataset_match") and match_det.get("symptom_id") and conf >= 0.6:
-                sid = match_det["symptom_id"]
-                rec = canonical_normalizer.bridge.lookup_by_id(sid)
-                cname = rec.get("symptom_name") if rec else (match_det.get("dataset_name") or cand_name)
+            raw_loc, raw_reg = extract_anatomical_location(raw_p or user_text)
+            raw_lat = extract_laterality_from_text(raw_p or user_text)
 
-                # Anatomical validation check
-                if not canonical_normalizer.bridge.check_anatomical_conflict(raw_p, rec):
+            val_loc = (cand_loc if (cand_loc and cand_loc.lower() not in ["null", "none", "unknown"]) else None) or raw_loc
+            val_reg = cand_reg or raw_reg
+            val_lat = (cand_lat if (cand_lat and cand_lat.lower() not in ["null", "none", "unknown"]) else None) or raw_lat
+
+            # In Online Mode: Keep Gemini's precise clinical medical keyword in normalized_english (e.g. "Knee Pain")
+            # And map canonical_name to the master dataset label (e.g. "Joint Pain") for dataset alignment
+            match_det = canonical_normalizer.bridge.match_symptom_detailed(cand_name, candidate_region=val_reg)
+            sid = None
+            dataset_name = None
+            if match_det.get("dataset_match") and match_det.get("symptom_id"):
+                temp_sid = match_det["symptom_id"]
+                rec = canonical_normalizer.bridge.lookup_by_id(temp_sid)
+                if not canonical_normalizer.bridge.check_anatomical_conflict(raw_p or cand_name, rec, candidate_region=val_reg):
+                    sid = temp_sid
+                    dataset_name = rec.get("symptom_name") if rec else None
+            if not sid:
+                temp_sid = canonical_normalizer.get_symptom_id(cand_name)
+                if temp_sid:
+                    rec = canonical_normalizer.bridge.lookup_by_id(temp_sid)
+                    if not canonical_normalizer.bridge.check_anatomical_conflict(raw_p or cand_name, rec, candidate_region=val_reg):
+                        sid = temp_sid
+                        dataset_name = rec.get("symptom_name") if rec else None
+
+            # --- DUAL-AI CONSENSUS CHECK (Gemini + Groq) ---
+            # If not found in Master or Learned dataset, invoke Groq consensus
+            learned_via_consensus = False
+            if not sid and not is_offline and (raw_p or cand_name):
+                consensus_result = verify_with_groq_consensus(raw_p, cand_name, candidate_region=val_reg)
+                if consensus_result and consensus_result.get("verified"):
+                    groq_cname = consensus_result.get("canonical_name", cand_name)
+                    # Try resolving Groq's canonical name or Gemini's concept
+                    c_sid = canonical_normalizer.bridge.resolve_symptom(groq_cname, candidate_region=val_reg) or \
+                            canonical_normalizer.bridge.resolve_symptom(cand_name, candidate_region=val_reg)
+                    if c_sid:
+                        rec = canonical_normalizer.bridge.lookup_by_id(c_sid)
+                        if rec and not canonical_normalizer.bridge.check_anatomical_conflict(raw_p or cand_name, rec, candidate_region=val_reg):
+                            sid = c_sid
+                            dataset_name = rec.get("symptom_name")
+                            # Save to learned_symptoms.csv and in-memory cache!
+                            lang_code = detect_input_language(raw_p or user_text, default=user_lang)
+                            script_type = detect_input_script(raw_p or user_text)
+                            canonical_normalizer.bridge.register_learned_symptom(
+                                alias_text=raw_p or cand_name,
+                                symptom_id=sid,
+                                language_code=lang_code,
+                                script_type=script_type,
+                                notes=f"Gemini+Groq consensus ({consensus_result.get('groq_model')})"
+                            )
+                            if cand_name and cand_name.lower() != (raw_p or "").lower():
+                                canonical_normalizer.bridge.register_learned_symptom(
+                                    alias_text=cand_name,
+                                    symptom_id=sid,
+                                    language_code="en",
+                                    script_type="Latin",
+                                    notes=f"Gemini English normalization consensus ({consensus_result.get('groq_model')})"
+                                )
+                            learned_via_consensus = True
+                            conf = max(conf, consensus_result.get("confidence", 0.90))
+
+            dataset_matched = bool(sid)
+            cname = dataset_name if dataset_matched else cand_name
+            final_reg = val_reg or "general"
+            key = (cname.lower(), sid)
+            if key not in seen_cnames:
+                seen_cnames.add(key)
+                if sid:
+                    seen_sids.add(sid)
+                match_type = "GEMINI_GROQ_CONSENSUS_LEARNED" if learned_via_consensus else ("GEMINI_CLINICAL_EXTRACTION" if dataset_matched else "UNMATCHED")
+                prov = "GEMINI_GROQ_CONSENSUS_LEARNED" if learned_via_consensus else ("GEMINI_SEMANTIC_THEN_DATASET_VALIDATED" if dataset_matched else "UNRESOLVED")
+                normalized_list.append({
+                    "user_phrase": raw_p or user_text,
+                    "normalized_english": cand_name,
+                    "canonical_name": cname if dataset_matched else None,
+                    "medical_term": cand_med_term,
+                    "aggravating_factors": cand_factors,
+                    "dataset_match": dataset_matched,
+                    "dataset_name": dataset_name if dataset_matched else None,
+                    "match_type": match_type,
+                    "match_status": "Matched" if dataset_matched else "Not Matched",
+                    "symptom_id": sid,
+                    "provenance": prov,
+                    "detected_language": detect_input_language(raw_p or user_text, default=user_lang),
+                    "detected_script": detect_input_script(raw_p or user_text),
+                    "body_region": final_reg,
+                    "body_location": val_loc,
+                    "laterality": val_lat,
+                    "source": "PATIENT_INPUT",
+                    "confidence": conf if dataset_matched else 0.0,
+                    "validation_status": "Validated" if dataset_matched else "Unresolved",
+                    "original_text": user_text,
+                    "narrative_english": gemini_translation
+                })
+
+        # Dataset Fallback: Run ONLY if Gemini failed/unavailable/offline, or produced 0 valid dataset matches.
+        # When Gemini succeeds with valid findings, its full-narrative interpretation is authoritative.
+        is_fallback_mode = not any(item.get("dataset_match") for item in normalized_list)
+        if is_fallback_mode:
+            phrases_to_resolve = list(active_phrases)
+        else:
+            phrases_to_resolve = []
+
+        if phrases_to_resolve:
+            still_unresolved = []
+            for phrase in phrases_to_resolve:
+                det_match = canonical_normalizer.bridge.match_symptom_detailed(phrase)
+                p_loc, p_reg = extract_anatomical_location(phrase)
+                p_lat = extract_laterality_from_text(phrase)
+                if det_match.get("dataset_match") and det_match.get("symptom_id"):
+                    sid = det_match["symptom_id"]
+                    rec = canonical_normalizer.bridge.lookup_by_id(sid)
+                    if not canonical_normalizer.bridge.check_anatomical_conflict(phrase, rec, candidate_region=p_reg):
+                        cname = rec.get("symptom_name") if rec else (det_match.get("dataset_name") or phrase)
+                        mtype = det_match.get("match_type", "ALIAS MATCH")
+                        prov = "DATASET_DIRECT" if mtype == "EXACT MATCH" else "DATASET_ALIAS"
+                        final_reg = p_reg or (rec.get("body_system", "General").lower() if rec else "general")
+                        if sid not in seen_sids:
+                            seen_sids.add(sid)
+                            normalized_list.append({
+                                "user_phrase": phrase,
+                                "normalized_english": cname,
+                                "canonical_name": cname,
+                                "dataset_match": True,
+                                "dataset_name": cname,
+                                "match_type": mtype,
+                                "match_status": "Matched",
+                                "symptom_id": sid,
+                                "provenance": prov,
+                                "detected_language": detect_input_language(phrase, default=user_lang),
+                                "detected_script": detect_input_script(phrase),
+                                "body_region": final_reg,
+                                "body_location": p_loc,
+                                "laterality": p_lat,
+                                "source": "PATIENT_INPUT",
+                                "confidence": 1.0,
+                                "validation_status": "Validated",
+                                "original_text": user_text,
+                                "narrative_english": gemini_translation
+                            })
+                        continue
+                if is_fallback_mode:
+                    still_unresolved.append(phrase)
+
+            if is_fallback_mode:
+                for up in still_unresolved:
+                    u_loc, u_reg = extract_anatomical_location(up)
+                    u_lat = extract_laterality_from_text(up)
+                    normalized_list.append({
+                        "user_phrase": up,
+                        "normalized_english": up,
+                        "canonical_name": None,
+                        "dataset_match": False,
+                        "dataset_name": None,
+                        "match_type": "UNMATCHED",
+                        "match_status": "Not Matched",
+                        "symptom_id": None,
+                        "provenance": "UNRESOLVED",
+                        "detected_language": detect_input_language(up, default=user_lang),
+                        "detected_script": detect_input_script(up),
+                        "body_region": u_reg or "unknown",
+                        "body_location": u_loc,
+                        "laterality": u_lat,
+                        "source": "PATIENT_INPUT",
+                        "confidence": 0.0,
+                        "validation_status": "Unresolved",
+                        "original_text": user_text,
+                        "narrative_english": gemini_translation
+                    })
+
+
+
+    # --------------------------------------------------------------------------
+    # OFFLINE MODE: ZERO network calls -> Local Master Dataset & Aliases ONLY
+    # --------------------------------------------------------------------------
+    else:
+        for phrase in active_phrases:
+            det_match = canonical_normalizer.bridge.match_symptom_detailed(phrase)
+            p_loc, p_reg = extract_anatomical_location(phrase)
+            p_lat = extract_laterality_from_text(phrase)
+            if det_match.get("dataset_match") and det_match.get("symptom_id"):
+                sid = det_match["symptom_id"]
+                rec = canonical_normalizer.bridge.lookup_by_id(sid)
+                if not canonical_normalizer.bridge.check_anatomical_conflict(phrase, rec, candidate_region=p_reg):
+                    cname = rec.get("symptom_name") if rec else (det_match.get("dataset_name") or phrase)
+                    mtype = det_match.get("match_type", "LOCAL DATASET MATCH")
+                    prov = "DATASET_DIRECT" if mtype == "EXACT MATCH" else "DATASET_ALIAS"
+                    final_reg = p_reg or (rec.get("body_system", "General").lower() if rec else "general")
                     if sid not in seen_sids:
                         seen_sids.add(sid)
                         normalized_list.append({
-                            "user_phrase": raw_p or cand_name,
+                            "user_phrase": phrase,
                             "normalized_english": cname,
                             "canonical_name": cname,
                             "dataset_match": True,
                             "dataset_name": cname,
-                            "match_type": "GEMINI_SEMANTIC_MATCH",
+                            "match_type": mtype,
                             "match_status": "Matched",
                             "symptom_id": sid,
-                            "provenance": "GEMINI_SEMANTIC_THEN_DATASET_VALIDATED",
+                            "provenance": prov,
+                            "detected_language": detect_input_language(phrase, default=user_lang),
+                            "detected_script": detect_input_script(phrase),
+                            "body_region": final_reg,
+                            "body_location": p_loc,
+                            "laterality": p_lat,
                             "source": "PATIENT_INPUT",
-                            "confidence": conf
+                            "confidence": 1.0,
+                            "validation_status": "Validated"
                         })
                     continue
 
-            # If master dataset validation failed or confidence low, record as UNRESOLVED
+            # Cannot be resolved offline with confidence -> UNRESOLVED
             normalized_list.append({
-                "user_phrase": raw_p or cand_name,
-                "normalized_english": cand_name,
+                "user_phrase": phrase,
+                "normalized_english": phrase,
                 "canonical_name": None,
                 "dataset_match": False,
                 "dataset_name": None,
@@ -751,28 +1166,17 @@ Output strictly valid JSON with this structure:
                 "match_status": "Not Matched",
                 "symptom_id": None,
                 "provenance": "UNRESOLVED",
+                "detected_language": detect_input_language(phrase, default=user_lang),
+                "detected_script": detect_input_script(phrase),
+                "body_region": p_reg or "unknown",
+                "body_location": p_loc,
+                "laterality": p_lat,
                 "source": "PATIENT_INPUT",
-                "confidence": conf
+                "confidence": 0.0,
+                "validation_status": "Unresolved"
             })
 
-        # Phrases not covered by Gemini response stay as UNRESOLVED
-        for up in unresolved_phrases:
-            if up.lower() not in processed_unresolved_phrases:
-                normalized_list.append({
-                    "user_phrase": up,
-                    "normalized_english": up,
-                    "canonical_name": None,
-                    "dataset_match": False,
-                    "dataset_name": None,
-                    "match_type": "UNMATCHED",
-                    "match_status": "Not Matched",
-                    "symptom_id": None,
-                    "provenance": "UNRESOLVED",
-                    "source": "PATIENT_INPUT",
-                    "confidence": 0.0
-                })
-
-    _symptom_norm_cache[clean_key] = normalized_list
+    _symptom_norm_cache[cache_key] = normalized_list
     return [dict(x) for x in normalized_list]
 
 

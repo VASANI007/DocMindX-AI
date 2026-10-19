@@ -1,0 +1,25 @@
+{
+  "dataset_version": "2.0.0",
+  "build_date": "2026-10-16",
+  "source_archive": "datasets.zip supplied in conversation",
+  "counts": {
+    "symptoms": 280,
+    "disease_master": 125,
+    "disease_symptom_mappings": 393,
+    "major_diseases_canonical": 85,
+    "symptom_alias_labels": 840,
+    "mapping_gap_rows_reported": 126
+  },
+  "validation": {
+    "unique_symptom_ids": true,
+    "unique_english_symptom_names": true,
+    "unique_nonempty_hindi_labels": true,
+    "unique_nonempty_gujarati_labels": true,
+    "unknown_disease_ids_in_mapping": [],
+    "unknown_symptom_ids_in_mapping": [],
+    "duplicate_disease_symptom_pairs": 0,
+    "nested_major_dataset_mirrors_canonical": true,
+    "parquet_status": "primary_preserved_nested_copy_synchronized",
+    "clinical_gaps_autofilled": false
+  }
+}

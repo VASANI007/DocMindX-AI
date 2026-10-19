@@ -614,12 +614,78 @@ def get_dynamic_clinical_recommendations(
     cond_lower = (top_condition or "").lower()
     sym_lower = " ".join([str(s) for s in symptoms]).lower()
 
+    original_text = user_context.get("original_text") or user_context.get("free_text") or ""
+    normalized_english_text = user_context.get("normalized_english_text") or ""
+    validated_symptoms_data = user_context.get("validated_symptoms") or []
+
+    loc_parts = []
+    if isinstance(validated_symptoms_data, list):
+        for vs in validated_symptoms_data:
+            if isinstance(vs, dict):
+                s_name = vs.get("symptom_name") or vs.get("canonical_name") or ""
+                b_loc = vs.get("body_location")
+                lat = vs.get("laterality")
+                b_reg = vs.get("body_region")
+                if b_loc:
+                    prefix = f"{lat} " if lat else ""
+                    loc_parts.append(f"{s_name}: {prefix}{b_loc} ({b_reg or 'unspecified'})")
+                elif b_reg and b_reg not in ["general", "unknown"]:
+                    loc_parts.append(f"{s_name}: region {b_reg}")
+    loc_summary = "; ".join(loc_parts) if loc_parts else "Not localized / General"
+
+    negative_findings = user_context.get("negative_findings") or []
+    neg_str = ", ".join(negative_findings) if isinstance(negative_findings, list) and negative_findings else "None"
+
     # Extract standardized clinical presentation attributes and emergency gate
     attrs = _extract_clinical_presentation_attributes(symptoms=symptoms, top_condition=top_condition, user_context=user_context)
     is_emergency = bool(attrs.get("has_emergency_red_flags") or user_context.get("is_emergency", False))
 
     # Retrieve live seasonal health intelligence for the selected Indian State
     seasonal_data = get_seasonal_health_context(state, lang_code=lang_code)
+
+    # Clinical Evidence Gate: If symptoms are empty or unresolved, do NOT query LLM to fabricate medicines!
+    is_unresolved_or_empty = not symptoms or all(str(s).strip().lower() in ["something feels strange in my body", "unspecified", "unknown", "none", "insufficient_information", ""] for s in symptoms)
+    if is_unresolved_or_empty:
+        _logger.info("[CareRecommendations] Insufficient or unresolved clinical evidence — returning safe supportive guidance with zero fabricated medicines")
+        return {
+            "fallback_used": False,
+            "fallback_warning": "",
+            "api_source": "Clinical Safety Gate",
+            "ai_provider_used": "DocMindX Safety Engine",
+            "top_condition": top_condition or "Unspecified Symptoms",
+            "lang_code": lang_code,
+            "state": state,
+            "is_emergency": is_emergency,
+            "summary": "Clinical evaluation is required to evaluate reported symptoms. Please describe your symptoms in more detail or consult a healthcare professional." if lang_code == "en" else ("लक्षणों के सटीक मूल्यांकन के लिए डॉक्टर से परामर्श आवश्यक है।" if lang_code == "hi" else "લક્ષણોના ચોક્કસ નિદાન માટે તબીબી સલાહ લેવી જરૂરી છે."),
+            "recovery_duration": "Variable depending on clinical evaluation.",
+            "seasonal_context": seasonal_data,
+            "seasonal_alert": seasonal_data.get("alert_title", ""),
+            "medicine_gallery": [],
+            "total_medicines_recommended": 0,
+            "lifestyle_home_remedies": [
+                "Maintain adequate hydration with clean water and fluids.",
+                "Eat light, easily digestible nutritious foods.",
+                "Seek qualified medical evaluation if symptoms develop."
+            ],
+            "injections_and_iv": {"is_indicated": False, "items": []},
+            "compress_guidance": {"mode": "none", "is_indicated": False},
+            "cold_warm_compress_mode": "none",
+            "cold_warm_compress_indicated": False,
+            "physiotherapy_guidance": {"is_indicated": False, "exercises": []},
+            "specialized_therapies": {"therapies": []},
+            "yoga_recommendations": [],
+            "dietary_guidelines": [
+                "Maintain adequate hydration with clean water and fluids.",
+                "Eat light, easily digestible nutritious foods.",
+                "Seek qualified medical evaluation if symptoms develop."
+            ],
+            "foods_to_eat": ["Warm water", "Fresh fruit soups", "Light home-cooked meals"],
+            "foods_to_avoid": ["Heavy spicy food", "Unpasteurized items", "Alcohol"],
+            "hydration_advice": "Drink 2 to 3 litres of clean water throughout the day.",
+            "clinical_dos": ["Consult a qualified doctor if new symptoms occur."],
+            "clinical_donts": ["Do NOT take unprescribed antibiotics or medications without clinical evaluation."],
+            "red_flags": ["Sudden chest pain, difficulty breathing, high fever, or loss of consciousness require emergency care."]
+        }
 
     lang_instruction = "English" if lang_code == "en" else "Hindi (हिंदी)" if lang_code == "hi" else "Gujarati (ગુજરાતી)"
 
@@ -662,11 +728,13 @@ def get_dynamic_clinical_recommendations(
     You are DocMindX AI — an advanced clinical healthcare & triage AI.
 Perform an in-depth clinical analysis and prescribe a comprehensive, personalized care recommendation package for this patient across all relevant clinical care modalities.
 
-PATIENT PROFILE:
+PATIENT CLINICAL EVIDENCE & NARRATIVE:
+- Patient's Original Narrative: "{original_text}"
+- Normalized Clinical English: "{normalized_english_text}"
+- Validated Clinical Symptoms: {', '.join(symptoms) if symptoms else 'General Illness'}
+- Anatomical Locations & Lateralities: {loc_summary}
+- Explicit Negative Findings (Ruled Out): {neg_str}
 - Demographics: Age Group: {age}, Gender: {gender}, State: {state}, Blood Group: {blood_group}
-- Active Indian Season & Climate: {seasonal_data['season_name']} ({seasonal_data['alert_title']})
-- General Seasonal Health Context — Reference Only (Not Patient Evidence): Season is {seasonal_data['season_name']} in {state}.
-- Clinical Symptoms: {', '.join(symptoms) if symptoms else 'General Illness'}
 - Symptom Severity: {severity}
 - Symptom Duration: {duration}
 - Pre-existing Medical Conditions: {conditions_str}
@@ -676,8 +744,15 @@ PATIENT PROFILE:
 - Additional Notes: {details}
 - Primary Assessed Condition: {top_condition or 'Acute Illness'}
 
-ANTI-FABRICATION RULES (MANDATORY):
-0. ONLY recommend medicines that are DIRECTLY indicated for the reported symptoms and assessed condition.
+ANTI-FABRICATION & CLINICAL SAFETY MANDATE:
+0. EVIDENCE BOUNDARIES:
+   - Use the patient's original narrative and normalized English to understand clinical context and functional triggers.
+   - Constrain recommended medications STRICTLY to the validated symptoms ({', '.join(symptoms)}) and primary assessed condition ({top_condition}).
+   - Do NOT re-infer unvalidated or hypothetical symptoms from the narrative.
+   - Do NOT prescribe medications for symptoms the patient denied or never reported.
+   - Medicine count must be EXACTLY what is clinically indicated — do NOT pad with unnecessary medicines.
+   - Do NOT prescribe prescription antibiotics, vaccines, or injections for mild common illnesses of short duration.
+   - If no medication is clinically indicated: return "medicines": [].
    DO NOT add medicines for symptoms the patient did NOT report.
    DO NOT invent conditions or symptoms not present in the patient profile above.
    Use qualified clinical language: "Pattern compatible with..." NOT "Patient is diagnosed with..."
@@ -847,11 +922,15 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.15, "maxOutputTokens": 2500, "responseMimeType": "application/json"}
         }
-        res_data, gemini_model, key_used = gemini_pool.execute_with_failover(
+        gem_call_res = gemini_pool.execute_with_failover(
             payload=gemini_payload,
             models=_GEMINI_MODELS,
             timeout=12
         )
+        if isinstance(gem_call_res, (list, tuple)) and len(gem_call_res) >= 3:
+            res_data, gemini_model, key_used = gem_call_res[0], gem_call_res[1], gem_call_res[2]
+        else:
+            res_data, gemini_model, key_used = None, None, None
         if res_data:
             candidates = res_data.get("candidates", [])
             if candidates:

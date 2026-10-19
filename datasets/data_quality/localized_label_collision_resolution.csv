@@ -1,0 +1,7 @@
+﻿symptom_id,field,before,after,reason
+S000050,symptom_name_hi,बेहोश हो जाना,बेहोशी (सिंकोप),Distinguishes syncope from general loss of consciousness.
+S000050,symptom_name_gu,બેભાન થઈ જવું,મૂર્છા (સિન્કોપ),Distinguishes syncope from general loss of consciousness.
+S000071,symptom_name_hi,बेहोश हो जाना,होश खो देना (चेतना का लोप),Clarifies the broader loss-of-consciousness concept.
+S000071,symptom_name_gu,બેભાન થઈ જવું,ચેતના ગુમાવવી (હોશ ગુમાવવો),Clarifies the broader loss-of-consciousness concept.
+S000202,symptom_name_hi,पेशाब करने में कठिनाई,पुरुषों में पेशाब करने में कठिनाई,Preserves the master row's male-specific qualifier.
+S000202,symptom_name_gu,પેશાબ કરવામાં તકલીફ,પુરુષોમાં પેશાબ કરવામાં તકલીફ,Preserves the master row's male-specific qualifier.

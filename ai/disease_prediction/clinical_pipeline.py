@@ -365,85 +365,87 @@ class ClinicalPipelineOrchestrator:
         if input_text and str(input_text).strip():
             canonical_rep = canonical_normalizer.normalize(str(input_text).strip())
 
-            # Check for unresolvable input ("something feels strange in my body")
-            if (canonical_rep.clinical_status == "insufficient_information" or len(selected_symptom_ids) < len(symptom_names)) and input_text:
-                # Fallback to MultilingualSymptomExtractor (LLM + Indic NLP)
-                from ai.disease_prediction.multilingual_symptom_extractor import symptom_extractor
-                extracted = symptom_extractor.extract_symptoms_and_medicines(str(input_text).strip(), user_lang=lang_code or "en")
-                if extracted and (extracted.get("symptom_labels") or extracted.get("symptom_ids")):
-                    for lbl in extracted.get("symptom_labels", []):
-                        if lbl not in symptom_names:
-                            symptom_names.append(lbl)
-                    for sid in extracted.get("symptom_ids", []):
-                        if sid not in selected_symptom_ids:
-                            selected_symptom_ids.append(sid)
-                    for neg in extracted.get("negative_findings", []):
-                        if neg not in negative_findings:
-                            negative_findings.append(neg)
-                else:
-                    _logger.info("[Pipeline] Input produced insufficient clinical information — returning safe prompt")
-                    sys_status = self._build_system_status()
-                    return {
-                        "clinical_status": "insufficient_information",
-                        "normalization_status": "failed",
-                        "is_emergency": False,
-                        "urgency_level": "Insufficient Information (Please Describe Symptoms)",
-                        "ranked_conditions": [],
-                        "compatible_conditions": [],
-                        "red_flags": [],
-                        "positive_findings": [],
-                        "negative_findings": [],
-                        "symptom_names": [],
-                        "symptom_ids": [],
-                        "tests_to_discuss": [],
-                        "system_status": sys_status,
-                        "fallback_warning": "",
-                        "message": "Insufficient clinical information to determine a differential pattern. Please describe your symptoms in more detail.",
-                        "clinical_input": {
-                            "symptom_names": [],
-                            "symptom_ids": [],
+            # Only extract symptoms from text if caller didn't provide validated symptom names
+            if not symptom_names and not selected_symptom_ids:
+                if canonical_rep.clinical_status == "insufficient_information":
+                    # Fallback to MultilingualSymptomExtractor (LLM + Indic NLP)
+                    from ai.disease_prediction.multilingual_symptom_extractor import symptom_extractor
+                    extracted = symptom_extractor.extract_symptoms_and_medicines(str(input_text).strip(), user_lang=lang_code or "en")
+                    if extracted and (extracted.get("symptom_labels") or extracted.get("symptom_ids")):
+                        for lbl in extracted.get("symptom_labels", []):
+                            if lbl not in symptom_names:
+                                symptom_names.append(lbl)
+                        for sid in extracted.get("symptom_ids", []):
+                            if sid not in selected_symptom_ids:
+                                selected_symptom_ids.append(sid)
+                        for neg in extracted.get("negative_findings", []):
+                            if neg not in negative_findings:
+                                negative_findings.append(neg)
+                    else:
+                        _logger.info("[Pipeline] Input produced insufficient clinical information — returning safe prompt")
+                        sys_status = self._build_system_status()
+                        return {
+                            "clinical_status": "insufficient_information",
+                            "normalization_status": "failed",
+                            "is_emergency": False,
+                            "urgency_level": "Insufficient Information (Please Describe Symptoms)",
+                            "ranked_conditions": [],
+                            "compatible_conditions": [],
+                            "red_flags": [],
                             "positive_findings": [],
                             "negative_findings": [],
-                        "canonical_concepts": {},
-                        "patient_context": patient_context
-                    },
-                    "clinical_evidence": {
-                        "bioportal_concepts": {},
-                        "nlm_conditions": [],
-                        "canonical_representation": canonical_rep.to_dict() if canonical_rep else None
-                    },
-                    "clinical_assessment": {
-                        "ranked_conditions": [],
-                        "compatible_conditions": [],
-                        "top_condition": "",
-                        "is_emergency": False,
-                        "red_flags": []
-                    },
-                    "care_plan": {
-                        "medicine_gallery": [],
-                        "yoga_recommendations": [],
-                        "physiotherapy_guidance": {"exercises": []},
-                        "cold_warm_compress_mode": "none",
-                        "cold_warm_compress_indicated": False
-                    },
-                    "provenance": {
-                        "status": "INSUFFICIENT_INFORMATION",
-                        "system_status": sys_status,
-                        "fallback_warning": "",
-                        "elapsed_ms": round((time.time() - t_start) * 1000, 1)
-                    }
-                }
+                            "symptom_names": [],
+                            "symptom_ids": [],
+                            "tests_to_discuss": [],
+                            "system_status": sys_status,
+                            "fallback_warning": "",
+                            "message": "Insufficient clinical information to determine a differential pattern. Please describe your symptoms in more detail.",
+                            "clinical_input": {
+                                "symptom_names": [],
+                                "symptom_ids": [],
+                                "positive_findings": [],
+                                "negative_findings": [],
+                                "canonical_concepts": {},
+                                "patient_context": patient_context
+                            },
+                            "clinical_evidence": {
+                                "bioportal_concepts": {},
+                                "nlm_conditions": [],
+                                "canonical_representation": canonical_rep.to_dict() if canonical_rep else None
+                            },
+                            "clinical_assessment": {
+                                "ranked_conditions": [],
+                                "compatible_conditions": [],
+                                "top_condition": "",
+                                "is_emergency": False,
+                                "red_flags": []
+                            },
+                            "care_plan": {
+                                "medicine_gallery": [],
+                                "yoga_recommendations": [],
+                                "physiotherapy_guidance": {"exercises": []},
+                                "cold_warm_compress_mode": "none",
+                                "cold_warm_compress_indicated": False
+                            },
+                            "provenance": {
+                                "status": "INSUFFICIENT_INFORMATION",
+                                "system_status": sys_status,
+                                "fallback_warning": "",
+                                "elapsed_ms": round((time.time() - t_start) * 1000, 1)
+                            }
+                        }
+                else:
+                    # Merge canonical findings only if caller didn't provide symptom_names
+                    for c in canonical_rep.canonical_concepts:
+                        c_lbl = c.replace("_", " ").title()
+                        if c_lbl not in symptom_names:
+                            symptom_names.append(c_lbl)
 
-            # Merge canonical findings
-            for c in canonical_rep.canonical_concepts:
-                c_lbl = c.replace("_", " ").title()
-                if c_lbl not in symptom_names:
-                    symptom_names.append(c_lbl)
+                    for sid in canonical_rep.symptom_ids:
+                        if sid not in selected_symptom_ids:
+                            selected_symptom_ids.append(sid)
 
-            for sid in canonical_rep.symptom_ids:
-                if sid not in selected_symptom_ids:
-                    selected_symptom_ids.append(sid)
-
+            # Always merge negative findings, duration, severity from canonical representation
             for neg in canonical_rep.negative_findings:
                 if neg not in negative_findings:
                     negative_findings.append(neg)
