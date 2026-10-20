@@ -38,6 +38,14 @@ class TestDosageForms:
             "api.dailymed.search_dailymed_drugnames",
             lambda c: [{"drug_name": c, "is_live": True}]
         )
+        monkeypatch.setattr(
+            "api.dailymed.get_dailymed_medicine_summary",
+            lambda c: {"is_live": True, "status": "SUCCESS", "verification_status": "DAILYMED_VERIFIED", "spl_setid": "mock-setid", "ndcs": ["12345-678"]}
+        )
+        monkeypatch.setattr(
+            "api.dailymed.is_dailymed_verified",
+            lambda r: True
+        )
 
     def test_all_16_dosage_forms_processed_accurately(self):
         forms_catalog = [

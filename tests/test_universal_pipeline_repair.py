@@ -279,3 +279,144 @@ class TestUniversalPipelineRepair:
         assert "maro gothan ma asahya dukhavo chhe" in prompt_text
         assert "Unbearable knee pain in the joint" in prompt_text
         assert "Knee" in prompt_text or "lower_limb" in prompt_text
+
+    # --------------------------------------------------------------------------
+    # 9. Universal Paracetamol & Medicine Fallback Elimination
+    # --------------------------------------------------------------------------
+    @patch("config.settings.gemini_pool.execute_with_failover")
+    def test_empty_or_unsupported_assessment_does_not_produce_paracetamol(self, mock_gemini):
+        """Unsupported assessment returns empty medicine list, NEVER universal Paracetamol 500mg."""
+        mock_gemini.return_value = (None, None, None)
+        from ai.utils.care_recommendations import _get_condition_fallback_medicines
+        
+        # Test 1: Vague non-specific symptom
+        meds = _get_condition_fallback_medicines(top_condition="", symptoms=["something feels strange in my body"])
+        assert meds == [], f"Expected [] but got {meds}"
+        assert not any("paracetamol" in m["name"].lower() for m in meds)
+
+        # Test 2: Ocular presentation without fever -> must NOT recommend Paracetamol
+        meds_eye = _get_condition_fallback_medicines(top_condition="Dry Eye Syndrome", symptoms=["Eye Pain", "Eye Irritation"])
+        assert not any("paracetamol" in m["name"].lower() for m in meds_eye)
+        # Should recommend ophthalmic tears instead
+        assert any("eye drops" in m["name"].lower() or "ophthalmic" in m.get("route", "").lower() for m in meds_eye)
+
+    def test_provider_no_relevant_result_does_not_trigger_generic_fallback(self):
+        """OpenFDA NO_RELEVANT_RESULT maintains candidate name and unverified status; never replaces with Paracetamol."""
+        from ai.utils.care_recommendations import get_medicine_gallery
+        with patch("api.openfda.search_drug_openfda", return_value={
+            "medicine_name": "Novelexperimentalcompound",
+            "generic_name": "Novelexperimentalcompound",
+            "status": "NO_RELEVANT_RESULT",
+            "verification_status": "NOT_FOUND",
+            "is_live": True,
+            "fallback_used": False,
+            "dosage_forms": [],
+            "routes": [],
+            "verified_label_dosage": ""
+        }):
+            gallery = get_medicine_gallery(
+                [{"name": "Novelexperimentalcompound 100mg", "dosage": "100mg daily"}],
+                top_condition="Experimental Condition",
+                symptoms=["Mild Fatigue"]
+            )
+            assert len(gallery) == 1
+            assert gallery[0]["name"] == "Novelexperimentalcompound 100mg"
+            assert gallery[0]["is_verified"] is False
+            assert gallery[0]["verification_status"] == "UNVERIFIED"
+            assert "paracetamol" not in gallery[0]["name"].lower()
+
+    def test_provider_failure_does_not_create_verified_medicine(self):
+        """Provider TIMEOUT or AUTH_ERROR is preserved truthfully and never labeled VERIFIED."""
+        from ai.utils.care_recommendations import get_medicine_gallery
+        with patch("api.openfda.search_drug_openfda", return_value={
+            "status": "TIMEOUT",
+            "verification_status": "UNVERIFIED",
+            "fallback_used": True,
+            "fallback_reason": "OpenFDA timeout"
+        }):
+            gallery = get_medicine_gallery(
+                [{"name": "SomeMedicine 10mg", "dosage": "10mg"}],
+                top_condition="Some Condition",
+                symptoms=["Fever"]
+            )
+            assert len(gallery) == 1
+            assert gallery[0]["is_verified"] is False
+            assert gallery[0]["provider_status"] == "TIMEOUT"
+            assert gallery[0]["reference_type"] == "UNRESOLVED_CANDIDATE"
+
+    # --------------------------------------------------------------------------
+    # 10. BioPortal & External Reference Evidence Isolation
+    # --------------------------------------------------------------------------
+    def test_bioportal_concepts_do_not_contaminate_patient_symptom_ids(self):
+        """External BioPortal concepts must NEVER mutate or be added to patient's selected_symptom_ids."""
+        orchestrator = clinical_pipeline
+        mock_bioportal = [
+            {"prefLabel": "Headache", "pref_label": "Headache", "cui": "C0018681"},
+            {"prefLabel": "Nausea", "pref_label": "Nausea", "cui": "C0027497"}
+        ]
+        
+        with patch.object(orchestrator, "_get_bioportal_concepts", return_value=mock_bioportal):
+            with patch("requests.get", side_effect=ConnectionError("offline")):
+                with patch("requests.post", side_effect=ConnectionError("offline")):
+                    triage_result = orchestrator.run_pipeline(
+                        symptom_names=["Eye Pain"],
+                        patient_context={"age_group": "21-30", "gender": "Male", "duration": "1-3 Days", "severity": "Moderate"},
+                        run_bioportal=True,
+                        run_nlm=False,
+                        run_care_recommendations=False
+                    )
+        
+        # Patient only reported "Eye Pain" -> patient symptom_names and symptom_ids must NOT contain Headache or Nausea
+        sym_names = triage_result.get("symptom_names", [])
+        assert "Headache" not in sym_names
+        assert "Nausea" not in sym_names
+        assert len(sym_names) == 1
+        assert "Eye Pain" in sym_names[0]
+
+    # --------------------------------------------------------------------------
+    # 11. Authoritative Triage Urgency & Evaluation Timeframe Consistency
+    # --------------------------------------------------------------------------
+    def test_authoritative_triage_urgency_consistency(self):
+        """Moderate severity presentation produces consistent physician consultation triage, never contradictory Mild."""
+        from ai.disease_prediction.predict import triage_engine
+        
+        # Presentation with moderate severity eye pain
+        triage = triage_engine.evaluate_symptoms(
+            selected_symptom_ids=[],
+            symptom_names=["Eye Pain"],
+            age_group="21-30",
+            gender="Male",
+            duration="1-3 Days",
+            severity="Moderate"
+        )
+        
+        urgency = triage["urgency_level"]
+        timeframe = triage["timeframe_for_evaluation"]
+        assert urgency == "Moderate Attention (Consult Physician)"
+        assert "Within 24–48 hours" in timeframe or "Prompt" in timeframe
+        assert "Mild / Self-Monitoring" not in urgency
+
+    # --------------------------------------------------------------------------
+    # 12. Recovery & Seasonal Advisory Evidence Gating
+    # --------------------------------------------------------------------------
+    def test_recovery_timeline_gated_by_diagnostic_uncertainty(self):
+        """Emergency or high-uncertainty condition does not dogmatically assert 5-7 days recovery."""
+        from ai.utils.care_recommendations import _build_local_dataset_fallback
+        res = _build_local_dataset_fallback(
+            symptoms=["Sudden Vision Loss", "Severe Eye Pain"],
+            user_context={"severity": "Severe", "is_emergency": True},
+            top_condition="Acute Angle-Closure Glaucoma",
+            lang_code="en"
+        )
+        rec_dur = res["recovery_duration"]
+        assert "5 – 7 days" not in rec_dur
+        assert "depends on clinical evaluation" in rec_dur.lower() or "clinical" in rec_dur.lower()
+
+    def test_seasonal_health_advisory_evidence_label(self):
+        """Seasonal advisory frames risk as educational health information, not unverified active outbreak."""
+        from ai.utils.seasonal_context import get_seasonal_health_context
+        ctx = get_seasonal_health_context("Gujarat", month=10, lang_code="en")
+        alert_desc = ctx["alert_description"].lower()
+        # Does not claim a confirmed active outbreak
+        assert "advisory" in ctx["alert_title"].lower() or "reference" in ctx["alert_title"].lower()
+

@@ -281,6 +281,12 @@ def _extract_clinical_presentation_attributes(
     ])
     is_chronic_musculoskeletal_stiffness = has_musculoskeletal_symptoms and not is_acute_inflammatory_edema
 
+    # 13. Ophthalmic / Ocular / Eye involvement
+    has_ophthalmic_symptoms = any(k in text_lower for k in [
+        "eye", "ocular", "vision", "cornea", "conjunctiv", "glaucoma", "retin",
+        "cataract", "dry eye", "eye strain", "blepharitis", "aankh", "आंख", "આંખ"
+    ])
+
     return {
         "has_radicular_symptoms": has_radicular_symptoms,
         "has_musculoskeletal_symptoms": has_musculoskeletal_symptoms,
@@ -295,7 +301,19 @@ def _extract_clinical_presentation_attributes(
         "has_bronchospasm_indications": has_bronchospasm_indications,
         "is_acute_inflammatory_edema": is_acute_inflammatory_edema,
         "is_chronic_musculoskeletal_stiffness": is_chronic_musculoskeletal_stiffness,
+        "has_ophthalmic_symptoms": has_ophthalmic_symptoms,
     }
+
+
+def condition_supports_ophthalmic(top_condition: str = "", symptoms: list = None) -> bool:
+    """
+    Returns True if ophthalmic formulations (e.g. lubricating eye drops / artificial tears)
+    are clinically appropriate for the patient's presentation.
+    Evaluates clinical presentation attributes: ocular/vision/eye tissue involvement.
+    Completely disease-name agnostic.
+    """
+    attrs = _extract_clinical_presentation_attributes(symptoms=symptoms, top_condition=top_condition)
+    return attrs.get("has_ophthalmic_symptoms", False)
 
 
 def condition_supports_topical(top_condition: str = "", symptoms: list = None) -> bool:
@@ -333,7 +351,9 @@ KNOWN_ACTIVE_COMPOUNDS = {
     "terbinafine", "ketoconazole", "fluconazole", "diclofenac", "aceclofenac",
     "tramadol", "metformin", "atorvastatin", "pantoprazole", "omeprazole",
     "rabeprazole", "ranitidine", "losartan", "amlodipine", "salbutamol",
-    "montelukast", "dextromethorphan", "chlorpheniramine", "mupirocin"
+    "montelukast", "dextromethorphan", "chlorpheniramine", "mupirocin",
+    "carboxymethylcellulose", "hypromellose", "polyvinyl alcohol", "sodium hyaluronate",
+    "latanoprost", "timolol", "brimonidine", "moxifloxacin"
 }
 
 
@@ -430,7 +450,7 @@ def get_medicine_gallery(
             route_key = "topical"
         elif any(r in route_lower for r in ["inhal", "nasal"]):
             route_key = "inhalation"
-        elif any(r in route_lower for r in ["eye", "opht"]):
+        elif any(r in route_lower or r in name_lower for r in ["eye", "opht"]):
             route_key = "ophthalmic"
         elif any(r in route_lower for r in ["ear", "otic"]):
             route_key = "otic"
@@ -521,29 +541,82 @@ def get_medicine_gallery(
             raw_forms = api_info.get("dosage_forms") or api_info.get("verified_form")
             verified_form = raw_forms[0] if isinstance(raw_forms, list) and raw_forms else (raw_forms or None)
 
+        is_inj = (route_key == "injectable")
+        is_hospital_protocol = is_inj
+
         # Clean dosage form - never permit packaging words as dosage form
         clean_spec_form = spec_form if str(spec_form).strip().lower() not in ["tube", "bottle", "strip", "unspecified", "unknown", "none", ""] else None
         clean_verified_form = verified_form if str(verified_form).strip().lower() not in ["tube", "bottle", "strip", "unspecified", "unknown", "none", ""] else None
 
         # Do NOT invent Tablet or Cream if form is unknown
-        resolved_form = clean_verified_form or clean_spec_form or "Unspecified Formulation"
-        resolved_route = verified_route or spec_route or ("Oral" if route_key == "oral" and is_clinically_verified else "Requires Clinician / Pharmacist Verification")
+        if route_key == "ophthalmic":
+            resolved_form = clean_verified_form or clean_spec_form or "Eye Drops"
+            resolved_route = verified_route or spec_route or "Ophthalmic"
+            admin_setting = "Ophthalmic Instillation / Eye Application"
+        elif route_key == "oral" and is_clinically_verified:
+            resolved_form = clean_verified_form or clean_spec_form or "Unspecified Formulation"
+            resolved_route = verified_route or spec_route or "Oral"
+            admin_setting = "Self-administration / Oral as directed"
+        else:
+            resolved_form = clean_verified_form or clean_spec_form or "Unspecified Formulation"
+            resolved_route = verified_route or spec_route or ("Oral" if route_key == "oral" and is_clinically_verified else "Requires Clinician / Pharmacist Verification")
+            admin_setting = "Hospital / Clinic Administration by Healthcare Professional Only" if is_inj else ("External Application / Topical" if is_topical else "Self-administration / As directed")
 
         # Truthful dosage instruction display
         dosage_display = verified_label_dosage or candidate_dosage or "Dosage information requires clinician / pharmacist verification."
 
-        is_inj = (route_key == "injectable")
-        is_hospital_protocol = is_inj
-        admin_setting = "Hospital / Clinic Administration by Healthcare Professional Only" if is_inj else ("External Application / Topical" if is_topical else "Self-administration / Oral as directed")
-
         search_query = f"{display_name} {candidate}".strip()
         image_path, is_fallback = resolve_image("medicine", search_query)
+
+        # Build explicit verified fields list and reference classification
+        verified_fields = []
+        contraindications_val = ""
+        source_identifier = ""
+        if fda_live and api_info and isinstance(api_info, dict):
+            if api_info.get("generic_name"):
+                verified_fields.append("generic_name")
+            if verified_strength:
+                verified_fields.append("strength")
+            if verified_form:
+                verified_fields.append("dosage_form")
+            if verified_route:
+                verified_fields.append("route")
+            if verified_label_dosage:
+                verified_fields.append("dosage")
+            if api_info.get("warnings"):
+                verified_fields.append("warnings")
+            if api_info.get("contraindications"):
+                verified_fields.append("contraindications")
+                contraindications_val = api_info.get("contraindications", "")
+            source_identifier = str(api_info.get("source", "OpenFDA"))
+        elif dailymed_live:
+            verified_fields.append("spl_label")
+            if isinstance(dailymed_info, list) and dailymed_info:
+                source_identifier = f"NDC: {dailymed_info[0]}"
+
+        if is_clinically_verified:
+            reference_type = "VERIFIED_REFERENCE"
+        elif is_local_record:
+            reference_type = "EDUCATIONAL_REFERENCE"
+        else:
+            reference_type = "UNRESOLVED_CANDIDATE"
+
+        if api_info and isinstance(api_info, dict) and api_info.get("status"):
+            provider_status = api_info.get("status")
+        elif dailymed_live:
+            provider_status = "SUCCESS"
+        elif dailymed_name_match:
+            provider_status = "NAME_MATCH_ONLY"
+        else:
+            provider_status = "UNVERIFIED"
 
         gallery.append({
             "name": display_name,
             "medicine_name": display_name,
             "candidate_medication": display_name,
             "candidate_name": candidate,
+            "generic_name": (api_info.get("generic_name") if (fda_live and api_info) else compound.capitalize()),
+            "brand_names": (api_info.get("brand_names", []) if (fda_live and api_info) else []),
             "candidate_dosage": candidate_dosage,
             "dosage": dosage_display,
             "verified_label_dosage": verified_label_dosage,
@@ -551,7 +624,12 @@ def get_medicine_gallery(
             "verified_route": verified_route,
             "verified_form": verified_form,
             "provider": provider,
+            "provider_status": provider_status,
             "verification_status": verification_status,
+            "reference_type": reference_type,
+            "verified_fields": verified_fields,
+            "source_identifier": source_identifier,
+            "contraindications": contraindications_val,
             "is_live": bool(fda_live or dailymed_live or dailymed_name_match),
             "is_fallback": bool(not is_clinically_verified),
             "is_verified": bool(is_clinically_verified),
@@ -702,12 +780,28 @@ def get_dynamic_clinical_recommendations(
         confidence_directive = f"""- LOW ALGORITHMIC CONFIDENCE / WEAK DIFFERENTIAL SEPARATION ({round(top_confidence)}/100):
   The reported symptoms do not decisively distinguish {top_condition} from other differential possibilities.
   1. HEDGED SUMMARY: In "summary", do NOT claim a definitive diagnosis. State that the symptoms represent a non-specific acute pattern compatible with multiple potential etiologies (including {top_condition}), requiring clinical evaluation to narrow down.
-  2. ANTIMICROBIAL SAFETY: DO NOT prescribe targeted single-disease prescription antibiotics (e.g. Doxycycline) on an unconfirmed low-confidence assessment. Recommend ONLY supportive and symptomatic care (e.g. Paracetamol for fever/body ache, ORS/fluids for hydration) and explicitly state that antibiotic therapy requires confirmatory diagnostic workup by a qualified physician."""
+  2. ANTIMICROBIAL & ANALGESIC SAFETY: DO NOT prescribe targeted single-disease prescription antibiotics (e.g. Doxycycline) on an unconfirmed low-confidence assessment. Recommend ONLY supportive and symptomatic care directly indicated for the reported complaints (e.g. safe Lubricant Eye Drops for eye discomfort; Paracetamol ONLY if actual fever or body aches were reported; ORS/fluids for dehydration). DO NOT default to Paracetamol when fever or generalized body ache is absent."""
     else:
         confidence_directive = f"""- Clear differential evidence supported ({round(top_confidence)}/100)."""
 
     supports_topical = condition_supports_topical(top_condition, symptoms)
-    if supports_topical:
+    supports_ophthalmic = condition_supports_ophthalmic(top_condition, symptoms)
+
+    if supports_ophthalmic:
+        topical_prompt_directive = """
+   - OPHTHALMIC / OCULAR FORMULATION MANDATE:
+     This patient presents with an ocular/eye presentation (e.g. eye pain, redness, irritation, dryness, strain).
+     First-line supportive therapy MUST prioritize a safe OPHTHALMIC formulation:
+     * Recommend safe Lubricant Eye Drops / Preservative-Free Artificial Tears (e.g. Carboxymethylcellulose 0.5% Eye Drops / Refresh Tears / Add Tears).
+     * DO NOT blindly prescribe systemic Paracetamol or oral painkillers unless the patient explicitly reported high fever or severe generalized headache.
+     * DO NOT prescribe OTC steroid drops without in-person ophthalmologist slit-lamp examination.
+     * Set "name": "Carboxymethylcellulose 0.5% Eye Drops (Refresh Tears / Add Tears)".
+     * Set "form": "Eye Drops".
+     * Set "route": "Ophthalmic".
+     * Set "food_timing": "Ophthalmic Instillation (आँख में 1-2 बूँद डालें)".
+     * Set "type": "OTC".
+"""
+    elif supports_topical:
         topical_prompt_directive = """
    - DERMATOLOGICAL / TOPICAL FORMULATION MANDATE:
      This patient presents with a localized cutaneous or dermatological condition.
@@ -748,6 +842,8 @@ ANTI-FABRICATION & CLINICAL SAFETY MANDATE:
 0. EVIDENCE BOUNDARIES:
    - Use the patient's original narrative and normalized English to understand clinical context and functional triggers.
    - Constrain recommended medications STRICTLY to the validated symptoms ({', '.join(symptoms)}) and primary assessed condition ({top_condition}).
+   - DO NOT default to Paracetamol 500mg/650mg for every patient. Only recommend Paracetamol if fever, pyrexia, chills, or generalized body ache/headache were explicitly reported.
+   - For localized conditions (e.g. eye discomfort/strain, localized rash, localized muscle sprain), prescribe appropriate localized therapy (safe eye drops, topical cream/gel) or return "medicines": [] if no oral drug is needed.
    - Do NOT re-infer unvalidated or hypothetical symptoms from the narrative.
    - Do NOT prescribe medications for symptoms the patient denied or never reported.
    - Medicine count must be EXACTLY what is clinically indicated — do NOT pad with unnecessary medicines.
@@ -778,15 +874,15 @@ CRITICAL CLINICAL INSTRUCTIONS:
 {topical_prompt_directive}
    - Prescribe ONLY the clinically indicated medications directly supported by evidence for this patient's exact symptoms, severity, and duration (return dynamic count: 0, 1, 2, 3, etc. - do NOT artificially target any fixed count).
    - For EACH medicine provide:
-     - "name": Generic medication name (active compound) with Indian trade alias if relevant. Do NOT default to generic painkillers unless pain was reported.
+     - "name": Generic medication name (active compound) with Indian trade alias if relevant. DO NOT default to generic painkillers or Paracetamol unless fever or generalized pain was reported.
      - "indication": Specific symptom it treats in {lang_instruction}.
      - "dosage": Clinical dosage instructions in {lang_instruction}.
      - "course_duration": Explicit course length in {lang_instruction} (e.g. "3 to 5 Days", "3 થી 5 દિવસ").
-     - "food_timing": Explicit timing strictly in {lang_instruction} ("After Food", "Before Food (Empty Stomach)", "External Application").
+     - "food_timing": Explicit timing strictly in {lang_instruction} ("After Food", "Before Food (Empty Stomach)", "External Application", "Ophthalmic Instillation").
      - "time_of_day": E.g. "Morning & Night (BD)", "Morning Empty Stomach", "SOS (When needed)", "Thrice Daily (TDS)".
      - "type": "OTC" or "Prescription".
-     - "form": "Cream" / "Ointment" / "Gel" / "Tablet" / "Capsule" / "Syrup" (never "Tube").
-     - "route": "Topical" / "Oral" / "Inhalation".
+     - "form": "Cream" / "Ointment" / "Gel" / "Tablet" / "Capsule" / "Syrup" / "Eye Drops" (never "Tube").
+     - "route": "Topical" / "Oral" / "Inhalation" / "Ophthalmic".
      - "warnings": Crucial safety precautions in {lang_instruction}.
 
 4. TIER 2: CLINICAL INJECTIONS & IV FLUIDS (CONDITIONAL & STRICT DURATION-GATED):
@@ -936,7 +1032,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
             if candidates:
                 text_out = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                 parsed = _clean_json_response(text_out)
-                if parsed and parsed.get("medicines"):
+                if parsed and isinstance(parsed, dict) and ("summary" in parsed or "medicines" in parsed or "foods_to_eat" in parsed or "dietary_guidelines" in parsed):
                     ai_data = parsed
                     api_source_name = f"DocMindX Clinical AI"
                     ai_is_live = True
@@ -965,7 +1061,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 if res.status_code == 200:
                     text_out = res.json()["choices"][0]["message"]["content"]
                     parsed = _clean_json_response(text_out)
-                    if parsed and parsed.get("medicines"):
+                    if parsed and isinstance(parsed, dict) and ("summary" in parsed or "medicines" in parsed or "foods_to_eat" in parsed or "dietary_guidelines" in parsed):
                         ai_data = parsed
                         api_source_name = f"DocMindX Clinical AI"
                         ai_is_live = True
@@ -982,7 +1078,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                 _logger.error("[CareRecommendations] Groq %s error: %s", groq_model, exc)
 
     # Process AI Data if successfully fetched from Live APIs
-    if ai_data and ai_data.get("medicines"):
+    if ai_data and isinstance(ai_data, dict):
         # Format medicines with OpenFDA + DailyMed verification + image resolver
         raw_meds = ai_data.get("medicines", [])
         for m in raw_meds:
@@ -1293,7 +1389,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
         if is_emergency:
             red_flag_tips = ["URGENT EMERGENCY EVALUATION REQUIRED: Report immediately to an Emergency Department."] + [r for r in red_flag_tips if "EMERGENCY EVALUATION" not in r]
 
-        return {
+        care_dict = {
             "is_fallback": False,
             "is_live": True,
             "fallback_used": False,
@@ -1325,10 +1421,14 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
             "clinical_donts": clinical_donts,
             "red_flags": red_flag_tips
         }
+        return _enforce_target_language_consistency(care_dict, lang_code)
 
     # 3. Resilient Local Dataset Fallback (When APIs are unreachable)
     _logger.warning("[CareRecommendations] All AI providers failed — using LOCAL dataset fallback for: '%s'", top_condition)
-    return _build_local_dataset_fallback(symptoms, user_context, top_condition, lang_code)
+    return _enforce_target_language_consistency(
+        _build_local_dataset_fallback(symptoms, user_context, top_condition, lang_code),
+        lang_code
+    )
 
 
 
@@ -1444,7 +1544,22 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
     # 3. Symptom-driven dynamic fallback
     parsed = []
 
-    if any(f in sym_lower for f in ["fever", "pyrexia", "temperature", "बुखार", "તાવ"]):
+    if condition_supports_ophthalmic(top_condition, symptoms):
+        parsed.append({
+            "name": "Carboxymethylcellulose 0.5% Eye Drops (Refresh Tears / Add Tears)",
+            "indication": "Relieves ocular dryness, irritation, eye strain, and burning discomfort." if lang_code == "en" else ("आँखों के सूखेपन, जलन, खिंचाव और दर्द में राहत देती है।" if lang_code == "hi" else "આંખની શુષ્કતા, બળતરા અને ખેંચાણમાં રાહત આપે છે."),
+            "dosage": "Instill 1 to 2 drops in the affected eye(s) 3 to 4 times daily as needed." if lang_code == "en" else "प्रभावित आँख में 1 से 2 बूँद दिन में 3 से 4 बार डालें।",
+            "course_duration": "3 to 5 Days" if lang_code == "en" else "3 से 5 दिन",
+            "food_timing": "Ophthalmic Instillation (आँख में डालने के लिए)" if lang_code != "en" else "Ophthalmic Instillation",
+            "time_of_day": "3-4 times daily as needed",
+            "type": "OTC",
+            "form": "Eye Drops",
+            "route": "Ophthalmic",
+            "warnings": "Do not touch the dropper tip to any surface. If severe pain, vision changes, or redness persist, consult an ophthalmologist immediately." if lang_code == "en" else "ड्रॉपर की टिप को किसी भी सतह से न छुएं। यदि तेज दर्द या दृष्टि में बदलाव हो, तो तुरंत नेत्र विशेषज्ञ से परामर्श लें।",
+            "source": "DocMindX Clinical Master"
+        })
+        return parsed
+    elif any(f in sym_lower for f in ["fever", "pyrexia", "temperature", "बुखार", "તાવ"]):
         parsed.append({
             "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
             "indication": "Reduces elevated body temperature and body aches." if lang_code == "en" else "बुखार और बदन दर्द में राहत देता है।",
@@ -1471,17 +1586,18 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
         "cough", "throat", "pharyngitis", "runny nose", "rhinorrhea", "cold", "nasal",
         "congestion", "udhras", "udharas", "khasi", "khansi", "gala", "gale", "ઉધરસ", "ગળું"
     ]):
-        parsed.append({
-            "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
-            "indication": "Relieves sore throat irritation, headache, and body aches." if lang_code == "en" else "गले के दर्द और बदन दर्द में राहत देता है।",
-            "dosage": "1 Tablet SOS / every 8 hours after meals.",
-            "course_duration": "3 to 5 Days" if lang_code == "en" else "3 से 5 दिन",
-            "food_timing": ft_after,
-            "time_of_day": "After meals",
-            "type": "OTC",
-            "warnings": "Do not exceed 3000mg total paracetamol per 24 hours.",
-            "source": "DocMindX Clinical Master"
-        })
+        if any(f in sym_lower for f in ["fever", "headache", "body ache", "chills", "बुखार", "सिरदर्द", "માથું"]):
+            parsed.append({
+                "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
+                "indication": "Relieves sore throat irritation, headache, and body aches." if lang_code == "en" else "गले के दर्द और बदन दर्द में राहत देता है।",
+                "dosage": "1 Tablet SOS / every 8 hours after meals.",
+                "course_duration": "3 to 5 Days" if lang_code == "en" else "3 से 5 दिन",
+                "food_timing": ft_after,
+                "time_of_day": "After meals",
+                "type": "OTC",
+                "warnings": "Do not exceed 3000mg total paracetamol per 24 hours.",
+                "source": "DocMindX Clinical Master"
+            })
         parsed.append({
             "name": "Levocetirizine 5mg (Levocet / 1-AL)",
             "indication": "Relieves runny nose, sneezing, and upper respiratory allergic congestion." if lang_code == "en" else "नाक बहने, छींकने और गले की एलर्जी में राहत देता है।",
@@ -1493,7 +1609,7 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
             "warnings": "May cause mild drowsiness. Avoid driving or operating machinery.",
             "source": "DocMindX Clinical Master"
         })
-    elif any(p in sym_lower for p in ["back", "joint", "muscle", "sprain", "strain", "stiff", "tendon", "ligament", "ache", "pain", "કમર", "કમરનો દુખાવો", "પીઠ", "દર્દ"]):
+    elif any(p in sym_lower for p in ["back", "joint", "muscle", "sprain", "strain", "stiff", "tendon", "ligament", "ache", "કમર", "કમરનો દુખાવો", "પીઠ"]):
         parsed.append({
             "name": "Ibuprofen 400mg (Brufen / Ibugesic)",
             "indication": "Relieves musculoskeletal inflammation and pain.",
@@ -1518,11 +1634,11 @@ def _get_condition_fallback_medicines(top_condition: str, symptoms: list, lang_c
                 "source": "DocMindX Clinical Master"
             })
     else:
-        # Only add paracetamol if pain was explicitly reported
-        if any(w in sym_lower for w in ["pain", "discomfort", "sore", "hurt", "दर्द", "દુખાવો"]):
+        # Only add paracetamol if fever or general headache/body ache was explicitly reported
+        if any(w in sym_lower for w in ["fever", "headache", "body ache", "chills", "बुखार", "सिरदर्द", "बदन दर्द", "માથું"]):
             parsed.append({
                 "name": "Paracetamol 650mg (Dolo 650 / Calpol)",
-                "indication": "Symptomatic pain and mild discomfort relief.",
+                "indication": "Symptomatic fever and headache relief.",
                 "dosage": "1 Tablet SOS when needed.",
                 "course_duration": "3 Days",
                 "food_timing": ft_after,
@@ -2046,10 +2162,14 @@ def _build_local_dataset_fallback(
             }]
         }
 
+    is_uncertain_or_emergency = is_emergency or not top_condition or any(k in cond_lower for k in [
+        "acute", "shock", "rabies", "glaucoma", "cardiac", "stroke", "coronary", "cancer", "trauma", "unspecified", "investigation", "chronic"
+    ])
+
     # Fallback Warning Message, Dietary & Clinical Care
     if lang_code == "hi":
         warning_msg = " [ऑफलाइन क्लिनिकल डेटासेट मोड]: लाइव AI API से संपर्क नहीं हो सका। मानकीकृत स्थानीय डेटासेट से डेटा दिखाया जा रहा है।"
-        recovery_txt = f"5 – 7 दिन ({top_condition or 'लक्षणों'} के लिए उचित दवा, पर्याप्त आराम और तरल पदार्थों के सेवन के साथ)।"
+        recovery_txt = "रिकवरी की समय-सीमा डॉक्टर द्वारा सटीक जांच, अंतर्निहित कारण और उपचार पर निर्भर करती है।" if is_uncertain_or_emergency else f"साधारण {top_condition or 'लक्षणों'} में आमतौर पर 5 – 7 दिन (उचित दवा, पर्याप्त आराम और तरल पदार्थों के सेवन के साथ)।"
         summary_txt = f"क्लिनिकल विश्लेषण के अनुसार लक्षण {top_condition or 'संक्रमण'} की ओर संकेत करते हैं। पर्याप्त विश्राम और समय पर दवा लेने की सलाह दी जाती है।"
         foods_to_eat = [
             f"{top_condition or 'बीमारी'} में सुपाच्य और पौष्टिक भोजन जैसे मूंग दाल की खिचड़ी, दलिया या सूप लें।",
@@ -2078,7 +2198,7 @@ def _build_local_dataset_fallback(
         ]
     elif lang_code == "gu":
         warning_msg = " [ઓફલાઇન ક્લિનિકલ ડેટાસેટ મોડ]: લાઈવ AI API કનેક્ટ થઈ શક્યું નથી. સ્થાનિક પ્રમાણિત ડેટાસેટ દર્શાવવામાં આવી રહ્યું છે."
-        recovery_txt = f"5 – 7 દિવસ ({top_condition or 'લક્ષણો'} માટે સાચી દવા, પૂરતો આરામ અને પ્રવાહીના સેવન સાથે)."
+        recovery_txt = "રિકવરીનો સમયગાળો તબીબી તપાસ, ચોક્કસ નિદાન અને યોગ્ય સારવાર પર આધાર રાખે છે." if is_uncertain_or_emergency else f"સામાન્ય {top_condition or 'લક્ષણો'} માં સામાન્ય રીતે 5 – 7 દિવસ (સાચી દવા, પૂરતો આરામ અને પ્રવાહીના સેવન સાથે)."
         summary_txt = f"ક્લિનિકલ વિશ્લેષણ મુજબ લક્ષણો {top_condition or 'ચેપ / સંક્રમણ'} સૂચવે છે. પૂરતો આરામ અને સમયસર દવા લેવાની ભલામણ કરવામાં આવે છે."
         foods_to_eat = [
             f"{top_condition or 'રિકવરી'} દરમિયાન સરળતાથી પચી જાય તેવો હળવો ખોરાક જેમ કે મગની દાળની ખીચડી, રાબ અને સૂપ લો.",
@@ -2107,7 +2227,7 @@ def _build_local_dataset_fallback(
         ]
     else:
         warning_msg = " [Offline Clinical Dataset Fallback Active]: Live AI APIs could not be reached. Displaying standardized local clinical dataset."
-        recovery_txt = f"Expected recovery is 5 – 7 days for {top_condition or 'acute condition'} with adequate rest, hydration, and proper therapy."
+        recovery_txt = "Recovery timeframe depends on clinical evaluation and definitive diagnosis by a healthcare professional." if is_uncertain_or_emergency else f"Expected recovery typically ranges from 5 – 7 days for uncomplicated {top_condition or 'acute illness'} with adequate rest, hydration, and proper supportive care."
         summary_txt = f"Clinical triage shows symptoms aligning with {top_condition or 'acute illness'}. Prompt hydration and symptomatic management indicated."
         foods_to_eat = [
             f"Eat freshly prepared, nutrient-dense, easily digestible meals (khichdi, oats, clear vegetable soups) for {top_condition or 'recovery'}.",
@@ -2208,42 +2328,175 @@ def get_compress_guidance(disease_name: str = "", symptoms: list = None, lang_co
     }
 
 
-def localize_care_recommendations(care_res: dict, target_lang_code: str) -> dict:
+def contains_indic_script(data: Any) -> bool:
+    """Recursively checks if string or nested structures contain Gujarati (U+0A80-0AFF) or Devanagari (U+0900-097F)."""
+    if isinstance(data, str):
+        return bool(re.search(r'[\u0900-\u097F\u0A80-\u0AFF]', data))
+    elif isinstance(data, dict):
+        return any(contains_indic_script(v) for v in data.values())
+    elif isinstance(data, (list, tuple, set)):
+        return any(contains_indic_script(i) for i in data)
+    return False
+
+
+_GUJARATI_TO_ASCII_DIGITS = {
+    '૦': '0', '૧': '1', '૨': '2', '૩': '3', '૪': '4',
+    '૫': '5', '૬': '6', '૭': '7', '૮': '8', '૯': '9'
+}
+_DEVANAGARI_TO_ASCII_DIGITS = {
+    '०': '0', '१': '1', '२': '2', '३': '3', '४': '4',
+    '५': '5', '६': '6', '७': '7', '८': '8', '९': '9'
+}
+
+_EXACT_CLINICAL_TRANSLATIONS_EN = {
+    # Dosages / counts
+    "૧ થી ૨ બુંદ": "1 to 2 drops",
+    "1 થી 2 બુંદ": "1 to 2 drops",
+    "1 થી 2 ટીપાં": "1 to 2 drops",
+    "૧ થી ૨ ટીપાં": "1 to 2 drops",
+    "૧-૨ બુંદ": "1 to 2 drops",
+    "1-2 બુંદ": "1 to 2 drops",
+    "૫ થી ૭ દિવસ": "5 to 7 days",
+    "5 થી 7 દિવસ": "5 to 7 days",
+    "૫ થી ૭ દિવસો": "5 to 7 days",
+    "૩ થી ૫ દિવસ": "3 to 5 days",
+    "3 થી 5 દિવસ": "3 to 5 days",
+    "૭ થી ૧૪ દિવસ": "7 to 14 days",
+    "7 થી 14 દિવસ": "7 to 14 days",
+    "૧ થી ૨ ગોળી": "1 to 2 tablets",
+    "1 થી 2 ગોળી": "1 to 2 tablets",
+    "૧ ગોળી": "1 tablet",
+    "1 ગોળી": "1 tablet",
+    "૨ ગોળી": "2 tablets",
+    "2 ગોળી": "2 tablets",
+    # Timing / frequency
+    "દિવસે ૨ થી ૩ વખત": "2 to 3 times daily",
+    "દિવસે 2 થી 3 વખત": "2 to 3 times daily",
+    "દિવસે ૧ થી ૨ વખત": "1 to 2 times daily",
+    "દિવસે 1 થી 2 વખત": "1 to 2 times daily",
+    "દિવસે ૨-૩ વખત": "2 to 3 times daily",
+    "દિવસે 3 થી 4 વખત": "3 to 4 times daily",
+    "દિવસે ૩ થી ૪ વખત": "3 to 4 times daily",
+    "૫ થી ૧૦ મિનિટ માટે": "for 5 to 10 minutes",
+    "5 થી 10 મિનિટ માટે": "for 5 to 10 minutes",
+    "૧૦ થી ૧૫ મિનિટ માટે": "for 10 to 15 minutes",
+    "10 થી 15 મિનિટ માટે": "for 10 to 15 minutes",
+    "જમ્યા પછી": "After Food",
+    "જમ્યા પહેલા": "Before Food (Empty Stomach)",
+    "ખાલી પેટે": "Before Food (Empty Stomach)",
+    "પાણી સાથે": "With Water",
+    # Specialists & Procedures
+    "આંખના નિષ્ણાત (Ophthalmologist)": "Ophthalmologist (Eye Specialist)",
+    "આંખના નિષ્ણાત": "Ophthalmologist (Eye Specialist)",
+    "નેત્ર નિષ્ણાત": "Ophthalmologist (Eye Specialist)",
+    "ઓપ્થાલમિક પ્રેશર મૂલ્યાંકન અને ગ્લુકોમા સ્ક્રીનીંગ": "Ophthalmic Pressure Evaluation and Glaucoma Screening",
+    "ઓપ્થાલમિક પ્રેશર મૂલ્યાંકન": "Ophthalmic Pressure Evaluation",
+    "ગ્લુકોમા સ્ક્રીનીંગ": "Glaucoma Screening",
+    "આંખનું અંદરનું દબાણ (IOP) માપવા અને ઓપ્ટિક નર્વની તપાસ માટે વિશિષ્ટ ક્લિનિકલ મૂલ્યાંકન.": "Specialized clinical evaluation to measure intraocular pressure (IOP) and examine the optic nerve.",
+    # Compresses
+    "આંખ માટે ઠંડા પાણીની હળવી પટ્ટી (Cold Compress)": "Gentle Cold Water Compress for Eyes (Cold Compress)",
+    "આંખ માટે ઠંડા પાણીની હળવી પટ્ટી": "Gentle Cold Water Compress for Eyes",
+    "ઠંડા પાણીની હળવી પટ્ટી (Cold Compress)": "Gentle Cold Water Compress (Cold Compress)",
+    "ઠંડા પાણીની હળવી પટ્ટી": "Cold Water Compress",
+    "ઠંડા પાણીના પોતા": "Cold Sponging / Compress",
+    "ગરમ શેક": "Warm Fomentation",
+    "બરફનો શેક": "Cold / Ice Pack Compress",
+    "સ્વચ્છ કપડાને ઠંડા પાણીમાં પલાળીને બંધ આંખો પર હળવા હાથે મૂકો.": "Soak a clean cloth in cold water and gently place it over closed eyes.",
+    "આંખ પર વધુ પડતું દબાણ ન કરવું અને સ્વચ્છ કપડાનો જ ઉપયોગ કરવો.": "Do not apply excessive pressure on the eye and use only a clean cloth.",
+    # Yoga & Routines
+    "શાંતિ મુદ્રા અને પ્રાણાયામ": "Shanti Mudra & Deep Breathing (Pranayama)",
+    "શાંતિ મુદ્રા અને પ્રાણાયામ (Anulom Vilom Pranayama)": "Anulom Vilom Pranayama (Shanti Mudra & Deep Breathing)",
+}
+
+
+def sanitize_indic_text_to_pure_english(text: str) -> str:
+    """Converts any Gujarati or Devanagari numerals, medical phrases, and terminology into 100% pure English."""
+    if not text or not isinstance(text, str):
+        return text if text is not None else ""
+
+    stripped = text.strip()
+    if stripped in _EXACT_CLINICAL_TRANSLATIONS_EN:
+        return _EXACT_CLINICAL_TRANSLATIONS_EN[stripped]
+
+    res = text
+
+    # Handle parenthetical pattern: "ગુજરાતી (English Name)"
+    paren_match = re.match(r'^([\u0A80-\u0AFF\s&,/-]+)\s*\(([^)]+)\)$', res.strip())
+    if paren_match:
+        eng_candidate = paren_match.group(2).strip()
+        if not re.search(r'[\u0900-\u097F\u0A80-\u0AFF]', eng_candidate):
+            return eng_candidate
+
+    # Apply exact dictionary substrings
+    for k, v in sorted(_EXACT_CLINICAL_TRANSLATIONS_EN.items(), key=lambda x: len(x[0]), reverse=True):
+        if k in res:
+            res = res.replace(k, v)
+
+    # Convert Gujarati and Devanagari numerals to ASCII Arabic digits
+    for g_d, a_d in _GUJARATI_TO_ASCII_DIGITS.items():
+        res = res.replace(g_d, a_d)
+    for h_d, a_d in _DEVANAGARI_TO_ASCII_DIGITS.items():
+        res = res.replace(h_d, a_d)
+
+    # Replace common medical and dosage words
+    word_replacements = [
+        (r'બુંદો|બુંદ|ટીપાં|ટીપું', 'drops'),
+        (r'દિવસો|દિવસ', 'days'),
+        (r'કલાકો|કલાક', 'hours'),
+        (r'મિનિટો|મિનિટ', 'minutes'),
+        (r'અઠવાડિયા|અઠવાડિયું', 'weeks'),
+        (r'મહિના|મહિનો', 'months'),
+        (r'વખત|વાર', 'times'),
+        (r'જમ્યા\s*પછી', 'After Food'),
+        (r'જમ્યા\s*પહેલા', 'Before Food'),
+        (r'ખાલી\s*પેટે', 'Before Food (Empty Stomach)'),
+        (r'પાણી\s*સાથે', 'With Water'),
+        (r'દરરોજ|દિવસે', 'daily'),
+        (r'\bથી\b|\bસુધી\b', 'to'),
+        (r'\bમાટે\b', 'for'),
+        (r'ગોળી|ટેબ્લેટ', 'Tablet'),
+        (r'કેપ્સ્યુલ', 'Capsule'),
+        (r'આંખના\s*નિષ્ણાત|નેત્ર\s*નિષ્ણાત', 'Ophthalmologist'),
+        (r'આંખ|આંખો', 'Eye'),
+        (r'દબાણ', 'pressure'),
+        (r'હળવા\s*હાથે', 'gently'),
+        (r'સ્વચ્છ\s*કપડું', 'clean cloth'),
+        (r'ઠંડા\s*પાણી', 'cold water'),
+        (r'પટ્ટી|પોતા', 'compress'),
+        (r'શેક', 'fomentation'),
+    ]
+    for pattern, repl in word_replacements:
+        res = re.sub(pattern, repl, res, flags=re.IGNORECASE)
+
+    res = re.sub(r'\s+', ' ', res).strip()
+
+    # If residual Gujarati characters exist, strip them cleanly
+    if re.search(r'[\u0A80-\u0AFF]', res):
+        cleaned = re.sub(r'[\u0A80-\u0AFF]+', '', res).strip()
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        if len(cleaned) >= 2:
+            res = cleaned
+
+    return res
+
+
+def _enforce_target_language_consistency(care_res: dict, target_lang_code: str) -> dict:
     """
-    Translates textual clinical fields of an existing care recommendation into the target language
-    while strictly locking and preserving the exact same medicines (gallery items), dosages, and yoga routines.
+    Universally guarantees that all text, numbers, dosages, routines, and therapies
+    conform 100% to the target language script without language mixing.
     """
     if not care_res or not isinstance(care_res, dict):
         return care_res
 
-    current_lang = care_res.get("lang_code", "en")
-    if current_lang == target_lang_code:
-        return care_res
+    target_lang = target_lang_code or "en"
 
-    _LANG_NAME_MAP = {
-        "en": "English",
-        "hi": "Hindi (हिंदी)",
-        "gu": "Gujarati (ગુજરાતી)",
-    }
-    lang_name = _LANG_NAME_MAP.get(target_lang_code, "English")
-
-    # Update seasonal context
-    st_val = care_res.get("state") or "Gujarat"
-    seasonal_data = get_seasonal_health_context(st_val, lang_code=target_lang_code)
-    care_res["seasonal_context"] = seasonal_data
-    care_res["seasonal_alert"] = {
-        "is_active": True,
-        "title": seasonal_data["alert_title"],
-        "message": seasonal_data["alert_description"]
-    }
-
-    # Food timing translation — English, Hindi, Gujarati
+    # Food timing normalization
     ft_map = {
         "en": {"after": "After Food", "before": "Before Food (Empty Stomach)", "water": "With Water (Sip Throughout Day)"},
         "hi": {"after": "भोजन के बाद", "before": "भोजन से पहले (खाली पेट)", "water": "पानी के साथ (दिन भर घूंट लें)"},
         "gu": {"after": "જમ્યા પછી", "before": "જમ્યા પહેલા (ખાલી પેટે)", "water": "પાણી સાથે (દિવસ દરમ્યાન)"},
     }
-    target_ft = ft_map.get(target_lang_code, ft_map["en"])
+    target_ft = ft_map.get(target_lang, ft_map["en"])
     for med in care_res.get("medicine_gallery", []):
         old_ft = str(med.get("food_timing", "")).lower()
         if "before" in old_ft or "खाली" in old_ft or "પહેલા" in old_ft or "pehle" in old_ft:
@@ -2253,7 +2506,127 @@ def localize_care_recommendations(care_res: dict, target_lang_code: str) -> dict
         else:
             med["food_timing"] = target_ft["after"]
 
-    # Bundle text items to translate
+    if target_lang == "en":
+        # 1. Root text
+        if care_res.get("summary"):
+            care_res["summary"] = sanitize_indic_text_to_pure_english(care_res["summary"])
+        if care_res.get("recovery_duration"):
+            care_res["recovery_duration"] = sanitize_indic_text_to_pure_english(care_res["recovery_duration"])
+        if care_res.get("hydration_advice"):
+            care_res["hydration_advice"] = sanitize_indic_text_to_pure_english(care_res["hydration_advice"])
+
+        # 2. Lists
+        for k in ["foods_to_eat", "foods_to_avoid", "clinical_dos", "clinical_donts", "red_flags", "dietary_guidelines"]:
+            if care_res.get(k) and isinstance(care_res[k], list):
+                care_res[k] = [sanitize_indic_text_to_pure_english(item) for item in care_res[k] if item]
+
+        # 3. Medicine Gallery
+        for med in care_res.get("medicine_gallery", []):
+            if isinstance(med, dict):
+                for mf in ["name", "indication", "dosage", "course_duration", "food_timing", "warnings"]:
+                    if med.get(mf):
+                        med[mf] = sanitize_indic_text_to_pure_english(med[mf])
+
+        # 4. Supportive Yoga
+        for y in care_res.get("yoga_recommendations", []):
+            if isinstance(y, dict):
+                for yf in ["name", "benefits", "instructions"]:
+                    if y.get(yf):
+                        y[yf] = sanitize_indic_text_to_pure_english(y[yf])
+                y_name_clean = y.get("name", "Restorative Yoga")
+                y["youtube_url"] = get_youtube_search_url(y_name_clean)
+
+        # 5. Thermal Compress Guidance
+        comp = care_res.get("compress_guidance")
+        if comp and isinstance(comp, dict):
+            for cf in ["title", "instructions", "text", "duration", "duration_and_frequency", "cautions", "precautions"]:
+                if comp.get(cf):
+                    comp[cf] = sanitize_indic_text_to_pure_english(comp[cf])
+
+        # 6. Specialized Hospital Clinical Therapies
+        spec = care_res.get("specialized_therapies")
+        if spec and isinstance(spec, dict):
+            for sf in ["therapy_name", "specialist_type", "specialist_consult", "overview", "patient_guidance"]:
+                if spec.get(sf):
+                    spec[sf] = sanitize_indic_text_to_pure_english(spec[sf])
+            for th in spec.get("therapies", []):
+                if isinstance(th, dict):
+                    for tf in ["name", "description", "setting", "category"]:
+                        if th.get(tf):
+                            th[tf] = sanitize_indic_text_to_pure_english(th[tf])
+
+        # 7. Injections & IV Guidance
+        inj_obj = care_res.get("injections_and_iv")
+        if inj_obj and isinstance(inj_obj, dict):
+            for i_field in ["clinical_rationale", "admin_setting"]:
+                if inj_obj.get(i_field):
+                    inj_obj[i_field] = sanitize_indic_text_to_pure_english(inj_obj[i_field])
+            for inj_item in inj_obj.get("items", []) + inj_obj.get("injections", []):
+                if isinstance(inj_item, dict):
+                    for ifield in ["name", "dose", "purpose", "precautions", "administration_setting"]:
+                        if inj_item.get(ifield):
+                            inj_item[ifield] = sanitize_indic_text_to_pure_english(inj_item[ifield])
+
+        # 8. Physiotherapy Guidance
+        phys = care_res.get("physiotherapy_guidance")
+        if phys and isinstance(phys, dict):
+            for pf in ["clinical_rationale", "condition_target", "cautions"]:
+                if phys.get(pf):
+                    phys[pf] = sanitize_indic_text_to_pure_english(phys[pf])
+            for ex in phys.get("exercises", []):
+                if isinstance(ex, dict):
+                    for ef in ["name", "focus", "target_area", "description", "instructions", "caution"]:
+                        if ex.get(ef):
+                            ex[ef] = sanitize_indic_text_to_pure_english(ex[ef])
+                    ex_name_c = ex.get("name", "Physiotherapy")
+                    ex["youtube_search_url"] = get_youtube_search_url(f"{ex_name_c} physiotherapy exercise tutorial")
+                    ex["youtube_url"] = ex["youtube_search_url"]
+
+    care_res["lang_code"] = target_lang
+    return care_res
+
+
+def localize_care_recommendations(care_res: dict, target_lang_code: str) -> dict:
+    """
+    Translates textual clinical fields of an existing care recommendation into the target language
+    while strictly locking and preserving the exact same medicines, dosages, and yoga routines.
+    Universally covers medicines (dosage, course), yoga (names, benefits), compress, specialized therapies,
+    injections, and physiotherapy.
+    """
+    if not care_res or not isinstance(care_res, dict):
+        return care_res
+
+    current_lang = care_res.get("lang_code", "en")
+    target_lang = target_lang_code or "en"
+
+    # Only return early if languages match AND no leftover Indic script exists when target is English
+    if current_lang == target_lang and not (target_lang == "en" and contains_indic_script(care_res)):
+        return care_res
+
+    _LANG_NAME_MAP = {
+        "en": "English",
+        "hi": "Hindi (हिंदी)",
+        "gu": "Gujarati (ગુજરાતી)",
+    }
+    lang_name = _LANG_NAME_MAP.get(target_lang, "English")
+
+    # Update seasonal context
+    st_val = care_res.get("state") or "Gujarat"
+    seasonal_data = get_seasonal_health_context(st_val, lang_code=target_lang)
+    care_res["seasonal_context"] = seasonal_data
+    care_res["seasonal_alert"] = {
+        "is_active": True,
+        "title": seasonal_data["alert_title"],
+        "message": seasonal_data["alert_description"]
+    }
+
+    # Compress guidance references
+    comp_ref = care_res.get("compress_guidance") or {}
+    spec_ref = care_res.get("specialized_therapies") or {}
+    inj_ref = care_res.get("injections_and_iv") or {}
+    phys_ref = care_res.get("physiotherapy_guidance") or {}
+
+    # Comprehensive Bundle of text items to translate across all clinical tiers
     items_to_translate = {
         "summary": care_res.get("summary", ""),
         "recovery_duration": care_res.get("recovery_duration", ""),
@@ -2263,15 +2636,46 @@ def localize_care_recommendations(care_res: dict, target_lang_code: str) -> dict
         "clinical_dos": care_res.get("clinical_dos", []),
         "clinical_donts": care_res.get("clinical_donts", []),
         "red_flags": care_res.get("red_flags", []),
+        # Medicine Gallery
         "med_indications": [m.get("indication", "") for m in care_res.get("medicine_gallery", [])],
-        "yoga_benefits": [y.get("benefits", "") for y in care_res.get("yoga_recommendations", [])]
+        "med_dosages": [m.get("dosage", "") for m in care_res.get("medicine_gallery", [])],
+        "med_courses": [m.get("course_duration", "") for m in care_res.get("medicine_gallery", [])],
+        "med_warnings": [m.get("warnings", "") for m in care_res.get("medicine_gallery", [])],
+        # Supportive Yoga
+        "yoga_names": [y.get("name", "") for y in care_res.get("yoga_recommendations", [])],
+        "yoga_benefits": [y.get("benefits", "") for y in care_res.get("yoga_recommendations", [])],
+        "yoga_instructions": [y.get("instructions", "") for y in care_res.get("yoga_recommendations", [])],
+        # Thermal Compress Guidance
+        "compress_title": comp_ref.get("title", ""),
+        "compress_instructions": comp_ref.get("instructions", "") or comp_ref.get("text", ""),
+        "compress_duration": comp_ref.get("duration", "") or comp_ref.get("duration_and_frequency", ""),
+        "compress_cautions": comp_ref.get("cautions", "") or comp_ref.get("precautions", ""),
+        # Specialized Clinical Therapies
+        "spec_therapy_name": spec_ref.get("therapy_name", ""),
+        "spec_specialist": spec_ref.get("specialist_type", "") or spec_ref.get("specialist_consult", ""),
+        "spec_overview": spec_ref.get("overview", ""),
+        "spec_guidance": spec_ref.get("patient_guidance", ""),
+        "spec_therapies_names": [th.get("name", "") for th in spec_ref.get("therapies", [])],
+        "spec_therapies_descs": [th.get("description", "") for th in spec_ref.get("therapies", [])],
+        # Injections & IV Guidance
+        "inj_rationale": inj_ref.get("clinical_rationale", ""),
+        "inj_admin_setting": inj_ref.get("admin_setting", ""),
+        "inj_purposes": [i.get("purpose", "") for i in inj_ref.get("items", [])],
+        "inj_precautions": [i.get("precautions", "") for i in inj_ref.get("items", [])],
+        # Physiotherapy Guidance
+        "physio_rationale": phys_ref.get("clinical_rationale", ""),
+        "physio_target": phys_ref.get("condition_target", ""),
+        "physio_cautions": phys_ref.get("cautions", ""),
+        "physio_names": [e.get("name", "") for e in phys_ref.get("exercises", [])],
+        "physio_instructions": [e.get("instructions", "") or e.get("description", "") for e in phys_ref.get("exercises", [])]
     }
 
     trans_prompt = f"""You are DocMindX Medical Localization AI.
-Translate this clinical care JSON dictionary from {current_lang} into 100% pure {lang_name} ({target_lang_code}).
+Translate this clinical care JSON dictionary from {current_lang} into 100% pure {lang_name} ({target_lang}).
 CRITICAL RULES:
 1. All text MUST be strictly in {lang_name} script without mixing other languages.
-2. Return STRICT JSON with identical keys.
+2. For numbers and durations in English: use standard Arabic numerals (e.g. "1 to 2 drops", "5 to 7 days").
+3. Return STRICT JSON with identical keys.
 
 Bundle to translate:
 {json.dumps(items_to_translate, ensure_ascii=False)}
@@ -2294,7 +2698,7 @@ Bundle to translate:
                     raw_t = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
                     translated_bundle = _clean_json_response(raw_t)
         except Exception as e:
-            print(f"Gemini localization notice: {e}")
+            _logger.warning("Gemini localization notice: %s", e)
 
     if not translated_bundle and GROQ_API_KEY:
         for groq_model in _GROQ_MODELS:
@@ -2316,7 +2720,7 @@ Bundle to translate:
                     if translated_bundle:
                         break
             except Exception as e:
-                print(f"Groq localization notice ({groq_model}): {e}")
+                _logger.warning("Groq localization notice (%s): %s", groq_model, e)
 
     if translated_bundle and isinstance(translated_bundle, dict):
         if translated_bundle.get("summary"):
@@ -2336,17 +2740,105 @@ Bundle to translate:
         if translated_bundle.get("red_flags"):
             care_res["red_flags"] = translated_bundle["red_flags"]
 
+        # 1. Update Medicines
         med_inds = translated_bundle.get("med_indications", [])
-        if isinstance(med_inds, list):
-            for idx, med in enumerate(care_res.get("medicine_gallery", [])):
+        med_dosages = translated_bundle.get("med_dosages", [])
+        med_courses = translated_bundle.get("med_courses", [])
+        med_warns = translated_bundle.get("med_warnings", [])
+        for idx, med in enumerate(care_res.get("medicine_gallery", [])):
+            if isinstance(med, dict):
                 if idx < len(med_inds) and med_inds[idx]:
                     med["indication"] = med_inds[idx]
+                if idx < len(med_dosages) and med_dosages[idx]:
+                    med["dosage"] = med_dosages[idx]
+                if idx < len(med_courses) and med_courses[idx]:
+                    med["course_duration"] = med_courses[idx]
+                if idx < len(med_warns) and med_warns[idx]:
+                    med["warnings"] = med_warns[idx]
 
+        # 2. Update Supportive Yoga
+        yoga_names = translated_bundle.get("yoga_names", [])
         yoga_bens = translated_bundle.get("yoga_benefits", [])
-        if isinstance(yoga_bens, list):
-            for idx, y in enumerate(care_res.get("yoga_recommendations", [])):
+        yoga_insts = translated_bundle.get("yoga_instructions", [])
+        for idx, y in enumerate(care_res.get("yoga_recommendations", [])):
+            if isinstance(y, dict):
+                if idx < len(yoga_names) and yoga_names[idx]:
+                    y["name"] = yoga_names[idx]
                 if idx < len(yoga_bens) and yoga_bens[idx]:
                     y["benefits"] = yoga_bens[idx]
+                if idx < len(yoga_insts) and yoga_insts[idx]:
+                    y["instructions"] = yoga_insts[idx]
+                y["youtube_url"] = get_youtube_search_url(y.get("name", "Yoga Pose"))
 
-    care_res["lang_code"] = target_lang_code
-    return care_res
+        # 3. Update Compress Guidance
+        if comp_ref:
+            if translated_bundle.get("compress_title"):
+                comp_ref["title"] = translated_bundle["compress_title"]
+            if translated_bundle.get("compress_instructions"):
+                comp_ref["instructions"] = translated_bundle["compress_instructions"]
+                comp_ref["text"] = translated_bundle["compress_instructions"]
+            if translated_bundle.get("compress_duration"):
+                comp_ref["duration"] = translated_bundle["compress_duration"]
+                comp_ref["duration_and_frequency"] = translated_bundle["compress_duration"]
+            if translated_bundle.get("compress_cautions"):
+                comp_ref["cautions"] = translated_bundle["compress_cautions"]
+                comp_ref["precautions"] = translated_bundle["compress_cautions"]
+
+        # 4. Update Specialized Hospital Clinical Therapies
+        if spec_ref:
+            if translated_bundle.get("spec_therapy_name"):
+                spec_ref["therapy_name"] = translated_bundle["spec_therapy_name"]
+            if translated_bundle.get("spec_specialist"):
+                spec_ref["specialist_type"] = translated_bundle["spec_specialist"]
+                spec_ref["specialist_consult"] = translated_bundle["spec_specialist"]
+            if translated_bundle.get("spec_overview"):
+                spec_ref["overview"] = translated_bundle["spec_overview"]
+            if translated_bundle.get("spec_guidance"):
+                spec_ref["patient_guidance"] = translated_bundle["spec_guidance"]
+            sp_names = translated_bundle.get("spec_therapies_names", [])
+            sp_descs = translated_bundle.get("spec_therapies_descs", [])
+            for th_idx, th in enumerate(spec_ref.get("therapies", [])):
+                if isinstance(th, dict):
+                    if th_idx < len(sp_names) and sp_names[th_idx]:
+                        th["name"] = sp_names[th_idx]
+                    if th_idx < len(sp_descs) and sp_descs[th_idx]:
+                        th["description"] = sp_descs[th_idx]
+
+        # 5. Update Injections & IV Guidance
+        if inj_ref:
+            if translated_bundle.get("inj_rationale"):
+                inj_ref["clinical_rationale"] = translated_bundle["inj_rationale"]
+            if translated_bundle.get("inj_admin_setting"):
+                inj_ref["admin_setting"] = translated_bundle["inj_admin_setting"]
+            inj_purp = translated_bundle.get("inj_purposes", [])
+            inj_prec = translated_bundle.get("inj_precautions", [])
+            for i_idx, inj in enumerate(inj_ref.get("items", [])):
+                if isinstance(inj, dict):
+                    if i_idx < len(inj_purp) and inj_purp[i_idx]:
+                        inj["purpose"] = inj_purp[i_idx]
+                    if i_idx < len(inj_prec) and inj_prec[i_idx]:
+                        inj["precautions"] = inj_prec[i_idx]
+
+        # 6. Update Physiotherapy Guidance
+        if phys_ref:
+            if translated_bundle.get("physio_rationale"):
+                phys_ref["clinical_rationale"] = translated_bundle["physio_rationale"]
+            if translated_bundle.get("physio_target"):
+                phys_ref["condition_target"] = translated_bundle["physio_target"]
+            if translated_bundle.get("physio_cautions"):
+                phys_ref["cautions"] = translated_bundle["physio_cautions"]
+            p_names = translated_bundle.get("physio_names", [])
+            p_insts = translated_bundle.get("physio_instructions", [])
+            for e_idx, ex in enumerate(phys_ref.get("exercises", [])):
+                if isinstance(ex, dict):
+                    if e_idx < len(p_names) and p_names[e_idx]:
+                        ex["name"] = p_names[e_idx]
+                    if e_idx < len(p_insts) and p_insts[e_idx]:
+                        ex["instructions"] = p_insts[e_idx]
+                        ex["description"] = p_insts[e_idx]
+                    ex_name_clean = ex.get("name", "Physiotherapy")
+                    ex["youtube_search_url"] = get_youtube_search_url(f"{ex_name_clean} physiotherapy exercise tutorial")
+                    ex["youtube_url"] = ex["youtube_search_url"]
+
+    # Final deterministic enforcement to guarantee 100% clean target language script without leftover Indic text
+    return _enforce_target_language_consistency(care_res, target_lang)

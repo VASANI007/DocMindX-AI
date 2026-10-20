@@ -118,11 +118,30 @@ def extract_text_from_file(uploaded_file) -> str:
         ]
 
         prompt = (
-            "You are an expert clinical OCR assistant. Transcribe and extract all printed and handwritten text "
-            "from this medical document, doctor prescription, diagnostic imaging / radiology report, or laboratory test. "
-            "Accurately transcribe all medication names, dosages, timings, doctor notes, radiology findings, "
-            "clinical impressions, test parameters, observed values, units, and reference intervals line-by-line.\n"
-            "Output ONLY the extracted text."
+            "You are an expert clinical medical vision assistant, diagnostic radiologist, and clinical OCR specialist.\n\n"
+            "Analyze this uploaded medical image or document and provide a complete clinical transcription and observation:\n\n"
+            "1. IF THIS IS A PRINTED OR HANDWRITTEN MEDICAL DOCUMENT / REPORT:\n"
+            "(e.g., Blood/pathology lab report, doctor prescription, printed radiology report, discharge summary, clinical record)\n"
+            "- Accurately transcribe all printed and handwritten text line-by-line.\n"
+            "- Extract patient details, clinical test parameters, observed values, units, reference intervals, doctor notes, diagnosis, Rx medications, dosage, frequency, and food timings.\n\n"
+            "2. IF THIS IS A MEDICAL RADIOGRAPHIC SCAN / DIAGNOSTIC IMAGING IMAGE:\n"
+            "(e.g., Chest X-Ray, Bone / Orthopedic / Fracture X-Ray, Dental / OPG X-Ray, Spine X-Ray, CT Scan, HRCT, MRI Scan, Ultrasound / USG, Mammogram)\n"
+            "CRITICAL: Even if there is minimal or NO printed text on the scan, DO NOT return empty or say 'No text found'!\n"
+            "Instead, perform a thorough clinical radiological inspection and output a structured diagnostic imaging transcription in this exact format:\n"
+            "STUDY TYPE / MODALITY: [e.g., Digital Radiograph / Chest X-Ray / Musculoskeletal Bone X-Ray / Dental X-Ray / CT Scan / MRI]\n"
+            "ANATOMICAL REGION & VIEW: [e.g., Chest PA/AP View, Right Wrist AP/Lateral, Knee Joint, Lumbar Spine, etc.]\n"
+            "RADIOLOGICAL & VISUAL FINDINGS:\n"
+            "- [Detailed radiological observation: bone alignment, cortical continuity, fracture line, osteopenia, or joint space narrowing]\n"
+            "- [Detailed radiological observation: soft tissues, lung fields, vascular markings, cardiac shadow, diaphragm, consolidation, effusion, or opacity]\n"
+            "- [Detailed radiological observation: presence of foreign body, medical hardware, implants, or degenerative changes]\n"
+            "CLINICAL IMPRESSION:\n"
+            "[Clear, concise radiological impression summarizing primary finding, acute pathology, or normal anatomical study]\n"
+            "RECOMMENDATIONS:\n"
+            "[Clinical correlation, orthopedic or physician consultation advice, or follow-up imaging if clinically indicated]\n"
+            "- Any patient name, dates, or hospital labels visible on the scan borders.\n\n"
+            "3. IF THIS IS A MEDICATION PACKAGING, BOTTLE, OR BLISTER PACK:\n"
+            "- Transcribe medicine brand name, generic active salts, strength/dosage, manufacturer, and usage instructions.\n\n"
+            "Output the clean transcription and clinical findings."
         )
 
         payload = {
@@ -139,12 +158,23 @@ def extract_text_from_file(uploaded_file) -> str:
             }],
             "generationConfig": {"temperature": 0.1, "maxOutputTokens": 2048}
         }
-        res_data, _, _ = gemini_pool.execute_with_failover(payload=payload, models=models_to_try, timeout=15)
+        res_data, _, _ = gemini_pool.execute_with_failover(payload=payload, models=models_to_try, timeout=20)
         if res_data:
             candidates = res_data.get("candidates", [])
             if candidates:
                 text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
                 if text and len(text) >= 5 and not _is_binary_garbage(text):
                     return text
+
+    # 3. Local Pytesseract Fallback for printed text (if Gemini Vision is unavailable)
+    try:
+        import pytesseract
+        from PIL import Image
+        img_for_tess = Image.open(io.BytesIO(file_bytes))
+        tess_text = pytesseract.image_to_string(img_for_tess)
+        if tess_text and len(tess_text.strip()) > 15 and not _is_binary_garbage(tess_text):
+            return tess_text.strip()
+    except Exception:
+        pass
 
     return ""

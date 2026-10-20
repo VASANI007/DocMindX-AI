@@ -67,7 +67,8 @@ from ai.report_ai.general_clinical_report import GeneralClinicalDocumentAnalyzer
 from ai.report_ai.medical_verifier import verify_medical_document
 from ai.utils.care_recommendations import (
     get_dynamic_clinical_recommendations, get_medicine_gallery,
-    get_youtube_search_url, localize_care_recommendations)
+    get_youtube_search_url, localize_care_recommendations,
+    contains_indic_script)
 from ai.utils.report_generator import (generate_pdf_report,
                                        generate_scan_record_pdf)
 from ai.utils.seasonal_context import (INDIAN_STATES,
@@ -5500,7 +5501,14 @@ if st.session_state["active_panel"] == "Health Assessment":
             care_res = t_res.get("care_recommendations")
             st.session_state["care_recommendations"] = care_res
 
-        if care_res and care_res.get("lang_code") != lang_code:
+        needs_loc = False
+        if care_res:
+            if care_res.get("lang_code") != lang_code:
+                needs_loc = True
+            elif lang_code == "en" and contains_indic_script(care_res):
+                needs_loc = True
+
+        if needs_loc:
             # Language changed on existing assessment: localize text while locking medicines & yoga
             care_res = localize_care_recommendations(care_res, lang_code)
             if care_res and isinstance(care_res, dict):
@@ -7378,7 +7386,8 @@ if st.session_state["active_panel"] == "Health Assessment":
             risk_badge_cls = "mm-badge-critical" if s_risk in ["HIGH", "SEVERE"] else "mm-badge-warning"
             
             s_risk_translated = T.get(f"risk_{s_risk.lower()}", s_risk.upper())
-            outbreak_risk_label = T.get("seasonal_outbreak_risk", "OUTBREAK RISK")
+            is_confirmed_outbreak = bool(seasonal_alert.get("is_verified_outbreak", False))
+            outbreak_risk_label = T.get("seasonal_outbreak_alert", "OUTBREAK ALERT") if is_confirmed_outbreak else T.get("seasonal_advisory_label", "SEASONAL ADVISORY")
             risk_badge_html = f"""<span class="mm-badge" style="background: rgba(239, 68, 68, 0.12); color: #DC2626; border: 1.2px solid rgba(239, 68, 68, 0.35); border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;">{s_risk_translated} {outbreak_risk_label}</span>""" if s_risk in ["HIGH", "SEVERE"] else f"""<span class="mm-badge" style="background: rgba(245, 158, 11, 0.12); color: #D97706; border: 1.2px solid rgba(245, 158, 11, 0.35); border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;">{s_risk_translated} {outbreak_risk_label}</span>"""
             
             pub_adv_label = T.get("public_health_advisory", "Public Health Advisory")
@@ -7831,34 +7840,59 @@ elif st.session_state["active_panel"] == "Medical Report":
                     </div>
                     <div>
                         <b style="font-size: 1.0rem; color: var(--mm-text-primary); display: block;">{T.get("p2_doc_upload_title", "Document Upload & Patient Profile")}</b>
-                        <span style="font-size: 0.80rem; color: var(--mm-text-secondary);">{T.get("p2_doc_upload_sub", "Select document type and provide basic information.")}</span>
+                        <span style="font-size: 0.80rem; color: var(--mm-text-secondary);">{T.get("p2_doc_upload_sub", "Upload any medical report, prescription, or scan for instant AI auto-detection.")}</span>
                     </div>
                 </div>
-                <div style="font-size: 0.82rem; font-weight: 700; color: var(--mm-text-primary); margin-bottom: 6px;">{T.get("p2_select_doc_type", "Select Document Type")}</div>
                 """)
 
-                doc_type_options = [
-                    T.get("doc_type_lab", "Blood / Pathology Lab Report"),
-                    T.get("doc_type_presc", "Doctor Prescription"),
-                    T.get("doc_type_imaging", "Diagnostic Imaging / Radiology Report"),
-                    T.get("doc_type_other", "Other Medical Document")
-                ]
-                saved_choice = st.session_state.get("p2_doc_type_choice", doc_type_options[0])
-                default_idx = 0
-                for idx, opt in enumerate(doc_type_options):
-                    if opt == saved_choice or (saved_choice and (saved_choice in opt or opt in saved_choice)):
-                        default_idx = idx
-                        break
+                # Multilingual supported documents guide line
+                if lang_code == "hi":
+                    _supported_title = "ऑटो-डिटेक्शन सक्रिय (बिना किसी चयन के)"
+                    _supported_badge = "सभी मेडिकल दस्तावेज़ समर्थित"
+                    _supported_text = (
+                        "<b>आप निम्न मेडिकल दस्तावेज़ स्कैन करवा सकते हैं:</b><br/>"
+                        "<b>ब्लड व पैथोलॉजी लैब रिपोर्ट्स</b> (CBC, LFT, KFT, लिपिड, थायरॉइड, शुगर, यूरिन टेस्ट)<br/>"
+                        "<b>डॉक्टर का पर्चा / प्रिस्क्रिप्शन</b> (हस्तलिखित व डिजिटल पर्चे, दवा चार्ट)<br/>"
+                        "<b>डायग्नोस्टिक इमेजिंग व एक्स-रे</b> (चेस्ट एक्स-रे, हड्डी/फ्रैक्चर एक्स-रे, सीटी स्कैन, एमआरआई, अल्ट्रासाउंड)<br/>"
+                        "<b>अस्पताल डिस्चार्ज समरी व क्लिनिकल रिपोर्ट्स</b>"
+                    )
+                elif lang_code == "gu":
+                    _supported_title = "ઓટો-ડિટેક્શન સક્રિય (કોઈપણ પસંદગી વગર)"
+                    _supported_badge = "તમામ મેડિકલ દસ્તાવેજો સપોર્ટેડ"
+                    _supported_text = (
+                        "<b>તમે નીચેના મેડિકલ દસ્તાવેજો સ્કેન કરાવી શકો છો:</b><br/>"
+                        "<b>બ્લડ અને પેથોલોજી લેબ રિપોર્ટ્સ</b> (CBC, LFT, KFT, લિપિડ, થાઇરોઇડ, ડાયાબિટીસ)<br/>"
+                        "<b>ડૉક્ટર પ્રિસ્ક્રિપ્શન</b> (હાથથી લખેલ કે ડિજિટલ પર્ચી, દવા ચાર્ટ)<br/>"
+                        "<b>ડાયગ્નોસ્ટિક ઇમેજિંગ અને એક્સ-રે</b> (છાતીનો એક્સ-રે, હાડકાંનો એક્સ-રે, સીટી સ્કેન, એમઆરઆઈ, સોનોગ્રાફી)<br/>"
+                        "<b>હોસ્પિટલ ડિસ્ચાર્જ સમરી અને ક્લિનિકલ રિપોર્ટ્સ</b>"
+                    )
+                else:
+                    _supported_title = "Smart Auto-Detection Enabled"
+                    _supported_badge = "Auto-Scans All Types"
+                    _supported_text = (
+                        "<b>Supported Medical Documents for Instant Scanning:</b><br/>"
+                        "<b>Blood & Pathology Lab Reports</b> (CBC, LFT, KFT, Lipid Profile, Thyroid, HbA1c, Urine Analysis)<br/>"
+                        "<b>Doctor Prescriptions</b> (Handwritten & Printed Rx, Medication Schedules, Drug Charts)<br/>"
+                        "<b>Diagnostic Imaging & Scans</b> (Chest X-Rays, Bone/Joint X-Rays, CT Scans, MRI, Ultrasound / USG)<br/>"
+                        "<b>Hospital Discharge Summaries & Clinical Reports</b>"
+                    )
 
-                doc_type_choice = st.radio(
-                    "Select Document Type",
-                    options=doc_type_options,
-                    index=default_idx,
-                    key="p2_doc_type_choice_radio",
-                    horizontal=True,
-                    label_visibility="collapsed"
-                )
-                st.session_state["p2_doc_type_choice"] = doc_type_choice
+                safe_markdown(f"""
+                <div style="background: rgba(37, 99, 235, 0.05); border: 1.2px solid rgba(37, 99, 235, 0.22); border-radius: 12px; padding: 12px 14px; margin: 4px 0 14px 0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-wrap: wrap; gap: 6px;">
+                        <span style="font-size: 0.78rem; font-weight: 800; color: #2563EB; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; gap: 5px;">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            {_supported_title}
+                        </span>
+                        <span style="font-size: 0.70rem; color: #059669; font-weight: 700; background: rgba(16, 185, 129, 0.12); padding: 2px 8px; border-radius: 99px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                            ● {_supported_badge}
+                        </span>
+                    </div>
+                    <div style="font-size: 0.80rem; color: var(--mm-text-secondary); line-height: 1.5;">
+                        {_supported_text}
+                    </div>
+                </div>
+                """)
 
                 uploaded_doc = st.file_uploader(
                     "Upload or Drag and Drop Medical Document",
@@ -8129,10 +8163,10 @@ elif st.session_state["active_panel"] == "Medical Report":
                         st.session_state["p2_cached_doc_text"] = doc_text_stream
 
                 if not doc_text_stream or not doc_text_stream.strip():
-                    st.warning("No valid medical test parameters or prescription text were found in the uploaded file. Please upload a clear photo or PDF of an actual medical report or doctor prescription.")
+                    st.warning("No valid medical test parameters, doctor prescriptions, or radiological findings were found in the uploaded file. Please upload a clear photo or PDF of an actual medical report, doctor prescription, or X-ray scan.")
                 else:
                     st.session_state["p2_step"] = 3
-                    st.session_state["p2_doc_type_choice"] = doc_type_choice
+                    st.session_state["p2_doc_type_choice"] = "auto_detect"
                     st.session_state["p2_doc_text_stream"] = doc_text_stream
                     st.session_state["p2_doc_name"] = uploaded_doc.name if uploaded_doc else "Medical Document"
                     st.session_state["p2_age"] = age_for_report
@@ -8144,132 +8178,114 @@ elif st.session_state["active_panel"] == "Medical Report":
     # ----------------- STEP 3: RESULTS & DIAGNOSTIC EVALUATION -----------------
     elif p2_cur_step == 3:
         doc_text_stream = st.session_state.get("p2_doc_text_stream", "")
-        doc_type_choice = st.session_state.get("p2_doc_type_choice", "Blood / Pathology Lab Report")
         age_for_report = st.session_state.get("p2_age", "Adult")
         gender_for_report = st.session_state.get("p2_gender", "Male")
         doc_name = st.session_state.get("p2_doc_name", "Medical Document")
-
-        # Category classification
-        is_prescription = any(k in str(doc_type_choice).lower() for k in ["prescription", "पर्ची", "પ્રિસ્ક્રિપ્શન", "presc"])
-        is_imaging = any(k in str(doc_type_choice).lower() for k in ["imaging", "radiology", "रेडियोलॉजी", "इमेजिंग", "રેડિયોલોજી", "ઇમેજિંગ", "x-ray", "ct", "mri"])
-        is_other = any(k in str(doc_type_choice).lower() for k in ["other", "अन्य", "અન્ય"])
-        is_lab = not (is_prescription or is_imaging or is_other)
+        doc_type_choice = st.session_state.get("p2_doc_type_choice", "Clinical Document")
 
         # Smart Clinical Pre-check & Auto-Recovery with Session Caching:
         # Prevents re-scanning on theme switch, download, or tab navigation.
         import hashlib
-        p2_scan_hash = hashlib.md5(f"{doc_name}_{len(doc_text_stream)}_{doc_type_choice}_{age_for_report}_{gender_for_report}_{lang_code}".encode("utf-8")).hexdigest()
+        p2_scan_hash = hashlib.md5(f"{doc_name}_{len(doc_text_stream)}_{age_for_report}_{gender_for_report}_{lang_code}".encode("utf-8")).hexdigest()
         p2_scan_cache_key = f"p2_analysis_eval_{p2_scan_hash}"
 
         gen_res = None
         lab_res = None
         presc_res = None
         rad_res = None
+        is_prescription = False
+        is_imaging = False
+        is_other = False
+        is_lab = False
+        detected_label = ""
 
         cached_eval = st.session_state.get(p2_scan_cache_key)
         if cached_eval is not None:
-            is_prescription = cached_eval.get("is_prescription", is_prescription)
-            is_imaging = cached_eval.get("is_imaging", is_imaging)
-            is_other = cached_eval.get("is_other", is_other)
-            is_lab = cached_eval.get("is_lab", is_lab)
+            is_prescription = cached_eval.get("is_prescription", False)
+            is_imaging = cached_eval.get("is_imaging", False)
+            is_other = cached_eval.get("is_other", False)
+            is_lab = cached_eval.get("is_lab", False)
             presc_res = cached_eval.get("presc_res")
             rad_res = cached_eval.get("rad_res")
             gen_res = cached_eval.get("gen_res")
             lab_res = cached_eval.get("lab_res")
+            detected_label = cached_eval.get("detected_label", "")
         else:
-            if is_prescription:
-                presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
-                total_meds = presc_res.get("total_medicines_identified", 0)
-                if total_meds == 0:
-                    v_chk = verify_medical_document(doc_text_stream, expected_type="any")
-                    if v_chk.get("is_valid", False):
-                        det = v_chk.get("detected_type", "")
-                        if det == "radiology":
-                            auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
-                            if auto_rad.get("total_findings", 0) > 0:
-                                is_imaging = True
-                                is_prescription = False
-                                rad_res = auto_rad
-                                st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
-                        elif det == "lab":
-                            auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                            if auto_lab.get("total_tests_detected", 0) > 0:
-                                is_lab = True
-                                is_prescription = False
-                                lab_res = auto_lab
-                                st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
-                        else:
-                            auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                            if auto_gen.get("total_findings", 0) > 0:
-                                is_other = True
-                                is_prescription = False
-                                gen_res = auto_gen
-                                st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+            # 1. Run universal medical document verification to determine primary category
+            v_chk = verify_medical_document(doc_text_stream, expected_type="any")
+            v_type = v_chk.get("detected_type", "") if v_chk.get("is_valid") else ""
 
-            elif is_imaging:
+            # Check for strong text cues
+            lower_text = doc_text_stream.lower()
+            has_rad_keywords = any(k in lower_text for k in [
+                "x-ray", "xray", "radiograph", "radiology", "ct scan", "mri", "ultrasound", "usg", 
+                "findings:", "impression:", "modality:", "fracture", "consolidation", "pleural", 
+                "cardiomegaly", "bone", "cortical", "thoracic", "joint"
+            ])
+            has_presc_keywords = any(k in lower_text for k in [
+                "tab ", "tablet", "cap ", "capsule", "syrup", "syr ", "rx:", "1-0-1", "1-1-1", 
+                "0-0-1", "before food", "after food", "mg ", "mcg ", "dosage", "prescribed"
+            ])
+            has_lab_keywords = any(k in lower_text for k in [
+                "hemoglobin", "wbc", "rbc", "platelet", "glucose", "serum", "creatinine", 
+                "lipid", "cholesterol", "bilirubin", "reference range", "mg/dl", "g/dl", "u/l"
+            ])
+
+            # Priority 1: Diagnostic Imaging / Radiology / X-Ray
+            if v_type == "radiology" or (has_rad_keywords and not has_lab_keywords and not has_presc_keywords):
                 with st.spinner("Analyzing radiological findings, imaging impressions, and anatomical structures..."):
                     rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
-                total_findings = rad_res.get("total_findings", 0)
-                if total_findings == 0 or not rad_res.get("is_valid_radiology_report", True):
-                    v_chk = verify_medical_document(doc_text_stream, expected_type="any")
-                    if v_chk.get("is_valid", False):
-                        det = v_chk.get("detected_type", "")
-                        if det == "prescription":
-                            auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
-                            if auto_rx.get("total_medicines_identified", 0) > 0:
-                                is_prescription = True
-                                is_imaging = False
-                                presc_res = auto_rx
-                                st.info("Medical document automatically identified as Doctor Prescription.")
-                        elif det == "lab":
-                            auto_lab = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                            if auto_lab.get("total_tests_detected", 0) > 0:
-                                is_lab = True
-                                is_imaging = False
-                                lab_res = auto_lab
-                                st.info("Medical document automatically identified as Blood / Pathology Lab Report.")
-                        else:
-                            auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                            if auto_gen.get("total_findings", 0) > 0:
-                                is_other = True
-                                is_imaging = False
-                                gen_res = auto_gen
-                                st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+                if rad_res.get("total_findings", 0) > 0 or rad_res.get("is_valid_radiology_report"):
+                    is_imaging = True
+                    detected_label = "Diagnostic Imaging & Radiology (X-Ray / Scan)"
 
-            elif is_other:
-                with st.spinner("Analyzing clinical parameters, patient profile, and health summary..."):
-                    gen_res = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+            # Priority 2: Doctor Prescription
+            if not is_imaging and (v_type == "prescription" or has_presc_keywords):
+                with st.spinner("Parsing prescribed medications, dosage schedules, and drug safety..."):
+                    presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
+                if presc_res.get("total_medicines_identified", 0) > 0:
+                    is_prescription = True
+                    detected_label = "Doctor Prescription"
 
-            else:
-                # is_lab
+            # Priority 3: Blood / Pathology Lab Report
+            if not is_imaging and not is_prescription and (v_type == "lab" or has_lab_keywords):
                 with st.spinner("Evaluating clinical parameters against biological reference intervals..."):
                     lab_res = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                total_detected = lab_res.get("total_tests_detected", 0)
-                if total_detected == 0:
-                    v_chk = verify_medical_document(doc_text_stream, expected_type="any")
-                    if v_chk.get("is_valid", False):
-                        det = v_chk.get("detected_type", "")
-                        if det == "prescription":
-                            auto_rx = prescription_analyzer.parse_prescription_text(doc_text_stream)
-                            if auto_rx.get("total_medicines_identified", 0) > 0:
-                                is_prescription = True
-                                is_lab = False
-                                presc_res = auto_rx
-                                st.info("Medical document automatically identified as Doctor Prescription.")
-                        elif det == "radiology":
-                            auto_rad = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
-                            if auto_rad.get("total_findings", 0) > 0:
-                                is_imaging = True
-                                is_lab = False
-                                rad_res = auto_rad
-                                st.info("Medical document automatically identified as Diagnostic Imaging / Radiology Report.")
-                        else:
-                            auto_gen = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
-                            if auto_gen.get("total_findings", 0) > 0:
-                                is_other = True
-                                is_lab = False
-                                gen_res = auto_gen
-                                st.info(f"Medical document automatically identified as {auto_gen.get('document_title', 'Clinical Health Summary')}.")
+                if lab_res.get("total_tests_detected", 0) > 0:
+                    is_lab = True
+                    detected_label = "Blood / Pathology Lab Report"
+
+            # Cascaded fallbacks if primary classifier returned 0 findings:
+            if not (is_imaging or is_prescription or is_lab):
+                # Try Radiology
+                if rad_res is None:
+                    rad_res = radiology_analyzer.analyze_imaging_report(doc_text_stream, user_lang=lang_code)
+                if rad_res.get("total_findings", 0) > 0:
+                    is_imaging = True
+                    detected_label = "Diagnostic Imaging & Radiology (X-Ray / Scan)"
+
+            if not (is_imaging or is_prescription or is_lab):
+                # Try Prescription
+                if presc_res is None:
+                    presc_res = prescription_analyzer.parse_prescription_text(doc_text_stream)
+                if presc_res.get("total_medicines_identified", 0) > 0:
+                    is_prescription = True
+                    detected_label = "Doctor Prescription"
+
+            if not (is_imaging or is_prescription or is_lab):
+                # Try Lab
+                if lab_res is None:
+                    lab_res = lab_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                if lab_res.get("total_tests_detected", 0) > 0:
+                    is_lab = True
+                    detected_label = "Blood / Pathology Lab Report"
+
+            if not (is_imaging or is_prescription or is_lab):
+                # Default to General Clinical Document / Summary
+                with st.spinner("Analyzing clinical parameters, patient profile, and health summary..."):
+                    gen_res = general_doc_analyzer.parse_and_evaluate(doc_text_stream, age_group=age_for_report, gender=gender_for_report, lang=lang_code)
+                is_other = True
+                detected_label = gen_res.get("document_title", "Clinical Health Summary")
 
             # Cache the evaluation so future reruns never repeat API calls
             st.session_state[p2_scan_cache_key] = {
@@ -8281,8 +8297,43 @@ elif st.session_state["active_panel"] == "Medical Report":
                 "rad_res": rad_res,
                 "gen_res": gen_res,
                 "lab_res": lab_res,
+                "detected_label": detected_label
             }
 
+        # Auto-Detected Document Badge Banner
+        if is_imaging:
+            _badge_icon_svg = """<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>"""
+            _badge_bg = "rgba(37, 99, 235, 0.12)"
+        elif is_prescription:
+            _badge_icon_svg = """<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>"""
+            _badge_bg = "rgba(139, 92, 246, 0.12)"
+        elif is_lab:
+            _badge_icon_svg = """<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 3h15"/><path d="M6 3v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V3"/><path d="M6 14h12"/></svg>"""
+            _badge_bg = "rgba(16, 185, 129, 0.12)"
+        else:
+            _badge_icon_svg = """<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>"""
+            _badge_bg = "rgba(37, 99, 235, 0.12)"
+
+        _badge_title = detected_label or ("Diagnostic Imaging / X-Ray" if is_imaging else ("Doctor Prescription" if is_prescription else ("Pathology Lab Report" if is_lab else "Clinical Document")))
+        st.markdown(f"""
+        <div style="background: rgba(37, 99, 235, 0.08); border: 1.2px solid rgba(37, 99, 235, 0.25); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 36px; height: 36px; border-radius: 8px; background: {_badge_bg}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    {_badge_icon_svg}
+                </div>
+                <div>
+                    <span style="font-size: 0.72rem; color: var(--mm-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Auto-Detected Document Type</span>
+                    <b style="font-size: 0.95rem; color: var(--mm-text-primary); display: block;">{_badge_title}</b>
+                </div>
+            </div>
+            <span class="mm-badge mm-badge-success" style="font-size: 0.74rem; padding: 4px 10px; display: inline-flex; align-items: center; gap: 5px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Automatic Classification
+            </span>
+        </div>
+        """, unsafe_allow_html=True)
         # ==================== RENDER SELECTED OR AUTO-DETECTED RESULT ====================
         if is_prescription:
             if presc_res is None:
@@ -8291,7 +8342,14 @@ elif st.session_state["active_panel"] == "Medical Report":
             if total_meds == 0:
                 st.markdown(f"""
                 <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
-                    <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Prescription Medications Detected</h4>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <h4 style="color: #F59E0B; margin: 0; font-size: 1.05rem;">No Prescription Medications Detected</h4>
+                    </div>
                     <p style="margin: 0; font-size: 0.90rem; color: var(--mm-text-secondary);">
                         {presc_res.get("summary", "The uploaded document does not contain recognizable doctor-prescribed medications or dosage instructions. Please ensure you upload a valid medical prescription (PDF or Image).")}
                     </p>
@@ -8348,9 +8406,10 @@ elif st.session_state["active_panel"] == "Medical Report":
                     }
                 }
 
+                doc_type_choice = "Doctor Prescription"
                 render_diagnostic_evaluation_view(
                     doc_name=doc_name,
-                    doc_type_choice="Doctor Prescription",
+                    doc_type_choice=doc_type_choice,
                     age_for_report=age_for_report,
                     gender_for_report=gender_for_report,
                     findings=presc_res.get("medicines", []),
@@ -8423,7 +8482,14 @@ elif st.session_state["active_panel"] == "Medical Report":
             if total_findings == 0 or not rad_res.get("is_valid_radiology_report", True):
                 st.markdown(f"""
                 <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
-                    <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Radiology / Diagnostic Imaging Findings Detected</h4>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <h4 style="color: #F59E0B; margin: 0; font-size: 1.05rem;">No Radiology / Diagnostic Imaging Findings Detected</h4>
+                    </div>
                     <p style="margin: 0; font-size: 0.92rem; color: var(--mm-text-secondary);">
                         {rad_res.get("summary", "The uploaded document does not contain recognizable diagnostic imaging or radiology impressions (such as X-Ray, CT Scan, MRI, Ultrasound, etc.). Please upload a valid medical radiology report.")}
                     </p>
@@ -8493,9 +8559,10 @@ elif st.session_state["active_panel"] == "Medical Report":
                     }
                 }
 
+                doc_type_choice = "Diagnostic Imaging / Radiology Report"
                 render_diagnostic_evaluation_view(
                     doc_name=doc_name,
-                    doc_type_choice="Diagnostic Imaging / Radiology Report",
+                    doc_type_choice=doc_type_choice,
                     age_for_report=age_for_report,
                     gender_for_report=gender_for_report,
                     findings=rad_res.get("findings", []),
@@ -8569,7 +8636,14 @@ elif st.session_state["active_panel"] == "Medical Report":
             if total_findings == 0 or not gen_res.get("is_valid_medical_report", True):
                 st.markdown(f"""
                 <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
-                    <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Clinical Parameters Detected</h4>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <h4 style="color: #F59E0B; margin: 0; font-size: 1.05rem;">No Clinical Parameters Detected</h4>
+                    </div>
                     <p style="margin: 0; font-size: 0.92rem; color: var(--mm-text-secondary);">
                         {gen_res.get("summary", "The uploaded document does not contain recognizable clinical observations, diagnostic findings, or healthcare summaries. Please upload a clear medical document.")}
                     </p>
@@ -8640,9 +8714,10 @@ elif st.session_state["active_panel"] == "Medical Report":
                     }
                 }
 
+                doc_type_choice = gen_res.get("document_title", detected_label or "Clinical Document")
                 render_diagnostic_evaluation_view(
                     doc_name=doc_name,
-                    doc_type_choice=gen_res.get("document_title", doc_type_choice),
+                    doc_type_choice=doc_type_choice,
                     age_for_report=age_for_report,
                     gender_for_report=gender_for_report,
                     findings=gen_res.get("findings", []),
@@ -8718,7 +8793,14 @@ elif st.session_state["active_panel"] == "Medical Report":
             if total_detected == 0:
                 st.markdown(f"""
                 <div class="mm-card" style="border-left: 4px solid #F59E0B; background: rgba(245, 158, 11, 0.05); padding: 18px; margin-top: 10px;">
-                    <h4 style="color: #F59E0B; margin: 0 0 6px 0; font-size: 1.05rem;"> No Clinical Lab Parameters Detected</h4>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+                            <line x1="12" y1="9" x2="12" y2="13"/>
+                            <line x1="12" y1="17" x2="12.01" y2="17"/>
+                        </svg>
+                        <h4 style="color: #F59E0B; margin: 0; font-size: 1.05rem;">No Clinical Lab Parameters Detected</h4>
+                    </div>
                     <p style="margin: 0; font-size: 0.92rem; color: var(--mm-text-secondary);">
                         {lab_res.get("summary", "The uploaded document does not appear to be a medical lab report or does not contain recognized diagnostic test values. Please ensure you upload a clear laboratory report, blood test (CBC, LFT, KFT, Lipid Profile), or pathology document.")}
                     </p>
@@ -8790,9 +8872,10 @@ elif st.session_state["active_panel"] == "Medical Report":
                     }
                 }
 
+                doc_type_choice = "Blood / Pathology Lab Report"
                 render_diagnostic_evaluation_view(
                     doc_name=doc_name,
-                    doc_type_choice="Blood / Pathology Lab Report",
+                    doc_type_choice=doc_type_choice,
                     age_for_report=age_for_report,
                     gender_for_report=gender_for_report,
                     findings=lab_res.get("findings", []),
@@ -9142,7 +9225,7 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                 st.markdown(f"""
                 <div style="display: flex; align-items: center; gap: 8px; font-size: 0.76rem; color: #64748B; margin-top: 12px; font-weight: 500;">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="#2563EB" style="flex-shrink: 0;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                    <span><b style="color: var(--mm-text-primary);">Location:</b> {html.escape(str(loc_name))} ({selected_lat:.4f}, {selected_lon:.4f})</span>
+                    <span><b style="color: var(--mm-text-primary);">Location:</b> {html.escape(str(loc_name))} ({round(float(selected_lat), 4)}, {round(float(selected_lon), 4)})</span>
                 </div>
                 """, unsafe_allow_html=True)
             else:
@@ -11956,8 +12039,8 @@ div.st-key-floating_chat_pill {{
     padding: 0 !important;
     margin: 0 !important;
     background: transparent !important;
-    display: {_launcher_display} !important;
-    visibility: {"hidden" if chat_is_open else "visible"} !important;
+    display: flex !important;
+    visibility: visible !important;
 }}
 
 .st-key-floating_ai_assistant button,
@@ -11977,12 +12060,33 @@ div.st-key-floating_chat_pill {{
     border: none !important;
     filter: drop-shadow(0 0 12px rgba(37, 99, 235, 0.85)) drop-shadow(0 0 24px rgba(6, 182, 212, 0.55)) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45)) !important;
     cursor: pointer !important;
-    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease !important;
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     padding: 0 !important;
     position: relative !important;
+    transform: {"rotate(45deg) scale(1.08)" if chat_is_open else "rotate(0deg) scale(1)"} !important;
+}}
+
+body.mm-chat-open .st-key-floating_ai_assistant button,
+html.mm-chat-open .st-key-floating_ai_assistant button,
+body.mm-chat-open .st-key-floating_chat_pill button,
+html.mm-chat-open .st-key-floating_chat_pill button {{
+    transform: rotate(45deg) scale(1.08) !important;
+}}
+
+.st-key-floating_ai_assistant button:hover,
+.st-key-floating_chat_pill button:hover {{
+    transform: translateY(-4px) scale(1.10) !important;
+    filter: drop-shadow(0 0 20px rgba(37, 99, 235, 1)) drop-shadow(0 0 36px rgba(6, 182, 212, 0.85)) drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55)) !important;
+}}
+
+body.mm-chat-open .st-key-floating_ai_assistant button:hover,
+html.mm-chat-open .st-key-floating_ai_assistant button:hover,
+body.mm-chat-open .st-key-floating_chat_pill button:hover,
+html.mm-chat-open .st-key-floating_chat_pill button:hover {{
+    transform: rotate(45deg) translateY(-2px) scale(1.12) !important;
 }}
 
 /* Animated Synchronized Glowing Eyes */
@@ -12031,36 +12135,24 @@ div.st-key-floating_chat_pill {{
     width: 100vw !important;
     height: 100vh !important;
     z-index: 999995 !important;
-    background: rgba(15, 23, 42, 0.28) !important;
-    backdrop-filter: blur(2px) !important;
+    background: rgba(15, 23, 42, 0.32) !important;
+    backdrop-filter: blur(2.5px) !important;
+    -webkit-backdrop-filter: blur(2.5px) !important;
     cursor: pointer !important;
-    animation: mmBackdropFade 0.16s ease-out forwards !important;
+    opacity: {1 if chat_is_open else 0} !important;
+    visibility: {"visible" if chat_is_open else "hidden"} !important;
+    pointer-events: {"auto" if chat_is_open else "none"} !important;
+    display: {"block" if chat_is_open else "none"} !important;
+    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.22s !important;
+    will-change: opacity !important;
 }}
 
-@keyframes mmBackdropFade {{
-    0% {{ opacity: 0; }}
-    100% {{ opacity: 1; }}
-}}
-
-@keyframes mmDrawerSlideUp {{
-    0% {{
-        opacity: 0;
-        transform: translateY(14px) scale(0.98);
-    }}
-    100% {{
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }}
-}}
-@keyframes mmDrawerSlideDown {{
-    0% {{
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }}
-    100% {{
-        opacity: 0;
-        transform: translateY(14px) scale(0.98);
-    }}
+body.mm-chat-open #mm-chat-backdrop,
+html.mm-chat-open #mm-chat-backdrop {{
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    display: block !important;
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -12088,15 +12180,6 @@ _sec_badge_color = "#60A5FA" if is_dark else "#2563EB"
 
 st.markdown(f"""
 <style>
-/* Hide Floating '+' Launcher when Drawer is Open */
-.st-key-floating_ai_assistant,
-div.st-key-floating_ai_assistant,
-.st-key-floating_chat_pill,
-div.st-key-floating_chat_pill {{
-    display: {_launcher_display} !important;
-    visibility: {"hidden" if chat_is_open else "visible"} !important;
-}}
-
 /* Floating AI Assistant Drawer Window */
 .st-key-slide_chat_drawer,
 div.st-key-slide_chat_drawer,
@@ -12115,10 +12198,31 @@ div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35), 0 0 1px rgba(0, 0, 0, 0.08) !important;
     z-index: 999999 !important;
     overflow: hidden !important;
-    display: flex !important;
+    display: {"flex" if chat_is_open else "none"} !important;
     flex-direction: column !important;
-    animation: mmDrawerSlideUp 0.16s cubic-bezier(0.16, 1, 0.3, 1) both !important;
     padding: 0 0 10px 0 !important;
+    opacity: {1 if chat_is_open else 0} !important;
+    visibility: {"visible" if chat_is_open else "hidden"} !important;
+    pointer-events: {"auto" if chat_is_open else "none"} !important;
+    transform: {"translateY(0) scale(1)" if chat_is_open else "translateY(22px) scale(0.96)"} !important;
+    transform-origin: bottom right !important;
+    transition: opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+                visibility 0.22s !important;
+    will-change: transform, opacity !important;
+}}
+
+body.mm-chat-open .st-key-slide_chat_drawer,
+html.mm-chat-open .st-key-slide_chat_drawer,
+body.mm-chat-open div.st-key-slide_chat_drawer,
+html.mm-chat-open div.st-key-slide_chat_drawer,
+body.mm-chat-open div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer),
+html.mm-chat-open div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
+    display: flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: translateY(0) scale(1) !important;
 }}
 
 /* Universal Drawer Reset & No Gaps */
@@ -12143,9 +12247,40 @@ div.st-key-slide_chat_drawer [data-testid="stVerticalBlock"] {{
         padding: 0 0 4px 0 !important;
         margin: 0 !important;
         overflow-x: hidden !important;
-        display: flex !important;
+        display: {"flex" if chat_is_open else "none"} !important;
         flex-direction: column !important;
         justify-content: flex-start !important;
+        transform: {"translateY(0%)" if chat_is_open else "translateY(100%)"} !important;
+        transform-origin: bottom center !important;
+        opacity: {1 if chat_is_open else 0} !important;
+        visibility: {"visible" if chat_is_open else "hidden"} !important;
+        pointer-events: {"auto" if chat_is_open else "none"} !important;
+    }}
+
+    body.mm-chat-open .st-key-slide_chat_drawer,
+    html.mm-chat-open .st-key-slide_chat_drawer,
+    body.mm-chat-open div.st-key-slide_chat_drawer,
+    html.mm-chat-open div.st-key-slide_chat_drawer,
+    body.mm-chat-open div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer),
+    html.mm-chat-open div[data-testid="stVerticalBlock"]:has(> div.st-key-slide_chat_drawer) {{
+        display: flex !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        transform: translateY(0%) !important;
+    }}
+
+    body.mm-chat-open .st-key-floating_ai_assistant,
+    html.mm-chat-open .st-key-floating_ai_assistant,
+    body.mm-chat-open div.st-key-floating_ai_assistant,
+    html.mm-chat-open div.st-key-floating_ai_assistant,
+    body.mm-chat-open .st-key-floating_chat_pill,
+    html.mm-chat-open .st-key-floating_chat_pill,
+    body.mm-chat-open div.st-key-floating_chat_pill,
+    html.mm-chat-open div.st-key-floating_chat_pill {{
+        display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
     }}
 
     /* Scrollable chat body max height so bottom form is ALWAYS on screen */
@@ -13271,21 +13406,6 @@ div[class*="st-key-dyn_chip_"] button p strong {
 </style>
 """, unsafe_allow_html=True)
 
-# Dynamic rotation transform for medical cross button on open/close
-st.markdown(f"""
-<style>
-.st-key-floating_ai_assistant button,
-.st-key-floating_chat_pill button {{
-    transform: {btn_transform} !important;
-}}
-.st-key-floating_ai_assistant button:hover,
-.st-key-floating_chat_pill button:hover {{
-    transform: {btn_transform} translateY(-5px) scale(1.10) !important;
-    filter: drop-shadow(0 0 20px rgba(37, 99, 235, 1)) drop-shadow(0 0 36px rgba(6, 182, 212, 0.85)) drop-shadow(0 10px 22px rgba(0, 0, 0, 0.55)) !important;
-}}
-</style>
-""", unsafe_allow_html=True)
-
 # Floating '+' Trigger Button (Hidden on Authentication page)
 if st.session_state.get("active_panel") != "Account / Authentication":
     st.button("＋", key="floating_ai_assistant", on_click=toggle_floating_chat, help="Open Clinical AI Assistant")
@@ -13300,14 +13420,15 @@ current_context = {
     "conditions": st.session_state.get("user_context", {}).get("conditions", []),
     "allergies": st.session_state.get("user_context", {}).get("allergies", "None"),
     "medications": st.session_state.get("user_context", {}).get("medications", "None"),
-    "family_history": st.session_state.get("user_context", {}).get("surgeries", "None")
+    "family_history": st.session_state.get("user_context", {}).get("surgeries", "None"),
+    "scanned_report_text": st.session_state.get("p2_doc_text_stream", ""),
+    "scanned_report_name": st.session_state.get("p2_doc_name", ""),
+    "scanned_report_type": st.session_state.get("p2_doc_type", "")
 }
 
-if chat_is_open:
+if st.session_state.get("active_panel") != "Account / Authentication":
     # 1. Full-screen backdrop for outside-click to close
-    st.markdown("""
-    <div id="mm-chat-backdrop" onclick="const x = window.parent.document.querySelector('.st-key-drawer_close_x_btn button') || document.querySelector('.st-key-drawer_close_x_btn button'); if(x) x.click();"></div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div id="mm-chat-backdrop"></div>', unsafe_allow_html=True)
 
     with st.container(key="slide_chat_drawer"):
         # 2. Seamless Full-Width Blue Header with Clear Chat & Close Buttons (Image 2)
@@ -13341,7 +13462,10 @@ if chat_is_open:
             st.button("", key="drawer_close_x_btn", on_click=toggle_floating_chat, help="Close Assistant", icon=":material/close:")
 
         # Active Context Bar
-        context_str = current_context.get("top_disease") or (", ".join(current_context.get("symptoms", [])[:2])) or "Peptic Ulcer Disease & Acid Peptic Disorders"
+        if st.session_state.get("p2_doc_name") and (st.session_state.get("active_panel") == "Medical Report" or st.session_state.get("p2_step", 1) == 2):
+            context_str = f"{st.session_state.get('p2_doc_name')} ({st.session_state.get('p2_doc_type', 'Medical Report')})"
+        else:
+            context_str = current_context.get("top_disease") or (", ".join(current_context.get("symptoms", [])[:2])) or "General Clinical Health Inquiry"
         st.markdown(f"""
         <div class="mm-chat-context-card">
             <div class="mm-chat-context-icon">
@@ -13693,6 +13817,7 @@ if chat_is_open:
                             icon=card["icon"],
                             use_container_width=True,
                         ):
+                            st.session_state["floating_chat_open"] = True
                             st.session_state["floating_chat_history"].append({"role": "user", "content": card["query"]})
                             with st.spinner("Analyzing query..."):
                                 reply = ask_DocMindX_ai(
@@ -13772,6 +13897,7 @@ if chat_is_open:
                             if st.button(f" {action['label']}", key=f"nav_action_btn_{msg_idx}", use_container_width=True):
                                 st.session_state["active_panel"] = action["panel"]
                                 st.session_state["floating_chat_open"] = False
+                                st.session_state["_chat_explicitly_closed"] = True
                                 st.rerun()
                             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -13788,6 +13914,7 @@ if chat_is_open:
         if send_pressed and user_msg_input and user_msg_input.strip():
             clean_user_q = user_msg_input.strip()
             st.session_state["floating_chat_history"].append({"role": "user", "content": clean_user_q})
+            st.session_state["floating_chat_open"] = True
             with st.spinner("Analyzing query..."):
                 reply = ask_DocMindX_ai(clean_user_q, st.session_state["floating_chat_history"], current_context, lang_code)
             st.session_state["floating_chat_history"].append({"role": "assistant", "content": reply})
@@ -13804,31 +13931,35 @@ if chat_is_open:
             <span>This AI provides general information only. Always consult a qualified doctor.</span>
         </div>
         """)
-        # 6. Snappy Outside-Click Listener Script
-        st.markdown("""
+        # 6. Ultra-Fast Client-Side Backdrop Click & Escape Key Handler
+        components.html("""
         <script>
         (function() {
             try {
-                var doc = document;
-                var drawer = doc.querySelector('.st-key-slide_chat_drawer');
-                var toggleBtn = doc.querySelector('.st-key-floating_ai_assistant');
-                var closeBtn = doc.querySelector('.st-key-drawer_close_x_btn button');
-                
-                if (!drawer || !closeBtn) return;
-                
-                function handleOutsidePointer(e) {
-                    if (!drawer.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
-                        doc.removeEventListener('pointerdown', handleOutsidePointer, true);
-                        closeBtn.click();
-                    }
+                var pDoc = window.parent.document;
+                var backdrop = pDoc.getElementById('mm-chat-backdrop');
+                if (backdrop && !backdrop.__chatCloseAttached) {
+                    backdrop.__chatCloseAttached = true;
+                    backdrop.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var closeBtn = pDoc.querySelector('.st-key-drawer_close_x_btn button');
+                        if (closeBtn) closeBtn.click();
+                    });
                 }
-                setTimeout(function() {
-                    doc.addEventListener('pointerdown', handleOutsidePointer, true);
-                }, 100);
+                if (!pDoc.__chatEscAttached) {
+                    pDoc.__chatEscAttached = true;
+                    pDoc.addEventListener('keydown', function(e) {
+                        if (e.key === 'Escape' || e.keyCode === 27) {
+                            var closeBtn = pDoc.querySelector('.st-key-drawer_close_x_btn button');
+                            if (closeBtn) closeBtn.click();
+                        }
+                    });
+                }
             } catch(e) {}
         })();
         </script>
-        """, unsafe_allow_html=True)
+        """, height=0, width=0)
 
         if st.session_state.get("pending_chat_query"):
             q_to_process = st.session_state.pop("pending_chat_query")

@@ -494,13 +494,9 @@ class ClinicalPipelineOrchestrator:
         bioportal_concepts = []
         if run_bioportal and (searchable_symptoms or symptom_names):
             bioportal_concepts = self._get_bioportal_concepts(searchable_symptoms or symptom_names)
-            # Ingest resolved concept symptom IDs into selected_symptom_ids
-            for bc in bioportal_concepts:
-                pref = bc.get("prefLabel") or bc.get("pref_label") or bc.get("name") or "" if isinstance(bc, dict) else str(bc)
-                if pref:
-                    sid = canonical_normalizer.get_symptom_id(str(pref))
-                    if sid and sid not in selected_symptom_ids and sid not in negative_findings:
-                        selected_symptom_ids.append(sid)
+            # CRITICAL CLINICAL SAFETY RULE: BioPortal concepts are external ontology reference evidence,
+            # NEVER validated patient symptoms. Do NOT inject bioportal_concepts into selected_symptom_ids.
+            pass
         else:
             self.providers["BioPortal"].record_skipped("BioPortal skipped")
 
@@ -623,7 +619,9 @@ class ClinicalPipelineOrchestrator:
             "top_condition": ranked[0].get("name") if ranked else "Acute Illness",
             "is_emergency": triage_result.get("is_emergency", False),
             "red_flags": triage_result.get("red_flags", []),
-            "urgency_level": triage_result.get("urgency_level", "Moderate Attention")
+            "urgency_level": triage_result.get("urgency_level", "Moderate Attention (Consult Physician)"),
+            "timeframe_for_evaluation": triage_result.get("timeframe_for_evaluation", "Prompt Medical Evaluation (Within 24–48 hours)"),
+            "required_immediate_action": triage_result.get("required_immediate_action", "Consult a physician for medical evaluation.")
         }
         triage_result["care_plan"] = care_res
         triage_result["provenance"] = {

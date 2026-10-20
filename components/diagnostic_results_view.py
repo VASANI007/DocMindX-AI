@@ -988,19 +988,30 @@ def render_diagnostic_evaluation_view(
     b_col1, b_col2 = st.columns(2, gap="medium")
 
     with b_col1:
+        deep_btn_text = T.get("deep_explain_btn", "Deep Explain with DocMindX AI")
         if st.button(
-            "Deep Analyze with AI\nGet advanced health insights",
+            f"{deep_btn_text}\nGet advanced health insights",
             icon=":material/psychology:",
             key="btn_p2_deep_ai_action",
             type="primary",
             use_container_width=True
         ):
-            from app import show_deep_ai_report_dialog
-            show_deep_ai_report_dialog(
-                report_text=st.session_state.get("p2_doc_text_stream", ""),
-                report_type=doc_type_choice,
-                lang_code=lang_code
-            )
+            st.session_state["floating_chat_open"] = True
+            doc_display_name = st.session_state.get("p2_doc_name") or doc_name or "Medical Document"
+            user_msg = f"Deep clinical analysis & explanation for {doc_display_name} ({doc_type_choice})"
+            
+            expl_content = breakdown_text
+            if not expl_content:
+                expl_content = st.session_state.get("p2_doc_text_stream", "")
+            
+            if "floating_chat_history" not in st.session_state:
+                st.session_state["floating_chat_history"] = []
+            
+            already_in_history = any(m.get("content") == expl_content for m in st.session_state["floating_chat_history"])
+            if not already_in_history and expl_content:
+                st.session_state["floating_chat_history"].append({"role": "user", "content": user_msg})
+                st.session_state["floating_chat_history"].append({"role": "assistant", "content": expl_content})
+            st.rerun()
 
     with b_col2:
         if st.button(

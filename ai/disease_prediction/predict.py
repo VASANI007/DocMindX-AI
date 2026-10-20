@@ -804,7 +804,7 @@ Return only conditions genuinely supported by the reported symptoms.
 
     def evaluate_symptoms(self, selected_symptom_ids, age_group="21–30", gender="Male", duration="3–5 Days",
                           existing_conditions=None, symptom_names=None, chief_condition=None, negative_findings=None,
-                          bioportal_concepts=None, nlm_conditions=None):
+                          bioportal_concepts=None, nlm_conditions=None, severity=None, patient_context=None, **kwargs):
         """
         Evaluates symptoms against India 100+ Major Diseases dataset and weighted bipartite
         knowledge graph. Returns evidence-grounded differential with full source metadata.
@@ -813,6 +813,10 @@ Return only conditions genuinely supported by the reported symptoms.
         existing_conditions = existing_conditions or {}
         bioportal_concepts = bioportal_concepts or []
         nlm_conditions = nlm_conditions or []
+
+        if severity is None and patient_context and isinstance(patient_context, dict):
+            severity = patient_context.get("severity", "Moderate")
+        severity = severity or "Moderate"
 
         # 0. Canonical normalization across provided symptom names and free text
         raw_text = " ".join([str(s) for s in symptom_names])
@@ -870,20 +874,12 @@ Return only conditions genuinely supported by the reported symptoms.
             if rec and rec.get("symptom_name"):
                 patient_positive_tokens |= _tokenize(rec["symptom_name"])
 
-        # 4. External BioPortal Tokens (Separated — concept must map to valid canonical symptom to contribute)
+        # 4. External BioPortal Tokens (Strictly External Reference — NEVER added to patient symptom evidence!)
         external_bioportal_tokens = set()
         for bc in bioportal_concepts:
             b_label = bc.get("prefLabel") or bc.get("name") if isinstance(bc, dict) else str(bc)
             if b_label:
                 external_bioportal_tokens |= _tokenize(b_label)
-                mapped_sid = canonical_normalizer.get_symptom_id(str(b_label))
-                if mapped_sid:
-                    norm_msid = normalize_id(mapped_sid, "S")
-                    if norm_msid not in positive_norm_ids and norm_msid not in all_negative_findings:
-                        positive_norm_ids.append(norm_msid)
-                        rec = canonical_normalizer.bridge.lookup_by_id(norm_msid)
-                        if rec and rec.get("symptom_name"):
-                            patient_positive_tokens |= _tokenize(rec["symptom_name"])
 
         # 5. External NLM Condition Tokens (Strictly External — NEVER added to patient symptom evidence!)
         external_nlm_condition_tokens = set()
@@ -1285,17 +1281,34 @@ Return only conditions genuinely supported by the reported symptoms.
                     "verification_status": "UNVERIFIED"
                 }
 
-        # 7. Determine overall urgency
-        is_emergency = (len(red_flags) > 0) or has_animal_bite_exposure or any(
+        # 7. Authoritative Triage Decision & Consistent Urgency Determination
+        severity_lower = str(severity or "").lower().strip()
+        is_severe_or_critical = any(k in severity_lower for k in ["severe", "critical", "acute severe", "very severe"])
+        is_moderate_severity = "moderate" in severity_lower
+
+        has_condition_emergency = any(
             ("emergency" in str(c.get("urgency", "")).lower() or "critical" in str(c.get("urgency", "")).lower())
-            and c.get("match_percentage", 0) >= 70 for c in ranked_conditions
+            and c.get("match_percentage", 0) >= 60 for c in ranked_conditions
         )
+        has_condition_consult = any(
+            any(k in str(c.get("urgency", "")).lower() for k in ["consult", "physician", "specialist", "urgent", "attention", "doctor"])
+            and c.get("match_percentage", 0) >= 25 for c in ranked_conditions
+        )
+
+        is_emergency = (len(red_flags) > 0) or has_animal_bite_exposure or (is_severe_or_critical and len(positive_norm_ids) > 0) or has_condition_emergency
+
         if is_emergency:
             urgency = "Critical / Urgent Medical Attention"
-        elif any(c.get("match_percentage", 0) >= 40 for c in ranked_conditions):
+            timeframe_for_evaluation = "Immediate Emergency Evaluation (Within 1–2 hours / Emergency Department)"
+            required_immediate_action = "Report immediately to an Emergency Department or call emergency medical services."
+        elif has_condition_consult or is_moderate_severity or any(c.get("match_percentage", 0) >= 30 for c in ranked_conditions) or len(positive_norm_ids) >= 2:
             urgency = "Moderate Attention (Consult Physician)"
+            timeframe_for_evaluation = "Prompt Medical Evaluation (Within 24–48 hours by a qualified physician)"
+            required_immediate_action = "Schedule a medical consultation with a general physician or relevant specialist for clinical examination."
         else:
             urgency = "Mild / Self-Monitoring"
+            timeframe_for_evaluation = "Self-Monitoring (Consult physician if symptoms persist or worsen beyond 3–5 days)"
+            required_immediate_action = "Maintain supportive self-care, adequate hydration, and monitor for any emerging red flags."
 
         # 8. Compile evidence-linked tests with strict DURATION GATING (Section 14 & 15)
         all_tests = []
@@ -1358,6 +1371,8 @@ Return only conditions genuinely supported by the reported symptoms.
             "is_emergency": is_emergency,
             "red_flags": red_flags,
             "urgency_level": urgency,
+            "timeframe_for_evaluation": timeframe_for_evaluation,
+            "required_immediate_action": required_immediate_action,
             "positive_symptoms": positive_norm_ids,
             "positive_symptom_ids": positive_norm_ids,
             "ranked_conditions": ranked_conditions,  # Dynamic count — NO artificial [:N] limit here
@@ -1392,7 +1407,9 @@ Return only conditions genuinely supported by the reported symptoms.
             chief_condition=chief_condition or patient_history.get("chief_condition"),
             negative_findings=negative_findings or patient_history.get("negative_findings", []),
             bioportal_concepts=bioportal_concepts or patient_history.get("bioportal_concepts", []),
-            nlm_conditions=nlm_conditions or patient_history.get("nlm_conditions", [])
+            nlm_conditions=nlm_conditions or patient_history.get("nlm_conditions", []),
+            severity=patient_history.get("severity", kwargs.get("severity", "Moderate")),
+            patient_context=patient_history
         )
 
 
