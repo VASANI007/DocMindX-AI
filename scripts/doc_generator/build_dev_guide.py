@@ -156,6 +156,33 @@ manifest = engine.calculate_transfers(
 # Produces official transfer manifest with route distances and quantities."""
     )
 
+    add_heading_2(doc, "2.4 Nearby Healthcare Radar with 1–25 km Slider ('ai/geo/hospital_locator.py')")
+    add_code_block(doc,
+"""from ai.geo.hospital_locator import search_nearby_healthcare
+
+# Query Overpass API for verified healthcare points within user perimeter
+facilities = search_nearby_healthcare(
+    latitude=21.1702,
+    longitude=72.8311,
+    radius_km=10,  # Interactive slider: 1 to 25 km
+    categories=["24_7_hospitals", "clinics", "pharmacies", "blood_banks"]
+)
+
+# Returns sorted facilities with live distances and navigation links."""
+    )
+
+    add_heading_2(doc, "2.5 Family Health Profiles & Demographic Auto-fill ('components/family_ui.py')")
+    add_code_block(doc,
+"""from components.family_ui import get_family_profiles, autofill_demographics
+
+# Retrieve authenticated user family vault
+members = get_family_profiles(user_id="user_123")
+
+# Auto-fills demographic input fields for triage assessment
+demographics = autofill_demographics(member_id="member_456")
+# Returns: {"age": 24, "gender": "Male", "state": "Gujarat", "height": 175, "weight": 70, "blood_group": "O+"}"""
+    )
+
     # 3. Database Operations & Migrations
     add_heading_1(doc, "3. Database Operations & Migrations")
     add_body_p(doc, "DocMindX AI includes automated migration scripts to establish PostgreSQL tables and Row-Level Security on Supabase:")
@@ -302,6 +329,29 @@ result = engine.predict(
     gender="Female"
 )
 # रिटर्न में संभावित बीमारियां (Top-3) और रेड फ्लैग्स प्राप्त होते हैं।"""
+    )
+
+    add_heading_2(doc, "2.2 निकटतम स्वास्थ्य केंद्र रडार (1-25 किमी दायरा)")
+    add_code_block(doc,
+"""from ai.geo.hospital_locator import search_nearby_healthcare
+
+# 1 से 25 किमी के दायरे में अस्पताल, क्लीनिक व मेडिकल स्टोर खोजें
+facilities = search_nearby_healthcare(
+    latitude=21.1702,
+    longitude=72.8311,
+    radius_km=10,  # 1 से 25 किमी स्लाइडर
+    categories=["24_7_hospitals", "clinics", "pharmacies"]
+)"""
+    )
+
+    add_heading_2(doc, "2.3 पारिवारिक स्वास्थ्य प्रोफाइल व स्वतः डेटा भरण")
+    add_code_block(doc,
+"""from components.family_ui import get_family_profiles, autofill_demographics
+
+# पारिवारिक प्रोफाइल लोड करें और डेमोग्राफिक्स स्वतः भरें
+members = get_family_profiles(user_id="user_123")
+demographics = autofill_demographics(member_id="member_456")
+# रिटर्न: {"age": 24, "gender": "Male", "state": "Gujarat", "height": 175, "weight": 70, "blood_group": "O+"}"""
     )
 
     # 3. डेटाबेस माइग्रेशन

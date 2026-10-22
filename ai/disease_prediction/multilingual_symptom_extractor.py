@@ -481,21 +481,21 @@ Translate display names to {lang_label}. Extract ONLY from the user's actual wor
                     "category": cat
                 })
 
-        # Fallback to rule-based canonical concepts ONLY if norm_symptoms produced 0 matches
-        if not detected_items:
-            for concept in canonical_res.canonical_concepts:
-                label = concept.replace("_", " ").title()
-                sid = self.id_lookup.get(label.lower()) or self.id_lookup.get(concept.lower())
-                if not sid:
-                    sid = canonical_normalizer.get_symptom_id(label) or canonical_normalizer.get_symptom_id(concept)
-                if sid:
-                    rec = canonical_normalizer.bridge.lookup_by_id(sid)
-                    c_name = rec.get("symptom_name") if rec else label
-                    if sid not in matched_symptom_ids:
-                        matched_symptom_ids.append(sid)
-                    if c_name not in matched_symptom_labels:
-                        matched_symptom_labels.append(c_name)
-                    if not any(d.get("symptom_id") == sid for d in detected_items):
+        # Also incorporate rule-based canonical concepts if not already in matched_symptom_ids
+        for concept in canonical_res.canonical_concepts:
+            if concept in canonical_res.negative_findings:
+                continue
+            label = concept.replace("_", " ").title()
+            sid = self.id_lookup.get(label.lower()) or self.id_lookup.get(concept.lower())
+            if not sid:
+                sid = canonical_normalizer.get_symptom_id(label) or canonical_normalizer.get_symptom_id(concept)
+            if sid and sid not in matched_symptom_ids:
+                rec = canonical_normalizer.bridge.lookup_by_id(sid)
+                c_name = rec.get("symptom_name") if rec else label
+                matched_symptom_ids.append(sid)
+                if c_name not in matched_symptom_labels:
+                    matched_symptom_labels.append(c_name)
+                if not any(d.get("symptom_id") == sid for d in detected_items):
                         detected_items.append({
                             "concept": c_name,
                             "icon": "",
@@ -836,6 +836,25 @@ def normalize_user_symptoms(
 
     canonical_res = canonical_normalizer.normalize(user_text, user_context={"lang": user_lang})
     neg_set = {n.lower().replace("_", " ") for n in canonical_res.negative_findings}
+    for nf in canonical_res.negative_findings:
+        sid_nf = canonical_normalizer.get_symptom_id(nf) or canonical_normalizer.bridge.resolve_symptom(nf)
+        if sid_nf:
+            neg_set.add(sid_nf.lower())
+            rec_nf = canonical_normalizer.bridge.lookup_by_id(sid_nf)
+            if rec_nf and rec_nf.get("symptom_name"):
+                neg_set.add(rec_nf["symptom_name"].lower())
+
+    from ai.disease_prediction.canonical_concepts import NEGATION_MARKERS
+
+    def _is_negated_phrase(phrase_str: str) -> bool:
+        # Inherent loss/absence symptoms (e.g. loss of appetite, no appetite, bhukh nahi/nathi)
+        if re.search(r"loss\s+of\s+appetite|no\s+appetite|poor\s+appetite|भूख.*(?:नहीं|न)|ભૂખ.*(?:નથી|ન)|bhukh.*(?:nahi|nathi)", phrase_str, re.IGNORECASE):
+            if not re.search(r"(?:denies|without|not)\s+(?:loss\s+of\s+appetite|reduced\s+appetite)", phrase_str, re.IGNORECASE):
+                return False
+        for pat in NEGATION_MARKERS:
+            if re.search(pat, phrase_str, re.IGNORECASE):
+                return True
+        return False
 
     # Step 1: Segment into meaningful clinical phrases
     segmented_phrases = segment_clinical_phrases(user_text)
@@ -845,6 +864,8 @@ def normalize_user_symptoms(
     for p in segmented_phrases:
         p_clean = p.strip()
         if not p_clean:
+            continue
+        if _is_negated_phrase(p_clean):
             continue
         if any(neg in p_clean.lower() for neg in neg_set):
             continue

@@ -67,38 +67,77 @@ def generate_ui_ux_en(output_path):
     add_heading_2(doc, "3.2 Panel 1: AI Health & Symptom Analyzer Wireframe")
     add_code_block(doc,
 """┌─────────────────────────────────────┬──────────────────────────────────────────┐
-│ LEFT COLUMN: PATIENT INPUTS         │ RIGHT COLUMN: CLINICAL TRIAGE RESULTS    │
+│ LEFT COLUMN: PATIENT INTAKE & VITAL │ RIGHT COLUMN: CLINICAL TRIAGE RESULTS    │
 ├─────────────────────────────────────┼──────────────────────────────────────────┤
-│ • Demographic Selectors (Age, Sex)  │ 🚨 EMERGENCY RED FLAG BANNER (If Acute)   │
-│ • Duration Slider (Days / Weeks)    │   [108 Direct Call] [Nearest ICU Route]  │
-│ • Free-text Symptom Entry Box       │ ──────────────────────────────────────── │
-│ • [🎙️ Voice Audio Input Button]     │ 🩺 DIFFERENTIAL DIAGNOSIS CARD (Top-3)   │
-│ • Selected Symptom Tags / Badges    │   1. Condition Name (ICD-11 Code) - 84%  │
-│ • Prior Medical Conditions Selector │   2. Secondary Alternative - 12%         │
-│ • [RUN CLINICAL ASSESSMENT BUTTON]  │ ──────────────────────────────────────── │
-│                                     │ 🥗 ICMR-NIN DIETARY RECOVERY ADVISORY    │
-│                                     │ 💊 VERIFIED MEDICATION FORMULARY (FDA)   │
-│                                     │ 🗺️ NEARBY HOSPITAL GPS RADAR & DISTANCE  │
+│ • Family Profile: [Daksh (Self) ▼]  │ 🚨 EMERGENCY RED FLAG BANNER (If Acute)   │
+│   (Auto-fills Age, Gender, Blood)   │   [108 Direct Call] [Nearest ICU Route]  │
+│ • Demographics:                     │ ──────────────────────────────────────── │
+│   Age: 24 | Gender: Male | State: GJ│ 🩺 DIFFERENTIAL DIAGNOSIS CARD (Top-3)   │
+│   Height: 175cm | Wt: 70kg | Blood: O+│   1. Viral Dengue Fever (ICD-11: 1D20)   │
+│ • Duration: [Today] [1-3d] [4-7d] >2w│   Confidence: 94.2% (Top-3: 97.58%)      │
+│ • Ingestion Modality:               │ ──────────────────────────────────────── │
+│   [🎙️ Voice (Whisper ASR)]          │ 💊 VERIFIED OTC MEDICINES (OpenFDA Gate) │
+│   [✏️ Multilingual Text (HI/GU/EN)] │   • Paracetamol 650mg | Verified Dose    │
+│   [📷 Clinical Symptom Photo Upload]│ ──────────────────────────────────────── │
+│ • Prior Conditions & Ongoing Meds   │ 🥗 ICMR-NIN DIETARY RECOVERY GUIDELINES  │
+│ • [RUN CLINICAL ASSESSMENT BUTTON]  │   • Foods to Eat: ORS, Papaya, Coconut   │
+│                                     │   • Foods to Avoid: Oily, Spicy, Alcohol │
+│                                     │ ──────────────────────────────────────── │
+│                                     │ 🧘 RESTORATIVE YOGA & PHYSIOTHERAPY      │
+│                                     │   • Shavasana & Nadi Shodhana Pranayama  │
+│                                     │ 🔬 CLINICAL ETIOLOGY & ROOT CAUSE        │
+│                                     │   • Vector-borne Flavivirus transmission │
 └─────────────────────────────────────┴──────────────────────────────────────────┘"""
     )
 
     add_heading_2(doc, "3.3 Panel 2: Medical Report & Prescription Scanner Wireframe")
     add_code_block(doc,
 """┌────────────────────────────────────────────────────────────────────────────────────────┐
-│ [📁 DRAG & DROP PRESCRIPTION OR BLOOD REPORT (PNG, JPG, PDF)]                           │
+│ [📁 DRAG & DROP PRESCRIPTION OR LAB/RADIOLOGY REPORT (PNG, JPG, PDF)]                   │
 ├─────────────────────────────────────┬──────────────────────────────────────────────────┤
-│ PREVIEW PANEL (Uploaded Document)   │ STRUCTURED EXTRACTION TABS:                      │
-│                                     │ [1. Digitized Prescriptions] [2. Blood CBC Values]│
+│ PREVIEW CANVAS (Uploaded Document)  │ STRUCTURED EXTRACTION & LAYMAN BREAKDOWN:        │
+│                                     │ [1. Digitized Rx] [2. Blood CBC/LFT] [3. Advice] │
 │ • High-resolution image canvas      │ • Paracetamol 650mg | 1 Tab TID | After food     │
-│ • Grayscale / Contrast Zoom toggle  │ • Amoxicillin 500mg | 1 Cap BD  | 5 Days         │
-│                                     │ ──────────────────────────────────────────────── │
-│                                     │ 🔬 LAYMAN COMPREHENSIVE BREAKDOWN:               │
-│                                     │ • Hemoglobin: 11.2 g/dL (Mildly Low - Anemia)    │
-│                                     │ • What this means in simple words (No panic)     │
+│ • Adaptive contrast / Zoom toggle   │ • Amoxicillin 500mg | 1 Cap BD  | 5 Days         │
+│ • Raw OCR vs Normalized view        │ ──────────────────────────────────────────────── │
+│                                     │ 🔬 CLINICAL LAB MARKERS ANALYSIS:                │
+│                                     │ • Platelet Count: 85,000 /uL (LOW - Thrombocyto) │
+│                                     │ • What this means in simple terms (No panic)     │
+│                                     │ • Underlying Causes & Next Action Steps          │
 └─────────────────────────────────────┴──────────────────────────────────────────────────┘"""
     )
 
-    add_heading_2(doc, "3.4 Panel 5: National Command Center Wireframe (Track 03)")
+    add_heading_2(doc, "3.4 Panel 3: Nearby Healthcare Radar Wireframe (1–25 km Slider)")
+    add_code_block(doc,
+"""┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ NEARBY HEALTHCARE RADAR — OPENSTREETMAP OVERPASS GEOLOCATION                           │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ Perimeter Radius Slider: [────●────────────] 10 KM (Range: 1 to 25 km)                 │
+│ Facility Filter: [x] 24/7 Hospitals  [x] Clinics  [x] Pharmacies  [x] Blood Banks      │
+├───────────────────────────────────────┬────────────────────────────────────────────────┤
+│ INTERACTIVE FOLIUM RADAR MAP          │ SORTED HEALTHCARE DIRECTORY:                   │
+│ • Red Pin: 24/7 Emergency Hospital    │ 1. Civil Hospital Surat (24/7 Emergency, ICU)  │
+│ • Blue Pin: Specialist Clinic         │    Distance: 2.4 km | Direct Navigation Route  │
+│ • Green Pin: 24/7 Medical Store       │ 2. Apollo Pharmacy (24/7 Chemist & Druggist)   │
+│ • Pulsing Marker: Patient Location    │    Distance: 0.8 km | Open Now                 │
+└───────────────────────────────────────┴────────────────────────────────────────────────┘"""
+    )
+
+    add_heading_2(doc, "3.5 Panel 4: Health Records Vault & Family Profiles Wireframe")
+    add_code_block(doc,
+"""┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ PATIENT HEALTH RECORDS VAULT & ENCRYPTED CONSULTATION HISTORY                          │
+├───────────────────┬───────────────────┬───────────────────┬────────────────────────────┤
+│ Member: Daksh (24)│ Scans Stored: 12  │ Past Triage: 8    │ Active Regimens: 2         │
+├───────────────────┴───────────────────┴───────────────────┴────────────────────────────┤
+│ [1. Lab Scans & Rx]  [2. Past Triage Assessments]  [3. Active Care Regimens & Diets]   │
+│ • CBC Blood Panel (2026-10-18) — Anemia Warning ──── [View Details] [Download PDF]     │
+│ • Acute Bronchitis Triage (2026-09-12) ─────────────── [View Rx] [OpenFDA Details]     │
+│ • [➕ ADD NEW FAMILY MEMBER PROFILE] ───────────────── (Age, Gender, Height, Wt, Blood)│
+└────────────────────────────────────────────────────────────────────────────────────────┘"""
+    )
+
+    add_heading_2(doc, "3.6 Panel 5: National Command Center Wireframe (Track 03 - Admin Only)")
     add_code_block(doc,
 """┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ NATIONAL HEALTH LOGISTICS TELEMETRY — 225+ PHC FACILITIES ACROSS 36 STATES/UTS          │
@@ -184,25 +223,80 @@ def generate_ui_ux_hi(output_path):
     # 3. वायरफ्रेम व लेआउट
     add_heading_1(doc, "3. लेआउट वायरफ्रेम एवं स्क्रीन संरचना (Wireframes)")
     
-    add_heading_2(doc, "3.1 पैनल 1: AI स्वास्थ्य व लक्षण विश्लेषक का वायरफ्रेम")
+    add_heading_2(doc, "3.1 पैनल 1: AI स्वास्थ्य व लक्षण विश्लेषक वायरफ्रेम")
     add_code_block(doc,
 """┌─────────────────────────────────────┬──────────────────────────────────────────┐
-│ बायाँ भाग: मरीज इनपुट व लक्षण        │ दायाँ भाग: क्लिनिकल ट्राइएज परिणाम       │
+│ बायाँ भाग: मरीज इनटेक व डेमोग्राफिक्स │ दायाँ भाग: क्लिनिकल ट्राइएज परिणाम       │
 ├─────────────────────────────────────┼──────────────────────────────────────────┤
-│ • उम्र एवं लिंग चयन                 │ 🚨 आपातकालीन रेड फ्लैग बैनर (यदि गंभीर)  │
-│ • बीमारी की अवधि (दिन / सप्ताह)      │   [108 एम्बुलेंस कॉल] [निकटतम ICU मैप]   │
-│ • लक्षण लिखने का इनपुट बॉक्स        │ ──────────────────────────────────────── │
-│ • [🎙️ वॉयस माइक इनपुट बटन]          │ 🩺 संभावित रोग कार्ड (Top-3 डिफरेंशियल)   │
-│ • पहचाने गए लक्षण चिप्स (Tags)       │   1. रोग का नाम (ICD-11 कोड) - 84% मैच   │
-│ • पूर्व बीमारी व वर्तमान दवाएं       │   2. द्वितीय संभावित बीमारी - 12%        │
-│ • [क्लिनिकल जांच शुरू करें बटन]     │ ──────────────────────────────────────── │
-│                                     │ 🥗 ICMR-NIN आहार एवं परहेज परामर्श       │
-│                                     │ 💊 सत्यापित दवा विवरण व पैकेजिंग (FDA)   │
-│                                     │ 🗺️ निकटतम सरकारी व निजी अस्पताल रडार    │
+│ • फैमिली प्रोफाइल: [दक्ष (Self) ▼]  │ 🚨 आपातकालीन रेड फ्लैग बैनर (यदि गंभीर)  │
+│   (उम्र, लिंग, ब्लड ग्रुप स्वतः भरें)│   [108 एम्बुलेंस कॉल] [निकटतम ICU मैप]   │
+│ • डेमोग्राफिक्स:                    │ ──────────────────────────────────────── │
+│   उम्र: 24 | लिंग: पुरुष | राज्य: GJ│ 🩺 संभावित रोग कार्ड (Top-3 डिफरेंशियल)   │
+│   ऊंचाई: 175cm | वजन: 70kg | Blood: O+│   1. वायरल डेंगू फीवर (ICD-11: 1D20)     │
+│ • बीमारी अवधि: [आज] [1-3द] [4-7द] >2ह│   सटीकता: 94.2% (Top-3: 97.58%)          │
+│ • लक्षण इनपुट माध्यम:                │ ──────────────────────────────────────── │
+│   [🎙️ बोलकर (Whisper ASR)]          │ 💊 सत्यापित OTC दवाएं (OpenFDA गेट)      │
+│   [✏️ लिखकर (हिंदी/गुजराती/अंग्रेजी)]│   • पैरासिटामोल 650mg | सत्यापित खुराक   │
+│   [📷 बीमारी का फोटो अपलोड करें]     │ ──────────────────────────────────────── │
+│ • पुरानी बीमारियां व वर्तमान दवाएं   │ 🥗 ICMR-NIN आहार व परहेज गाइड            │
+│ • [क्लिनिकल जांच शुरू करें बटन]     │   • क्या खाएं: ORS, पपीता, नारियल पानी   │
+│                                     │   • क्या न खाएं: तला-भुना, तीखा, शराब    │
+│                                     │ ──────────────────────────────────────── │
+│                                     │ 🧘 स्वास्थ्य योग व फिजियोथेरेपी आसन      │
+│                                     │   • शवासन एवं नाड़ी शोधन प्राणायाम       │
+│                                     │ 🔬 बीमारी का मूल कारण (Etiology)         │
+│                                     │   • एडीज मच्छर जनित फ्लेविवायरस संक्रमण  │
 └─────────────────────────────────────┴──────────────────────────────────────────┘"""
     )
 
-    add_heading_2(doc, "3.2 पैनल 5: राष्ट्रीय स्वास्थ्य कमान केंद्र वायरफ्रेम (ट्रैक 03)")
+    add_heading_2(doc, "3.2 पैनल 2: मेडिकल रिपोर्ट व पर्ची स्कैनर वायरफ्रेम")
+    add_code_block(doc,
+"""┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ [📁 डॉक्टर की पर्ची या लैब/एक्स-रे रिपोर्ट ड्रैग व ड्रॉप करें (PNG, JPG, PDF)]         │
+├─────────────────────────────────────┬──────────────────────────────────────────────────┤
+│ इमेज प्रीव्यू (अपलोड किया गया दस्तावेज)│ निकाले गए परिणाम व सरल भाषा में व्याख्या:        │
+│                                     │ [1. दवा पर्ची] [2. ब्लड CBC/LFT] [3. सलाह]       │
+│ • हाई-रिज़ॉल्यूशन इमेज कैनवास       │ • पैरासिटामोल 650mg | 1 गोली दिन में 3 बार       │
+│ • कंट्रास्ट व ज़ूम टॉगल             │ • एम्पीसिलीन 500mg  | 1 कैप्सूल सुबह-शाम         │
+│                                     │ ──────────────────────────────────────────────── │
+│                                     │ 🔬 बायोकेमिकल लैब टेस्ट व्याख्या:                │
+│                                     │ • प्लेटलेट काउंट: 85,000 /uL (कम - थ्रोम्बोसाइटो)│
+│                                     │ • इसका आसान भाषा में क्या अर्थ है (घबराएं नहीं)  │
+│                                     │ • संभावित कारण एवं आवश्यक कदम                    │
+└─────────────────────────────────────┴──────────────────────────────────────────────────┘"""
+    )
+
+    add_heading_2(doc, "3.3 पैनल 3: निकटतम स्वास्थ्य केंद्र रडार (1-25 किमी स्लाइडर)")
+    add_code_block(doc,
+"""┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ निकटतम स्वास्थ्य केंद्र रडार — OPENSTREETMAP OVERPASS लाइव मैपिंग                      │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│ दायरा स्लाइडर: [────●────────────] 10 किमी (सीमा: 1 से 25 किमी)                        │
+│ श्रेणी चयन: [x] 24/7 आपातकालीन अस्पताल  [x] क्लीनिक  [x] मेडिकल स्टोर  [x] ब्लड बैंक   │
+├───────────────────────────────────────┬────────────────────────────────────────────────┤
+│ इंटरैक्टिव Folium रडार नक्शा          │ दूरी अनुसार स्वास्थ्य केंद्र सूची:              │
+│ • लाल पिन: 24/7 आपातकालीन अस्पताल     │ 1. सिविल अस्पताल सूरत (24/7 Emergency & ICU)   │
+│ • नीला पिन: स्पेशलिस्ट क्लीनिक         │    दूरी: 2.4 किमी | सीधा नेविगेशन रास्ता       │
+│ • हरा पिन: 24/7 मेडिकल स्टोर / केमिस्ट│ 2. अपोलो फार्मेसी (24 घंटे खुली दवा दुकान)     │
+│ • नीला गोल मार्कर: मरीज का स्थान      │    दूरी: 0.8 किमी | अभी खुला है                │
+└───────────────────────────────────────┴────────────────────────────────────────────────┘"""
+    )
+
+    add_heading_2(doc, "3.4 पैनल 4: स्वास्थ्य रिकॉर्ड वॉल्ट व पारिवारिक प्रोफाइल")
+    add_code_block(doc,
+"""┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ मरीज स्वास्थ्य रिकॉर्ड वॉल्ट व परामर्श इतिहास                                          │
+├───────────────────┬───────────────────┬───────────────────┬────────────────────────────┤
+│ सदस्य: दक्ष (24)  │ कुल टेस्ट: 12     │ पुरानी जांचें: 8  │ सक्रिय आहार प्लान: 2       │
+├───────────────────┴───────────────────┴───────────────────┴────────────────────────────┤
+│ [1. लैब टेस्ट व पर्चियां]  [2. पुरानी ट्राइएज जांचें]  [3. सक्रिय डाइट व योगासन चार्ट] │
+│ • CBC ब्लड पैनल (2026-10-18) — एनीमिया चेतावनी ────── [विवरण देखें] [PDF डाउनलोड करें] │
+│ • ब्रोंकाइटिस जांच (2026-09-12) ───────────────────── [दवाएं देखें] [FDA विवरण]        │
+│ • [➕ नया परिवार सदस्य जोड़ें] ────────────────────── (उम्र, लिंग, ऊंचाई, वजन, ब्लड)  │
+└────────────────────────────────────────────────────────────────────────────────────────┘"""
+    )
+
+    add_heading_2(doc, "3.5 पैनल 5: राष्ट्रीय स्वास्थ्य कमान केंद्र वायरफ्रेम (केवल एडमिन हेतु)")
     add_code_block(doc,
 """┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ राष्ट्रीय स्वास्थ्य आपूर्ति टेलीमेट्री — देश भर के 225+ प्राथमिक स्वास्थ्य केंद्र     │

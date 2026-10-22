@@ -243,8 +243,13 @@ def _extract_clinical_presentation_attributes(
         "severe chest pain", "chest pressure", "retrosternal", "cardiac arrest", "myocardial",
         "coronary", "stroke", "facial droop", "slurred speech", "loss of consciousness", "unconscious",
         "syncope", "acute shock", "uncontrolled bleeding", "anaphylaxis", "severe dyspnea", "cyanosis",
-        "respiratory failure"
-    ])
+        "respiratory failure", "meningitis", "sepsis", "pulmonary embolism", "gastrointestinal hemorrhage",
+        "hypertensive crisis", "surgical abdomen", "dehydration shock", "acute retention", "hematuria",
+        "thyrotoxic", "storm", "pancreatitis", "peritonitis", "ruptured viscus", "hemorrhagic", "vomiting blood",
+        "temporal arteritis", "pneumothorax", "glaucoma", "guillain", "ascending weakness", "hyperosmolar", "aortic dissection"
+    ]) or (user_context and user_context.get("severity") == "Severe" and any(k in text_lower for k in [
+        "chest pain", "shortness of breath", "meningitis", "sepsis", "stroke", "hemorrhage", "pancreatitis", "peritonitis", "crisis", "glaucoma", "weakness"
+    ]))
 
     # 7. Localized superficial presentation (cutaneous, musculoskeletal, topical-amenable)
     is_localized_superficial = has_musculoskeletal_symptoms or any(k in text_lower for k in [
@@ -376,11 +381,13 @@ def get_medicine_gallery(
     max_items: Optional[int] = None,
     top_condition: str = "",
     symptoms: list = None,
-    duration: str = "1-3 Days"
+    duration: str = "1-3 Days",
+    user_context: Optional[dict] = None
 ) -> list:
     """
     Enriches each medicine entry with live OpenFDA / DailyMed verification, route/form gating,
-    active compound deduplication, explicit dosage provenance, and resolved images.
+    active compound deduplication, allergy and contraindication safety filtering,
+    explicit dosage provenance, and resolved images.
     Returns dynamic count (0, 1, 2, 3, etc.) - never pads or truncates to an artificial quota.
     """
     gallery = []
@@ -419,6 +426,43 @@ def get_medicine_gallery(
 
         candidate = _first_candidate_name(med_name, brand_examples)
         display_name = med_name if med_name else candidate
+
+        # Clinical Safety Gate: Patient Allergy, Pre-existing Condition & DDI Check
+        if user_context:
+            from ai.utils.clinical_safety_rules import clinical_safety_engine
+            allergies_raw = user_context.get("allergies")
+            if isinstance(allergies_raw, list):
+                allergies_list = allergies_raw
+            elif isinstance(allergies_raw, str) and allergies_raw.lower() not in ["none", "no", ""]:
+                allergies_list = [a.strip() for a in allergies_raw.split(",") if a.strip()]
+            else:
+                allergies_list = []
+
+            conds_raw = user_context.get("conditions")
+            if isinstance(conds_raw, list):
+                conds_list = conds_raw
+            elif isinstance(conds_raw, str) and conds_raw.lower() not in ["none", "no", ""]:
+                conds_list = [c.strip() for c in conds_raw.split(",") if c.strip()]
+            else:
+                conds_list = []
+
+            meds_raw = user_context.get("medications")
+            if isinstance(meds_raw, list):
+                curr_meds_list = meds_raw
+            elif isinstance(meds_raw, str) and meds_raw.lower() not in ["none", "no", ""]:
+                curr_meds_list = [m.strip() for m in meds_raw.split(",") if m.strip()]
+            else:
+                curr_meds_list = []
+
+            safety_eval = clinical_safety_engine.run_full_safety_audit(
+                conditions=conds_list,
+                current_medications=curr_meds_list,
+                allergies=allergies_list,
+                candidate_medications=[display_name, candidate]
+            )
+            if not safety_eval["is_safe"] and safety_eval["blocked_medications"]:
+                _logger.warning("[CareRecommendations] Blocked medication '%s' due to safety violation: %s", display_name, safety_eval.get("blocked_medications"))
+                continue
 
         # Topical clinical appropriateness gate
         name_lower = (display_name + " " + spec_form + " " + spec_route).lower()
@@ -1011,9 +1055,10 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
     ai_is_live = False
     ai_provider_used = None
     fallback_warning = ""
+    force_offline = bool(user_context.get("offline") or user_context.get("force_offline"))
 
     # 1. Try Gemini API (Primary — Multi-Key Failover Pool)
-    if gemini_pool.get_active_keys():
+    if not force_offline and gemini_pool.get_active_keys():
         gemini_payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"temperature": 0.15, "maxOutputTokens": 2500, "responseMimeType": "application/json"}
@@ -1040,7 +1085,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
                     _logger.info("[CareRecommendations] Gemini %s SUCCESS with key pool", gemini_model)
 
     # 2. Try Groq API (Secondary — valid model chain)
-    if not ai_data and GROQ_API_KEY:
+    if not force_offline and not ai_data and GROQ_API_KEY:
         for groq_model in _GROQ_MODELS:
             try:
                 headers = {
@@ -1083,7 +1128,7 @@ Return strictly a valid JSON object with NO preamble matching this exact schema:
         raw_meds = ai_data.get("medicines", [])
         for m in raw_meds:
             m["source"] = "Clinical AI Candidate (Gemini/Groq)"
-        med_gallery = get_medicine_gallery(raw_meds, max_items=12, top_condition=top_condition, symptoms=symptoms)
+        med_gallery = get_medicine_gallery(raw_meds, max_items=12, top_condition=top_condition, symptoms=symptoms, user_context=user_context)
 
         # Format Yoga / Physio with YouTube search URLs and images
         yoga_list = []

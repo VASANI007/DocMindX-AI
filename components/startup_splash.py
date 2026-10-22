@@ -814,11 +814,36 @@ def get_animation_script_html() -> str:
 
                         const overlay = pDoc.getElementById("docmindx-splash-overlay");
                         if (overlay) {{
-                            overlay.style.transition = "opacity 0.45s ease-out";
+                            overlay.style.transition = "opacity 0.55s ease-out";
                             overlay.style.opacity = "0";
+                            overlay.style.pointerEvents = "none";
+                            setTimeout(() => {{
+                                try {{
+                                    overlay.style.display = "none";
+                                    overlay.style.visibility = "hidden";
+                                }} catch(e) {{}}
+                            }}, 580);
                         }}
                     }}
-                }}, 70); // 70ms * 100 = 7.0s smooth continuous count (7 seconds total)
+                }}, 45); // 45ms * 100 = 4.5s smooth continuous count
+
+                // Optional click to dismiss immediately
+                const overlay = pDoc.getElementById("docmindx-splash-overlay");
+                if (overlay) {{
+                    overlay.style.cursor = "pointer";
+                    overlay.title = "Click to enter DocMindX AI immediately";
+                    overlay.addEventListener("click", () => {{
+                        overlay.style.transition = "opacity 0.35s ease-out";
+                        overlay.style.opacity = "0";
+                        overlay.style.pointerEvents = "none";
+                        setTimeout(() => {{
+                            try {{
+                                overlay.style.display = "none";
+                                overlay.style.visibility = "hidden";
+                            }} catch(e) {{}}
+                        }}, 380);
+                    }});
+                }}
             }}
 
             startDriver();
@@ -893,13 +918,9 @@ def render_startup_splash_screen() -> None:
     except Exception as exc:
         _logger.warning("[Startup] Stage 4 background check warning: %s", exc)
 
-    # Ensure animation completes all 5 visual stages comfortably (~7.3s total)
-    elapsed = time.time() - t_start
-    remaining = max(0.0, 7.3 - elapsed)
-    if remaining > 0:
-        time.sleep(remaining)
-
-    # Mark ready and rerun to reveal the fully initialized application
+    # Mark ready so future interactions or tab changes skip the splash screen entirely
     st.session_state["_docmindx_startup_ready"] = True
-    _logger.info("[Startup] DocMindX AI 100%% warmed up & ready (elapsed: %.2fs)", time.time() - t_start)
-    st.rerun()
+    _logger.info("[Startup] DocMindX AI pre-warmed & ready (elapsed: %.2fs). Rendering main application underneath overlay.", time.time() - t_start)
+    # Do NOT call st.rerun()! By letting this run complete, the entire main application (Image 3)
+    # renders directly beneath the overlay. As the overlay fades out, Image 3 is instantly visible
+    # with ZERO blank white screen in between.

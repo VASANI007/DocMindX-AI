@@ -16,6 +16,7 @@ def generate_google_map_html(
     zoom: int = 14,
     hospitals: list = None,
     active_hospital_index: int = None,
+    facility_category: str = None,
     **kwargs
 ) -> str:
     """
@@ -37,6 +38,8 @@ def generate_google_map_html(
     route_coords = (route_data.get("route_coordinates") if route_data else []) or []
     route_coords_json = json.dumps(route_coords) if route_coords else "[]"
     route_info_json = json.dumps(route_data) if route_data else "null"
+    category_key = (facility_category or kwargs.get("category") or kwargs.get("facility_type") or "").strip().lower()
+    facility_category_json = json.dumps(category_key)
     html_content = f"""<!DOCTYPE html>
             <html>
 <head>
@@ -95,6 +98,8 @@ def generate_google_map_html(
         .mm-iw-badge-red {{ background: #FEE2E2; color: #EF4444; }}
         .mm-iw-badge-blue {{ background: #E0F2FE; color: #0284C7; }}
         .mm-iw-badge-green {{ background: #DCFCE7; color: #166534; }}
+        .mm-iw-badge-teal {{ background: #CCFBF1; color: #0F766E; }}
+        .mm-iw-badge-purple {{ background: #F3E8FF; color: #7C3AED; }}
         .mm-iw-text {{
             font-size: 11.5px;
             color: #64748B;
@@ -280,6 +285,7 @@ def generate_google_map_html(
         const selectedFacility = {selected_facility_json};
         const routeCoords = {route_coords_json};
         const routeInfo = {route_info_json};
+        const facilityCategory = {facility_category_json};
 
         function initMap() {{
             const centerLoc = {{ lat: userLat, lng: userLon }};
@@ -343,9 +349,60 @@ def generate_google_map_html(
                 const pos = {{ lat: parseFloat(fac.lat), lng: parseFloat(fac.lon) }};
                 bounds.extend(pos);
 
-                let isEmergency = fac.emergency && (fac.emergency.includes("24/7") || fac.emergency.includes("Yes"));
-                let pinColor = isEmergency ? "#EF4444" : (fac.type && fac.type.includes("Pharmacy") ? "#16A34A" : "#0284C7");
-                let badgeClass = isEmergency ? "mm-iw-badge-red" : (fac.type && fac.type.includes("Pharmacy") ? "mm-iw-badge-green" : "mm-iw-badge-blue");
+                const activeCat = (facilityCategory || "").toLowerCase().trim();
+                const typeLower = (fac.type || "").toLowerCase();
+                const nameLower = (fac.name || "").toLowerCase();
+
+                let pinColor = "#2563EB"; // Default Medical Blue
+                let badgeClass = "mm-iw-badge-blue";
+
+                // Strict enforcement: When user selects a specific facility category, ALL pins match that category color
+                if (activeCat === "emergency_24x7" || activeCat.includes("emergency") || activeCat.includes("trauma")) {{
+                    pinColor = "#EF4444"; // Red strictly for Emergency & Trauma Centers
+                    badgeClass = "mm-iw-badge-red";
+                }} else if (activeCat === "pharmacy" || activeCat.includes("pharmacy") || activeCat.includes("chemist")) {{
+                    pinColor = "#16A34A"; // Green strictly for 24/7 Pharmacies & Chemists
+                    badgeClass = "mm-iw-badge-green";
+                }} else if (activeCat === "blood_bank" || activeCat.includes("blood")) {{
+                    pinColor = "#E11D48"; // Crimson Red for Blood Banks
+                    badgeClass = "mm-iw-badge-red";
+                }} else if (activeCat === "diagnostic" || activeCat.includes("diagnostic") || activeCat.includes("lab")) {{
+                    pinColor = "#0D9488"; // Teal for Diagnostics & Pathology Labs
+                    badgeClass = "mm-iw-badge-teal";
+                }} else if (activeCat === "clinic" || activeCat.includes("clinic")) {{
+                    pinColor = "#7C3AED"; // Purple for Specialized Clinics
+                    badgeClass = "mm-iw-badge-purple";
+                }} else if (activeCat === "hospital" || activeCat.includes("hospital")) {{
+                    pinColor = "#2563EB"; // Medical Blue for Multi-Speciality Hospitals
+                    badgeClass = "mm-iw-badge-blue";
+                }} else {{
+                    // Fallback to name/keyword inference if no category filter is active
+                    const isPharmacy = typeLower.includes("pharmacy") || typeLower.includes("chemist") || nameLower.includes("pharmacy") || nameLower.includes("chemist") || nameLower.includes("medicos") || nameLower.includes("medical store");
+                    const isDiagnostic = typeLower.includes("diagnostic") || typeLower.includes("lab") || nameLower.includes("diagnostic") || nameLower.includes("pathology") || nameLower.includes("laboratory");
+                    const isBloodBank = typeLower.includes("blood") || nameLower.includes("blood bank");
+                    const isClinic = typeLower.includes("clinic") || nameLower.includes("clinic");
+                    const isEmergency = (typeLower.includes("emergency") || nameLower.includes("trauma") || (fac.emergency && (fac.emergency.includes("24/7") || fac.emergency.includes("Yes")))) && !isPharmacy && !isDiagnostic && !isBloodBank;
+
+                    if (isPharmacy) {{
+                        pinColor = "#16A34A";
+                        badgeClass = "mm-iw-badge-green";
+                    }} else if (isBloodBank) {{
+                        pinColor = "#E11D48";
+                        badgeClass = "mm-iw-badge-red";
+                    }} else if (isDiagnostic) {{
+                        pinColor = "#0D9488";
+                        badgeClass = "mm-iw-badge-teal";
+                    }} else if (isClinic) {{
+                        pinColor = "#7C3AED";
+                        badgeClass = "mm-iw-badge-purple";
+                    }} else if (isEmergency) {{
+                        pinColor = "#EF4444";
+                        badgeClass = "mm-iw-badge-red";
+                    }} else {{
+                        pinColor = "#2563EB";
+                        badgeClass = "mm-iw-badge-blue";
+                    }}
+                }}
 
                 const marker = new google.maps.Marker({{
                     position: pos,

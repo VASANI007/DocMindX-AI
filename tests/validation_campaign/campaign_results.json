@@ -1,0 +1,118 @@
+{
+  "timestamp": "2026-10-21T12:09:26Z",
+  "total_evaluated": 425,
+  "total_passed": 425,
+  "total_failed": 0,
+  "overall_pass_rate_pct": 100.0,
+  "total_elapsed_seconds": 204.38,
+  "suites": [
+    {
+      "category": "Category A: Demographics (Step 1)",
+      "file": "test_demographics_validation.py",
+      "description": "Age groupings, boundary checks, pediatric/geriatric routing, edge validations",
+      "expected_count": 40,
+      "passed": 40,
+      "failed": 0,
+      "total": 40,
+      "status": "PASSED",
+      "elapsed_seconds": 5.27,
+      "stdout": "........................................                                 [100%]\n40 passed in 0.22s"
+    },
+    {
+      "category": "Category B: Symptom Extraction & Normalization (Step 2)",
+      "file": "test_symptom_extraction_validation.py",
+      "description": "Canonical ID mapping, multi-symptom parsing, clinical negation, misspellings",
+      "expected_count": 80,
+      "passed": 80,
+      "failed": 0,
+      "total": 80,
+      "status": "PASSED",
+      "elapsed_seconds": 25.32,
+      "stdout": "........................................................................ [ 90%]\n........                                                                 [100%]\n80 passed in 22.31s"
+    },
+    {
+      "category": "Category C: Multilingual AI Validation (Step 2)",
+      "file": "test_multilingual_validation.py",
+      "description": "Cross-lingual parity (En/Hi/Gu), transliteration, code-mixing, dialectal forms",
+      "expected_count": 50,
+      "passed": 50,
+      "failed": 0,
+      "total": 50,
+      "status": "PASSED",
+      "elapsed_seconds": 14.75,
+      "stdout": "..................................................                       [100%]\n50 passed in 12.27s"
+    },
+    {
+      "category": "Category D: Medical History & Contraindications (Step 3)",
+      "file": "test_medical_history_validation.py",
+      "description": "Contraindication blocking, DDI flags, pregnancy safety, organ impairment",
+      "expected_count": 40,
+      "passed": 40,
+      "failed": 0,
+      "total": 40,
+      "status": "PASSED",
+      "elapsed_seconds": 2.76,
+      "stdout": "........................................                                 [100%]\n40 passed in 0.21s"
+    },
+    {
+      "category": "Category E: Voice & Image Workflow (Step 2)",
+      "file": "test_voice_image_workflow.py",
+      "description": "Voice transcript clinical mapping, OCR parsing, lab report extraction",
+      "expected_count": 30,
+      "passed": 30,
+      "failed": 0,
+      "total": 30,
+      "status": "PASSED",
+      "elapsed_seconds": 27.14,
+      "stdout": "..............................                                           [100%]\n30 passed in 24.80s"
+    },
+    {
+      "category": "Category F: Clinical Triage & Recommendations (Step 4)",
+      "file": "test_clinical_triage_medicine.py",
+      "description": "Emergency triage escalation, gender-filtering, dosage guidance, non-pharmacological",
+      "expected_count": 40,
+      "passed": 40,
+      "failed": 0,
+      "total": 40,
+      "status": "PASSED",
+      "elapsed_seconds": 37.86,
+      "stdout": "........................................                                 [100%]\n40 passed in 35.14s"
+    },
+    {
+      "category": "Category G: Persistence & State Isolation",
+      "file": "test_persistence_isolation.py",
+      "description": "Step 1-4 state retention, race-condition safety, cross-session isolation",
+      "expected_count": 20,
+      "passed": 20,
+      "failed": 0,
+      "total": 20,
+      "status": "PASSED",
+      "elapsed_seconds": 27.73,
+      "stdout": "....................                                                     [100%]\n20 passed in 24.77s"
+    },
+    {
+      "category": "Randomized Property Testing (Fixed Seed 20261021)",
+      "file": "test_randomized_workflow.py",
+      "description": "Property-based randomized patient workflows, monotonic escalation, seed 20261021",
+      "expected_count": 25,
+      "passed": 25,
+      "failed": 0,
+      "total": 25,
+      "status": "PASSED",
+      "elapsed_seconds": 36.22,
+      "stdout": ".........................                                                [100%]\n25 passed in 33.79s"
+    },
+    {
+      "category": "Stage 3: Held-Out Unseen Test Suite",
+      "file": "test_heldout_unseen.py",
+      "description": "Novel complex presentations, novel code-mixed narratives, multi-morbid DDIs, idioms",
+      "expected_count": 100,
+      "passed": 100,
+      "failed": 0,
+      "total": 100,
+      "status": "PASSED",
+      "elapsed_seconds": 27.33,
+      "stdout": "........................................................................ [ 72%]\n............................                                             [100%]\n100 passed in 24.79s"
+    }
+  ]
+}

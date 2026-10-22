@@ -29,6 +29,9 @@ def get_detailed_address(lat: float, lon: float) -> Dict[str, str]:
         pass
     return {}
 
+import streamlit as st
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def detect_auto_location(client_ip: Optional[str] = None) -> Dict[str, Any]:
     """
     Auto-detects geographical location and resolves real physical address.

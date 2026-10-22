@@ -47,7 +47,7 @@ def create_base_document(title, subtitle, doc_type, lang="EN"):
         footer = section.footer
         fp = footer.paragraphs[0]
         fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        frun = fp.add_run("DocMindX AI Platform | Enterprise Clinical Health Intelligence | Confidential & Proprietary")
+        frun = fp.add_run("DocMindX AI Platform | SOCCA (M.Sc. D.S.) | Mentor: Mr. Ketan Nakum | Production Verified")
         frun.font.name = "Segoe UI"
         frun.font.size = Pt(8)
         frun.font.color.rgb = COLOR_MUTED
@@ -74,17 +74,19 @@ def create_base_document(title, subtitle, doc_type, lang="EN"):
         run_sub.font.italic = True
         run_sub.font.color.rgb = COLOR_SECONDARY
 
-    # Metadata Banner Table
-    meta_table = doc.add_table(rows=2, cols=4)
+    # Metadata Banner Table (3 Rows, 4 Columns)
+    meta_table = doc.add_table(rows=3, cols=4)
     meta_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-    meta_widths = [Inches(1.5), Inches(1.8), Inches(1.5), Inches(1.7)]
+    meta_widths = [Inches(1.4), Inches(2.2), Inches(1.3), Inches(1.6)]
     
     headers_meta = (
-        ("Project", "DocMindX AI v2.0", "Author", "Daksh Vasani"),
-        ("Track", "Smart Health & Supply Chain", "Status", "Production Ready / Verified")
+        ("Project", "DocMindX AI v2.0 (Clinical Intelligence)", "Status", "Production Verified (97.58% Acc)"),
+        ("Student Researchers", "1. Aakash Shah   2. Alok Rana\n3. Vasani Daksh Vitthal bhai", "Affiliation", "SOCCA (M.Sc. D.S.)"),
+        ("Project Mentor", "Mr. Ketan Nakum", "Mentor Affiliation", "SOCCA (M.Sc. D.S.)")
     ) if lang == "EN" else (
-        ("प्रोजेक्ट", "DocMindX AI v2.0", "लेखक / आर्किटेक्ट", "Daksh Vasani"),
-        ("ट्रैक", "स्मार्ट हेल्थ एवं सप्लाई चेन", "स्थिति", "प्रोडक्शन रेडी / सत्यापित")
+        ("प्रोजेक्ट", "DocMindX AI v2.0 (क्लिनिकल इंटेलिजेंस)", "स्थिति", "प्रोडक्शन सत्यापित (97.58% सटीकता)"),
+        ("विद्यार्थी / शोधकर्ता", "1. आकाश शाह   2. आलोक राणा\n3. वासणी दक्ष विठ्ठलभाई", "संस्थान / विभाग", "SOCCA (M.Sc. D.S.)"),
+        ("प्रोजेक्ट मार्गदर्शक", "श्री केतन नकुम (Mr. Ketan Nakum)", "विभाग", "SOCCA (M.Sc. D.S.)")
     )
 
     for r_idx, row_data in enumerate(headers_meta):
@@ -97,7 +99,7 @@ def create_base_document(title, subtitle, doc_type, lang="EN"):
             val = row_data[c_idx]
             run = cp.add_run(val)
             run.font.name = "Segoe UI"
-            run.font.size = Pt(9)
+            run.font.size = Pt(8.5)
             if c_idx % 2 == 0:
                 run.font.bold = True
                 run.font.color.rgb = COLOR_PRIMARY
@@ -112,7 +114,7 @@ def create_base_document(title, subtitle, doc_type, lang="EN"):
     
     # Divider space
     p_div = doc.add_paragraph()
-    p_div.paragraph_format.space_before = Pt(12)
+    p_div.paragraph_format.space_before = Pt(10)
     p_div.paragraph_format.space_after = Pt(8)
     
     return doc

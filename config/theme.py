@@ -11896,6 +11896,16 @@ div[data-testid="stTextInput"] [data-baseweb="base-input"]:focus-within,
     border-color: #2563EB !important;
     box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3) !important;
 }
+
+/* ==============================================================================
+   STREAMLIT RE-EVALUATION TRANSITION
+   Prevents entire page from collapsing into a blank white screen during reruns.
+   ============================================================================== */
+[data-stale="true"],
+[stale-data="true"] {
+    opacity: 0.90 !important;
+    transition: opacity 0.2s ease-in-out !important;
+}
 </style>
 """
 

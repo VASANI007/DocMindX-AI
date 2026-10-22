@@ -522,11 +522,49 @@ def toggle_app_theme():
     """Toggle dark mode instantly via callback without double-reruns."""
     st.session_state["dark_mode"] = not st.session_state.get("dark_mode", False)
 
+def reset_clinical_panel_state(panel_name: str = None):
+    """
+    Resets old scan results, uploaded documents, and multi-step assessment forms
+    when navigating between panels so users always start with a clean new scan.
+    """
+    # 1. Reset Medical Report & Prescription Analyzer
+    if panel_name in (None, "Medical Report"):
+        st.session_state["p2_step"] = 1
+        st.session_state["p2_cached_doc_key"] = None
+        st.session_state["p2_cached_doc_text"] = ""
+        st.session_state["p2_deep_ai_chat"] = []
+        st.session_state["p2_doc_text_stream"] = ""
+        st.session_state["p2_doc_name"] = "Medical Document"
+        st.session_state["p2_uploader_version"] = st.session_state.get("p2_uploader_version", 0) + 1
+        st.session_state.pop("p2_doc_uploader", None)
+        keys_to_clear = [k for k in list(st.session_state.keys()) if k.startswith("p2_breakdown_") or k.startswith("p2_saved_") or k.startswith("p2_analysis_") or k.startswith("p2_eval_")]
+        for k in keys_to_clear:
+            st.session_state.pop(k, None)
+
+    # 2. Reset Health Assessment & Symptom Triage
+    if panel_name in (None, "Health Assessment"):
+        st.session_state["assessment_completed"] = False
+        st.session_state["assessment_step"] = 1
+        st.session_state["p1_triage_results"] = None
+        st.session_state["triage_result"] = None
+        st.session_state["care_recommendations"] = None
+        st.session_state["selected_symptoms_list"] = []
+        st.session_state["detected_chief_condition"] = None
+        st.session_state["show_free_text_nlp"] = False
+        st.session_state["triage_qa_history"] = []
+        st.session_state["floating_chat_open"] = False
+        if "user_context" in st.session_state and isinstance(st.session_state["user_context"], dict):
+            st.session_state["user_context"]["symptoms"] = []
+
 def switch_active_panel(target_panel, **extra_state):
     """
     High-performance instant panel switcher callback.
     Executes before script rerun so active panel updates in a single render pass (<1s).
+    Clears previous scan data so user always starts with a fresh scan when entering a panel.
     """
+    prev = st.session_state.get("active_panel")
+    if prev != target_panel:
+        reset_clinical_panel_state(target_panel)
     st.session_state["active_panel"] = target_panel
     st.session_state["mobile_nav_open"] = False
     st.session_state["top_profile_open"] = False
@@ -960,6 +998,8 @@ with st.sidebar:
     def _on_clinical_nav_change():
         chosen = st.session_state.get("clinical_module_nav_radio")
         if chosen in panel_keys:
+            if chosen != st.session_state.get("active_panel"):
+                reset_clinical_panel_state(chosen)
             st.session_state["active_panel"] = chosen
 
     active_p = st.session_state.get("active_panel", "Health Assessment")
@@ -1105,6 +1145,12 @@ active_p = st.session_state.get("active_panel", "Health Assessment")
 if active_p == "National Command" and not is_admin_user:
     st.session_state["active_panel"] = "Health Assessment"
     active_p = "Health Assessment"
+
+# Universal panel switch detector: Resets old scan data when navigating between modules
+_last_panel = st.session_state.get("_prev_active_panel_tracker", None)
+if _last_panel is not None and _last_panel != active_p:
+    reset_clinical_panel_state(active_p)
+st.session_state["_prev_active_panel_tracker"] = active_p
 
 
 # Direct Dark Mode CSS Overrides - Guarantees High-Contrast Text & Background across all UI
@@ -7664,6 +7710,12 @@ elif st.session_state["active_panel"] == "Medical Report":
     s3_cls = "active" if p2_cur_step == 3 else ""
     st.markdown(f"""
     <style>
+    /* Non-destructive transition for smooth updates without blank screen */
+    [data-stale="true"],
+    [stale-data="true"] {{
+        opacity: 0.90 !important;
+        transition: opacity 0.2s ease-in-out !important;
+    }}
     .mm-report-stepper > .mm-step-arrow {{
         flex: 0 0 70px;
         height: 36px;
@@ -8211,6 +8263,22 @@ elif st.session_state["active_panel"] == "Medical Report":
             lab_res = cached_eval.get("lab_res")
             detected_label = cached_eval.get("detected_label", "")
         else:
+            analysis_placeholder = st.empty()
+            analysis_placeholder.markdown(f"""
+            <div style="background: var(--mm-card-bg, #FFFFFF); border: 1.5px solid #3B82F6; border-radius: 16px; padding: 26px 22px; margin: 12px 0 20px 0; box-shadow: 0 8px 24px rgba(37, 99, 235, 0.10); text-align: center;">
+                <div style="display: flex; justify-content: center; margin-bottom: 14px;">
+                    <div style="width: 52px; height: 52px; border-radius: 14px; background: rgba(37, 99, 235, 0.12); border: 2px solid #3B82F6; display: flex; align-items: center; justify-content: center; color: #2563EB;">
+                        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    </div>
+                </div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--mm-text-primary, #0F172A); margin: 0 0 6px 0;">{T.get("analyzing_title", "DocMindX AI Clinical Analysis Engine Active")}</h3>
+                <p style="font-size: 0.85rem; color: var(--mm-text-secondary, #64748B); margin: 0 0 14px 0;">{T.get("analyzing_subtitle", "Extracting medical entities, evaluating reference intervals, and compiling recovery guidance...")}</p>
+                <div style="max-width: 380px; margin: 0 auto; background: rgba(37, 99, 235, 0.08); border-radius: 8px; height: 6px; overflow: hidden; position: relative;">
+                    <div style="position: absolute; height: 100%; width: 45%; background: linear-gradient(90deg, #2563EB, #60A5FA); border-radius: 8px; animation: mmShimmer 1.4s ease-in-out infinite alternate;"></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
             # 1. Run universal medical document verification to determine primary category
             v_chk = verify_medical_document(doc_text_stream, expected_type="any")
             v_type = v_chk.get("detected_type", "") if v_chk.get("is_valid") else ""
@@ -8299,6 +8367,7 @@ elif st.session_state["active_panel"] == "Medical Report":
                 "lab_res": lab_res,
                 "detected_label": detected_label
             }
+            analysis_placeholder.empty()
 
         # Auto-Detected Document Badge Banner
         if is_imaging:
@@ -8970,7 +9039,38 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                 f'</div>'
             )
 
-    gis_c1, gis_c2, gis_c3 = st.columns([1.1, 1.1, 1.1])
+    # Force top baseline alignment across all 3 Nearby Healthcare cards
+    st.markdown("""
+    <style>
+    /* Equal baseline top alignment for all 3 Nearby Healthcare cards */
+    div[data-testid="stHorizontalBlock"]:has(.st-key-gis_panel_col_1),
+    div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-gis_panel_col_1"]) {
+        align-items: flex-start !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.st-key-gis_panel_col_1) > div[data-testid="stColumn"],
+    div[data-testid="stHorizontalBlock"]:has(.st-key-gis_panel_col_1) > div[data-testid="column"] {
+        align-self: flex-start !important;
+        justify-content: flex-start !important;
+    }
+    div[data-testid="stHorizontalBlock"]:has(.st-key-gis_panel_col_1) > div[data-testid="stColumn"] > div[data-testid="stVerticalBlock"],
+    div[data-testid="stHorizontalBlock"]:has(.st-key-gis_panel_col_1) > div[data-testid="column"] > div[data-testid="stVerticalBlock"] {
+        justify-content: flex-start !important;
+        align-items: stretch !important;
+    }
+    .st-key-gis_panel_col_1,
+    .st-key-gis_panel_col_2,
+    .st-key-gis_panel_col_3,
+    div[class*="st-key-gis_panel_col_1"],
+    div[class*="st-key-gis_panel_col_2"],
+    div[class*="st-key-gis_panel_col_3"] {
+        margin-top: 0 !important;
+        margin-bottom: auto !important;
+        align-self: flex-start !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    gis_c1, gis_c2, gis_c3 = st.columns([1.1, 1.1, 1.1], vertical_alignment="top")
 
     with gis_c1:
         with st.container(border=True, key="gis_panel_col_1"):
@@ -8992,58 +9092,6 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                 st.session_state["live_gps_requested"] = False
             if "gis_loc_source" not in st.session_state:
                 st.session_state["gis_loc_source"] = "Live Device GPS"
-
-            # --- GPS via top-level page script (NOT iframe) ---
-            # This script runs in the parent browser window context, so it can
-            # access the real device GPS chip, not just IP/network location.
-            # Coordinates are passed back via URL query params which Streamlit reads.
-            _auto_trigger = "true" if st.session_state.get("live_gps_requested", False) else "false"
-            _gps_page_script = f"""
-            <script>
-            (function() {{
-                if (window._dmx_gps_injected) return;
-                window._dmx_gps_injected = true;
-
-                function _dmx_send_gps(lat, lon, acc) {{
-                    // Use top/parent to navigate the real Streamlit app URL, not the inner iframe
-                    var win = window.top || window.parent || window;
-                    var base = win.location.href.split('?')[0].split('#')[0];
-                    win.location.href = base + '?_gps_lat=' + lat + '&_gps_lon=' + lon + '&_gps_acc=' + (acc || 0);
-                }}
-
-                function _dmx_send_err(code) {{
-                    var win = window.top || window.parent || window;
-                    var base = win.location.href.split('?')[0].split('#')[0];
-                    win.location.href = base + '?_gps_err=' + code;
-                }}
-
-                window._dmx_acquire_gps = function() {{
-                    if (!navigator.geolocation) {{ _dmx_send_err(2); return; }}
-                    navigator.geolocation.getCurrentPosition(
-                        function(pos) {{
-                            _dmx_send_gps(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
-                        }},
-                        function(err) {{
-                            navigator.geolocation.getCurrentPosition(
-                                function(pos2) {{
-                                    _dmx_send_gps(pos2.coords.latitude, pos2.coords.longitude, pos2.coords.accuracy);
-                                }},
-                                function(err2) {{ _dmx_send_err(err2.code || err.code); }},
-                                {{ enableHighAccuracy: false, timeout: 12000, maximumAge: 0 }}
-                            );
-                        }},
-                        {{ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }}
-                    );
-                }};
-
-                // Auto-trigger if requested
-                if ({_auto_trigger}) {{
-                    window._dmx_acquire_gps();
-                }}
-            }})();
-            </script>
-            """
-            st.markdown(_gps_page_script, unsafe_allow_html=True)
 
             LOC_OPTIONS = [
                 "Live Device GPS",
@@ -9122,7 +9170,7 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                         if st.button("Refresh GPS", key="btn_refresh_live_gps", use_container_width=True):
                             st.session_state["live_gps_coords"] = None
                             st.session_state["live_gps_error"] = None
-                            st.session_state["live_gps_requested"] = True
+                            st.session_state["_last_processed_gps_token"] = None
                             st.rerun()
                     with btn_c2:
                         if st.button("Search City", key="btn_switch_to_search", use_container_width=True):
@@ -9160,25 +9208,28 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
                     with act_c1:
                         gps_payload = render_gps_detector(key="dmx_live_gps_detector_btn")
                         if gps_payload:
-                            if gps_payload.get("status") == "SUCCESS":
-                                _lat = float(gps_payload["lat"])
-                                _lon = float(gps_payload["lon"])
-                                _acc = float(gps_payload.get("accuracy", 0))
-                                _name = reverse_geocode(_lat, _lon)
-                                st.session_state["live_gps_coords"] = {
-                                    "lat": _lat,
-                                    "lon": _lon,
-                                    "accuracy": _acc,
-                                    "name": _name
-                                }
-                                st.session_state["live_gps_error"] = None
-                                st.rerun()
-                            elif gps_payload.get("status") == "ERROR":
-                                st.session_state["live_gps_error"] = {
-                                    "code": gps_payload.get("code", 1),
-                                    "message": gps_payload.get("message", "Location error")
-                                }
-                                st.rerun()
+                            gps_token = f"{gps_payload.get('lat')}_{gps_payload.get('lon')}_{gps_payload.get('status')}"
+                            if st.session_state.get("_last_processed_gps_token") != gps_token:
+                                st.session_state["_last_processed_gps_token"] = gps_token
+                                if gps_payload.get("status") == "SUCCESS":
+                                    _lat = float(gps_payload["lat"])
+                                    _lon = float(gps_payload["lon"])
+                                    _acc = float(gps_payload.get("accuracy", 0))
+                                    _name = reverse_geocode(_lat, _lon)
+                                    st.session_state["live_gps_coords"] = {
+                                        "lat": _lat,
+                                        "lon": _lon,
+                                        "accuracy": _acc,
+                                        "name": _name
+                                    }
+                                    st.session_state["live_gps_error"] = None
+                                    st.rerun()
+                                elif gps_payload.get("status") == "ERROR":
+                                    st.session_state["live_gps_error"] = {
+                                        "code": gps_payload.get("code", 1),
+                                        "message": gps_payload.get("message", "Location error")
+                                    }
+                                    st.rerun()
                     with act_c2:
                         if st.button("Search City", key="btn_fallback_search_detect", use_container_width=True):
                             st.session_state["gis_loc_source"] = "Search Specific Indian City / Area"
@@ -9337,10 +9388,10 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
         with st.spinner(f"Locating verified facilities near {loc_name}..."):
             try:
                 facilities = search_nearby_healthcare(
-                    selected_lat,
-                    selected_lon,
+                    round(float(selected_lat), 4),
+                    round(float(selected_lon), 4),
                     facility_category=active_facility_key,
-                    radius_meters=search_radius * 1000
+                    radius_meters=int(search_radius * 1000)
                 )
             except Exception as e:
                 print(f"Error querying healthcare: {e}")
@@ -9388,7 +9439,8 @@ elif st.session_state["active_panel"] == "Nearby Healthcare":
             facilities=facilities,
             location_name=loc_name,
             selected_facility=selected_fac,
-            route_data=route_info
+            route_data=route_info,
+            facility_category=active_facility_key
         )
         components.html(map_html, height=450)
 

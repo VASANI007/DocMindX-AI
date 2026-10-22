@@ -47,11 +47,11 @@ def generate_srs_en(output_path):
     add_body_p(doc, "The following 15 functional requirements govern the behavioral logic of the DocMindX AI platform:")
 
     fr_items = [
-        ("FR-01: Multilingual Indic NLP & Negation Engine", 
-         "The system SHALL accept free-text and audio input in English, Hindi, Gujarati, Marathi, Bengali, Telugu, and Tamil. The system SHALL execute phonetic transliteration and regular expression normalization against 'ai/disease_prediction/canonical_concepts.py'. The system SHALL strictly detect and filter negated clinical entities (e.g. 'no fever', 'mathu nathi dukhtu') from positive symptom vectors."),
+        ("FR-01: Multimodal Intake & Indic Negation Engine", 
+         "The system SHALL accept free-text, Whisper ASR audio, and clinical symptom photo uploads in English, Hindi, and Gujarati. The system SHALL execute phonetic transliteration and regular expression normalization against 'ai/disease_prediction/canonical_concepts.py'. The system SHALL strictly detect and filter negated clinical entities (e.g. 'no fever', 'mathu nathi dukhtu') from positive symptom vectors."),
         
-        ("FR-02: 280-Dimensional Clinical Feature Vectorization",
-         "The system SHALL map extracted canonical tokens into a fixed 280-dimensional binary feature vector. Any recognized symptom SHALL set the corresponding feature index to 1, while absent or denied symptoms SHALL remain 0."),
+        ("FR-02: Demographic Intake & 280-Dimensional Clinical Vectorization",
+         "The system SHALL capture patient demographics including Age, Biological Gender, State/Location, Height (cm), Weight (kg), and Blood Group (A+, A-, B+, B-, AB+, AB-, O+, O-, Unknown). Extracted canonical tokens SHALL be mapped into a fixed 280-dimensional binary feature vector."),
         
         ("FR-03: Dual-Tier Random Forest Machine Learning Inference",
          "The system SHALL execute inference using a Scikit-Learn RandomForestClassifier (50 Decision Trees, Gini Impurity, serialized as 'models/disease_model.pkl'). The model SHALL output calibrated class probabilities across 101 ICD-11 aligned disease classes within <45 milliseconds on standard CPU."),
@@ -62,8 +62,8 @@ def generate_srs_en(output_path):
         ("FR-05: Constituent Red Flag Safety Gating",
          "The system SHALL evaluate rule-based emergency triggers (RF001 to RF035). For composite emergencies (e.g. RF030 Head Injury with Vomiting), the gate SHALL require constituent head trauma PLUS persistent vomiting; isolated headaches SHALL NOT trigger emergency evacuation status."),
         
-        ("FR-06: Multimodal Medical Vision & Prescription OCR",
-         "The system SHALL process uploaded image files (PNG, JPG, WEBP) and PDF documents. The system SHALL invoke Google Gemini 2.5 Flash Vision (with local PyTesseract + OpenCV thresholding fallback) to extract drug names, dosages, frequencies, and cautionary guidelines."),
+        ("FR-06: Panel 2: Multimodal Medical Report & Prescription Scanner",
+         "The system SHALL process uploaded image files (PNG, JPG, WEBP) and PDF documents. The system SHALL invoke Google Gemini 2.5 Flash Vision (with local PyTesseract fallback) to extract lab values (CBC, LFT, Lipid, KFT), radiology, and prescriptions, presenting layman breakdowns, root causes, and actionable recommendations."),
         
         ("FR-07: Biochemical Reference Range & Blood Analyzer",
          "The system SHALL parse Complete Blood Count (CBC), Liver Function Tests (LFT), Lipid Profiles, and Metabolic Panels against clinical reference ranges defined in 'datasets/blood_report/'. Any out-of-range value SHALL be classified as High/Low with a clinical severity rating."),
@@ -71,11 +71,11 @@ def generate_srs_en(output_path):
         ("FR-08: DailyMed & OpenFDA Truthful Provenance Verification",
          "The system SHALL query NIH DailyMed REST API and OpenFDA API to retrieve authentic packaging images and active ingredients. If an authoritative SPL record is not found, the drug SHALL be flagged as 'UNVERIFIED', strictly preventing fabricated dosage forms or artificial promotions."),
         
-        ("FR-09: ICMR-NIN Evidence-Based Nutrition & Duration-Gated Care",
-         "The system SHALL generate dietary advice adhering to ICMR-NIN guidelines. If the reported symptom duration is acute (<= 4 days), routine non-emergency diagnostics (e.g. Brain MRI, EEG, Lipid profile) SHALL be suppressed, prioritizing immediate exposure evaluations (rabies, tetanus, wound care)."),
+        ("FR-09: Tri-Pillar Holistic Care: Verified Meds, Diet, Yoga & Etiology",
+         "The system SHALL generate an evidence-based recovery regimen comprising: (1) Verified OTC medications cross-checked with OpenFDA/DailyMed, (2) ICMR-NIN dietary guidance detailing 'Foods to Eat' and 'Foods to Avoid', (3) Disease-specific restorative yoga and physiotherapy asanas, and (4) Root cause/etiology explanation."),
         
-        ("FR-10: Overpass QL & Google Maps Real-Time Healthcare Geolocation",
-         "The system SHALL query the OpenStreetMap Overpass API and Google Maps Places API within a user-configurable radius (5 to 50 km). It SHALL return verified 24x7 emergency hospitals, ICUs, and trauma centers with turn-by-turn routing distances."),
+        ("FR-10: Panel 3: Overpass QL & 1–25 km Healthcare Radar",
+         "The system SHALL query the OpenStreetMap Overpass API within an interactive user-configurable radius of 1 to 25 km. It SHALL dynamically filter and return verified 24x7 emergency hospitals, clinics, 24x7 pharmacies/medical stores, blood banks, and diagnostic labs with turn-by-turn routing distances."),
         
         ("FR-11: Public Health Ingestion Manager (Track 03)",
          "The system SHALL ingest and reconcile 10 official public health data streams (MoHFW HMIS 2019-20, Rajya Sabha Session 266, NFHS-5 706 districts, NLEM 2022, IPHS 2022 norms, and WHO Outbreak reports). Each ingested record SHALL carry an immutable provenance tag."),
@@ -89,8 +89,11 @@ def generate_srs_en(output_path):
         ("FR-14: Two-Stage Logistics Transit & Redistribution Solver",
          "The system SHALL execute a two-stage linear transit solver to resolve regional stockouts. Stage 1 executes intra-district rebalancing between neighboring PHCs. Stage 2 executes inter-district transfers from tertiary district warehouses, producing official transfer manifests."),
         
-        ("FR-15: User Authentication, Family Profiles & Supabase RLS",
-         "The system SHALL provide email/password registration with Bcrypt hashing, SHA-256 hashed OTP verification, and multi-profile family management. In cloud environments, PostgreSQL Row-Level Security (RLS) SHALL enforce strict tenancy isolation.")
+        ("FR-15: Panel 4: Health Records Vault, Family Profiles & Auto-fill",
+         "The system SHALL provide multi-member family profile management. When a family member profile is selected, the system SHALL auto-fill their demographics (Age, Gender, State, Height, Weight, Blood Group) into triage intake fields. The vault SHALL store all past scans, prescriptions, and triage reports with PDF export."),
+        
+        ("FR-16: Role-Based Admin Access Control (Command Center Gating)",
+         "The system SHALL enforce strict role-based access control. The National Health Command Center, epidemic stress-testing, and inter-facility medicine redistribution modules SHALL be restricted exclusively to authenticated administrator users (is_admin=True).")
     ]
 
     for req_title, req_desc in fr_items:
@@ -190,35 +193,35 @@ def generate_srs_hi(output_path):
     add_heading_1(doc, "3. विस्तृत कार्यात्मक आवश्यकताएं (Functional Requirements - FR)")
 
     fr_items_hi = [
-        ("FR-01: बहुभाषी भारतीय NLP एवं निषेध (Negation) डिटेक्टर",
-         "सिस्टम हिंदी, गुजराती, अंग्रेजी, मराठी, बंगाली, तेलुगु और तमिल में टेक्स्ट और वॉयस इनपुट स्वीकार करेगा। यह 'ai/disease_prediction/canonical_concepts.py' के आधार पर फोनेटिक और रेगेक्स नॉर्मलाइजेशन करेगा। यदि मरीज ने 'बुखार नहीं है' या 'माथु नथी दुखतु' कहा है, तो उस लक्षण को धनात्मक साक्ष्य से बाहर रखा जाएगा।"),
+        ("FR-01: मल्टीमॉडल इनटेक एवं भारतीय भाषा निषेध डिटेक्टर",
+         "सिस्टम हिंदी, गुजराती और अंग्रेजी में टेक्स्ट, Whisper ASR वॉइस और बीमारी के क्लिनिकल फोटो स्वीकार करेगा। यह 'ai/disease_prediction/canonical_concepts.py' के आधार पर फोनेटिक और रेगेक्स नॉर्मलाइजेशन करेगा। यदि मरीज ने 'बुखार नहीं है' या 'माथु नथी दुखतु' कहा है, तो उस लक्षण को धनात्मक साक्ष्य से पूर्णतः बाहर रखा जाएगा।"),
 
-        ("FR-02: 280-आयामी क्लिनिकल फीचर वेक्टर निर्माण",
-         "सिस्टम निष्कर्षित लक्षणों को एक निश्चित 280-आयामी बाइनरी वेक्टर में बदलेगा। पहचाने गए लक्षण का मान 1 होगा और अनुपस्थित लक्षण का मान 0 रहेगा।"),
+        ("FR-02: जनसांख्यिकी इनटेक एवं 280-आयामी क्लिनिकल वेक्टर",
+         "सिस्टम मरीज के डेमोग्राफिक विवरण (उम्र, जैविक लिंग, राज्य/स्थान, ऊंचाई सेमी, वजन किग्रा, ब्लड ग्रुप: A+, A-, B+, B-, AB+, AB-, O+, O-, अज्ञात) को दर्ज करेगा। निष्कर्षित लक्षणों को 280-आयामी बाइनरी वेक्टर में बदला जाएगा।"),
 
         ("FR-03: डुअल-टियर रैंडम फॉरेस्ट मशीन लर्निंग इन्फेरेंस",
-         "सिस्टम Scikit-Learn RandomForestClassifier (50 Decision Trees, Gini Impurity, मॉडल फाइल 'models/disease_model.pkl') द्वारा 101 ICD-11 रोग श्रेणियों पर अनुमान लगाएगा। मानक CPU पर इसका इन्फेरेंस समय 45 मिलीसेकंड से कम होगा।"),
+         "सिस्टम Scikit-Learn RandomForestClassifier (50 Decision Trees, Gini Impurity, मॉडल फाइल 'models/disease_model.pkl') द्वारा 101 ICD-11 रोग श्रेणियों पर 45ms में 97.58% Top-3 सटीकता से अनुमान लगाएगा।"),
 
         ("FR-04: क्लिनिकल नॉलेज ग्राफ सत्यापन एवं री-रैंकिंग",
-         "सिस्टम ML द्वारा सुझाई गई बीमारियों का सत्यापन कोलंबिया नॉलेज ग्राफ और WHO ICD-11 डेटा से करेगा। जिन बीमारियों का मरीज के लक्षणों से वास्तविक मेल नहीं होगा, उन्हें सूची से हटा दिया जाएगा।"),
+         "सिस्टम ML द्वारा सुझाई गई बीमारियों का सत्यापन कोलंबिया नॉलेज ग्राफ और WHO ICD-11 डेटा से करेगा। जिन बीमारियों का मरीज के असली लक्षणों से वास्तविक मेल नहीं होगा, उन्हें सूची से बाहर कर दिया जाएगा।"),
 
         ("FR-05: घटक रेड फ्लैग इमरजेंसी सुरक्षा गेट्स",
          "सिस्टम RF001 से RF035 तक के इमरजेंसी नियमों की जांच करेगा। संयुक्त आपात स्थितियों में (जैसे RF030 सिर में चोट + उल्टी) दोनों घटकों का उपस्थित होना अनिवार्य होगा; केवल सिरदर्द पर इमरजेंसी घोषित नहीं होगी।"),
 
-        ("FR-06: मल्टीमॉडल मेडिकल विजन एवं पर्ची OCR",
-         "सिस्टम डॉक्टर की हाथ से लिखी पर्चियों (PNG, JPG, PDF) को Google Gemini 2.5 Flash Vision और Tesseract द्वारा स्कैन करके दवाओं के नाम, खुराक (Dosage) और समय सारणी निकालेगा।"),
+        ("FR-06: पैनल 2: मेडिकल रिपोर्ट व डॉक्टर पर्ची स्कैनर",
+         "सिस्टम डॉक्टर की हाथ से लिखी पर्चियों, ब्लड रिपोर्ट्स (CBC, LFT, Lipid, KFT) व एक्स-रे को Gemini Vision व Tesseract द्वारा स्कैन करके सरल भाषा में समझाएगा, कारण बताएगा और उचित कदम सुझाएगा।"),
 
         ("FR-07: बायोकेमिकल रेफरेंस रेंज एवं ब्लड रिपोर्ट विश्लेषक",
-         "सिस्टम कम्पलीट ब्लड काउंट (CBC), LFT और लिपिड प्रोफाइल की जांच 'datasets/blood_report/' के मानकों के अनुसार करेगा और असामान्य मानों को क्लिनिकल गंभीरता के साथ दर्शाएगा।"),
+         "सिस्टम कम्पलीट ब्लड काउंट (CBC), LFT और लिपिड प्रोफाइल की जांच 'datasets/blood_report/' के क्लिनिकल मानकों के अनुसार करेगा और असामान्य मानों को गंभीरता स्तर के साथ दर्शाएगा।"),
 
         ("FR-08: DailyMed एवं OpenFDA दवा प्रामाणिकता सत्यापन",
-         "सिस्टम US FDA और NIH DailyMed API से दवा की असली पैकेजिंग और तत्वों का मिलान करेगा। आधिकारिक रिकॉर्ड न मिलने पर दवा को 'UNVERIFIED' चिन्हित करेगा ताकि झूठी जानकारी न फैले।"),
+         "सिस्टम US FDA और NIH DailyMed API से दवा की असली पैकेजिंग और तत्वों का मिलान करेगा। आधिकारिक रिकॉर्ड न मिलने पर दवा को 'UNVERIFIED' चिन्हित करेगा ताकि कोई भी गलत सुझाव न जाए।"),
 
-        ("FR-09: ICMR-NIN आहार एवं अवधि-आधारित स्वास्थ्य परामर्श",
-         "सिस्टम बीमारी की अवधि के अनुसार आहार और थेरेपी सुझाएगा। यदि बीमारी 4 दिन से कम पुरानी है, तो गैर-जरूरी महंगे टेस्ट (जैसे Brain MRI, EEG) को रोककर केवल आपातकालीन जांचों को प्राथमिकता देगा।"),
+        ("FR-09: त्रि-स्तरीय समग्र स्वास्थ्य: दवा, आहार (क्या खाएं/न खाएं), योग व कारण",
+         "सिस्टम रोगी को 4-स्तरीय संपूर्ण परामर्श देगा: (1) OpenFDA सत्यापित OTC दवाएं, (2) ICMR-NIN आहार दिशा-निर्देश ('क्या खाएं' और 'क्या न खाएं'), (3) रोग-अनुसार योगासन व फिजियोथेरेपी, और (4) बीमारी का मूल कारण।"),
 
-        ("FR-10: Overpass एवं Google Maps आपातकालीन अस्पताल रडार",
-         "सिस्टम OpenStreetMap Overpass API और Google Maps का उपयोग करके 5 से 50 किमी के दायरे में 24x7 खुले आपातकालीन अस्पतालों और ICU का रास्ता दिखाएगा।"),
+        ("FR-10: पैनल 3: Overpass QL एवं 1 से 25 किमी स्वास्थ्य रडार",
+         "सिस्टम OpenStreetMap Overpass API का उपयोग करके 1 से 25 किमी के स्लाइडर दायरे में 24/7 खुले आपातकालीन अस्पताल, क्लीनिक, मेडिकल स्टोर, ब्लड बैंक और लैब की लाइव दूरी और दिशा दिखाएगा।"),
 
         ("FR-11: राष्ट्रीय सार्वजनिक स्वास्थ्य डेटा अंतर्ग्रहण (ट्रैक 03)",
          "सिस्टम HMIS 20,904 रिकॉर्ड्स, NFHS-5 706 जिलों और NLEM 2022 के डेटा को एकीकृत करेगा। प्रत्येक रिकॉर्ड पर अपरिवर्तनीय स्रोत पहचान (Provenance Tag) दर्ज होगी।"),
@@ -232,8 +235,11 @@ def generate_srs_hi(output_path):
         ("FR-14: दो-चरणीय लॉजिस्टिक्स दवा पुनर्वितरण सॉल्वर",
          "सिस्टम लीनियर प्रोग्रामिंग द्वारा अतिरिक्त स्टॉक वाले केंद्रों से कमी वाले केंद्रों में दवा ट्रांसफर का आधिकारिक मैनिफेस्ट स्वतः तैयार करेगा।"),
 
-        ("FR-15: उपयोगकर्ता प्रमाणीकरण, पारिवारिक प्रोफाइल एवं Supabase RLS",
-         "सिस्टम Bcrypt हैशिंग, OTP सुरक्षा और Supabase PostgreSQL Row-Level Security के साथ मरीजों और परिवारों का डेटा पूर्णतः गोपनीय रखेगा।")
+        ("FR-15: पैनल 4: स्वास्थ्य रिकॉर्ड वॉल्ट, पारिवारिक प्रोफाइल व ऑटो-फिल",
+         "सिस्टम पारिवारिक सदस्यों के प्रोफाइल का प्रबंधन करेगा। परिवार का कोई सदस्य चुनते ही उसकी उम्र, लिंग, ऊंचाई, वजन और ब्लड ग्रुप स्वतः फॉर्म में भर जाएंगे। पुराने सभी टेस्ट और पर्चियां सहेजी जा सकेंगी।"),
+
+        ("FR-16: रोल-बेस्ड एडमिन एक्सेस कंट्रोल (कमान केंद्र सुरक्षा)",
+         "सिस्टम में सख्त भूमिका-आधारित सुरक्षा (RBAC) होगी। राष्ट्रीय स्वास्थ्य कमान केंद्र, महामारी सिमुलेशन और दवा पुनर्वितरण का अधिकार केवल अधिकृत एडमिन (is_admin=True) को ही प्राप्त होगा।")
     ]
 
     for req_title, req_desc in fr_items_hi:

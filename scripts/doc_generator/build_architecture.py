@@ -54,20 +54,25 @@ def generate_arch_en(output_path):
     add_body_p(doc, "DocMindX AI is organized into six decoupled functional subsystems:")
 
     add_heading_2(doc, "3.1 Component 1: Client Presentation Layer ('app.py', 'components/')")
-    add_bullet_p(doc, " Manages the top header, trilingual localization (EN, HI, GU), theme switching (Light/Dark), and active panel switching without page reloads.", bold_prefix="Application Controller:")
-    add_bullet_p(doc, " Specialized modular views for Health Assessment, Medical Report OCR, Nearby Healthcare Radar, Health Records Vault, and National Command Center.", bold_prefix="Modular Panel Views:")
-    add_bullet_p(doc, " Asynchronous drawer maintaining clinical conversational context, speech audio synthesizer, and layman medical explainer.", bold_prefix="Floating AI Copilot:")
+    add_bullet_p(doc, " Manages top navigation, trilingual localization (EN, HI, GU), theme switching (Light/Dark), and active panel routing without page reloads.", bold_prefix="Application Controller:")
+    add_bullet_p(doc, " Captures patient demographics (Age, Gender, State, Height, Weight, Blood Group: A+, A-, B+, B-, AB+, AB-, O+, O-, Unknown) and pre-existing comorbidities. Selecting a family profile instantly auto-fills these fields.", bold_prefix="Panel 1 Intake & Family Profiles:")
+    add_bullet_p(doc, " Multi-channel ingestion accepting colloquial speech (Whisper ASR), natural text, and clinical photo uploads with temporal duration buttons ('today', '1-3 days', '4-7 days', '1-2 weeks', '>2 weeks').", bold_prefix="Multimodal Symptom Capture:")
+    add_bullet_p(doc, " Ingests lab reports (CBC, LFT, Lipid, KFT), radiology, and prescriptions, delivering layman translations, underlying causes, and actionable tips.", bold_prefix="Panel 2: Medical Report Scanner:")
+    add_bullet_p(doc, " Live Overpass OpenStreetMap radar filtering 24/7 emergency hospitals, clinics, pharmacies, blood banks, and labs across an interactive 1 to 25 km radius slider.", bold_prefix="Panel 3: Nearby Healthcare Radar:")
+    add_bullet_p(doc, " Centralized digital vault displaying previous scans, prescriptions, triage assessments, and clinical regimens with PDF export.", bold_prefix="Panel 4: Health Records Vault:")
+    add_bullet_p(doc, " Dedicated administrative console gated strictly to authorized admin users (is_admin=True) with 7-day epidemic forecasting and supply chain rebalancing.", bold_prefix="Panel 5: National Command Center:")
 
     add_heading_2(doc, "3.2 Component 2: Clinical Intelligence Engine ('ai/disease_prediction/')")
-    add_bullet_p(doc, " Regex-driven normalizer translating multilingual colloquial symptom phrases into 280 standardized clinical features.", bold_prefix="Canonical Normalizer:")
+    add_bullet_p(doc, " Translates multilingual colloquial symptom phrases into 280 standardized clinical features while stripping denied symptoms.", bold_prefix="Canonical Normalizer:")
     add_bullet_p(doc, " Strict evidence boundary ensuring patient findings are never contaminated by external clinical ontology candidate titles.", bold_prefix="Evidence Isolation Gate (Pipeline v3):")
-    add_bullet_p(doc, " 50-tree Random Forest classifier generating calibrated disease probability distributions across 101 ICD-11 classes.", bold_prefix="Dual-Tier ML Classifier:")
+    add_bullet_p(doc, " 50-tree Random Forest classifier generating calibrated disease probability distributions across 101 ICD-11 classes with 97.58% Top-3 accuracy.", bold_prefix="Dual-Tier ML Classifier:")
+    add_bullet_p(doc, " Synthesizes verified OTC medicines (OpenFDA), ICMR-NIN dietary guidelines ('Foods to Eat' & 'Foods to Avoid'), restorative yoga asanas, and disease etiology.", bold_prefix="Tri-Pillar Holistic Regimen Engine:")
     add_bullet_p(doc, " Constituent emergency rules (RF001 to RF035) triggering instant triage alerts and 108 emergency dialers.", bold_prefix="Red Flag Safety Gates:")
 
     add_heading_2(doc, "3.3 Component 3: Multimodal Vision & Report Analyzer ('ai/ocr/', 'ai/report_ai/')")
-    add_bullet_p(doc, " Preprocesses images using OpenCV (grayscale, adaptive thresholding, noise reduction) before OCR parsing.", bold_prefix="Image Preprocessor:")
-    add_bullet_p(doc, " Extracts drug schedules, frequencies, and cautionary guidelines from handwritten doctor scripts.", bold_prefix="Prescription Analyzer:")
-    add_bullet_p(doc, " Evaluates biochemical markers (Hemoglobin, Platelets, SGPT, Bilirubin, HbA1c) against clinical reference ranges.", bold_prefix="Biochemical Lab Analyzer:")
+    add_bullet_p(doc, " Preprocesses images using OpenCV (adaptive thresholding, contrast enhancement) before OCR parsing.", bold_prefix="Image Preprocessor:")
+    add_bullet_p(doc, " Extracts drug schedules, frequencies, and cautionary guidelines from handwritten doctor scripts using Gemini Vision.", bold_prefix="Prescription Analyzer:")
+    add_bullet_p(doc, " Evaluates biochemical markers (Hemoglobin, Platelets, SGPT, Bilirubin, HbA1c) against clinical reference ranges with layman breakdown.", bold_prefix="Biochemical Lab Analyzer:")
 
     add_heading_2(doc, "3.4 Component 4: National Command Logistics Engine ('ai/supply_chain/')")
     add_bullet_p(doc, " Automated pipelines reconciling HMIS, NFHS-5, Beds, IPHS, and NLEM 2022 datasets with immutable provenance tags.", bold_prefix="Data Ingestion Manager:")
@@ -76,10 +81,10 @@ def generate_arch_en(output_path):
     add_bullet_p(doc, " Linear transit solver resolving inter-facility shortages and generating downloadable PDF transfer manifests.", bold_prefix="Two-Stage Redistribution Solver:")
 
     add_heading_2(doc, "3.5 Component 5: External API Gateway ('api/')")
-    add_bullet_p(doc, " Integrates live NIH DailyMed, OpenFDA, WHO ICD-11, NCBO BioPortal, OpenStreetMap Overpass, and Google Maps with robust offline fallbacks.", bold_prefix="Resilient API Clients:")
+    add_bullet_p(doc, " Integrates live NIH DailyMed, OpenFDA, WHO ICD-11, NCBO BioPortal, OpenStreetMap Overpass (1-25 km), and Google Maps with robust offline fallbacks.", bold_prefix="Resilient API Clients:")
 
     add_heading_2(doc, "3.6 Component 6: Security, Auth & Data Persistence Layer ('database/')")
-    add_bullet_p(doc, " Manages encrypted local SQLite vaults, Supabase PostgreSQL with Row-Level Security, and BigQuery telemetry synchronization.", bold_prefix="Dual Database Persistence:")
+    add_bullet_p(doc, " Enforces role-based access control (RBAC), encrypted SQLite local storage, Supabase PostgreSQL Row-Level Security, and BigQuery cloud sync.", bold_prefix="Tenancy & Security Layer:")
 
     # 4. Data Flow Architecture
     add_heading_1(doc, "4. Data Flow & Ingestion Pipelines")
@@ -208,12 +213,12 @@ def generate_arch_hi(output_path):
 
     # 3. सिस्टम घटक आर्किटेक्चर
     add_heading_1(doc, "3. सिस्टम घटक आर्किटेक्चर (System Components)")
-    add_bullet_p(doc, " टॉप नेविगेशन बार, बहुभाषी नियंत्रण (हिंदी, गुजराती, अंग्रेजी), डार्क मोड टॉगल और 5 मुख्य पैनलों का प्रबंधन करता है।", bold_prefix="1. क्लाइंट प्रेजेंटेशन लेयर (app.py):")
-    add_bullet_p(doc, " 280 लक्षणों का फोनेटिक नॉर्मलाइज़र, साक्ष्य पृथक्करण गेट, 50-ट्री रैंडम फॉरेस्ट मॉडल और RF001-RF035 रेड फ्लैग गेट्स।", bold_prefix="2. क्लिनिकल इंटेलिजेंस इंजन (ai/disease_prediction/):")
-    add_bullet_p(doc, " OpenCV इमेज क्लीनर, Tesseract व Gemini Vision द्वारा डॉक्टर पर्ची और CBC/LFT ब्लड रिपोर्ट का सटीक विश्लेषण।", bold_prefix="3. मल्टीमॉडल विजन व रिपोर्ट एनालाइज़र (ai/ocr/):")
-    add_bullet_p(doc, " 225+ PHC का डेटा अंतर्ग्रहण, WAPE 6.53% मांग पूर्वानुमानकर्ता, DOIR स्टॉकआउट डिटेक्टर और लीनियर ट्रांसफर सॉल्वर।", bold_prefix="4. राष्ट्रीय स्वास्थ्य कमान केंद्र (ai/supply_chain/):")
-    add_bullet_p(doc, " DailyMed, OpenFDA, WHO ICD-11, BioPortal और Overpass के साथ सुरक्षित व लचीला संपर्क।", bold_prefix="5. बाहरी API गेटवे लेयर (api/):")
-    add_bullet_p(doc, " स्थानीय SQLite डेटाबेस, Supabase PostgreSQL Row-Level Security और BigQuery डेटा लेक।", bold_prefix="6. डेटाबेस एवं सुरक्षा लेयर (database/):")
+    add_bullet_p(doc, " टॉप नेविगेशन बार, बहुभाषी नियंत्रण (हिंदी, गुजराती, अंग्रेजी), डार्क मोड टॉगल और 5 मुख्य पैनलों का प्रबंधन। इसमें मरीज डेमोग्राफिक्स (उम्र, लिंग, राज्य, ऊंचाई, वजन, ब्लड ग्रुप: A+, A-, B+, B-, AB+, AB-, O+, O-, अज्ञात) और फैमिली प्रोफाइल ऑटो-फिल शामिल है।", bold_prefix="1. क्लाइंट प्रेजेंटेशन लेयर (app.py):")
+    add_bullet_p(doc, " 280 लक्षणों का फोनेटिक नॉर्मलाइज़र, साक्ष्य पृथक्करण गेट, 50-ट्री रैंडम फॉरेस्ट (97.58% सटीकता), RF001-RF035 रेड फ्लैग गेट्स और त्रि-स्तरीय परामर्श इंजन (दवा, आहार, योग, कारण)।", bold_prefix="2. क्लिनिकल इंटेलिजेंस इंजन (ai/disease_prediction/):")
+    add_bullet_p(doc, " Gemini Vision व Tesseract द्वारा डॉक्टर पर्ची, CBC/LFT/Lipid/KFT ब्लड रिपोर्ट व रेडियोलॉजी का विश्लेषण और आम भाषा में सारांश।", bold_prefix="3. मल्टीमॉडल विजन व रिपोर्ट एनालाइज़र (ai/ocr/):")
+    add_bullet_p(doc, " 225+ PHC का डेटा अंतर्ग्रहण, WAPE 6.53% मांग पूर्वानुमानकर्ता, DOIR स्टॉकआउट डिटेक्टर और लीनियर ट्रांसफर सॉल्वर (केवल एडमिन हेतु)।", bold_prefix="4. राष्ट्रीय स्वास्थ्य कमान केंद्र (ai/supply_chain/):")
+    add_bullet_p(doc, " DailyMed, OpenFDA, WHO ICD-11, BioPortal और Overpass (1 से 25 किमी दायरा) के साथ सुरक्षित संपर्क।", bold_prefix="5. बाहरी API गेटवे लेयर (api/):")
+    add_bullet_p(doc, " स्थानीय एन्क्रिप्टेड SQLite डेटाबेस, Supabase PostgreSQL Row-Level Security और BigQuery क्लाउड सिंक।", bold_prefix="6. डेटाबेस एवं सुरक्षा लेयर (database/):")
 
     # 4. डेटा फ्लो
     add_heading_1(doc, "4. डेटा प्रवाह एवं पाइपलाइन (Data Flow Pipelines)")

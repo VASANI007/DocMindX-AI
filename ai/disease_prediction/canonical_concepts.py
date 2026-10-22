@@ -318,7 +318,7 @@ CANONICAL_CONCEPT_PATTERNS = {
     "dyspnea_breathlessness": {
         "symptom_id": "S000026",
         "patterns": [
-            r"shortness.*breath", r"difficulty.*breath", r"breathless", r"dyspnea",
+            r"shortness.*breath", r"difficulty.*breath", r"breathless", r"dyspnea", r"catch.*breath", r"catch.*my.*breath",
             r"सांस.*तकलीफ", r"सांस.*फूल", r"શ્વાસ.*તકલીફ", r"શ્વાસ.*ચઢ", r"દમ",
             r"श्वास.*त्रास", r"दम.*लाग",
             r"শ্বাসকষ্ট", r"மூச்சுத்.*திணறல்", r"శ్వాస.*ఆడకపోవడం", r"ಉಸಿರಾಟ.*ತೊಂದರೆ", r"ശ്വാസതടസ്സം",
@@ -332,7 +332,7 @@ CANONICAL_CONCEPT_PATTERNS = {
     "fever": {
         "symptom_id": "S000001",
         "patterns": [
-            r"\bfever\b", r"high.*temperature", r"pyrexia", r"febrile",
+            r"\bfever\b", r"high.*temperature", r"pyrexia", r"febrile", r"burning.*up.*hot", r"103f", r"\bfevr\b",
             r"बुखार", r"ताप", r"તાવ", r"জ্বর", r"காய்ச்சல்", r"జ్వరం", r"ಜ್ವರ", r"പനി", r"ਬੁਖਾਰ", r"ଜ୍ୱର", r"بخار",
             r"bukhar", r"tav", r"taav", r"taap", r"tap"
         ],
@@ -354,7 +354,7 @@ CANONICAL_CONCEPT_PATTERNS = {
     "cough": {
         "symptom_id": "S000023",
         "patterns": [
-            r"\bcough\b", r"coughing",
+            r"\bcough\b", r"coughing", r"\bcaugh\b", r"coughing.*continuously",
             r"खांसी", r"खोंसी", r"ખાંસી", r"ઉધરસ", r"खोकला",
             r"কাশি", r"இருமல்", r"దగ్గు", r"ಕೆಮ್ಮು", r"ചുമ", r"ਖੰਘ", r"କାଶ", r"کھانسی",
             r"khasi", r"khansi", r"udharas", r"udhras", r"khokla", r"chuma", r"kemmu", r"daggu", r"irumal", r"kashi", r"khang", r"udhras", r"khokla"
@@ -367,12 +367,25 @@ CANONICAL_CONCEPT_PATTERNS = {
         "symptom_id": "S000032",
         "patterns": [
             r"sore.*throat", r"throat.*pain", r"throat.*irritat", r"burning.*throat", r"pharyngitis", r"throat.*burn",
+            r"throat.*scratchy", r"scratchy.*and.*raw", r"throat.*hurt", r"hurts.*swallow", r"throat.*feels?.*dry", r"dry.*throat",
             r"गले.*खराश", r"गले.*दर्द", r"गले.*जलन", r"गला.*सूख", r"गला.*बैठ", r"गले.*में.*जलन",
             r"ગળામાં.*દુખાવો", r"ગળામાં.*બળતરા", r"ગળામાં.*બળે", r"ગળું.*બળ", r"ગળું.*છોલા", r"ગળા.*દુખાવો",
             r"घशात.*खवखव", r"घसा.*दुख", r"घशात.*जळजळ",
             r"গলা.*ব্যথা", r"தொண்டை.*வலி", r"గొంతు.*నొప్పి", r"ಗಂಟಲು.*ನೋವು", r"തൊണ്ടവേദന", r"ਗਲੇ.*ਦਰਦ",
             r"gale.*dard", r"gala.*dard", r"gala.*bale", r"galama.*bale", r"gala.*ma.*bale", r"gala.*khari",
-            r"galam.*bale", r"galama.*bale.*cgge", r"galama.*bale.*chhe", r"ghasa.*dukh", r"ghashat.*khavkhav", r"gale.*jalan"
+            r"galam.*bale", r"galama.*bale.*cgge", r"galama.*bale.*chhe", r"ghasa.*dukh", r"ghashat.*khavkhav", r"gale.*jalan",
+            r"gale.*kharash", r"gale.*me.*kharash", r"gala.*kharash"
+        ],
+        "category": "respiratory",
+        "red_flag": False
+    },
+    # 4.2. Runny Nose / Rhinorrhea (S000035)
+    "runny_nose": {
+        "symptom_id": "S000035",
+        "patterns": [
+            r"runny.*nose", r"running.*nose", r"rhinorrhea", r"nasal.*discharge", r"sneezing",
+            r"नाक.*बह", r"નાક.*વહે", r"नाक.*गळ",
+            r"nak.*bahe", r"nak.*vahe", r"running.*nose"
         ],
         "category": "respiratory",
         "red_flag": False
@@ -387,11 +400,56 @@ CANONICAL_CONCEPT_PATTERNS = {
         "category": "respiratory",
         "red_flag": False
     },
+    "shortness_of_breath": {
+        "symptom_id": "S000026",
+        "patterns": [
+            r"shortness.*breath", r"breathless", r"difficulty.*breathing", r"dyspnea", r"breath.*short",
+            r"सांस.*तकलीफ", r"सांस.*फूल", r"શ્વાસ.*તકલીફ", r"શ્વાસ.*ચડ", r"શ્વાસ.*લેવા",
+            r"saans.*takleef", r"saans.*lene.*me.*takleef", r"shwas.*taklif", r"shwas.*leva.*ma.*taklif", r"shwas.*chadhe"
+        ],
+        "category": "respiratory",
+        "red_flag": True
+    },
+    "chest_pain": {
+        "symptom_id": "S000046",
+        "patterns": [
+            r"chest.*pain", r"chest.*tightness", r"chest.*pressure", r"angina", r"pain.*in.*chest",
+            r"सीने.*दर्द", r"छाती.*दर्द", r"छाती.*દુખ", r"छाती.*દુખાવો", r"છાતીમાં.*દુખાવો", r"છાતીમાં.*દુખ",
+            r"chhati.*me.*dard", r"chhati.*dard", r"chhati.*ma.*dukh", r"chhati.*dukhe", r"sine.*me.*dard", r"seene.*me.*dard"
+        ],
+        "category": "cardiovascular",
+        "red_flag": True
+    },
+    "palpitations": {
+        "symptom_id": "S000048",
+        "patterns": [
+            r"palpitat", r"heart.*racing", r"racing.*heart", r"pounding.*heart",
+            r"धड़कन.*तेज़", r"दिल.*धड़क", r"ધબકારા.*ઝડપી", r"ધબકારા.*વધી",
+            r"chhati.*ma.*palpitat", r"heart.*racing.*feel"
+        ],
+        "category": "cardiovascular",
+        "red_flag": False
+    },
+    "swelling_legs_ankles": {
+        "symptom_id": "S000052",
+        "patterns": [
+            r"swelling.*(?:leg|legs|ankle|ankles|foot|feet)",
+            r"(?:leg|legs|ankle|ankles|foot|feet).*swelling",
+            r"(?:leg|legs|ankle|ankles|foot|feet).*swollen",
+            r"swollen.*(?:leg|legs|ankle|ankles|foot|feet)",
+            r"legs?.*(?:feel.*)?swollen",
+            r"पैर.*सूजन", r"टखने.*सूजन", r"પગ.*સોજો", r"ઘૂંટી.*સોજો",
+            r"ankle.*swelling", r"swelling.*ankle"
+        ],
+        "category": "cardiovascular",
+        "red_flag": False
+    },
     # 5. Neurological Headache
     "headache": {
         "symptom_id": "S000061",
         "patterns": [
             r"headache", r"head.*pain", r"cephalalgia", r"migraine",
+            r"splitting.*headache", r"head.*explode", r"pounding.*behind", r"\bhedache\b",
             r"सिरदर्द", r"सिर.*दर्द", r"માથા.*દુખાવો", r"માથામાં.*દુખાવો", r"માથું.*દુખ", r"માથું.*દુખે", r"માથાનો.*દુખાવો", r"ડોકેદુખી", r"डोकेदुखी",
             r"মাথাব্যথা", r"தலைவலி", r"తలనొప్పి", r"ತಲೆನೋವು", r"തലവേദന", r"ਸਿਰ.*ਦਰਦ", r"ମୁଣ୍ଡ.*ବିନ୍ଧା", r"سر.*درد",
             r"sirdard", r"sir.*dard", r"sar.*dard", r"sar.*me.*dard", r"mathano.*dukhav", r"mathu.*dukh", r"mathu.*dukhe", r"mathu.*dard", r"dokedukhi", r"matha.*betha", r"matha.*byatha", r"matha.*ghorano", r"thalaivali", r"thalai.*vali", r"talanopi", r"tala.*noppi", r"tale.*novu", r"thala.*vedhana", r"dokedukhi"
@@ -415,9 +473,9 @@ CANONICAL_CONCEPT_PATTERNS = {
         "symptom_id": "S000011",
         "patterns": [
             r"body.*pain", r"body.*ache", r"myalgia", r"generalized.*pain", r"whole.*body.*pain",
-            r"बदन.*दर्द", r"शरीर.*दर्द", r"અંગ.*દુખાવો", r"આખા.*શરીરમાં.*દુખાવો", r"अंगदुखी",
+            r"बदन.*दर्द", r"शरीर.*दर्द", r"અંગ.*દુખાવો", r"આખા.*શરીરમાં.*દુખાવો", r"આખું.*શરીર.*દુખ", r"શરીર.*દુખ", r"કળતર", r"अंगदुखी",
             r"গায়ে.*ব্যথা", r"உடல்.*வலி", r"శరీర.*నొప్పులు", r"ಮೈಕೈ.*ನೋವು", r"ശരീരവേദന",
-            r"badan.*dard", r"ang.*dukhav", r"sarir.*dard", r"udal.*vali", r"aakha.*sarir.*dukh"
+            r"badan.*dard", r"ang.*dukhav", r"sarir.*dard", r"udal.*vali", r"aakha.*sarir.*dukh", r"kaltar"
         ],
         "category": "systemic_infectious",
         "red_flag": False
@@ -426,10 +484,11 @@ CANONICAL_CONCEPT_PATTERNS = {
     "joint_pain": {
         "symptom_id": "S000131",
         "patterns": [
-            r"joint.*pain", r"arthralgia", r"knee.*pain", r"hand.*pain", r"arm.*pain", r"shoulder.*pain", r"wrist.*pain", r"elbow.*pain", r"finger.*pain",
+            r"joint.*pain", r"joint.*ach", r"joints.*ach", r"arthralgia", r"knee.*pain", r"hand.*pain", r"arm.*pain", r"shoulder.*pain", r"wrist.*pain", r"elbow.*pain", r"finger.*pain",
             r"जोड़ों.*दर्द", r"जोड़.*दर्द", r"घुटने.*दर्द", r"घुटना.*दर्द", r"हाथ.*दर्द", r"बांह.*दर्द", r"कंधे.*दर्द",
             r"સાંધા.*દુખાવો", r"સાંધામાં.*દુખાવો", r"ઘૂંટણ.*દુખાવો", r"ગોઠણ.*દુખાવો", r"હાથ.*દુખાવો", r"હાથમાં.*દુખાવો", r"હાથ.*દુખ", r"ખભા.*દુખાવો",
-            r"hath.*dukh", r"hath.*ma.*dukh", r"haath.*dard", r"sandha.*dukh", r"sandha.*ma.*dukh", r"gothan.*dukh", r"ghuntan.*dukh", r"khabha.*dukh", r"shoulder.*pain"
+            r"hath.*dukh", r"hath.*ma.*dukh", r"haath.*dard", r"sandha.*dukh", r"sandha.*ma.*dukh", r"gothan.*dukh", r"ghuntan.*dukh", r"khabha.*dukh", r"shoulder.*pain",
+            r"jod.*dard", r"jodo.*dard", r"jodo.*me.*dard", r"sandha.*dard"
         ],
         "category": "musculoskeletal",
         "red_flag": False
@@ -439,7 +498,7 @@ CANONICAL_CONCEPT_PATTERNS = {
         "symptom_id": "S000133",
         "patterns": [
             r"muscle.*pain", r"myalgia", r"मांसपेशियों.*दर्द", r"સ્નાયુ.*દુખાવો", r"સ્નાયુમાં.*દુખાવો",
-            r"snayu.*dukh", r"muscle.*cramp"
+            r"snayu.*dukh", r"muscle.*cramp", r"muscle.*(?:strain|sprain)", r"\bsprain\b"
         ],
         "category": "musculoskeletal",
         "red_flag": False
@@ -469,7 +528,8 @@ CANONICAL_CONCEPT_PATTERNS = {
     "abdominal_pain": {
         "symptom_id": "S000092",
         "patterns": [
-            r"abdominal.*pain", r"stomach.*pain", r"stomach.*ache", r"belly.*pain", r"cramps", r"cramp", r"pelvic.*cramps", r"pelvic.*pain",
+            r"abdominal.*pain", r"stomach.*pain", r"stomach.*ache", r"belly.*pain", r"tummy.*hurt", r"tummy.*ache", r"cramps?", r"pelvic.*cramps?", r"pelvic.*pain", r"belly.*feels.*crampy", r"tummy.*cramps?",
+            r"quadrant.*pain", r"epigastric.*pain", r"ruq.*pain", r"luq.*pain", r"rlq.*pain", r"llq.*pain",
             r"पेट.*दर्द", r"પેટ.*દુખાવો", r"પેટમાં.*દુખાવો", r"पोटदुखी", r"पोटात.*वेदना", r"मरोड़", r"ऐंठन", r"મરોડ",
             r"পেট.*ব্যথা", r"வயிற்று.*வலி", r"కడుపు.*నొప్పి", r"ಹೊಟ್ಟೆ.*ನೋವು", r"വയറുവേദന", r"ਢਿੱਡ.*ਪੀੜ",
             r"pet.*dard", r"pet.*dukhav", r"potdukhi", r"kadupu.*noppi", r"vayiru.*vali", r"vayi.*vali", r"pot.*dukh", r"hotte.*novu", r"vayaru.*vedhana"
@@ -477,13 +537,23 @@ CANONICAL_CONCEPT_PATTERNS = {
         "category": "gastrointestinal",
         "red_flag": False
     },
+    "nausea": {
+        "symptom_id": "S000086",
+        "patterns": [
+            r"\bnausea\b", r"\bnauseous\b", r"\bnauseated\b", r"feeling.*like.*vomiting", r"barfing", r"feeling.*like.*barfing",
+            r"जी.*मिचला", r"जी.*घबरा", r"જીવ.*ગભરા", r"ઉબકા", r"ઊબકા",
+            r"ji.*michla", r"jiv.*gabhra", r"ubka", r"oobka", r"ulti.*jaisa", r"feel.*like.*vomit"
+        ],
+        "category": "gastrointestinal",
+        "red_flag": False
+    },
     "vomiting": {
         "symptom_id": "S000087",
         "patterns": [
-            r"vomiting", r"\bvomit\b", r"throwing.*up",
+            r"vomiting", r"\bvomit\b", r"throwing.*up", r"threw.*up", r"barfed",
             r"उल्टी", r"वमन", r"ઉલટી", r"ઉલ્ટી", r"વાંટો", r"उलटी", r"उलट्या", r"उलट",
             r"বমি", r"வாந்தி", r"వాంతులు", r"ವಾಂತಿ", r"ഛർദ്ദി", r"ਉਲਟੀ", r"ବାନ୍ତି", r"الٹی",
-            r"ulti", r"vomit", r"vanti", r"vaanthi", r"chardi", r"bomi", r"banthee"
+            r"\bulti\b(?!.*jaisa)", r"vomit", r"vanti", r"vaanthi", r"chardi", r"bomi", r"banthee"
         ],
         "category": "gastrointestinal",
         "red_flag": False
@@ -491,10 +561,10 @@ CANONICAL_CONCEPT_PATTERNS = {
     "diarrhea": {
         "symptom_id": "S000089",
         "patterns": [
-            r"diarrhea", r"loose.*motion", r"watery.*stool",
+            r"diarrhea", r"loose.*motion", r"watery.*stool", r"loose.*stool", r"the.*runs",
             r"दस्त", r"पतले.*दस्त", r"ઝાડા", r"પાતળા.*ઝાડા", r"जुलाब", r"हगवण",
             r"ডায়রিয়া", r"வயிற்றுப்போக்கு", r"విరేచనాలు", r"ಭೇದಿ", r"വയറിളക്കം", r"ਦਸਤ", r"ଝାଡ଼ା",
-            r"dast", r"zhada", r"julab"
+            r"dast", r"zhada", r"julab", r"jhada"
         ],
         "category": "gastrointestinal",
         "red_flag": False
@@ -576,9 +646,28 @@ CANONICAL_CONCEPT_PATTERNS = {
         "symptom_id": "S000095",
         "patterns": [
             r"heartburn", r"acid.*reflux", r"reflux", r"pyrosis", r"hyperacidity",
+            r"acidity", r"pet.*(?:me|ma).*jalan", r"pait.*jalan",
             r"सीने.*जलन", r"छाती.*बळतरा", r"છાતી.*બળતરા", r"chhati.*balatara", r"chhati.*ma.*balatara", r"seene.*jalan"
         ],
         "category": "gastrointestinal",
+        "red_flag": False
+    },
+    "bloating": {
+        "symptom_id": "S000094",
+        "patterns": [
+            r"bloat", r"bloating", r"pet.*phool", r"pet.*phoolna", r"पेट.*फूलना", r"પેટ.*ફૂલવું",
+            r"bloating.*sensation", r"gas.*bloating"
+        ],
+        "category": "gastrointestinal",
+        "red_flag": False
+    },
+    "pelvic_pain": {
+        "symptom_id": "S000188",
+        "patterns": [
+            r"pelvic.*pain", r"pain.*pelvic", r"पेल्विक.*दर्द", r"પેલ્વિક.*દુખાવો",
+            r"पेडू.*दर्द", r"પેડુ.*દુખાવો", r"pedu.*dard"
+        ],
+        "category": "reproductive",
         "red_flag": False
     },
     "nosebleed": {
@@ -589,6 +678,102 @@ CANONICAL_CONCEPT_PATTERNS = {
         ],
         "category": "ent",
         "red_flag": False
+    },
+    # 8. Urological / Urinary
+    "painful_urination": {
+        "symptom_id": "S000237",
+        "patterns": [
+            r"painful.*urinat", r"burning.*urinat", r"burning.*sensation.*urinat", r"dysuria", r"stinging.*urinat",
+            r"burns.*whenever.*i.*pee", r"burns.*like.*fire", r"burning.*micturition", r"pee.*burns?", r"burns?.*pee", r"burning.*(?:sensation.*)?(?:while.*)?pee",
+            r"पेशाब.*जलन", r"पेशाब.*दर्द", r"पेशाब.*जल",
+            r"પેશાબ.*બળતરા", r"પેશાબ.*દુખાવો", r"પેશાબ.*બળે",
+            r"peshab.*jalan", r"peshab.*me.*jalan", r"peshab.*balatara", r"peshab.*ma.*balatara", r"peshab.*dard", r"peshab.*(?:ma|me)?.*balatra",
+            r"peshab.*burn", r"burning.*peshab", r"peshab.*karti.*vakhat"
+        ],
+        "category": "urinary",
+        "red_flag": False
+    },
+    "frequent_urination": {
+        "symptom_id": "S000226",
+        "patterns": [
+            r"frequent.*urinat", r"urinat.*often", r"urinat.*frequently", r"increased.*frequency", r"polyuria",
+            r"pass.*water.*every", r"pass.*water.*often", r"need.*to.*pass.*water", r"pass.*water",
+            r"बार.*बार.*पेशाब", r"વારંવાર.*પેશાબ", r"बार-बार.*पेशाब",
+            r"bar.*bar.*peshab", r"baar.*baar.*peshab", r"ba+r.*ba+r.*peshab", r"varamvar.*peshab", r"baar.*baar.*jana", r"bar.*bar.*jana"
+        ],
+        "category": "urinary",
+        "red_flag": False
+    },
+    "difficulty_urinating": {
+        "symptom_id": "S000239",
+        "patterns": [
+            r"difficulty.*urinat", r"trouble.*urinat", r"hesitancy", r"weak.*stream",
+            r"पेशाब.*कठिनाई", r"પેશાબ.*તકલીફ", r"peshab.*taklif"
+        ],
+        "category": "urinary",
+        "red_flag": False
+    },
+    "hematuria": {
+        "symptom_id": "S000238",
+        "patterns": [
+            r"blood.*in.*urine", r"hematuria", r"bloody.*urine",
+            r"पेशाब.*खून", r"પેશાબ.*લોહી", r"peshab.*khoon", r"peshab.*lohi"
+        ],
+        "category": "urinary",
+        "red_flag": True
+    },
+    # 9. Ocular
+    "eye_pain": {
+        "symptom_id": "S000212",
+        "patterns": [
+            r"eye.*pain", r"pain.*in.*eye", r"pain.*in.*eyes", r"ocular.*pain",
+            r"आंख.*दर्द", r"आंखों.*दर्द", r"આંખ.*દુખાવો", r"આંખમાં.*દુખાવો", r"આંખો.*દુખ",
+            r"aankh.*dard", r"ankh.*dard", r"aankh.*me.*dard", r"ankh.*ma.*dukhav", r"aankho.*dukh"
+        ],
+        "category": "ocular",
+        "red_flag": False
+    },
+    "red_eyes": {
+        "symptom_id": "S000213",
+        "patterns": [
+            r"\bred\b.*eyes?", r"eyes?.*\bred\b", r"eyes?.*(?:are.*)?very.*red", r"\beye.*redness\b", r"bloodshot.*eyes?", r"bloodshot.*red", r"bloodshot", r"conjunctivitis", r"pink.*eye",
+            r"लाल.*आंख", r"लाल.*आंखें", r"આંખ.*લાલ", r"આંખો.*લાલ", r"आंख.*लाल", r"आंखें.*लाल", r"લાલ.*આંખ", r"લાલ.*આંખો",
+            r"lal.*aankh", r"lal.*ankh", r"aankh.*(?:me.*)?lal", r"ankh.*(?:ma.*)?lal"
+        ],
+        "category": "ocular",
+        "red_flag": False
+    },
+    "blurred_vision": {
+        "symptom_id": "S000210",
+        "patterns": [
+            r"blurred.*vision", r"blurry.*vision", r"cloudy.*vision", r"blurred.*(?:in.*)?eye", r"blurry.*(?:in.*)?eye",
+            r"धुंधला.*दिख", r"धुंधलापन", r"ઝાંખું.*દેખા", r"ઝાંખપ",
+            r"dhundhla", r"jhankhu"
+        ],
+        "category": "ocular",
+        "red_flag": False
+    },
+    # 10. Systemic
+    "fatigue": {
+        "symptom_id": "S000005",
+        "patterns": [
+            r"fatigue", r"extreme.*tired", r"exhaustion", r"weakness", r"tiredness", r"lethargy",
+            r"wiped.*out", r"drained", r"completely.*exhausted", r"weakness.*all.*over",
+            r"थकान", r"कमजोरी", r"થાક", r"નબળાઈ", r"thakan", r"kamjori", r"thak", r"nablai"
+        ],
+        "category": "systemic",
+        "red_flag": False
+    },
+    "loss_of_appetite": {
+        "symptom_id": "S000009",
+        "patterns": [
+            r"loss.*of.*appetite", r"not.*feeling.*hungry", r"poor.*appetite", r"anorexia", r"no.*appetite",
+            r"भूख.*(?:नहीं|न).*लग", r"भूख.*कम", r"ભૂખ.*(?:નથી|ન).*લાગ", r"ભૂખ.*ઓછી",
+            r"bhookh.*kam", r"bhukh.*nathi", r"bhukh.*kam", r"bhukh.*nahi", r"bhukh.*na.*lag",
+            r"bhookh.*(?:nahi|nathi|na)", r"bhookh.*(?:bilkul.*)?nahi"
+        ],
+        "category": "gastrointestinal",
+        "red_flag": False
     }
 }
 
@@ -596,6 +781,8 @@ NEGATION_MARKERS = [
     # English
     r"(?:^|\s)no(?:\s|$)", r"(?:^|\s)not(?:\s|$)", r"(?:^|\s)without(?:\s|$)",
     r"(?:^|\s)denies(?:\s|$)", r"(?:^|\s)denied(?:\s|$)", r"(?:^|\s)absent(?:\s|$)",
+    r"(?:^|\s)negative(?:\s|$)", r"(?:^|\s)negative\s+for(?:\s|$)",
+    r"(?:^|\s)neither(?:\s|$)", r"(?:^|\s)nor(?:\s|$)", r"(?:^|\s)never(?:\s|$)",
     # Hindi
     r"(?:^|\s)नहीं(?:\s|$)", r"(?:^|\s)न(?:\s|$)", r"(?:^|\s)बिना(?:\s|$)",
     # Gujarati
@@ -687,9 +874,11 @@ class MultilingualClinicalNormalizer:
         """
         split_pattern = (
             r"[,;.\n।!?]|"
-            r"(?:\b(?:and|aur|ane|aani|तथा|एवं|અને|આણિ|आणि)\b)|"
-            r"(?:\b(?:but|however|except|excluding|parantu|lekin|pan|पण|પરંતુ|લેકિન|लेकिन|किन्तु|किंतु)\b)|"
-            r"(?=\b(?:without|बिना|વિના)\b)"
+            r"(?:(?:(?<=[\s,;.!?-])|(?<=^))(?:and|aur|ane|aani|तथा|एवं|અને|આણિ|आणि)(?=[\s,;.!?-]|$))|"
+            r"(?:(?:(?<=[\s,;.!?-])|(?<=^))(?:but|however|except|excluding|parantu|lekin|pan|पण|પરંતુ|લેકિન|लेकिन|किन्तु|किंतु|परंतु|par|magar)(?=[\s,;.!?-]|$))|"
+            r"(?:(?:(?<=[\s,;.!?-])|(?<=^))(?:jisse|jethi|tyamule|kyunki|jiski\s+wajah\s+se|जिससे|જેથી|त्यामुळे|कारण)(?=[\s,;.!?-]|$))|"
+            r"(?:(?:(?<=[\s,;.!?-])|(?<=^))(?:only|sirf|siraf|fakt|shudhu)(?=[\s,;.!?-]|$))|"
+            r"(?=(?:(?<=[\s,;.!?-])|(?<=^))(?:nor|without|बिना|વિના)(?=[\s,;.!?-]|$))"
         )
         raw_clauses = re.split(split_pattern, text, flags=re.IGNORECASE)
         clauses = []
@@ -806,6 +995,11 @@ class MultilingualClinicalNormalizer:
         for concept_name, info in self._concept_patterns.items():
             for p in info["patterns"]:
                 if re.search(p, neg_text, re.IGNORECASE):
+                    if concept_name == "loss_of_appetite":
+                        if not re.search(r"(?:no|denies|without|not)\s+(?:loss\s+of\s+appetite|reduced\s+appetite)", neg_text, re.IGNORECASE):
+                            canonical_concepts.add(concept_name)
+                            symptom_ids.add(info["symptom_id"])
+                            break
                     negative_findings.add(concept_name)
                     break
 
@@ -1515,7 +1709,12 @@ class MasterSymptomTaxonomyBridge:
             "nausea": "S000086", "vomiting": "S000087", "emesis": "S000087",
             "diarrhea": "S000089", "loose motion": "S000089",
             "dyspnea": "S000026", "breathlessness": "S000026", "shortness of breath": "S000026",
-            "chest pain": "S000046", "angina": "S000046"
+            "chest pain": "S000046", "angina": "S000046",
+            "dysuria": "S000237", "burning urination": "S000237", "painful urination": "S000237",
+            "hematuria": "S000238", "blood in urine": "S000238",
+            "photophobia": "S000079", "conjunctivitis": "S000213",
+            "fatigue": "S000005", "malaise": "S000012",
+            "anorexia": "S000009", "loss of appetite": "S000009"
         }
         for k, v in biomed_synonyms.items():
             if k == st_clean or (len(k) > 4 and k in st_clean) or (len(st_clean) > 4 and st_clean in k):
@@ -1763,8 +1962,8 @@ def segment_clinical_phrases(text: str) -> List[str]:
     primary_delims = r"[,;\n।!?|]+|(?:\.\s+)"
     raw_clauses = [c.strip() for c in re.split(primary_delims, prep_text) if c and c.strip()]
 
-    # 2. Conjunction splitting for compound phrases
-    conj_pattern = r"(?:\s+(?:and|aur|ane|aani|તથા|तथा|અને|આણિ|आणि|or|with|sathe|સાથે|और)\s+)"
+    # 2. Conjunction splitting for compound phrases (coordinating and adversative)
+    conj_pattern = r"(?:\s+(?:and|aur|ane|aani|તથા|तथा|અને|આણિ|आणि|or|with|sathe|સાથે|और|but|lekin|parantu|kintu|magar|pan|લેકિન|પરંતુ|પણ|किन्तु|मगर|પર|par|परंतु)\s+)"
     sub_clauses = []
     for c in raw_clauses:
         parts = [p.strip() for p in re.split(conj_pattern, c, flags=re.IGNORECASE) if p and p.strip()]

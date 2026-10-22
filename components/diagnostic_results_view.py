@@ -35,6 +35,8 @@ def clean_markdown_artifacts(text: str) -> str:
     """Removes stray markdown artifacts like orphan asterisks, separators, and dangling bullets."""
     if not text:
         return ""
+    # Split merged inline bullets like ' ... * **Item** ' into separate newline bullets
+    text = re.sub(r'(?<=[^\n])\s*[\*•]\s+\*\*', '\n- **', text)
     cleaned_lines = []
     for line in text.split("\n"):
         stripped = line.strip()
@@ -45,6 +47,8 @@ def clean_markdown_artifacts(text: str) -> str:
         line_clean = re.sub(r'\s+[*_~-]{2,}$', '', stripped)
         # Strip leading orphaned asterisks (e.g. "** Schedule a follow-up...")
         line_clean = re.sub(r'^\*\*\s*(?=[^\s*])', '', line_clean)
+        # Collapse triple or more asterisks to double
+        line_clean = re.sub(r'\*{3,}', '**', line_clean)
         cleaned_lines.append(line_clean)
     res = "\n".join(cleaned_lines).strip()
     res = re.sub(r'^(?:[*_~#-]{2,}\s*)+', '', res)
@@ -89,7 +93,7 @@ def format_bullets_to_html(raw_text: str, bullet_color: str = "#2563EB", is_dark
     # Filter out empty or artifact items
     valid_items = []
     for it in items:
-        it_clean = it.strip().strip("*_- ")
+        it_clean = it.strip().strip("*_~- ")
         if it_clean:
             valid_items.append(it_clean)
     items = valid_items
@@ -100,16 +104,17 @@ def format_bullets_to_html(raw_text: str, bullet_color: str = "#2563EB", is_dark
     html_items = []
     for it in items:
         it_clean = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', it)
-        it_clean = it_clean.replace("**", "").replace("---", "").strip()
+        it_clean = it_clean.replace("**", "").replace("***", "").replace("---", "").strip()
+        it_clean = re.sub(r'^[•\-\*]+\s*', '', it_clean)
 
-        if "<strong>" not in it_clean and ":" in it_clean:
+        if "<strong" not in it_clean and ":" in it_clean:
             parts = it_clean.split(":", 1)
             it_clean = f'<strong style="color: {bold_c}; font-weight: 700;">{parts[0].strip()}:</strong> {parts[1].strip()}'
 
-        dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; max-width: 6px; border-radius: 50%; background: {bullet_color}; margin-top: 7px; flex-shrink: 0;"></span>'
+        dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; max-width: 6px; border-radius: 50%; background: {bullet_color}; margin-top: 6px; flex-shrink: 0;"></span>'
         html_items.append(
             f'<div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin-bottom: 8px; font-size: 0.85rem; line-height: 1.55; color: {text_c};">'
-            f'{dot}<div style="flex: 1; min-width: 0;">{it_clean}</div>'
+            f'{dot}<div style="flex: 1; min-width: 0; word-break: break-word;">{it_clean}</div>'
             f'</div>'
         )
 
@@ -136,14 +141,15 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
         if bullet_items:
             for b in bullet_items:
                 b_clean = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', b)
-                b_clean = b_clean.replace("**", "").replace("---", "").strip()
-                if "<strong>" not in b_clean and ":" in b_clean:
+                b_clean = b_clean.replace("**", "").replace("***", "").replace("---", "").strip()
+                b_clean = re.sub(r'^[•\-\*]+\s*', '', b_clean)
+                if "<strong" not in b_clean and ":" in b_clean:
                     parts = b_clean.split(":", 1)
                     b_clean = f'<strong style="color: {bold_c}; font-weight: 700;">{parts[0].strip()}:</strong> {parts[1].strip()}'
-                dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; max-width: 6px; border-radius: 50%; background: {dot_color}; margin-top: 7px; flex-shrink: 0;"></span>'
+                dot = f'<span style="display: inline-block; width: 6px; height: 6px; min-width: 6px; max-width: 6px; border-radius: 50%; background: {dot_color}; margin-top: 6px; flex-shrink: 0;"></span>'
                 formatted_parts.append(
                     f'<div style="display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin-bottom: 7px; font-size: 0.86rem; line-height: 1.55; color: {text_c};">'
-                    f'{dot}<div style="flex: 1; min-width: 0;">{b_clean}</div>'
+                    f'{dot}<div style="flex: 1; min-width: 0; word-break: break-word;">{b_clean}</div>'
                     f'</div>'
                 )
             bullet_items = []
@@ -160,7 +166,8 @@ def clean_body_html(text: str, is_dark: bool = False, dot_color: str = "#3B82F6"
         else:
             flush_bullets()
             para = re.sub(r'\*\*(.*?)\*\*', rf'<strong style="color: {bold_c}; font-weight: 700;">\1</strong>', stripped)
-            para = para.replace("**", "").replace("---", "").strip()
+            para = para.replace("**", "").replace("***", "").replace("---", "").strip()
+            para = re.sub(r'^\*+\s*', '', para)
             if para:
                 formatted_parts.append(f'<p style="margin: 0 0 10px 0; font-size: 0.86rem; line-height: 1.65; color: {text_c};">{para}</p>')
 
@@ -188,21 +195,74 @@ def parse_sub_cards(text: str, split_patterns: list) -> tuple:
             box2_raw = text[m2.end():m1.start()].strip()
             box1_raw = text[m1.end():].strip()
         return clean_markdown_artifacts(intro), clean_markdown_artifacts(box1_raw), clean_markdown_artifacts(box2_raw)
+    elif m1 and not m2:
+        intro = text[:m1.start()].strip()
+        box1_raw = text[m1.end():].strip()
+        return clean_markdown_artifacts(intro), clean_markdown_artifacts(box1_raw), ""
+    elif m2 and not m1:
+        intro = text[:m2.start()].strip()
+        box2_raw = text[m2.end():].strip()
+        return clean_markdown_artifacts(intro), "", clean_markdown_artifacts(box2_raw)
     return clean_markdown_artifacts(text), "", ""
 
 
 def parse_5_sections(text: str) -> dict:
-    """Parses raw AI markdown into a structured 5-section dictionary."""
-    pattern = r'(?:^|\n)(?:###?\s*|\*\*)?(\d)[\.\)]\s*([^\n\r]+)'
-    matches = list(re.finditer(pattern, text))
+    """
+    Parses raw AI markdown into a structured 5-section dictionary.
+    Accurately recognizes top-level markdown headers (#, ##, ###), bold section headers (**1. ...**),
+    or semantic keywords across English, Hindi, and Gujarati without misinterpreting body list numbers.
+    """
+    if not text:
+        return {}
+
+    pattern = r'(?:^|\n)(?:#{1,4}\s*(?:(?:Section\s*)?(\d)[\.\):\-]\s*)?|\*\*(?:Section\s*)?(\d)[\.\):\-]\s*)([^\n\r]+)'
+    matches = list(re.finditer(pattern, text, re.IGNORECASE))
+
+    sec_keywords = {
+        1: ['key findings', 'overview', 'મુખ્ય સારાંશ', 'मुख्य सारांश', 'સારાંશ', 'सारांश'],
+        2: ['biological function', 'આ પરિણામોનું મહત્વ', 'શરીરમાં શું કાર્ય', 'शरीर में इसका क्या कार्य', 'यह पैरामीटर', 'plain language'],
+        3: ['impact on the body', 'શરીર પર અસર', 'शरीर पर असर', 'symptoms', 'લક્ષણો', 'लक्षण'],
+        4: ['diet', 'nutrition', 'આહાર', 'ખોરાક', 'आहार', 'પોષણ', 'पोषण', 'ખાવું', 'खाएं'],
+        5: ['precautions', 'red flags', 'સાવચેતીઓ', 'સાતચેતી', 'सावधानियां', 'પગલાં', 'कदम', 'next steps', 'તબીબી']
+    }
+
+    assigned_matches = []
+    for m in matches:
+        num_str = m.group(1) or m.group(2)
+        title_raw = m.group(3).strip().rstrip('*#:')
+        matched_num = None
+        if num_str and num_str.isdigit():
+            val = int(num_str)
+            if 1 <= val <= 5:
+                matched_num = val
+        if not matched_num:
+            t_lower = title_raw.lower()
+            for s_num, kws in sec_keywords.items():
+                if any(kw in t_lower for kw in kws):
+                    matched_num = s_num
+                    break
+        if matched_num:
+            assigned_matches.append((matched_num, title_raw, m.start(), m.end()))
+
     sections = {}
-    for i, m in enumerate(matches):
-        num = int(m.group(1))
-        title = m.group(2).strip().rstrip('*#:')
-        start_pos = m.end()
-        end_pos = matches[i+1].start() if i+1 < len(matches) else len(text)
-        body = text[start_pos:end_pos].strip()
+    for i, (num, title, s_start, s_end) in enumerate(assigned_matches):
+        next_start = assigned_matches[i+1][2] if i+1 < len(assigned_matches) else len(text)
+        body = text[s_end:next_start].strip()
         sections[num] = {"title": clean_markdown_artifacts(title), "body": clean_markdown_artifacts(body)}
+
+    # Fallback to simple regex if structured header matching found nothing
+    if not sections:
+        simple_pattern = r'(?:^|\n)(?:###?\s*|\*\*)?(\d)[\.\)]\s*([^\n\r]+)'
+        s_matches = list(re.finditer(simple_pattern, text))
+        for i, sm in enumerate(s_matches):
+            num = int(sm.group(1))
+            if 1 <= num <= 5:
+                title = sm.group(2).strip().rstrip('*#:')
+                start_pos = sm.end()
+                end_pos = s_matches[i+1].start() if i+1 < len(s_matches) else len(text)
+                body = text[start_pos:end_pos].strip()
+                sections[num] = {"title": clean_markdown_artifacts(title), "body": clean_markdown_artifacts(body)}
+
     return sections
 
 
@@ -252,6 +312,44 @@ def render_diagnostic_evaluation_view(
     total_detected = c1_info.get('val', len(findings))
     ab_count = c2_info.get('val', 0)
     status_overall = c3_info.get('val', 'All Normal')
+
+    # Dynamic KPI 1 Configuration matching auto-detected document type
+    raw_c1_label = c1_info.get("label") or ("Total Medicines Evaluated" if report_category == "prescription" else ("Total Imaging Findings" if report_category == "radiology" else "Total Parameters Evaluated"))
+    c1_title = raw_c1_label.title() if raw_c1_label.isupper() else raw_c1_label
+
+    c1_sub = c1_info.get("sub")
+    if not c1_sub or (report_category == "prescription" and "lab report" in c1_sub.lower()):
+        if report_category == "prescription" or "prescription" in doc_type_choice.lower():
+            c1_sub = "From Doctor Prescription"
+        elif report_category == "radiology" or "radiology" in doc_type_choice.lower() or "x-ray" in doc_type_choice.lower():
+            c1_sub = "From Radiology Scan"
+        elif report_category == "lab" or "lab" in doc_type_choice.lower():
+            c1_sub = "From Lab Report"
+        else:
+            c1_sub = f"From {doc_type_choice}"
+
+    # Dynamic KPI 2 Configuration
+    raw_c2_label = c2_info.get("label") or ("Safety Precautions Noted" if report_category == "prescription" else ("Abnormal / Acute Flags" if report_category == "radiology" else "Abnormal / Out-of-Range"))
+    c2_title = raw_c2_label.title() if raw_c2_label.isupper() else raw_c2_label
+    c2_raw_sub = c2_info.get("sub", "")
+    if c2_raw_sub and not c2_raw_sub.startswith("↑") and not c2_raw_sub.startswith("↓"):
+        k2_pill_text_dynamic = c2_raw_sub
+    else:
+        k2_pill_text_dynamic = (f"+ {ab_count} High" if report_category == "lab" else (f"+ {ab_count} Precautions" if report_category == "prescription" else f"+ {ab_count} Flags")) if ab_count > 0 else "0 All Normal"
+
+    # Dynamic KPI 4 Configuration
+    if report_category == "prescription" or "prescription" in doc_type_choice.lower():
+        k4_msg = "Prescription analyzed successfully"
+        k4_sub = "All medications processed"
+    elif report_category == "radiology" or "radiology" in doc_type_choice.lower() or "x-ray" in doc_type_choice.lower():
+        k4_msg = "Imaging scan analyzed successfully"
+        k4_sub = "All findings processed"
+    elif report_category == "lab" or "lab" in doc_type_choice.lower():
+        k4_msg = "Lab report analyzed successfully"
+        k4_sub = "All parameters processed"
+    else:
+        k4_msg = f"{doc_type_choice} analyzed successfully"
+        k4_sub = "All parameters processed"
 
     pdf_buf = generate_diagnostic_evaluation_pdf(
         doc_name=doc_name,
@@ -359,11 +457,11 @@ def render_diagnostic_evaluation_view(
                     </svg>
                 </div>
                 <div>
-                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">Total Parameters Evaluated</div>
+                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">{c1_title}</div>
                     <div style="font-size: 1.55rem; font-weight: 800; color: {text_primary}; line-height: 1.15; margin: 2px 0;">{total_detected}</div>
                     <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(37, 99, 235, 0.10); color: #3B82F6; border: 1px solid rgba(37, 99, 235, 0.25); border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 700;">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <span>From Lab Report</span>
+                        <span>{c1_sub}</span>
                     </div>
                 </div>
             </div>
@@ -376,7 +474,6 @@ def render_diagnostic_evaluation_view(
         k2_bg = "rgba(239, 68, 68, 0.12)" if is_abnormal else "rgba(16, 185, 129, 0.12)"
         k2_color = "#EF4444" if is_abnormal else "#10B981"
         k2_val_c = "#EF4444" if is_abnormal else text_primary
-        k2_pill_text = f"+ {ab_count} High" if is_abnormal else "0 All Normal"
         k2_pill_bg = "rgba(239, 68, 68, 0.14)" if is_abnormal else "rgba(16, 185, 129, 0.14)"
         k2_pill_c = "#DC2626" if (is_abnormal and not is_dark) else ("#F87171" if is_abnormal else ("#34D399" if is_dark else "#059669"))
         k2_pill_bd = "rgba(239, 68, 68, 0.30)" if is_abnormal else "rgba(16, 185, 129, 0.30)"
@@ -392,10 +489,10 @@ def render_diagnostic_evaluation_view(
                     </svg>
                 </div>
                 <div>
-                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">Abnormal / Out-of-Range</div>
+                    <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">{c2_title}</div>
                     <div style="font-size: 1.55rem; font-weight: 800; color: {k2_val_c}; line-height: 1.15; margin: 2px 0;">{ab_count}</div>
                     <div style="display: inline-flex; align-items: center; gap: 4px; background: {k2_pill_bg}; color: {k2_pill_c}; border: 1px solid {k2_pill_bd}; border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 700;">
-                        <span>{k2_pill_text}</span>
+                        <span>{k2_pill_text_dynamic}</span>
                     </div>
                 </div>
             </div>
@@ -404,10 +501,10 @@ def render_diagnostic_evaluation_view(
 
     # KPI 3: Overall Clinical Status
     with k3:
-        is_normal_status = status_overall.lower() in ["all normal", "normal", "low risk"]
+        is_normal_status = status_overall.lower() in ["all normal", "normal", "low risk", "verified regimen"]
         k3_bg = "rgba(16, 185, 129, 0.12)" if is_normal_status else "rgba(245, 158, 11, 0.12)"
         k3_color = "#10B981" if is_normal_status else "#F59E0B"
-        k3_pill_text = "Within Reference Range" if is_normal_status else "Review Recommended"
+        k3_pill_text = "Verified Safe Regimen" if "verified" in status_overall.lower() else ("Within Reference Range" if is_normal_status else "Review Recommended")
         k3_pill_bg = "rgba(16, 185, 129, 0.14)" if is_normal_status else "rgba(245, 158, 11, 0.14)"
         k3_pill_c = "#059669" if (is_normal_status and not is_dark) else ("#34D399" if is_normal_status else ("#FCD34D" if is_dark else "#D97706"))
         k3_pill_bd = "rgba(16, 185, 129, 0.30)" if is_normal_status else "rgba(245, 158, 11, 0.30)"
@@ -445,10 +542,10 @@ def render_diagnostic_evaluation_view(
                 </div>
                 <div>
                     <div style="font-size: 0.70rem; font-weight: 700; color: {text_secondary}; letter-spacing: 0.2px;">AI Analysis Complete</div>
-                    <div style="font-size: 0.88rem; font-weight: 700; color: {text_primary}; line-height: 1.25; margin: 2px 0;">Report analyzed successfully</div>
+                    <div style="font-size: 0.88rem; font-weight: 700; color: {text_primary}; line-height: 1.25; margin: 2px 0;">{k4_msg}</div>
                     <div style="display: inline-flex; align-items: center; gap: 4px; background: rgba(16, 185, 129, 0.10); color: {'#34D399' if is_dark else '#059669'}; border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 6px; padding: 2px 7px; font-size: 0.68rem; font-weight: 700;">
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                        <span>All parameters processed</span>
+                        <span>{k4_sub}</span>
                     </div>
                 </div>
             </div>
@@ -492,13 +589,30 @@ def render_diagnostic_evaluation_view(
     # 4. PARSE SECTIONS 1 TO 5
     # =========================================================================
     sec_dict = parse_5_sections(breakdown_text)
-    def_titles = {
-        1: "Key Findings Overview",
-        2: "Biological Function in Plain Language",
-        3: "Impact on the Body & Symptoms",
-        4: "Actionable Diet & Nutrition Plan",
-        5: "Medical Precautions & Red Flags"
-    }
+    if lang_code == "hi":
+        def_titles = {
+            1: "रिपोर्ट का मुख्य सारांश (Key Findings Overview)",
+            2: "जैविक कार्य और महत्व (Biological Function in Plain Language)",
+            3: "शरीर पर असर और इसके लक्षण (Impact on the Body & Symptoms)",
+            4: "आहार व पोषण योजना (Actionable Diet & Nutrition Plan)",
+            5: "सावधानियां व डॉक्टर से परामर्श (Medical Precautions & Red Flags)"
+        }
+    elif lang_code == "gu":
+        def_titles = {
+            1: "રિપોર્ટનો મુખ્ય સારાંશ (Key Findings Overview)",
+            2: "આ પરિણામોનું મહત્વ અને શરીર પર અસર (Biological Function in Plain Language)",
+            3: "શરીર પર અસર અને લક્ષણો (Impact on the Body & Symptoms)",
+            4: "આહાર અને જીવનશૈલીમાં સુધારો (Actionable Diet & Nutrition Plan)",
+            5: "તબીબી સાવચેતીઓ અને ડૉક્ટરની સલાહ (Medical Precautions & Red Flags)"
+        }
+    else:
+        def_titles = {
+            1: "Key Findings Overview",
+            2: "Biological Function in Plain Language",
+            3: "Impact on the Body & Symptoms",
+            4: "Actionable Diet & Nutrition Plan",
+            5: "Medical Precautions & Red Flags"
+        }
 
     # =========================================================================
     # SECTION 1: Key Findings Overview (Open by default - Matching Image 3)
@@ -509,12 +623,24 @@ def render_diagnostic_evaluation_view(
 
     # Parse Normal Parameters vs Abnormal Parameters
     s1_intro, s1_norm_text, s1_abnorm_text = parse_sub_cards(s1_body, [
-        r'Normal Parameters|सामान्य पैरामीटर|સામાન્ય પરિણામો|સામાન્ય પેરામીટર',
-        r'Abnormal Parameters|असामान्य पैरामीटर|અસામાન્ય પરિણામો|અસામાન્ય પેરામીટર'
+        r'Normal Parameters|Normal / Verified|Safe Regimen|Verified Regimen|Normal Findings|सामान्य पैरामीटर|सुरक्षित पैरामीटर|સામાન્ય પરિણામો|સામાન્ય પેરામીટર',
+        r'Abnormal Parameters|Requiring Attention|Warnings & Cautions|Precautions|असामान्य पैरामीटर|ध्यान देने योग्य|અસામાન્ય પરિણામો|અસામાન્ય પેરામીટર'
     ])
     s1_intro_clean = s1_intro if s1_intro else "Clinical evaluation summary based on patient diagnostic markers:"
-    s1_norm_clean = format_bullets_to_html(s1_norm_text, "#10B981", is_dark) if s1_norm_text else f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.55; color: {'#CBD5E1' if is_dark else '#374151'};'>All evaluated parameters have been processed against standard clinical reference intervals.</p>"
-    s1_abnorm_clean = format_bullets_to_html(s1_abnorm_text, "#EF4444", is_dark) if s1_abnorm_text else f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.55; color: {'#CBD5E1' if is_dark else '#374151'};'>No critical abnormalities were detected in this diagnostic panel.</p>"
+    s1_intro_html = clean_body_html(s1_intro_clean, is_dark, "#2563EB")
+
+    if lang_code == "hi":
+        fb_s1_norm = "सभी विश्लेषित पैरामीटर और दवाएं सुरक्षित चिकित्सीय मानकों के अनुसार हैं।"
+        fb_s1_abnorm = "इस डायग्नोस्टिक पैनल में कोई गंभीर असामान्यता नहीं पाई गई। निर्देशों का पालन करें।"
+    elif lang_code == "gu":
+        fb_s1_norm = "તમામ ચકાસાયેલ પરિણામો અને દવાઓ સલામત ક્લિનિકલ ધોરણો મુજબ છે."
+        fb_s1_abnorm = "આ ડાયગ્નોસ્ટિક પેનલમાં કોઈ ગંભીર અસામાન્યતા જોવા મળી નથી."
+    else:
+        fb_s1_norm = "All evaluated parameters and prescribed regimens align with safe clinical reference standards."
+        fb_s1_abnorm = "No critical abnormalities or acute contraindications were detected in this diagnostic panel."
+
+    s1_norm_clean = format_bullets_to_html(s1_norm_text, "#10B981", is_dark) if s1_norm_text else f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.55; color: {'#CBD5E1' if is_dark else '#374151'};'>{fb_s1_norm}</p>"
+    s1_abnorm_clean = format_bullets_to_html(s1_abnorm_text, "#EF4444", is_dark) if s1_abnorm_text else f"<p style='margin: 0; font-size: 0.85rem; line-height: 1.55; color: {'#CBD5E1' if is_dark else '#374151'};'>{fb_s1_abnorm}</p>"
 
     s1_norm_bg = "rgba(16, 185, 129, 0.08)" if is_dark else "#F0FDF4"
     s1_norm_bd = "rgba(16, 185, 129, 0.35)" if is_dark else "#BBF7D0"
@@ -544,7 +670,7 @@ def render_diagnostic_evaluation_view(
         <div style="padding: 4px 20px 20px 20px; border-top: 1px solid {inner_divider};">
             <div style="margin-bottom: 12px;">
                 <div style="font-size: 0.88rem; font-weight: 800; color: {text_primary}; margin-bottom: 4px;">Summary</div>
-                <div style="font-size: 0.85rem; color: {text_secondary}; line-height: 1.5;">{s1_intro_clean}</div>
+                <div style="font-size: 0.85rem; color: {text_secondary}; line-height: 1.55;">{s1_intro_html}</div>
             </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px;">
                 <div style="background: {s1_norm_bg}; border: 1.5px solid {s1_norm_bd}; border-radius: 12px; padding: 16px 18px;">
@@ -587,12 +713,32 @@ def render_diagnostic_evaluation_view(
     s2_title = s2.get("title") or def_titles[2]
     s2_body = s2.get("body") or ""
 
-    # Parse mini cards from bullet points
-    mini_cards = []
-    bullet_pattern = r'(?:^|\n)(?:[-•*]\s*)?\*\*(.*?)\*\*\s*:?\s*(.*?)(?=(?:\n(?:[-•*]\s*)?\*\*)|$)'
-    m_cards = list(re.finditer(bullet_pattern, s2_body, re.DOTALL))
-    s2_intro_end = m_cards[0].start() if m_cards else len(s2_body)
-    s2_intro_text = clean_markdown_artifacts(s2_body[:s2_intro_end])
+    # Parse mini cards from bullet points (supports both **Name:** Desc and Name: Desc)
+    extracted_cards = []
+    intro_lines = []
+    for line in s2_body.split("\n"):
+        line_s = line.strip()
+        if not line_s:
+            continue
+        line_clean = re.sub(r'^(?:[-•*]|\d+[\.\)])\s*', '', line_s).strip()
+        m_bold = re.match(r'^\*\*(.*?)\*\*\s*:?\s*(.*)$', line_clean)
+        m_colon = re.match(r'^([^:\n]{2,50}):\s*(.*)$', line_clean) if not m_bold else None
+        if m_bold:
+            c_name = m_bold.group(1).strip().rstrip(':')
+            c_desc = m_bold.group(2).strip()
+            if c_name and c_desc:
+                extracted_cards.append((c_name, c_desc))
+        elif m_colon:
+            c_name = m_colon.group(1).strip().rstrip(':')
+            c_desc = m_colon.group(2).strip()
+            if c_name.lower() not in ['what these tests mean for your body', 'biological function', 'summary', 'note']:
+                if c_name and c_desc:
+                    extracted_cards.append((c_name, c_desc))
+        else:
+            if not extracted_cards:
+                intro_lines.append(line_s)
+
+    s2_intro_text = clean_markdown_artifacts(" ".join(intro_lines)) if intro_lines else ""
 
     # Curated color palettes for the mini cards matching Image 3
     card_colors = [
@@ -604,10 +750,9 @@ def render_diagnostic_evaluation_view(
     ]
 
     mini_cards_html = []
-    for idx, mc in enumerate(m_cards):
-        name = clean_markdown_artifacts(mc.group(1)).rstrip(':')
-        desc_full = clean_markdown_artifacts(mc.group(2)).replace('\n', ' ')
-        # 1-2 punchy sentences
+    for idx, (raw_name, raw_desc) in enumerate(extracted_cards):
+        name = clean_markdown_artifacts(raw_name).strip("*_~`# :")
+        desc_full = clean_markdown_artifacts(raw_desc).replace('\n', ' ').strip("*_~`# ")
         sents = desc_full.split('. ')
         short_desc = sents[0] + ('.' if not sents[0].endswith('.') else '')
         if len(sents) > 1 and len(short_desc) < 45:
@@ -706,12 +851,23 @@ def render_diagnostic_evaluation_view(
     s4_title = s4.get("title") or def_titles[4]
     s4_raw = s4.get("body") or ""
     s4_intro, s4_consume, s4_avoid = parse_sub_cards(s4_raw, [
-        r'Foods to Consume|क्या खाएं|કઈ વસ્તુઓ ખાવી|શું ખાવું',
-        r'Foods (?:and Habits )?to Avoid|क्या न खाएं|કઈ વસ્તુઓનો પરહેજ કરવો|શું ન ખાવું|ટાળવા જેવી વસ્તુઓ'
+        r'Foods to Consume|Foods to Eat|Recommended Foods|क्या खाएं|શું ખાવું|કઈ વસ્તુઓ ખાવી',
+        r'Foods (?:and Habits )?to Avoid|Avoid|परहेज|શું ન ખાવું|કઈ વસ્તુઓનો પરહેજ કરવો|ટાળવા જેવી વસ્તુઓ'
     ])
     s4_intro_html = clean_body_html(s4_intro, is_dark, "#F97316")
-    consume_bullets = format_bullets_to_html(s4_consume if s4_consume else s4_raw, "#10B981", is_dark)
-    avoid_bullets = format_bullets_to_html(s4_avoid if s4_avoid else "Avoid heavily processed foods, high sodium, excess sugars, and eating immediately before bedtime.", "#EF4444", is_dark)
+    
+    if lang_code == "hi":
+        fb_s4_consume = "- पोषक तत्व युक्त आहार: हरी पत्तेदार सब्जियां, मौसमी फल, साबुत अनाज और दालें खाएं।\n- पर्याप्त पानी: शरीर के जलयोजन और जोड़ों के लचीलेपन के लिए भरपूर पानी पिएं।"
+        fb_s4_avoid = "- अत्यधिक तला-भुना, प्रोसेस्ड जंक फूड और भोजन के तुरंत बाद चाय या कॉफी पीने से बचें।"
+    elif lang_code == "gu":
+        fb_s4_consume = "- પૌષ્ટિક આહાર: લીલા શાકભાજી, તાજા મોસમી ફળો અને પૂરતું પાણી પીવો.\n- કેલ્શિયમ અને વિટામિન યુક્ત ખોરાક નિયમિત લો."
+        fb_s4_avoid = "- વધુ પડતું તળેલું, જંક ફૂડ અને જમ્યા પછી તરત ચા-કોફી પીવાનું ટાળો."
+    else:
+        fb_s4_consume = "- Nutrient-Dense Whole Foods: Consume dark leafy greens, seasonal fresh fruits, nuts, and adequate hydration.\n- Balanced Nutrition: Prioritize wholesome protein sources to aid cellular and musculoskeletal repair."
+        fb_s4_avoid = "- Avoid heavily processed foods, excess refined sugars, and stimulants like tea or coffee immediately following meals."
+
+    consume_bullets = format_bullets_to_html(s4_consume if s4_consume else fb_s4_consume, "#10B981", is_dark)
+    avoid_bullets = format_bullets_to_html(s4_avoid if s4_avoid else fb_s4_avoid, "#EF4444", is_dark)
 
     sub4_consume_bg = "rgba(16, 185, 129, 0.08)" if is_dark else "#F0FDF4"
     sub4_consume_border = "rgba(16, 185, 129, 0.30)" if is_dark else "#BBF7D0"
@@ -771,12 +927,24 @@ def render_diagnostic_evaluation_view(
     s5_title = s5.get("title") or def_titles[5]
     s5_raw = s5.get("body") or ""
     s5_intro, s5_steps, s5_flags = parse_sub_cards(s5_raw, [
-        r'Next Steps|अगले कदम|डॉक्टर से परामर्श|ડૉક્ટરની સલાહ|આગળનાં પગલાં',
-        r'Red Flags[^\n:]*|खतरे के लक्षण[^\n:]*|सावधानियां[^\n:]*|કટોકટીના લક્ષણો[^\n:]*|સાવચેતીઓ[^\n:]*'
+        r'Next Steps|Clinical Next Steps|Action Plan|Follow-up|Follow up|Doctor Consultation|Specialist Consultation|अगले कदम|डॉक्टर से परामर्श|આગળનાં પગલાં|ડૉક્ટરની સલાહ',
+        r'Red Flags[^\n:]*|खतरे के लक्षण[^\n:]*|चेतावनी के संकेत[^\n:]*|सावधानियां[^\n:]*|કટોકટીના લક્ષણો[^\n:]*|ચેતવણીના સંકેતો[^\n:]*|સાવચેતીઓ[^\n:]*'
     ])
     s5_intro_html = clean_body_html(s5_intro, is_dark, "#EF4444")
-    steps_bullets = format_bullets_to_html(s5_steps if s5_steps else s5_raw, "#3B82F6", is_dark)
-    flags_bullets = format_bullets_to_html(s5_flags if s5_flags else "Severe or sudden pain, persistent high fever with chills, acute breathlessness, or dizziness requires prompt physician review.", "#EF4444", is_dark)
+
+    # Target language fallbacks ensuring Next Steps is NEVER empty
+    if lang_code == "hi":
+        fallback_steps = "- अपने डॉक्टर के निर्देशानुसार अपनी दवाओं का नियमित समय पर सेवन करें।\n- लक्षणों की समीक्षा और सुधार के लिए विशेषज्ञ चिकित्सक से फॉलो-अप परामर्श लें।\n- बिना डॉक्टर की सलाह के दवा की खुराक में बदलाव न करें।"
+        fallback_flags = "- अंगों में अचानक गंभीर कमजोरी या सुन्नपन, सीने में तेज दर्द, सांस फूलना या चक्कर आने पर तुरंत अस्पताल जाएं।"
+    elif lang_code == "gu":
+        fallback_steps = "- તમારા ડૉક્ટરની સલાહ મુજબ નિયમિત સમયે દવાઓનું સેવન કરો.\n- લક્ષણોમાં સુધારાની સમીક્ષા માટે નિષ્ણાત તબીબ સાથે નિયત સમયે ફોલો-અપ મુલાકાત લો.\n- તબીબી માર્ગદર્શન વિના દવાનો ડોઝ બંધ કે બદલવો નહીં."
+        fallback_flags = "- હાથ-પગમાં અચાનક અશક્તિ, છાતીમાં દુખાવો, શ્વાસ લેવામાં તકલીફ અથવા ચક્કર આવવા જેવી કટોકટીમાં તાત્કાલિક સારવાર લો."
+    else:
+        fallback_steps = "- Follow the prescribed medication schedule precisely as advised by your physician.\n- Schedule a follow-up consultation with your specialist to monitor treatment response.\n- Do not discontinue or adjust medication dosages without professional medical supervision."
+        fallback_flags = "- Severe or sudden pain, persistent high fever with chills, acute breathlessness, or dizziness requires prompt physician review."
+
+    steps_bullets = format_bullets_to_html(s5_steps if s5_steps else fallback_steps, "#3B82F6", is_dark)
+    flags_bullets = format_bullets_to_html(s5_flags if s5_flags else fallback_flags, "#EF4444", is_dark)
 
     sub5_next_bg = "rgba(37, 99, 235, 0.08)" if is_dark else "#EFF6FF"
     sub5_next_border = "rgba(59, 130, 246, 0.30)" if is_dark else "#BFDBFE"
@@ -841,12 +1009,17 @@ def render_diagnostic_evaluation_view(
     if report_category == "prescription":
         for m in findings:
             info = m.get("info", {})
-            name = m.get("extracted_name", "Medication")
-            dose = m.get("frequency", "As directed")
-            timing = m.get("timing", "With water")
-            gen = info.get("generic_name") or info.get("active_ingredient") or m.get("generic_name") or "Prescribed Entity"
-            purp = info.get("purpose", "Prescribed for therapy")
-            warn = info.get("warnings", "Take as directed.")
+            name = clean_markdown_artifacts(str(m.get("extracted_name", "Medication"))).strip("*_~`# ")
+            dose = clean_markdown_artifacts(str(m.get("frequency", "As directed"))).strip("*_~`# ")
+            timing = clean_markdown_artifacts(str(m.get("timing", "After food"))).strip("*_~`# ")
+            raw_gen = info.get("generic_name") or info.get("active_ingredient") or m.get("generic_name") or name
+            gen = clean_markdown_artifacts(str(raw_gen)).strip("*_~`# ")
+            raw_purp = info.get("purpose") or m.get("purpose") or "Prescribed for therapeutic management"
+            purp = clean_markdown_artifacts(str(raw_purp)).strip("*_~`# ")
+            raw_warn = info.get("warnings") or m.get("warnings") or "Take as directed by prescribing physician."
+            if "no official fda drug label found" in str(raw_warn).lower():
+                raw_warn = "Take strictly as directed by prescribing physician. Follow scheduled food timings."
+            warn = clean_markdown_artifacts(str(raw_warn)).strip("*_~`# ")
             table_rows_html += f"""<tr style="border-bottom: 1px solid {tr_border};">
 <td style="padding: 12px 14px; color: {text_primary};"><strong>{name}</strong></td>
 <td style="padding: 12px 14px; font-weight: 700; color: #3B82F6;">{dose}</td>

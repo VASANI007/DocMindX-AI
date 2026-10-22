@@ -938,12 +938,12 @@ Return only conditions genuinely supported by the reported symptoms.
 
                 # Gender exclusions
                 gen_lower = str(gender).lower()
+                d_full_label = (d_name + " " + d_cat).lower()
                 if "male" in gen_lower and "female" not in gen_lower:
-                    if any(kw in (d_name + " " + d_cat).lower() for kw in ["breast", "cervical", "ovarian", "maternal", "pregnancy"]):
-                        if "breast" not in d_name.lower():
-                            continue
+                    if any(kw in d_full_label for kw in ["cervical", "ovarian", "maternal", "pregnancy", "uterine", "endometri", "vulva", "vaginal"]):
+                        continue
                 elif "female" in gen_lower:
-                    if "prostate" in d_name.lower() or "testicular" in d_name.lower():
+                    if any(kw in d_full_label for kw in ["prostate", "testicular", "epididym", "prostatitis", "penile", "benign prostatic"]):
                         continue
 
                 # Anatomical consistency check
@@ -1104,6 +1104,16 @@ Return only conditions genuinely supported by the reported symptoms.
                 d_name = str(d_row["disease_name"])
                 d_cat = str(d_row.get("category", "General Medicine"))
 
+                # Strict gender exclusion gate for bipartite candidates
+                gen_lower = str(gender).lower()
+                d_full_label = (d_name + " " + d_cat).lower()
+                if "male" in gen_lower and "female" not in gen_lower:
+                    if any(kw in d_full_label for kw in ["cervical", "ovarian", "maternal", "pregnancy", "uterine", "endometri", "vulva", "vaginal"]):
+                        continue
+                elif "female" in gen_lower:
+                    if any(kw in d_full_label for kw in ["prostate", "testicular", "epididym", "prostatitis", "penile", "benign prostatic"]):
+                        continue
+
                 # Strict anatomical compatibility gate for bipartite candidates
                 if not _anatomy_compatible(d_name, d_cat, patient_anatomy, patient_domains=patient_domains):
                     _logger.debug("[TriageEngine] Suppressed bipartite '%s': anatomical mismatch", d_name)
@@ -1117,7 +1127,7 @@ Return only conditions genuinely supported by the reported symptoms.
                 all_mappings = self.df_mappings[self.df_mappings["disease_id"] == d_id]
                 max_w = all_mappings["weight"].sum() if not all_mappings.empty else 1.0
                 matched_cnt = len(disease_matched_symptoms[d_id])
-                match_percentage = round(((total_score / max(max_w, 1.0)) * 0.70 + (matched_cnt / max(len(all_mappings), 1.0)) * 0.30) * 100)
+                match_percentage = min(100, max(0, round(((total_score / max(max_w, 1.0)) * 0.70 + (matched_cnt / max(len(all_mappings), 1.0)) * 0.30) * 100)))
 
                 if match_percentage < 25:
                     continue
@@ -1144,10 +1154,11 @@ Return only conditions genuinely supported by the reported symptoms.
                     "name": str(d_row["disease_name"]),
                     "name_hi": str(d_row.get("disease_name_hi", d_row["disease_name"])),
                     "name_gu": str(d_row.get("disease_name_gu", d_row["disease_name"])),
-                    "icd_code": "" if is_i10 else raw_icd,
+                    "icd_code": raw_icd,
+                    "icd_10_code": raw_icd if is_i10 else "",
                     "icd_verified": False,
                     "icd_details": {
-                        "code": "" if is_i10 else raw_icd,
+                        "code": raw_icd,
                         "system": "ICD-10" if is_i10 else "ICD-11",
                         "title": str(d_row["disease_name"]),
                         "source": "Local Bipartite Disease Graph (Pending WHO Validation)",
@@ -1186,7 +1197,18 @@ Return only conditions genuinely supported by the reported symptoms.
                 {"age_group": age_group, "gender": gender, "duration": duration}
             )
             if ai_res and ai_res.get("ranked_conditions"):
-                ai_conds = ai_res.get("ranked_conditions", [])
+                raw_ai_conds = ai_res.get("ranked_conditions", [])
+                gen_lower = str(gender).lower()
+                ai_conds = []
+                for cond in raw_ai_conds:
+                    c_label = (str(cond.get("name", "")) + " " + str(cond.get("category", ""))).lower()
+                    if "male" in gen_lower and "female" not in gen_lower:
+                        if any(kw in c_label for kw in ["cervical", "ovarian", "maternal", "pregnancy", "uterine", "endometri", "vulva", "vaginal"]):
+                            continue
+                    elif "female" in gen_lower:
+                        if any(kw in c_label for kw in ["prostate", "testicular", "epididym", "prostatitis", "penile", "benign prostatic"]):
+                            continue
+                    ai_conds.append(cond)
                 for cond in ai_conds:
                     cond.setdefault("source", "AI Clinical Reasoning")
                     cond.setdefault("provider", "Gemini/Groq")
@@ -1261,7 +1283,7 @@ Return only conditions genuinely supported by the reported symptoms.
                 ranked_conditions[i]["icd_source"] = "Local Clinical Reference (WHO unverified)"
                 ranked_conditions[i]["icd_verified"] = False
                 ranked_conditions[i]["icd_details"] = {
-                    "code": "" if is_i10 else raw_c,
+                    "code": raw_c,
                     "system": "ICD-10" if is_i10 else "ICD-11",
                     "title": cond["name"],
                     "source": "Local Clinical Reference",
@@ -1274,7 +1296,7 @@ Return only conditions genuinely supported by the reported symptoms.
                 raw_c = cond.get("icd_code", "")
                 is_i10 = is_probable_icd10_code(raw_c)
                 cond["icd_details"] = {
-                    "code": "" if is_i10 else raw_c,
+                    "code": raw_c,
                     "system": "ICD-10" if is_i10 else "ICD-11",
                     "title": cond.get("name", "Clinical Condition"),
                     "source": "Local Clinical Reference",
