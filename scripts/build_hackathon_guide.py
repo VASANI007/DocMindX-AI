@@ -15,585 +15,590 @@ from scripts.doc_generator.styler import (
     add_body_p, add_bullet_p, add_callout, add_styled_table, add_code_block
 )
 
-def build_hackathon_guide_hi():
+def build_hackathon_guide():
     doc = create_base_document(
-        title="DocMindX AI — हैकाथॉन एवं जूरी डिफेंस मास्टर गाइड",
-        subtitle="लाइव प्रेजेंटेशन, प्रोजेक्ट रिव्यू एवं जूरी मूल्यांकन हेतु संपूर्ण आर्किटेक्चर, तकनीकी डिफेंस एवं विशेषज्ञ प्रश्नोत्तर",
-        doc_type="हैकाथॉन डिफेंस गाइड",
-        lang="HI"
+        title="DocMindX AI — Hackathon & Jury Defense Master Guide",
+        subtitle="Complete Platform Architecture, Technical Defense & Expert Q&A for Live Presentations",
+        doc_type="Hackathon Defense Guide",
+        lang="EN"
     )
 
     # 1. Executive Summary & Opening Presentation Script
-    add_heading_1(doc, "1. कार्यकारी सारांश एवं 2-मिनट ओपनिंग प्रेजेंटेशन पिच")
+    add_heading_1(doc, "1. Executive Overview & 2-Minute Opening Presentation Pitch")
     add_callout(
         doc,
-        'रैपिड-फायर ओपनिंग पिच (हैकाथॉन प्रेजेंटेशन के लिए कंठस्थ करें):\n'
-        '"आदरणीय निर्णायक मंडल एवं मूल्यांकनकर्ता महोदय, हम प्रस्तुत करते हैं DocMindX AI — एक एंटरप्राइज-ग्रेड क्लिनिकल हेल्थकेयर इंटेलिजेंस एवं पब्लिक हेल्थ सप्लाई चेन प्लेटफॉर्म।\n\n'
-        'भारत की प्राथमिक स्वास्थ्य व्यवस्था एक गंभीर ट्राइएज संकट से जूझ रही है, जहाँ 70% से अधिक ग्रामीण नागरिक डॉक्टरों की भारी कमी वाले प्राथमिक स्वास्थ्य केंद्रों (PHCs) पर निर्भर हैं। '
-        'DocMindX AI इस संकट का समाधान तीन भाषाओं (हिंदी, गुजराती, अंग्रेजी) में AI क्लिनिकल ट्राइएज, डॉक्टरों की हस्तलिखित पर्चियों व लैब रिपोर्ट्स के लिए मल्टीमॉडल OCR, '
-        'OpenFDA आधारित लाइव ड्रग सुरक्षा सत्यापन, और 1 से 25 किमी के हॉस्पिटल लोकेटर के माध्यम से करता है — जिसे हमारे 99.01% सटीक कैलिब्रेटेड ML मॉडल और नेशनल कमांड सेंटर का बैकअप प्राप्त है।\n\n'
-        'आज हम प्रदर्शित करेंगे कि कैसे हमारा सिस्टम एक सामान्य ग्रामीण नागरिक के सिम्प्टम इनपुट से लेकर महामारी स्तर के लॉजिस्टिक्स समन्वय तक त्रुटिहीन कार्य करता है।"',
-        title="हैकाथॉन ओपनिंग प्रेजेंटेशन स्क्रिप्ट (शब्द-दर-शब्द)",
+        'RAPID-FIRE OPENING PITCH (Memorize for Hackathon):\n'
+        '"Respected Judges and Evaluators, we present DocMindX AI — an enterprise-grade clinical healthcare intelligence and public health supply chain platform.\n\n'
+        'India faces a severe primary triage bottleneck where over 70% of rural citizens rely on under-resourced Primary Health Centres with acute doctor shortages. '
+        'DocMindX AI solves this crisis by combining trilingual AI clinical triage (Hindi, Gujarati, English), multimodal OCR for handwritten prescriptions and complex lab reports, '
+        'live OpenFDA contraindication verification, and a 1-to-25 km hospital locator — backed by our 97.58% accurate calibrated ML model and National Command Center.\n\n'
+        'Today, we will demonstrate how our system works from citizen intake to epidemic-level public health coordination."',
+        title="Hackathon Opening Presentation Script (Word-for-Word)",
         alert_type="info"
     )
 
-    add_heading_2(doc, "1.1 DocMindX AI क्या है?")
-    add_body_p(doc, "DocMindX AI एक एकीकृत, डुअल-टियर क्लिनिकल हेल्थकेयर इंटेलिजेंस प्लेटफॉर्म है, जिसे भारत में प्राथमिक स्वास्थ्य केंद्रों (PHCs) और तृतीयक अस्पतालों के बीच की नैदानिक खाई को पाटने के लिए विकसित किया गया है। यह नागरिकों को अपनी मातृभाषा में आवाज (Whisper ASR), बोलचाल के टेक्स्ट या फोटो के माध्यम से लक्षण दर्ज करने की सुविधा देता है। सिस्टम उन्हें तुरंत डिफ़रेन्शियल डायग्नोसिस, सुरक्षित प्रमाणित OTC दवाएं, ICMR-NIN आधारित आहार परामर्श, उपचारात्मक योगासन और नजदीकी स्वास्थ्य केंद्रों का लाइव जीपीएस रूट प्रदान करता है।")
+    add_heading_2(doc, "1.1 What is DocMindX AI?")
+    add_body_p(doc, "DocMindX AI is an integrated, dual-tier clinical healthcare intelligence platform designed to bridge the diagnostic divide between primary health centres (PHCs) and tertiary healthcare infrastructure in India. It empowers citizens to input symptoms colloquially in their native language via voice (Whisper ASR), text, or clinical photos, receiving instant differential diagnoses, verified safe OTC medications, ICMR-NIN dietary guidance, restorative yoga asanas, and nearby healthcare routing.")
 
-    add_heading_2(doc, "1.2 एप्लिकेशन के मुख्य 5 सबसिस्टम्स")
-    add_bullet_p(doc, " मल्टी-चैनल लक्षण इनपुट (वॉइस, टेक्स्ट, फोटो), जनसांख्यिकी प्रोफाइलिंग (आयु, लिंग, राज्य/स्थान, ऊंचाई, वजन, रक्त समूह: A+, A-, B+, B-, AB+, AB-, O+, O-, अज्ञात), फैमिली प्रोफाइल ऑटो-फिल और 3-स्तंभीय संपूर्ण देखभाल व्यवस्था।", bold_prefix="पैनल 1: AI स्वास्थ्य एवं लक्षण विश्लेषक (Health & Symptom Analyzer) —")
-    add_bullet_p(doc, " डॉक्टरों की हस्तलिखित पर्चियों और जटिल पैथोलॉजी लैब रिपोर्ट्स (CBC, LFT, Lipid, KFT, Radiology) को सरल भाषा में समझाने वाला विज़न पाइपलाइन।", bold_prefix="पैनल 2: मेडिकल रिपोर्ट एवं प्रिस्क्रिप्शन स्कैनर (Report Scanner) —")
-    add_bullet_p(doc, " ओपनस्ट्रीटमैप (OSM) ओवरपास रडार द्वारा 1 से 25 किमी के इंटरएक्टिव स्लाइडर परिधि में 24/7 आपातकालीन अस्पतालों, क्लिनिकों और मेडिकल स्टोर्स की खोज।", bold_prefix="पैनल 3: नजदीकी स्वास्थ्य सेवा रडार (Nearby Healthcare Radar) —")
-    add_bullet_p(doc, " पूर्व परामर्शों, प्रिस्क्रिप्शनों, स्कैन और ट्राइएज रिपोर्ट का केंद्रीय एन्क्रिप्टेड रिकॉर्ड वॉल्ट, जो एक क्लिक में डॉक्टर कंसल्टेशन PDF एक्सपोर्ट करता है।", bold_prefix="पैनल 4: हेल्थ रिकॉर्ड्स वॉल्ट एवं फैमिली प्रोफाइल्स (Health Records Vault) —")
-    add_bullet_p(doc, " केवल अधिकृत स्वास्थ्य अधिकारियों (is_admin=True) हेतु सुरक्षित; 225+ PHCs में दवा स्टॉक के शेष दिन (DOIR) की निगरानी, 6.53% WAPE के साथ मांग का पूर्वानुमान, और ट्रांसफर मैनिफेस्ट जनरेशन।", bold_prefix="पैनल 5: नेशनल हेल्थ कमांड सेंटर (Command Center - केवल एडमिन) —")
+    add_heading_2(doc, "1.2 The Core Subsystems of the Application")
+    add_bullet_p(doc, " Multi-channel symptom intake (Voice, Text, Photo), demographic profiling (Age, Gender, Location/State, Height, Weight, Blood Group: A+, A-, B+, B-, AB+, AB-, O+, O-, Unknown), Family Profile Auto-fill, and 3-Pillar Care Regimen.", bold_prefix="Panel 1: AI Health & Symptom Analyzer —")
+    add_bullet_p(doc, " Multimodal vision pipeline parsing handwritten doctor prescriptions and complex lab reports (CBC, LFT, Lipid, KFT, Radiology) into clear layman explanations.", bold_prefix="Panel 2: Medical Report & Prescription Scanner —")
+    add_bullet_p(doc, " OpenStreetMap Overpass GPS radar discovering 24/7 emergency hospitals, clinics, and medical stores within an interactive 1 to 25 km perimeter radius slider.", bold_prefix="Panel 3: Nearby Healthcare Radar —")
+    add_bullet_p(doc, " Centralized encrypted medical history vault tracking previous scans, prescriptions, triage assessments, and clinical regimens with instant PDF consultation export.", bold_prefix="Panel 4: Health Records Vault & Family Profiles —")
+    add_bullet_p(doc, " Gated strictly to authorized administrators (is_admin=True); monitors Days of Inventory Remaining (DOIR) across 225+ PHCs, forecasts demand with 6.53% WAPE, and computes optimal inter-facility medicine transfers.", bold_prefix="Panel 5: National Health Command Center (Admin Only) —")
 
-    # 2. Crucial Questions from the Evaluator / Handwritten Sheet
-    add_heading_1(doc, "2. मुख्य जूरी डिफेंस प्रश्न (हस्तलिखित गुजराती नोट्स एवं बुनियादी प्रश्न)")
+    # 2. Crucial Questions from the Evaluator / Fundamental Inquiries
+    add_heading_1(doc, "2. Core Jury Defense Questions & Fundamental Evaluation Inquiries")
 
     # Q1
-    add_heading_2(doc, "Q1: लोग DocMindX AI का उपयोग क्यों करें? इसका यूनिक वैल्यू प्रपोजिशन क्या है?")
+    add_heading_2(doc, "Q1: Why should people use DocMindX AI? What is its unique value proposition?")
     add_callout(
         doc,
-        "गुजराती नोट संदर्भ: લોકો DocMindX AI ને શું કામે use કરે?\n"
-        "(नागरिक और स्वास्थ्य कार्यकर्ता पारंपरिक तरीकों के बजाय DocMindX AI का उपयोग क्यों करेंगे?)",
-        title="प्रश्न संदर्भ",
+        "Core Evaluator Inquiry:\n"
+        "\"Why should citizens, frontline healthcare workers, and clinicians adopt DocMindX AI instead of relying on existing methods or visiting physical clinics directly?\"\n\n"
+        "Strategic Defense Rationale:\n"
+        "Addresses India's critical primary healthcare bottlenecks: severe rural doctor shortages, trilingual colloquial accessibility, instant triage in <110ms, automated handwritten prescription deciphering, and holistic 3-pillar care (Nutrition + Yoga + Verified OTC).",
+        title="Evaluator Question Context",
         alert_type="warning"
     )
-    add_body_p(doc, "लाइव प्रेजेंटेशन हेतु उत्तर:")
-    add_bullet_p(doc, " 90% से अधिक ग्रामीण मरीज तकनीकी अंग्रेजी में लक्षण नहीं बता पाते। DocMindX AI बोलचाल की हिंदी और गुजराती (जैसे: '3 दिन थी माथे चढ़ेली छे', 'छाती में दबाव') को बिना किसी भाषा अवरोध के समझता है।", bold_prefix="1. त्रिभाषी सहज पहुंच (Trilingual Accessibility):")
-    add_bullet_p(doc, " ग्रामीण क्षेत्रों में प्राथमिक जांच के लिए मरीजों को 4 से 8 घंटे कतार में खड़ा रहना पड़ता है। DocMindX AI 110 मिलीसेकंड से भी कम समय में निःशुल्क प्राथमिक ट्राइएज उपलब्ध कराता है।", bold_prefix="2. शून्य-लागत, तात्कालिक ट्राइएज (Zero-Cost Triage):")
-    add_bullet_p(doc, " ग्रामीण क्लीनिकों में 70% दवा त्रुटियां डॉक्टरों की अस्पष्ट लिखावट न समझ पाने से होती हैं। पैनल 2 पर्ची को डिजिटल कर खुराक और सेवन विधि स्पष्ट समझाता है।", bold_prefix="3. डॉक्टर की लिखावट का सरलीकरण (Prescription Deciphering):")
-    add_bullet_p(doc, " केवल बीमारी का नाम नहीं बताता, बल्कि सुरक्षित दवाएं (OpenFDA), ICMR-NIN पोषण चार्ट, योग और नजदीकी 24/7 आईसीयू का रास्ता देकर मेडिकल चिंता दूर करता है।", bold_prefix="4. समग्र 3-स्तंभीय स्वास्थ्य लाभ (Holistic Care):")
+    add_body_p(doc, "Answer for Live Presentation:")
+    add_bullet_p(doc, " Over 90% of rural patients cannot articulate symptoms in technical English. DocMindX AI understands colloquial Hindi and Gujarati (e.g., '3 din thi mathe chhadeli che' [Severe headache for 3 days], 'chaati me dabav' [Chest pressure]) with zero language friction.", bold_prefix="1. Trilingual Accessibility:")
+    add_bullet_p(doc, " Patients in rural areas often wait 4 to 8 hours just for preliminary triage. DocMindX AI provides immediate, free preliminary assessments in <110 milliseconds.", bold_prefix="2. Zero-Cost, Instant Triage:")
+    add_bullet_p(doc, " Over 70% of medication administration errors in rural clinics happen due to illegible handwritten doctor scripts. Panel 2 digitizes prescriptions and explains dosages safely.", bold_prefix="3. Prescription Deciphering:")
+    add_bullet_p(doc, " Replaces medical anxiety with actionable clarity, offering verified OTC medications (OpenFDA), ICMR-NIN dietary guidelines, restorative yoga, and direct GPS routing to 24/7 hospitals.", bold_prefix="4. Holistic 3-Pillar Care:")
 
     # Q2
-    add_heading_2(doc, "Q2: जब ChatGPT या Gemini जैसे सामान्य LLM भी लक्षणों के उत्तर दे सकते हैं, तो DocMindX AI क्यों बनाएं?")
+    add_heading_2(doc, "Q2: Why use DocMindX AI when generic LLMs like ChatGPT or Gemini can answer symptoms too?")
     add_callout(
         doc,
-        "गुजराती नोट संदर्भ: Same આવું કામ તો Gemini, ChatGPT or કોઈ પણ LLM કરી શકે કે મને શું થયું છે, ક્યારથી થયું છે વગેરે વગેરે વિગતો આપીને આપણે જાણી શકીએ તો આ શું કામે use કરે?\n"
-        "(जब ChatGPT या Gemini को प्रॉम्प्ट देकर जाना जा सकता है, तो DocMindX AI का उपयोग क्यों करें?)",
-        title="प्रश्न संदर्भ (सर्वाधिक महत्वपूर्ण काउंटर-प्रश्न)",
+        "Core Evaluator Inquiry (High-Priority Counter-Question):\n"
+        "\"Why build and deploy DocMindX AI when a generic prompt to ChatGPT, Gemini, or any standard cloud LLM can already take symptoms and suggest medical conditions?\"\n\n"
+        "Strategic Defense Rationale:\n"
+        "Deliver a confident, decisive comparison: Zero clinical hallucination through deterministic calibrated ML, hard-coded emergency Red Flag gates (RF001 to RF035), live OpenStreetMap emergency hospital routing, 100% offline edge execution on low-cost CPUs ($0 token cost), and an integrated national public health supply chain engine.",
+        title="Evaluator Question Context (Critical Jury Challenge)",
         alert_type="warning"
     )
-    add_body_p(doc, "लाइव प्रेजेंटेशन हेतु उत्तर (दृढ़ता और आत्मविश्वास से बोलें):")
-    add_bullet_p(doc, " सामान्य LLM अक्सर काल्पनिक (Hallucinated) दवाएं और जानलेवा डोज बता देते हैं। DocMindX AI एक सांख्यिकीय रूप से कैलिब्रेटेड ML मॉडल (101 बीमारियों पर 97.58% Top-3 सटीकता) चलाता है और प्रत्येक दवा को NIH DailyMed व OpenFDA डेटाबेस से सत्यापित करता है।", bold_prefix="1. शून्य फैब्रिकेशन एवं प्रमाणित सटीकता (Zero Hallucination):")
-    add_bullet_p(doc, " छाती में तेज दर्द और सांस फूलने वाले मरीज को ChatGPT लंबा टेक्स्ट पढ़ने में उलझा देगा। DocMindX AI में 35 हार्ड-कोडेड रेड-फ्लैग नियम (RF001–RF035) हैं, जो तुरंत 108 डायल बटन और नजदीकी ICU का रूट खोल देते हैं।", bold_prefix="2. रियल-टाइम इमरजेंसी रेड फ्लैग गेट्स (Emergency Gates):")
-    add_bullet_p(doc, " सामान्य LLM को भारत के स्थानीय सरकारी अस्पतालों की वास्तविक लोकेशन नहीं पता होती। DocMindX AI ओपनस्ट्रीटमैप ओवरपास सर्वर से 1 से 25 किमी में खुले ट्रॉमा सेंटर और दवा की दुकानें लाइव दिखाता है।", bold_prefix="3. स्थानीय भू-स्थानिक रूटिंग (Geospatial Dispatch):")
-    add_bullet_p(doc, " ChatGPT को तेज इंटरनेट और प्रति प्रश्न ₹1-2 की API लागत चाहिए। DocMindX AI बिना इंटरनेट के सामान्य कंप्यूटर CPU पर <45ms में चलता है, जिससे यह 30,000+ दूरदराज के PHCs में शून्य लागत पर काम कर सकता है।", bold_prefix="4. 100% ऑफलाइन एज निष्पादन एवं शून्य रिकरिंग खर्च:")
-    add_bullet_p(doc, " यह केवल एक चैटबॉट नहीं है, बल्कि इसमें राज्य स्तर के स्वास्थ्य निदेशकों के लिए दवा स्टॉकआउट रोकने का सप्लाई चेन लॉजिस्टिक्स इंजन भी शामिल है।", bold_prefix="5. एकीकृत सार्वजनिक स्वास्थ्य आपूर्ति श्रृंखला (Supply Chain Engine):")
+    add_body_p(doc, "Answer for Live Presentation (Deliver this with confidence):")
+    add_bullet_p(doc, " Generic LLMs are prone to medical hallucinations, inventing nonexistent drug dosages or fatal contraindications. DocMindX AI executes deterministic, calibrated machine learning (97.58% Top-3 accuracy on 101 ICD-11 diseases) and validates every single drug against NIH DailyMed and OpenFDA registries.", bold_prefix="1. Zero Hallucination & Calibrated Precision:")
+    add_bullet_p(doc, " ChatGPT cannot stop a patient with severe chest pain radiating to the left arm from reading long text. DocMindX AI triggers hard-coded Red Flag Safety Gates (RF001 to RF035) that instantly activate a 108 Emergency Dialer and nearest ICU route.", bold_prefix="2. Real-Time Emergency Red Flag Gates:")
+    add_bullet_p(doc, " Generic LLMs do not know real-time local geography in India. DocMindX AI queries live OpenStreetMap Overpass servers within 1 to 25 km to display open emergency trauma centers and 24/7 pharmacies.", bold_prefix="3. Localized Geospatial Dispatch:")
+    add_bullet_p(doc, " ChatGPT requires continuous high-speed cloud internet and expensive API tokens ($0.02/query). DocMindX AI executes locally on standard edge CPUs in <45ms without internet, making it deployable in 30,000+ rural PHCs.", bold_prefix="4. Edge-Local Autonomy & Zero Running Cost:")
+    add_bullet_p(doc, " Unlike a simple chatbot, DocMindX AI includes an enterprise public health logistics engine (DOIR tracking, WAPE 6.53% demand forecast, linear redistribution solver) for state health directors.", bold_prefix="5. Integrated Public Health Supply Chain:")
 
     # Q3
-    add_heading_2(doc, "Q3: इस वेब प्लेटफॉर्म के लक्षित उपयोगकर्ता (Target Users) कौन हैं?")
+    add_heading_2(doc, "Q3: Who are the target users of this web platform?")
     add_callout(
         doc,
-        "Gujarati Note Reference: આ Web નો ક્યા લોકો ઉપયોગ કરી શકે?\n"
-        "(कौन-से वर्ग और पेशेवर इस प्लेटफॉर्म का उपयोग कर सकते हैं?)",
-        title="प्रश्न संदर्भ",
+        "Core Evaluator Inquiry:\n"
+        "\"Who are the specific target demographics, clinical professionals, and administrative stakeholders designed to utilize this web platform?\"\n\n"
+        "Strategic Defense Rationale:\n"
+        "Demonstrate multi-tier operational utility: Rural & semi-urban citizens (native-language triage & lab report breakdown), ASHA/ANM frontline workers (field screening & 108 referral), PHC medical officers (prescription digitization & DDI safety), and state health directors (inventory forecasting & transfer manifests).",
+        title="Evaluator Question Context",
         alert_type="warning"
     )
-    add_body_p(doc, "लाइव प्रेजेंटेशन हेतु उत्तर:")
-    add_bullet_p(doc, " जो अपनी मातृभाषा में निःशुल्क लक्षण जांच, लैब रिपोर्ट का सरल विवरण और नजदीकी सरकारी अस्पताल खोजना चाहते हैं।", bold_prefix="1. ग्रामीण एवं कस्बाई नागरिक (Rural Citizens):")
-    add_bullet_p(doc, " जो मोबाइल/टैबलेट से गांव-गांव में त्वरित ट्राइएज कर गंभीर मरीजों को समय पर 108 एम्बुलेंस से रेफर कर सकती हैं।", bold_prefix="2. आशा एवं एएनएम स्वास्थ्य कार्यकर्ता (ASHA / ANM Workers):")
-    add_bullet_p(doc, " जो ओपीडी की भारी भीड़ में बाहर की पर्चियों को डिजिटल करने और ड्रग एलर्जी/इंटरैक्शन जांचने के लिए इसका उपयोग करते हैं।", bold_prefix="3. PHC मेडिकल ऑफिसर एवं फार्मासिस्ट (PHC Doctors & Pharmacists):")
-    add_bullet_p(doc, " जो कमांड सेंटर में लॉगिन करके पूरे जिले में दवा की कमी, महामारी के प्रकोप और स्टॉक ट्रांसफर का प्रबंधन करते हैं।", bold_prefix="4. राज्य स्वास्थ्य निदेशक एवं मुख्य चिकित्सा अधिकारी (CMHOs & Directors):")
+    add_body_p(doc, "Answer for Live Presentation:")
+    add_bullet_p(doc, " Seeking free, native-language preliminary symptom checks, layman explanations of lab reports, and nearby hospital discovery.", bold_prefix="1. Rural & Semi-Urban Citizens:")
+    add_bullet_p(doc, " Using mobile tablets to perform rapid field triage, flag high-acuity patients, and initiate emergency 108 referrals.", bold_prefix="2. Frontline Health Workers (ASHA / ANM):")
+    add_bullet_p(doc, " Overloaded with OPD volume; utilizing Panel 2 OCR to digitize outside prescriptions and verify contraindications.", bold_prefix="3. PHC Medical Officers & Pharmacists:")
+    add_bullet_p(doc, " Logging into the National Health Command Center to monitor medicine stockouts, run epidemic stress-tests, and issue transfer manifests.", bold_prefix="4. State Health Directors & District CMHOs:")
 
     # Q4
-    add_heading_2(doc, "Q4: इस वेब प्लेटफॉर्म का भविष्य और विज़न (Roadmap) क्या है?")
+    add_heading_2(doc, "Q4: What is the future roadmap and vision of this web platform?")
     add_callout(
         doc,
-        "Gujarati Note Reference: આ Web નું future શું?\n"
-        "(विकास और विस्तार के अगले चरण क्या हैं?)",
-        title="प्रश्न संदर्भ",
+        "Core Evaluator Inquiry:\n"
+        "\"What is the future engineering roadmap, scalability strategy, and national healthcare integration pathway for this platform?\"\n\n"
+        "Strategic Defense Rationale:\n"
+        "Detail the four-stage expansion: Ayushman Bharat Digital Mission (ABDM) ABHA ID integration, offline-first mobile apps for 10+ lakh ASHA workers, edge IoT deployment on low-cost Raspberry Pi devices for off-grid sub-centres, and linguistic expansion across 12 scheduled Indian languages.",
+        title="Evaluator Question Context",
         alert_type="warning"
     )
-    add_body_p(doc, "लाइव प्रेजेंटेशन हेतु उत्तर:")
-    add_bullet_p(doc, " भारत सरकार के आयुष्मान भारत डिजिटल मिशन (ABDM) से सीधा जुड़ाव, जिससे डिजिटल पर्चे सीधे मरीज की ABHA आईडी में सिंक हो सकें।", bold_prefix="1. ABDM एवं ABHA नेशनल हेल्थ आईडी इंटीग्रेशन:")
-    add_bullet_p(doc, " देश भर की 10+ लाख आशा कार्यकर्ताओं के सरकारी टैबलेट्स के लिए एक ऑफलाइन-फर्स्ट फ्लटर (Flutter) मोबाइल ऐप का निर्माण।", bold_prefix="2. आशा कार्यकर्ताओं हेतु डेडिकेटेड मोबाइल ऐप:")
-    add_bullet_p(doc, " क्वांटाइज्ड ONNX ट्राइएज मॉडल को सस्ते रास्पबेरी पाई (Raspberry Pi) चिप्स में एम्बेड करके इंटरनेट-विहीन उप-स्वास्थ्य केंद्रों (Sub-Centres) में स्थापित करना।", bold_prefix="3. एज IoT डिवाइस डिप्लॉयमेंट (Edge Hardware):")
-    add_bullet_p(doc, " मॉडल को भारत की 12 प्रमुख भाषाओं (मराठी, बंगाली, तमिल, तेलुगु, कन्नड़, पंजाबी आदि) में विस्तारित करना।", bold_prefix="4. 12+ भारतीय भाषाओं में विस्तार:")
+    add_body_p(doc, "Answer for Live Presentation:")
+    add_bullet_p(doc, " Direct integration with India's Ayushman Bharat Digital Mission (ABDM) to link digital health records directly to citizen ABHA IDs.", bold_prefix="1. ABDM & ABHA National Health ID:")
+    add_bullet_p(doc, " Development of offline-first Flutter mobile applications optimized for field tablets used by 10+ lakh ASHA workers across India.", bold_prefix="2. Mobile Application for Frontline Workers:")
+    add_bullet_p(doc, " Embedding quantized ONNX triage models directly into low-cost Raspberry Pi devices for remote Sub-Centres without cellular connectivity.", bold_prefix="3. Edge IoT Device Deployment:")
+    add_bullet_p(doc, " Expanding phonetic and speech models across 12 scheduled Indian languages (Marathi, Bengali, Tamil, Telugu, Kannada, Punjabi).", bold_prefix="4. Expansion to 12+ Indic Languages:")
 
     # Q5
-    add_heading_2(doc, "Q5: जब ऑनलाइन AI APIs मौजूद हैं, तो हमने अपना कस्टम ML मॉडल क्यों ट्रेन किया?")
+    add_heading_2(doc, "Q5: Why train a custom ML model when online APIs exist? What is the purpose of training our own ML model?")
     add_callout(
         doc,
-        "Gujarati Note Reference: ML model train કર્યું તે શું કામ માં આવે છે? Online માટે.\n"
-        "(क्लाउड APIs के होते हुए कस्टम रैंडम फ़ॉरेस्ट क्लासिफायर ट्रेन करने का क्या लाभ है?)",
-        title="प्रश्न संदर्भ",
+        "Core Evaluator Inquiry:\n"
+        "\"What is the scientific and economic justification for training a custom local machine learning model when commercial cloud AI APIs are already available online?\"\n\n"
+        "Strategic Defense Rationale:\n"
+        "Emphasize deterministic sub-45ms CPU latency, 100% offline edge resilience in off-grid PHCs, zero recurring token costs ($0 per query), Indian endemic disease representation (Dengue, Malaria, Typhoid), and mathematical auditability.",
+        title="Evaluator Question Context",
         alert_type="warning"
     )
-    add_body_p(doc, "लाइव प्रेजेंटेशन हेतु उत्तर:")
-    add_bullet_p(doc, " क्लाउड LLM 2 से 5 सेकंड का समय लेते हैं और नेटवर्क पर निर्भर होते हैं। हमारा ट्रेन किया गया 50-ट्री रैंडम फ़ॉरेस्ट सीधे CPU मेमोरी में <45 मिलीसेकंड में परिणाम देता है।", bold_prefix="1. निश्चित सब-सेकंड इनफरेंस (<45ms):")
-    add_bullet_p(doc, " आदिवासी और पहाड़ी इलाकों के प्राथमिक स्वास्थ्य केंद्रों में हफ्तों इंटरनेट नहीं रहता। हमारा मॉडल लोकल SQLite और फाइलों के साथ 100% ऑफलाइन कार्य करता है।", bold_prefix="2. 100% ऑफलाइन एज लचीलापन (Offline Edge Resilience):")
-    add_bullet_p(doc, " जनरेटिव मॉडल एक ही सवाल का अलग-अलग समय पर अलग उत्तर दे सकते हैं। हमारा मॉडल 280 क्लिनिकल फीचर्स और 101 बीमारियों पर ट्रेन है, जो हर बार 97.58% विश्वसनीय गणितीय आउटपुट देता है।", bold_prefix="3. सत्यापित गणितीय सटीकता (Verifiable Accuracy):")
-    add_bullet_p(doc, " ऑनलाइन विदेशी मॉडल्स पश्चिमी बीमारियों पर ट्रेन होते हैं। हमारा मॉडल विशेष रूप से भारतीय ट्रॉपिकल बीमारियों (डेंगू, मलेरिया, टाइफाइड, चिकनगुनिया, लेप्टोस्पायरोसिस) के लिए ऑप्टिमाइज़्ड है।", bold_prefix="4. भारतीय महामारी रोग मैट्रिक्स (Indian Disease Matrix):")
-    add_bullet_p(doc, " करोड़ों प्राथमिक स्वास्थ्य जांचों के लिए कमर्शियल API का उपयोग लाखों रुपयों का खर्च लाएगा। हमारा ट्रेन किया गया मॉडल शून्य रिकरिंग टोकन शुल्क ($0) पर काम करता है।", bold_prefix="5. शून्य रिकरिंग टोकन लागत ($0 Token Cost):")
+    add_body_p(doc, "Answer for Live Presentation:")
+    add_bullet_p(doc, " Cloud LLMs take 2,000ms to 5,000ms and fluctuate based on network speed. Our trained 50-tree Random Forest executes in under 45ms directly on CPU memory.", bold_prefix="1. Deterministic Sub-Second Inference (<45ms):")
+    add_bullet_p(doc, " Primary Health Centres in tribal and hilly areas have zero internet for days. Our trained model runs 100% offline via local SQLite and Parquet stores.", bold_prefix="2. 100% Offline Edge Resilience:")
+    add_bullet_p(doc, " Generative models give different answers to the same question. Our trained model is statistically calibrated on 280 clinical features and 101 WHO ICD-11 diseases, guaranteeing reproducible 97.58% accuracy.", bold_prefix="3. Verifiable Mathematical Calibration:")
+    add_bullet_p(doc, " Standard online models are trained on Western datasets. Our model specifically incorporates endemic Indian epidemiological patterns (Dengue, Malaria, Typhoid, Chikungunya, Leptospirosis).", bold_prefix="4. Domain-Specific Indian Disease Matrix:")
+    add_bullet_p(doc, " Querying commercial LLM APIs for millions of primary consultations would cost lakhs of rupees. Our trained model costs $0 in recurring inference fees.", bold_prefix="5. Zero Recurring Token Costs:")
 
     # 3. Clinical & Algorithmic Defense
-    add_heading_1(doc, "3. विस्तृत क्लिनिकल डिफेंस: वैकल्पिक फ़ील्ड्स एवं क्लिनिकल सेफ्टी इंजन")
+    add_heading_1(doc, "3. Detailed Clinical Defense: Optional Fields & The Safety Engine")
 
     # Q6
-    add_heading_2(doc, "Q6: यदि मैं समान लक्षण और आयु दो बार दर्ज करूँ, लेकिन दूसरी बार वैकल्पिक फ़ील्ड्स (इतिहास, एलर्जी, दवाएं) 'None' रखूँ, तो क्या आउटपुट बदलेगा या समान रहेगा?")
+    add_heading_2(doc, "Q6: If I enter identical symptoms and age twice, but in the second run leave optional fields (history, allergies, meds) as 'None', does the output change or stay identical?")
     add_callout(
         doc,
-        "कोर क्लिनिकल निष्कर्ष: DocMindX AI में एक सक्रिय सेफ्टी व कॉन्ट्राइंडिकेशन गेट (Safety Gate) अंतर्निहित है। "
-        "अनुशंसित दवाओं का आउटपुट केवल और केवल तभी बदलेगा जब वैकल्पिक फ़ील्ड्स में सुरक्षा-संवेदनशील पैरामीटर (जैसे एलर्जी, अंग विफलता, ड्रग इंटरैक्शन) मौजूद थे। "
-        "यदि केवल गैर-औषधीय फ़ील्ड्स (जैसे ऊंचाई, वजन) बदले जाएं, तो आउटपुट 100% समान रहता है।",
-        title="क्लिनिकल सेफ्टी आर्किटेक्चर सारांश",
+        "Core Clinical Insight: DocMindX AI incorporates an active Safety & Contraindication Gate. "
+        "The output changes IF AND ONLY IF the optional fields contained safety-critical parameters (allergies, organ impairment, DDIs). "
+        "Otherwise, for non-pharmacological fields (height, weight), the output remains 100% identical.",
+        title="Clinical Safety Architecture Summary",
         alert_type="info"
     )
-    add_body_p(doc, "इस तकनीकी प्रश्न का उत्तर दो स्पष्ट क्लिनिकल परिदृश्यों में विभाजित है:")
+    add_body_p(doc, "The comprehensive answer to this technical query is divided into two distinct operating scenarios:")
 
-    add_heading_3(doc, "परिदृश्य A: जब अनुशंसित दवाएं अवश्य बदलेंगी (सेफ्टी फ़िल्टरिंग)")
-    add_bullet_p(doc, " यदि रन 1 में मरीज ने पेनिसिलिन या सल्फा एलर्जी दर्ज की थी, तो इंजन अमोक्सिसिलिन को ब्लॉक कर सुरक्षित विकल्प (जैसे एज़िथ्रोमाइसिन) देता है। रन 2 में (एलर्जी None होने पर) यह सुरक्षा फ़िल्टर हट जाता है और मानक प्रथम-पंक्ति अमोक्सिसिलिन प्रदर्शित होती है।", bold_prefix="1. ड्रग एलर्जी निषेध (Allergy Contraindications):")
-    add_bullet_p(doc, " यदि रन 1 में मरीज ने क्रोनिक किडनी रोग या पेप्टिक अल्सर दर्ज किया था, तो इंजन नेफ्रोटॉक्सिसिटी और ब्लीडिंग के खतरे के कारण NSAIDs (इबुप्रोफेन, कॉम्बीफ्लेम) को पूरी तरह ब्लॉक कर देता है। रन 2 में (None होने पर) सामान्य वयस्क दर्द निवारक दवाएं आ जाती हैं।", bold_prefix="2. अंग विकार (किडनी / लिवर / अल्सर):")
-    add_bullet_p(doc, " यदि रन 1 में खून पतला करने वाली दवाएं (वारफारिन, क्लोपिडोग्रेल) दर्ज थीं, तो इंजन खतरनाक इंटरैक्शन वाली दवाएं रोक देता है। रन 2 में यह चेतावनी नहीं आती।", bold_prefix="3. ड्रग-ड्रग इंटरैक्शन (DDI Block):")
-    add_bullet_p(doc, " यदि रन 1 में गर्भावस्था दर्ज थी, तो टेराटोजेनिक दवाएं ब्लॉक हो जाती हैं। रन 2 में सामान्य फॉर्मूलेशन आते हैं।", bold_prefix="4. गर्भावस्था एवं स्तनपान (Pregnancy Safety):")
+    add_heading_3(doc, "Scenario A: When Recommended Medicines WILL CHANGE (Safety Filtering)")
+    add_bullet_p(doc, " If Run 1 included Penicillin or Sulfa allergy, the engine blocks Amoxicillin and recommends safe alternatives (e.g. Azithromycin). In Run 2 (with allergies set to None), the safety filter is unblocked, so standard first-line Amoxicillin is displayed.", bold_prefix="1. Allergy Contraindications:")
+    add_bullet_p(doc, " If Run 1 specified Kidney Disease, Chronic Kidney Disease, or Peptic Ulcers, the engine strictly suppresses NSAIDs (Ibuprofen, Combiflam) due to nephrotoxicity and gastric bleeding risks. In Run 2 (set to None), standard adult analgesics are returned.", bold_prefix="2. Organ Impairment (Kidney / Liver / GI):")
+    add_bullet_p(doc, " If Run 1 noted active blood thinners (Warfarin, Clopidogrel), the engine blocks interacting medications. In Run 2 (set to None), no interaction flags are raised.", bold_prefix="3. Drug-Drug Interactions (DDI):")
+    add_bullet_p(doc, " If Run 1 marked Pregnancy as True, teratogenic drugs are blocked. In Run 2 (None/False), standard adult formulations appear.", bold_prefix="4. Pregnancy & Lactation:")
 
-    add_heading_3(doc, "परिदृश्य B: जब आउटपुट 100% समान रहेगा")
-    add_bullet_p(doc, " यदि दोनों रनों के बीच बदले गए वैकल्पिक फ़ील्ड्स गैर-औषधीय थे (जैसे केवल ऊंचाई या वजन), या रन 1 में भी कोई एलर्जी/बीमारी नहीं थी, तो संभावित मुख्य बीमारी और अनुशंसित दवाएं 100% समान रहेंगी।", bold_prefix="1. गैर-सुरक्षा पैरामीटर (Non-Safety Attributes):")
-    add_bullet_p(doc, " शीर्ष अनुमानित बीमारी (Top Disease Name) दोनों रनों में समान रहेगी, क्योंकि बीमारी का क्लासिफिकेशन मुख्य रूप से 280-आयामी लक्षण वेक्टर और आयु वर्ग द्वारा संचालित होता है। कॉन्फिडेंस स्कोर में 2-5% का मामूली बदलाव केवल तभी आता है जब रोग की अवधि (>2 सप्ताह) या गंभीरता का टॉगल बदला गया हो।", bold_prefix="2. प्राथमिक रोग अनुमान स्थिरता (Disease Stability):")
+    add_heading_3(doc, "Scenario B: When the Output Remains 100% IDENTICAL")
+    add_bullet_p(doc, " If the optional fields changed between runs are non-pharmacological (e.g. Height, Weight), or if Run 1 also had no active comorbidities or allergies, both the Top Disease and Medicine Recommendations are 100% IDENTICAL.", bold_prefix="1. Non-Safety Attributes:")
+    add_bullet_p(doc, " The Top Predicted Disease name remains identical between both runs because disease classification is fundamentally driven by the 280-dimensional symptom vector and age group. Slight confidence score variations (2-5%) only occur if duration (>2 weeks) or severe intensity modifiers were toggled.", bold_prefix="2. Primary Disease Prediction Stability:")
 
     # 4. Technical Architecture & Accuracy Defense
-    add_heading_1(doc, "4. तकनीकी आर्किटेक्चर, सटीकता एवं बेंचमार्क डिफेंस")
+    add_heading_1(doc, "4. Technical Architecture, Accuracy & Benchmark Defense")
 
     # Q7
-    add_heading_2(doc, "Q7: सटीक मशीन लर्निंग आर्किटेक्चर क्या है, और 97.58% सटीकता कैसे सिद्ध हुई?")
-    add_body_p(doc, "हमारा नैदानिक कोर एक कैलिब्रेटेड Scikit-Learn RandomForestClassifier (50 डिसिजन ट्रीज़, गिन्नी इम्प्योरिटी) पर आधारित है, जो 280-आयामी बाइनरी फीचर वेक्टर पर कार्य करता है। हमने 101 WHO ICD-11 संरेखित बीमारियों और 4,920 सिंथेटिक व क्लिनिकल प्रोफाइल पर इसका कठोर परीक्षण किया है।")
-    add_bullet_p(doc, " 94.2% Top-1 सटीकता और 97.58% Top-3 सटीकता (ऑटोमेटेड टेस्ट स्क्रिप्ट verify_ml_model.py द्वारा सत्यापित)।", bold_prefix="• सटीकता बेंचमार्क:")
-    add_bullet_p(doc, " 101 में से 100 रोग वर्गों ने 99.01% टेक्स्टबुक बेंचमार्क मैच हासिल किया।", bold_prefix="• टेक्स्टबुक बेंचमार्क:")
-    add_bullet_p(doc, " यह बेसलाइन डिसिजन ट्री (81.2%), SVM-RBF (89.4%) और XGBoost (92.8%) से काफी बेहतर प्रदर्शन करता है।", bold_prefix="• मॉडल तुलना:")
+    add_heading_2(doc, "Q7: What is the exact Machine Learning architecture, and how was 97.58% accuracy proven?")
+    add_body_p(doc, "Our diagnostic core utilizes a calibrated Scikit-Learn RandomForestClassifier (50 Decision Trees, Gini Impurity) operating on a 280-dimensional binary feature vector. We validated this across 101 ICD-11 aligned disease classes with 4,920 synthetic and clinical patient profiles.")
+    add_bullet_p(doc, " 94.2% Top-1 Accuracy and 97.58% Top-3 Accuracy (verified via automated test script verify_ml_model.py).", bold_prefix="• Accuracy Benchmark:")
+    add_bullet_p(doc, " 100 out of 101 disease classes achieved 99.01% textbook benchmark match.", bold_prefix="• Textbook Benchmark:")
+    add_bullet_p(doc, " Significantly outclasses baseline Decision Trees (81.2%), SVM-RBF (89.4%), and XGBoost (92.8%).", bold_prefix="• Model Comparison:")
 
     # Q8
-    add_heading_2(doc, "Q8: DocMindX AI भारतीय भाषाओं (Indic Speech & Text) को बिना अनुवाद त्रुटि के कैसे प्रोसेस करता है?")
-    add_body_p(doc, "हम किसी अविश्वसनीय थर्ड-पार्टी अनुवाद API पर निर्भर नहीं हैं। इसके बजाय, हमने ai/disease_prediction/canonical_concepts.py में 'पाइपलाइन v3 सर्जिकल एविडेंस आइसोलेशन' और कैनोनिकल रेगुलर एक्सप्रेशन मैपिंग लागू की है:")
-    add_bullet_p(doc, " Google Cloud Speech v2 और Whisper ASR क्षेत्रीय बोलियों को सीधे कच्चे फोनेटिक टोकन में बदलते हैं।", bold_prefix="• वाक् पहचान (Speech Recognition):")
-    add_bullet_p(doc, " बोलचाल के मुहावरों (जैसे 'ठंड लग रही है', 'ध्रुजारी आवे छे') को मानक कैनोनिकल क्लिनिकल कॉन्सेप्ट्स में मैप करता है।", bold_prefix="• फोनेटिक कॉन्सेप्ट मैपिंग:")
-    add_bullet_p(doc, " क्लिनिकल नकार (Negation) जैसे 'बुखार नहीं है', 'माथु नथी दुखतु' को अलग पहचानता है ताकि नकारे गए लक्षण कभी पॉजिटिव न जुड़ें।", bold_prefix="• नेगेशन फ़िल्टरिंग:")
-    add_bullet_p(doc, " F1-स्कोर: अंग्रेजी 98.4%, हिंदी 96.8%, गुजराती 96.2%, मराठी 94.9%।", bold_prefix="• भाषाई सटीकता:")
+    add_heading_2(doc, "Q8: How does DocMindX AI process Indic speech and colloquial text without translation errors?")
+    add_body_p(doc, "We do not rely on clumsy literal translation APIs. Instead, we implement Pipeline v3 Surgical Evidence Isolation with canonical regular expression mapping in ai/disease_prediction/canonical_concepts.py:")
+    add_bullet_p(doc, " Google Cloud Speech v2 and Whisper ASR transcribe native dialects directly into raw phonetic tokens.", bold_prefix="• Speech Recognition:")
+    add_bullet_p(doc, " Normalizes colloquial phrases (e.g. 'thand lag rahi hai' [chills/shivering], 'dhrujari aave che' [tremors/rigors]) into canonical clinical concepts.", bold_prefix="• Phonetic Concept Matching:")
+    add_bullet_p(doc, " Explicitly parses clinical negation (e.g. 'bukhar nahi hai' [no fever], 'mathu nathi dukhtu' [no headache]) so denied symptoms are never added to positive evidence.", bold_prefix="• Negation Filtering:")
+    add_bullet_p(doc, " F1-Scores achieved: English 98.4%, Hindi 96.8%, Gujarati 96.2%, Marathi 94.9%.", bold_prefix="• Linguistic Precision:")
 
     # Q9
-    add_heading_2(doc, "Q9: पैनल 2 का मेडिकल विज़न OCR पाइपलाइन कैसे कार्य करता है?")
-    add_body_p(doc, "OCR मॉड्यूल एक डुअल-टियर कंप्यूटर विज़न पाइपलाइन का उपयोग करता है: सबसे पहले OpenCV ग्रे-स्केल नॉर्मलाइजेशन, अडाप्टिव थ्रेशोल्डिंग और कंट्रास्ट सुधार करता है। इसके बाद Google Gemini 2.5 Flash Vision डॉक्टरों की अस्पष्ट हैंडराइटिंग और लैब वैल्यूज को एक्सट्रैक्ट करता है, जबकि स्थानीय PyTesseract एक त्वरित ऑफलाइन फॉलबैक प्रदान करता है। एक्सट्रैक्ट किए गए ब्लड टेस्ट पैरामीटर्स (Hemoglobin, Platelets, SGPT, Bilirubin, HbA1c) को datasets/blood_report/ के क्लिनिकल मानकों से परख कर आम बोलचाल में समझाया जाता है।")
+    add_heading_2(doc, "Q9: How does the Medical Vision OCR pipeline work in Panel 2?")
+    add_body_p(doc, "The OCR module employs a dual-tier computer vision pipeline: OpenCV executes grayscale normalization, adaptive thresholding, and contrast expansion. Next, Google Gemini 2.5 Flash Vision extracts handwritten doctor scripts and lab values, while local PyTesseract provides an instant offline fallback. Extracted lab parameters (Hemoglobin, Platelets, SGPT, Bilirubin, HbA1c) are programmatically evaluated against datasets/blood_report/ clinical reference ranges, providing layman breakdowns and actionable tips.")
 
     # Q10
-    add_heading_2(doc, "Q10: पैनल 3 का नजदीकी हेल्थकेयर रडार बिना सशुल्क Google Maps API के कैसे कार्य करता है?")
-    add_body_p(doc, "पैनल 3 ओपनस्ट्रीटमैप (OpenStreetMap) के Overpass QL API का उपयोग करता है। जब यूजर 1 से 25 किमी का स्लाइडर सेट करता है, तो सिस्टम amenity=hospital, amenity=clinic और amenity=pharmacy वाले नोड्स को रियल-टाइम में क्वेरी करता है। ये सुविधाएं इंटरएक्टिव फोलियम (Folium) मैप्स पर क्लस्टर होकर टर्न-बाय-टर्न दूरी के साथ दिखती हैं, जिसमें शून्य कमर्शियल API शुल्क लगता है।")
+    add_heading_2(doc, "Q10: How does Panel 3 Nearby Healthcare Radar work without paid Google Maps APIs?")
+    add_body_p(doc, "Panel 3 leverages OpenStreetMap Overpass QL API. When a user sets the perimeter radius slider between 1 to 25 km, the client queries Overpass nodes with amenity=hospital, amenity=clinic, and amenity=pharmacy. Facilities are dynamically clustered and rendered via interactive Folium maps with turn-by-turn routing distances, operating with zero API license costs.")
 
     # Q11
-    add_heading_2(doc, "Q11: नेशनल हेल्थ कमांड सेंटर क्या है, और यह केवल एडमिन तक ही सीमित क्यों है?")
-    add_body_p(doc, "पैनल 5 राज्य स्वास्थ्य निदेशकों और जिला मुख्य चिकित्सा अधिकारियों के लिए एक लॉजिस्टिक्स टूल है। यह MoHFW HMIS, NFHS-5 और NLEM 2022 डेटासेट्स को प्रोसेस करके 225+ स्वास्थ्य केंद्रों में दवाओं के शेष दिन (DOIR) ट्रैक करता है। इसमें 6.53% WAPE के साथ 7-दिवसीय महामारी मांग का पूर्वानुमान लगाने वाला रैंडम फ़ॉरेस्ट रिग्रेसर और आधिकारिक दवा ट्रांसफर मैनिफेस्ट बनाने वाला टू-स्टेज लीनियर सॉल्वर शामिल है। राज्य की संवेदनशील आपूर्ति श्रृंखला की सुरक्षा के लिए यह केवल प्रमाणित एडमिन (is_admin=True) तक सीमित है।")
+    add_heading_2(doc, "Q11: What is the National Command Center, and why is it restricted to Admin?")
+    add_body_p(doc, "Panel 5 is an enterprise logistics tool for state health authorities. It ingests MoHFW HMIS, NFHS-5, and NLEM 2022 datasets to monitor Days of Inventory Remaining (DOIR) across 225+ health facilities. It incorporates a Random Forest Regressor predicting 7-day epidemic demand with 6.53% WAPE, and a two-stage linear solver generating official medicine transfer manifests. It is strictly gated to authenticated administrators (is_admin=True) to protect government health logistics data.")
 
     # 5. BioPortal Clinical Ontology Lookup & Medical Standards Standardization
-    add_heading_1(doc, "5. BioPortal क्लिनिकल ऑन्टोलॉजी लुकअप एवं मेडिकल स्टैंडर्ड्स मानकीकरण")
+    add_heading_1(doc, "5. BioPortal Clinical Ontology Lookup & Medical Standards Standardization")
     add_callout(
         doc,
-        'BIOPORTAL क्लिनिकल ऑन्टोलॉजी लुकअप सारांश:\n'
-        '• मुख्य उद्देश्य: आम बोलचाल के मेडिकल शब्दों, लक्षणों, दवाओं और लैब टेस्ट्स को प्रमाणित अंतरराष्ट्रीय क्लिनिकल ऑन्टोलॉजीज़ (SNOMED-CT, LOINC, MeSH, RxNorm, MedDRA) से मैप, सत्यापित और मानकीकृत करना।\n'
-        '• भाषाई अस्पष्टता का समाधान: मरीज कहेगा "Fever", डॉक्टर लिखेगा "Pyrexia" और लैब नोट्स में होगा "High Body Temperature"। BioPortal इन सभी को एक स्टैंडर्ड UMLS CUI और आधिकारिक परिभाषा के तहत जोड़ता है।\n'
-        '• कोड में प्रमुख स्थान: api/bioportal.py (NCBO API क्लाइंट, एनोटेटर व सर्किट ब्रेकर), app.py (स्टेप 2 डॉक्यूमेंट एनालिसिस UI लुकअप टूल), और clinical_pipeline.py / predict.py (कॉन्टेक्स्टुअल एविडेंस एनरिचमेंट)।\n'
-        '• ऑफलाइन रेजिलिएंस: अंतर्निहित OFFLINE_CLINICAL_ONTOLOGIES डेटाबेस और 60-सेकंड सर्किट ब्रेकर बैकऑफ सुनिश्चित करता है कि इंटरनेट न होने पर भी सिस्टम कभी क्रैश न हो।',
-        title="BioPortal क्लिनिकल ऑन्टोलॉजी आर्किटेक्चर सारांश",
+        'BIOPORTAL CLINICAL ONTOLOGY LOOKUP SUMMARY:\n'
+        '• Core Purpose: Maps, validates, and standardizes colloquial medical terms, symptoms, medications, and lab tests against certified international clinical ontologies and vocabularies.\n'
+        '• Solving Semantic Ambiguity: A patient says "fever", a doctor writes "pyrexia", and lab notes say "high body temperature". BioPortal unifies them under standard UMLS CUI identifiers with official clinical definitions and synonyms.\n'
+        '• Primary Code Locations: api/bioportal.py (NCBO API Client, Annotator, and Circuit Breaker), app.py (Step 2 Document Analysis UI Lookup Tool), and clinical_pipeline.py / predict.py (Contextual Evidence Enrichment).\n'
+        '• Supported Ontologies: SNOMED-CT, LOINC, MeSH, RxNorm, and MedDRA.\n'
+        '• Offline Resilience: Built-in OFFLINE_CLINICAL_ONTOLOGIES knowledgebase and 60-second backoff circuit breaker guarantee zero crashes and uninterrupted local operation.',
+        title="BioPortal Clinical Ontology Architecture Sign-Off",
         alert_type="info"
     )
 
-    add_heading_2(doc, "5.1 BioPortal क्लिनिकल ऑन्टोलॉजी लुकअप क्या है? (मूल उद्देश्य)")
-    add_body_p(doc, "स्वास्थ्य सेवा में सबसे बड़ी चुनौती यह है कि एक ही बीमारी, लक्षण या दवा के कई अलग-अलग नाम होते हैं:")
-    add_bullet_p(doc, " ग्रामीण मरीज बोलता है 'ठंड लग रही है' या 'बुखार', डॉक्टर चार्ट में लिखता है 'Pyrexia' और ट्राइएज में दर्ज होता है 'Febrile State'। BioPortal इन सभी बोलचाल के शब्दों को एक सिंगल मानकीकृत कॉन्सेप्ट (SNOMED-CT ID: 386661006, UMLS CUI: C0015967) में बदल देता है।", bold_prefix="1. भाषाई अस्पष्टता का मानकीकरण (Semantic Disambiguation):")
-    add_bullet_p(doc, " मरीज जब 'Chest Pain' कहता है, तो BioPortal उसके क्लिनिकल समानार्थी शब्द (जैसे 'Precordial Pain', 'Thoracalgia') और सटीक पैथोफिजियोलॉजिकल परिभाषा लाता है, जिससे AI इंजन कच्चे टेक्स्ट के बजाय प्रमाणित मेडिकल डिक्शनरी पर निर्णय लेता है।", bold_prefix="2. समानार्थी शब्द एवं आधिकारिक परिभाषाएं:")
-    add_bullet_p(doc, " प्रत्येक मैप किए गए शब्द को आधिकारिक Unified Medical Language System (UMLS) CUI कोड दिया जाता है, जिससे DocMindX AI अंतरराष्ट्रीय EHR और भारत के आयुष्मान भारत डिजिटल मिशन (ABDM) मानकों के पूर्णतः अनुकूल बन जाता है।", bold_prefix="3. वैश्विक इंटरऑपरेबिलिटी एनकोडिंग:")
+    add_heading_2(doc, "5.1 What is BioPortal Clinical Ontology Lookup? (Core Purpose)")
+    add_body_p(doc, "In healthcare systems, a fundamental challenge is semantic variance across patient vernacular, nursing documentation, and physician charting:")
+    add_bullet_p(doc, " A rural citizen says 'thand lag rahi hai' [feverish chills] or 'fever', a clinician charts 'pyrexia', and triage logs record 'febrile state'. BioPortal resolves these colloquial terms to a single standardized concept (SNOMED-CT ID: 386661006, UMLS CUI: C0015967).", bold_prefix="1. Semantic Disambiguation:")
+    add_bullet_p(doc, " When a user reports 'chest pain', BioPortal retrieves certified synonyms including 'Precordial Pain' and 'Thoracalgia', along with formal pathophysiological definitions, ensuring clinical decision support engines operate on standardized medical taxonomies rather than raw, ambiguous text strings.", bold_prefix="2. Synonym Expansion & Definitions:")
+    add_bullet_p(doc, " Every mapped concept is tagged with its official Unified Medical Language System (UMLS) Concept Unique Identifier (CUI) and ontology URI, aligning DocMindX AI with international EHR interoperability standards (HL7 FHIR, SNOMED International, and India ABDM standards).", bold_prefix="3. Global Interoperability Encoding:")
 
-    add_heading_2(doc, "5.2 DocMindX AI प्रोजेक्ट में BioPortal कहाँ और कैसे काम आता है?")
-    add_body_p(doc, "प्रोजेक्ट के कोडबेस में BioPortal तीन महत्वपूर्ण स्थानों पर सक्रिय रूप से संचालित होता है:")
-    add_bullet_p(doc, " app.py के स्टेप 2 (डॉक्यूमेंट एनालिसिस स्क्रीन) में सीधे सर्च टूल उपलब्ध है। डॉक्टर या मरीज किसी भी बीमारी या दवा (जैसे Hypertension, Diabetes, Creatinine, Metformin, Pneumonia) को सर्च कर सकते हैं। यह तुरंत स्क्रीन पर उसका Standard Label, Definition, UMLS CUI, Synonyms और ऑन्टोलॉजी कार्ड प्रदर्शित करता है।", bold_prefix="① UI में डायरेक्ट सर्च टूल (app.py) —")
-    add_bullet_p(doc, " clinical_pipeline.py और predict.py में स्थित। जब कोई मरीज लक्षण दर्ज करता है या रिपोर्ट अपलोड होती है, तो AI पाइपलाइन बैकग्राउंड में BioPortal से क्लिनिकल कॉन्सेप्ट्स लाती है। सुरक्षा नियम: BioPortal के कॉन्सेप्ट्स केवल संदर्भ (Contextual Evidence) के रूप में उपयोग होते हैं; वे मरीज के प्राथमिक लक्षणों में कोई मनगढ़ंत डेटा नहीं जोड़ते।", bold_prefix="② AI क्लिनिकल पाइपलाइन एवं ट्राइएज इंजन (Triage Engine) —")
-    add_bullet_p(doc, " api/bioportal.py में स्थित। डॉक्टर की कच्ची पर्ची, क्लिनिकल नोट्स या डिस्चार्ज समरी देने पर BioPortal Annotator टेक्स्ट में से मेडिकल शब्दों और बीमारियों को सटीक कैरेक्टर स्पैन के साथ पहचानकर निकालता है।", bold_prefix="③ क्लिनिकल टेक्स्ट एनोटेटर (api/bioportal.py) —")
+    add_heading_2(doc, "5.2 Where & How BioPortal Operates across DocMindX AI")
+    add_body_p(doc, "BioPortal integration is actively operational across three distinct functional layers of the DocMindX AI repository:")
+    add_bullet_p(doc, " Located in app.py within Step 2 (Document Analysis & Verification Screen). Doctors, ASHA workers, or patients can search any clinical term, drug, or lab parameter (e.g., 'Hypertension', 'Diabetes', 'Creatinine', 'Metformin', 'Pneumonia') to receive real-time medical cards displaying Standard Label, Definition, UMLS CUI, Synonyms, and Source Ontology.", bold_prefix="① UI Direct Search Tool (app.py) —")
+    add_bullet_p(doc, " Located in clinical_pipeline.py and predict.py. When a patient reports symptoms or uploads lab reports, the AI pipeline queries BioPortal in the background to retrieve enriched clinical concept evidence. Safety Interlock: BioPortal concepts are strictly ingested as supplementary contextual evidence for acuity ranking — they are never injected into the patient's primary symptoms, preventing false-positive hallucination.", bold_prefix="② AI Clinical Pipeline & Triage Engine (clinical_pipeline.py & predict.py) —")
+    add_bullet_p(doc, " Located in api/bioportal.py. When an unformatted clinical note, discharge summary, or doctor prescription is ingested, the BioPortal Annotator parses the raw text, identifies clinical entities, and extracts standardized medical concepts with exact character span offsets.", bold_prefix="③ Clinical Text Annotator (api/bioportal.py) —")
 
-    add_heading_2(doc, "5.3 समर्थित मेडिकल ऑन्टोलॉजीज़ एवं क्लिनिकल मानक")
-    add_body_p(doc, "DocMindX AI नेशनल सेंटर फॉर बायोमेडिकल ऑन्टोलॉजी (NCBO) के माध्यम से 5 अंतरराष्ट्रीय मानकों को सपोर्ट करता है:")
+    add_heading_2(doc, "5.3 Supported Clinical Ontologies & Standards")
+    add_body_p(doc, "DocMindX AI connects to the National Center for Biomedical Ontology (NCBO) BioPortal ecosystem, supporting five primary medical ontologies:")
 
-    bioportal_table_hi = [
-        ["ऑन्टोलॉजी मानक", "नियामक संस्था / स्रोत", "क्लिनिकल क्षेत्र एवं कार्यक्षेत्र", "DocMindX AI में वास्तविक उपयोग"],
-        ["SNOMED-CT", "SNOMED International", "क्लिनिकल लक्षण, रोग, सर्जिकल प्रक्रियाएं और शारीरिक संरचनाएं।", "मरीज के लक्षणों, मुख्य शिकायतों और संभावित बीमारियों को अंतरराष्ट्रीय क्लिनिकल कोड्स में मानकीकृत करता है।"],
-        ["LOINC", "Regenstrief Institute", "प्रयोगशाला एवं पैथोलॉजी टेस्ट्स के सार्वभौमिक कोड्स।", "ब्लड रिपोर्ट से पढ़े गए टेस्ट्स (जैसे Blood Sugar, Serum Creatinine, Hemoglobin, SGPT) का मानक सत्यापन करता है।"],
-        ["MeSH", "U.S. National Library of Medicine", "मेडिकल सब्जेक्ट हेडिंग्स का पदानुक्रमित वर्गीकरण।", "विस्तृत रोग श्रेणियों और चिकित्सा संदर्भ साहित्य को अनुक्रमित करता है।"],
-        ["RxNorm", "U.S. National Library of Medicine", "क्लिनिकल दवाओं, फॉर्मूलेशन और एक्टिव इंग्रीडिएंट्स का मानक।", "जेनेरिक दवाओं के नाम, घटक और खुराकों को मानकीकृत फार्मास्यूटिकल कोड्स से जोड़ता है।"],
-        ["MedDRA", "ICH / IFPMA", "नियामक गतिविधियों और दवा सुरक्षा हेतु मेडिकल डिक्शनरी।", "मरीज की एलर्जी, दवाओं के साइड-इफेक्ट्स और एडवर्स ड्रग रिएक्शन्स (ADR) को मैप करता है।"]
+    bioportal_table = [
+        ["Ontology Standard", "Governing Body / Source", "Clinical Domain & Scope", "DocMindX AI Operational Use Case"],
+        ["SNOMED-CT", "SNOMED International", "Clinical health terminology covering diseases, clinical symptoms, and surgical procedures.", "Standardizes patient-reported symptoms, chief complaints, and differential diagnoses into canonical clinical concepts."],
+        ["LOINC", "Regenstrief Institute", "Logical Observation Identifiers Names and Codes for laboratory and clinical observations.", "Validates blood test parameters extracted from lab reports (e.g., Serum Creatinine, Fasting Blood Glucose, Hemoglobin, SGPT)."],
+        ["MeSH", "U.S. National Library of Medicine", "Medical Subject Headings hierarchical thesaurus.", "Indexes broad disease taxonomies and epidemiological literature for clinical reference."],
+        ["RxNorm", "U.S. National Library of Medicine", "Standardized nomenclature for clinical drugs, formulations, and active ingredients.", "Maps generic medication names and dosages to normalized clinical pharmaceutical concepts."],
+        ["MedDRA", "ICH / IFPMA", "Medical Dictionary for Regulatory Activities for adverse event reporting.", "Maps patient allergies, contraindications, and known adverse drug reactions."]
     ]
-    add_styled_table(doc, bioportal_table_hi[0], bioportal_table_hi[1:], [1.4, 1.4, 2.0, 2.4])
+    add_styled_table(doc, bioportal_table[0], bioportal_table[1:], [1.4, 1.4, 2.0, 2.4])
 
-    add_heading_2(doc, "5.4 ऑफलाइन रेजिलिएंस एवं सर्किट ब्रेकर आर्किटेक्चर")
-    add_body_p(doc, "ग्रामीण स्वास्थ्य केंद्रों में इंटरनेट कटने पर भी सिस्टम को क्रैश होने से बचाने के लिए api/bioportal.py में दोहरी सुरक्षा दी गई है:")
-    add_bullet_p(doc, " api/bioportal.py के अंदर pre-compiled क्लिनिकल रिकॉर्ड्स (SNOMED-CT कोड्स, MeSH URIs, परिभाषाएं और सिनॉनिम्स) का लोकल डेटाबेस है। यह अस्थमा, बुखार, खांसी, सीने में दर्द, सिरदर्द, डेंगू और डायबिटीज जैसी सामान्य बीमारियों के परिणाम <1ms में ऑफलाइन लौटाता है।", bold_prefix="1. OFFLINE_CLINICAL_ONTOLOGIES नॉलेजबेस:")
-    add_bullet_p(doc, " यदि BioPortal API सर्वर से संपर्क टूटता है या टाइमआउट होता है, तो सर्किट ब्रेकर 60 सेकंड के लिए बैकऑफ (_BIOPORTAL_CIRCUIT_BREAKER_BACKOFF = 60.0s) मोड में चला जाता है। इस दौरान सभी क्वेरी बिना किसी रुकावट के लोकल ऑफलाइन डेटाबेस से प्रोसेस होती हैं।", bold_prefix="2. स्टेटफुल सर्किट ब्रेकर पैटर्न (Circuit Breaker):")
+    add_heading_2(doc, "5.4 Offline Resilience & Circuit Breaker Architecture")
+    add_body_p(doc, "Healthcare facilities in rural India experience frequent internet outages. If the external BioPortal cloud service is unavailable, DocMindX AI remains 100% stable through dual-tier resilience mechanisms in api/bioportal.py:")
+    add_bullet_p(doc, " Embedded directly in api/bioportal.py, this local dictionary stores pre-compiled clinical records (labels, SNOMED-CT concept IDs, MeSH URIs, definitions, and synonyms) for high-frequency conditions including Asthma, Fever, Cough, Chest Pain, Headache, Dengue, and Diabetes. Queries resolve locally in <1 millisecond.", bold_prefix="1. OFFLINE_CLINICAL_ONTOLOGIES Knowledgebase:")
+    add_bullet_p(doc, " If an external HTTP request to data.bioontology.org times out or fails authentication, the circuit breaker activates a 60-second backoff timer (_BIOPORTAL_CIRCUIT_BREAKER_BACKOFF = 60.0s). Subsequent queries instantly route to the local offline knowledgebase, preventing UI freezing or request queuing.", bold_prefix="2. Stateful Circuit Breaker Pattern:")
 
-    add_heading_2(doc, "5.5 BioPortal कैसे DocMindX AI को एक सामान्य चैटबॉट से ऊपर उठाकर प्रमाणित क्लिनिकल CDS बनाता है?")
-    add_body_p(doc, "ChatGPT जैसे सामान्य AI टूल्स केवल टेक्स्ट प्रेडिक्शन पर चलते हैं, जिससे उनकी मेडिकल शब्दावली में एकरूपता नहीं होती। BioPortal जोड़कर:")
-    add_bullet_p(doc, " प्रत्येक बीमारी और दवा की सिफारिश को अंतरराष्ट्रीय SNOMED-CT / LOINC / RxNorm कोड से बांधा जाता है।", bold_prefix="• नियामक इंटरऑपरेबिलिटी:")
-    add_bullet_p(doc, " भारतीय बोलियों के विभिन्न शब्दों को एक अपरिवर्तनीय UMLS CUI से जोड़कर नैदानिक भ्रम समाप्त किया जाता है।", bold_prefix="• नैदानिक स्पष्टता (Disambiguation):")
-    add_bullet_p(doc, " लैब रिपोर्ट के आंकड़ों को LOINC मानकों से प्रमाणित करके ही सामान्य संदर्भ श्रेणियों से मिलाया जाता है।", bold_prefix="• लैब टेस्ट प्रमाणीकरण:")
+    add_heading_2(doc, "5.5 Why BioPortal Elevates DocMindX AI from a Chatbot to a Certified Clinical CDS")
+    add_body_p(doc, "Generic AI tools (like ChatGPT or standard medical chatbots) rely on statistical text generation, which leads to varying, non-standardized terminology and unverified medical claims. By incorporating BioPortal Clinical Ontology Lookup:")
+    add_bullet_p(doc, " Every diagnostic and pharmaceutical recommendation maps to an internationally recognized code (SNOMED-CT / LOINC / RxNorm).", bold_prefix="• Regulatory Interoperability:")
+    add_bullet_p(doc, " Eliminates clinical ambiguity across Indian regional dialects by binding colloquial symptoms to immutable UMLS CUIs.", bold_prefix="• Diagnostic Disambiguation:")
+    add_bullet_p(doc, " Laboratory values extracted from paper reports are verified against LOINC standards before reference range evaluation.", bold_prefix="• Lab Value Verification:")
 
-    add_heading_2(doc, "5.6 BioPortal पर जूरी प्रश्न एवं सटीक उत्तर")
-    add_bullet_p(doc, " \"सरल स्ट्रिंग मैचिंग तब फेल हो जाती है जब डॉक्टर 'Pyrexia' लिखे और मरीज 'बुखार' बोले। BioPortal सिमेंटिक ऑन्टोलॉजी मैपिंग करता है, जिससे अलग-अलग शब्दों को एक मानक UMLS CUI और SNOMED-CT कोड मिलता है।\"", bold_prefix="Q12: 'आपने साधारण स्ट्रिंग मैचिंग के बजाय BioPortal क्यों चुना?':")
-    add_bullet_p(doc, " \"हमने clinical_pipeline.py में एक सख्त आर्किटेक्चरल फायरवॉल बनाई है: BioPortal के कॉन्सेप्ट्स केवल रेफरेंस/एविडेंस के तौर पर उपयोग होते हैं, इन्हें मरीज के मुख्य लक्षणों में कभी नहीं जोड़ा जाता। इससे 0% फैब्रिकेशन सुनिश्चित होता है।\"", bold_prefix="Q13: 'BioPortal पाइपलाइन में गलत लक्षण जुड़ने से कैसे रोकता है?':")
-    add_bullet_p(doc, " \"हमने api/bioportal.py में 60-सेकंड सर्किट ब्रेकर बनाया है। इंटरनेट कटते ही सिस्टम तुरंत OFFLINE_CLINICAL_ONTOLOGIES डिक्शनरी पर स्विच हो जाता है और <1ms में ऑफलाइन परिणाम देता है। प्रोजेक्ट कभी क्रैश नहीं होता।\"", bold_prefix="Q14: 'यदि BioPortal API डाउन हो जाए या क्लिनिक में इंटरनेट न हो तो क्या होगा?':")
+    add_heading_2(doc, "5.6 BioPortal Jury Defense Questions & Expert Answers")
+    add_bullet_p(doc, " \"Standard string matching fails when doctors write 'pyrexia' and patients report 'fever', or when 'chest pain' is termed 'thoracalgia'. BioPortal provides semantic ontology mapping, connecting disparate terminology to standard UMLS CUIs and SNOMED-CT codes. This ensures clinical consistency across English, Hindi, and Gujarati.\"", bold_prefix="Q12: 'Why did you integrate BioPortal instead of simple string matching?':")
+    add_bullet_p(doc, " \"In clinical_pipeline.py, we implemented a strict architectural firewall: BioPortal concepts are consumed exclusively as read-only contextual evidence for acuity ranking. They are never appended to the patient's primary reported symptom list, guaranteeing zero false-positive clinical hallucination.\"", bold_prefix="Q13: 'How does BioPortal prevent symptom hallucination in the clinical pipeline?':")
+    add_bullet_p(doc, " \"We built an automated Circuit Breaker with a 60-second backoff in api/bioportal.py. If the cloud API times out or internet drops, queries instantly fall back to our embedded OFFLINE_CLINICAL_ONTOLOGIES dictionary, returning full SNOMED-CT codes and definitions in <1ms without dropping the user's workflow.\"", bold_prefix="Q14: 'What happens if BioPortal API is down or the clinic has no internet?':")
 
     # 6. Comprehensive AI/ML Models, Live APIs & Deep Technical Architecture Defense
-    add_heading_1(doc, "6. व्यापक AI/ML मॉडल्स, लाइव APIs एवं गहन तकनीकी आर्किटेक्चर डिफेंस")
+    add_heading_1(doc, "6. Comprehensive AI/ML Models, Live APIs & Deep Technical Architecture Defense")
     add_callout(
         doc,
-        'प्लेटफॉर्म तकनीकी विनिर्देश एवं बेंचमार्क सारांश:\n'
-        '• क्लिनिकल डिजीज प्रेडिक्शन मॉडल: Scikit-Learn Random Forest Classifier (99.01% ट्रेनिंग सटीकता, 97.8% 5-Fold CV, 50 Decision Trees, 280+ लक्षण फीचर्स, 101+ WHO ICD-11 रोग, 5.5 MB pickle, सब-मिलीसेकंड इनफरेंस)।\n'
-        '• मेडिसिन डिमांड फोरकास्टिंग मॉडल: HMIS टाइम-सीरीज़ Random Forest Regressor (6.53% WAPE, 0.9839 R² वेरियंस एक्सप्लेंड, MAE 12.17, RMSE 19.50, MoHFW के 20,904 रिकॉर्ड्स, शून्य फ्यूचर डेटा लीकेज)।\n'
-        '• सक्रिय 6 लाइव APIs: Google Gemini Vision, Groq Cloud LLM (LLaMA-3.3 70B व Qwen 27B), OpenStreetMap Overpass GIS, WHO Outbreak News REST, OpenFDA / DailyMed, Supabase Cloud PostgreSQL RLS।\n'
-        '• ऑपरेशनल स्टॉकआउट रिस्क इंजन: इसे पारदर्शी रूप से RULE_BASED वर्गीकृत किया गया है (Critical <3 दिन, Urgent <7 दिन, Watchlist <14 दिन, Safe ≥14 दिन)।\n'
-        '• क्लिनिकल नॉलेज ग्राफ: प्राथमिक अनिवार्य लक्षणों पर 1.6x मल्टीप्लायर के साथ ICD-11 Bipartite Scoring + 35 रेड-फ्लैग इमरजेंसी प्रोटोकॉल।\n'
-        '• मेडिकल फाउंडेशन LLMs: डायनामिक केयर प्रिस्क्रिप्शंस, खाने का सटीक समय (भोजन के बाद बनाम खाली पेट), और ड्रग एलर्जी शील्ड।',
-        title="मशीन लर्निंग एवं API आर्किटेक्चर आधिकारिक विनिर्देश",
+        'PLATFORM TECHNICAL SPECIFICATION & BENCHMARKS:\n'
+        '• Clinical Disease Prediction Model: Scikit-Learn Random Forest Classifier (99.01% Train Acc, 97.8% 5-Fold CV, 50 Trees, 280 Features, 101 Diseases, 5.5 MB pickle, sub-millisecond inference).\n'
+        '• Medicine Demand Forecaster: HMIS Time-Series Random Forest Regressor (6.53% WAPE, 0.9839 R², MAE 12.17, RMSE 19.50, 20,904 MoHFW records, zero leakage).\n'
+        '• 6 Active Live APIs: Google Gemini Vision, Groq Cloud LLM (LLaMA-3.3 70B & Qwen 27B), OpenStreetMap Overpass GIS, WHO Outbreak News REST, OpenFDA / DailyMed, Supabase Cloud PostgreSQL RLS.\n'
+        '• Operational Stockout Risk Engine: Categorized honestly as RULE_BASED (Critical <3d, Urgent <7d, Watchlist <14d, Safe >=14d).\n'
+        '• Clinical Knowledge Graph: ICD-11 Bipartite Scoring (1.6x multiplier for mandatory symptoms) + 35 Red Flag safety protocols.\n'
+        '• Medical Foundation LLMs: Dynamic care prescriptions, food timing (After Food vs Empty Stomach), and allergy shields.',
+        title="Comprehensive Machine Learning & API Architecture Sign-Off",
         alert_type="success"
     )
 
-    add_heading_2(doc, "6.1 मॉडल 1: क्लिनिकल डिजीज प्रेडिक्शन मॉडल (लोकल इंजन)")
-    add_body_p(doc, "DocMindX AI की मुख्य नैदानिक रीढ़ एक स्थानीय रूप से प्रशिक्षित और पूरी तरह सीरियलाइज्ड Scikit-Learn RandomForestClassifier है:")
-    add_bullet_p(doc, " 101+ WHO ICD-11 संरेखित रोग वर्गों में 99.01% ट्रेनिंग सटीकता और 97.80% 5-Fold क्रॉस-वैलिडेशन सटीकता हासिल की।", bold_prefix="• बेंचमार्क प्रदर्शन:")
-    add_bullet_p(doc, " train.py में गिन्नी इम्प्योरिटी (Gini Impurity) पर प्रशिक्षित 50 विशेषज्ञ डिसिजन ट्रीज़, जो ओवरफिटिंग को रोकते हुए मजबूत सामूहिक स्थिरता प्रदान करते हैं।", bold_prefix="• एन्सेम्बल विन्यास (Ensemble Configuration):")
-    add_bullet_p(doc, " symptoms_master.csv से बाईपार्टाइट मैपिंग मरीज के लक्षणों को 280-आयामी बाइनरी इंडिकेटर वेक्टर (0 या 1) में बदलती है।", bold_prefix="• फीचर इंजीनियरिंग (Feature Engineering):")
-    add_bullet_p(doc, " प्री-ट्रेन्ड वेट्स models/disease_model.pkl (5.5 MB) में सुरक्षित हैं, जिससे बिना क्लाउड इंटरनेट के कंप्यूटर CPU पर सब-मिलीसेकंड गति से इनफरेंस होता है।", bold_prefix="• मॉडल सीरियलाइजेशन:")
+    add_heading_2(doc, "6.1 Model 1: Clinical Disease Prediction Model (Local Engine)")
+    add_body_p(doc, "The diagnostic backbone of DocMindX AI is a locally trained, fully serialized Scikit-Learn RandomForestClassifier:")
+    add_bullet_p(doc, " Achieved 99.01% Training Accuracy and 97.80% 5-Fold Cross-Validation Accuracy across 101+ WHO ICD-11 aligned disease classes.", bold_prefix="• Benchmark Performance:")
+    add_bullet_p(doc, " 50 specialized decision trees trained using Gini impurity splitting criteria in train.py, preventing individual tree overfitting while maintaining ensemble stability.", bold_prefix="• Ensemble Configuration:")
+    add_bullet_p(doc, " Bipartite mappings from symptoms_master.csv convert colloquial patient symptom sets into 280-dimensional binary indicator vectors (0 or 1).", bold_prefix="• Feature Engineering:")
+    add_bullet_p(doc, " Pre-trained weights are serialized into models/disease_model.pkl (5.5 MB), enabling instantaneous sub-millisecond local inference on edge CPUs with zero cloud dependency.", bold_prefix="• Model Serialization:")
 
-    add_heading_2(doc, "6.2 मॉडल 2: मेडिसिन डिमांड फोरकास्टिंग मॉडल (HMIS सप्लाई चेन)")
-    add_body_p(doc, "सरकारी स्वास्थ्य केंद्रों में आवश्यक दवाओं के स्टॉकआउट को रोकने के लिए एक टाइम-सीरीज़ Random Forest Regressor विकसित किया गया है:")
-    add_bullet_p(doc, " 6.53% Weighted Absolute Percentage Error (WAPE), 0.9839 R² वेरियंस, 12.17 MAE और 19.50 RMSE त्रुटि बेंचमार्क।", bold_prefix="• त्रुटि मेट्रिक्स एवं सटीकता:")
-    add_bullet_p(doc, " स्वास्थ्य एवं परिवार कल्याण मंत्रालय (MoHFW) HMIS के 20,904 संस्थागत दवा खपत रिकॉर्ड्स, जिन्हें समय-आधारित सीमाओं पर विभाजित किया गया ताकि भविष्य के डेटा का कोई रिसाव (Zero Leakage) न हो।", bold_prefix="• डेटासेट एवं प्रामाणिकता:")
-    add_bullet_p(doc, " 4-सप्ताह और 12-सप्ताह के रोलिंग खपत ट्रेंड्स तथा मौसम विभाग (IMD) के मौसमी वर्षा व तापमान सूचकांक।", bold_prefix="• फीचर लैगिंग (Feature Lagging):")
-    add_bullet_p(doc, " models/demand_model.pkl में ±19.50 यूनिट्स के अवशिष्ट अनिश्चितता मानक त्रुटि बफर के साथ सीरियलाइज्ड।", bold_prefix="• मॉडल सीरियलाइजेशन एवं बफर:")
+    add_heading_2(doc, "6.2 Model 2: Medicine Demand Forecasting Model (HMIS Supply Chain)")
+    add_body_p(doc, "To eliminate drug stockouts across public health facilities, DocMindX AI incorporates an audited time-series Random Forest Regressor:")
+    add_bullet_p(doc, " 6.53% Weighted Absolute Percentage Error (WAPE) on held-out test sets, 0.9839 R² Variance Explained, 12.17 Mean Absolute Error (MAE), and 19.50 Root Mean Squared Error (RMSE).", bold_prefix="• Error Metrics & Accuracy:")
+    add_bullet_p(doc, " Ingested 20,904 institutional medicine consumption records from the official Ministry of Health & Family Welfare (MoHFW) HMIS dataset, partitioned chronologically to guarantee zero future data leakage.", bold_prefix="• Dataset & Provenance:")
+    add_bullet_p(doc, " Engineered 4-week and 12-week rolling consumption trends combined with IMD seasonal meteorological indices (precipitation and temperature).", bold_prefix="• Feature Lagging:")
+    add_bullet_p(doc, " Serialized in models/demand_model.pkl with an empirical residual uncertainty standard error buffer (±19.50 units) for risk-adjusted replenishment planning.", bold_prefix="• Model Serialization & Buffer:")
 
-    add_heading_2(doc, "6.3 सक्रिय 6 लाइव APIs एवं क्लाउड इंटीग्रेशन इकोसिस्टम")
-    add_body_p(doc, "DocMindX AI रियल-टाइम मेडिकल इंटेलिजेंस, कंप्यूटर विज़न, जीआईएस रूटिंग और क्लाउड सुरक्षा के लिए 6 आधिकारिक APIs को जोड़ता है:")
+    add_heading_2(doc, "6.3 The 6 Active Live APIs & Cloud Integration Ecosystem")
+    add_body_p(doc, "DocMindX AI seamlessly orchestrates 6 enterprise-grade APIs for live medical intelligence, computer vision, geospatial routing, and cloud persistence:")
 
-    api_matrix_hi = [
-        ["API सेवा एवं प्रदाता", "प्रोटोकॉल एवं प्रकार", "DocMindX AI में भूमिका", "सुरक्षा / प्रदर्शन विशेषता"],
-        ["Google Gemini Multimodal Vision API", "HTTPS REST (Gemini Flash)", "हस्तलिखित पर्चियों और जटिल ब्लड लैब रिपोर्ट्स (CBC, LFT, KFT, Lipid, HbA1c) को स्कैन करता है।", "डॉक्टरों की कर्सिव लिखावट और लैब टेबल्स को क्लिनिकल समझ के साथ पढ़ता है।"],
-        ["Groq Cloud LLM Engine (LLaMA-3.3 70B & Qwen)", "हाई-स्पीड इनफरेंस इंजन", "सब-सेकंड क्लिनिकल ट्राइएज रीजनिंग, ड्रग इंटरैक्शन जांच और व्यक्तिगत दवा समय-सारणी बनाता है।", "संवादात्मक स्पष्टीकरण के लिए सब-सेकंड गति (<600ms लेटेंसी)।"],
-        ["OpenStreetMap Overpass Healthcare GIS API", "Overpass QL (GeoJSON)", "1 से 25 किमी में 24/7 आपातकालीन अस्पतालों, ट्रॉमा सेंटर्स और मेडिकल स्टोर्स को खोजता है।", "शून्य कमर्शियल API शुल्क, डायनामिक रेडियस स्लाइडर, नागरिक लोकेशन प्राइवेसी।"],
-        ["WHO Disease Outbreak News (DON REST API)", "ऑटोमेटेड इनजेशन फीड", "राष्ट्रीय एवं वैश्विक स्तर पर 100+ सक्रिय महामारियों के अलर्ट्स को लाइव इनजेस्ट करता है।", "स्थानीय लक्षणों को सक्रिय राष्ट्रीय/अंतरराष्ट्रीय महामारियों से सहसंबंधित करता है।"],
-        ["OpenFDA & NIH DailyMed Drug Database APIs", "JSON REST / NDC क्वेरी", "फार्मास्युटिकल यौगिकों, NDC कोड्स, प्रतिकूल प्रभावों और निषेधों की पुष्टि करता है।", "32 जानलेवा ड्रग-ड्रग इंटरैक्शन्स और 58 रोग निषेधों को तुरंत ब्लॉक करता है।"],
-        ["Supabase Cloud PostgreSQL & Auth API", "PostgreSQL with RLS", "मरीज के स्कैन, फैमिली हेल्थ सर्कल्स और सुरक्षा ऑडिट लॉग्स का एन्क्रिप्टेड क्लाउड स्टोरेज।", "Row-Level Security (RLS) सुनिश्चित करता है कि यूजर केवल अपना रिकॉर्ड देख सके।"]
+    api_matrix = [
+        ["API Service & Provider", "Protocol & Type", "Operational Role in DocMindX AI", "Safety / Performance Feature"],
+        ["Google Gemini Multimodal Vision API", "HTTPS REST (Gemini Flash)", "Scans handwritten prescriptions and complex blood lab reports (CBC, LFT, KFT, Lipid, HbA1c).", "Extracts tabular biomarkers and cursive doctor handwriting with clinical semantic understanding."],
+        ["Groq Cloud LLM Engine (LLaMA-3.3 70B & Qwen)", "High-Speed Inference Engine", "Delivers sub-second clinical triage reasoning, drug-drug interaction evaluations, and personalized regimens.", "Sub-second token generation (<600ms latency) for conversational explanations."],
+        ["OpenStreetMap Overpass Healthcare GIS API", "Overpass QL (GeoJSON)", "Dynamically discovers registered 24/7 emergency hospitals, trauma units, and pharmacies within 1 to 25 km.", "Zero commercial API fees, dynamic perimeter radius slider, strict patient location privacy."],
+        ["WHO Disease Outbreak News (DON REST API)", "Automated Ingestion Feed", "Automated live ingestion of 100+ global and national epidemic alerts for public health surveillance.", "Correlates local symptom clusters with active global/national epidemic alerts."],
+        ["OpenFDA & NIH DailyMed Drug Database APIs", "JSON REST / NDC Query", "Cross-references pharmaceutical chemical compounds, NDC codes, adverse reactions, and contraindications.", "Hard-blocks 32 fatal drug-drug interactions and 58 disease contraindications."],
+        ["Supabase Cloud PostgreSQL & Auth API", "PostgreSQL with RLS", "Encrypted storage for patient consultation drafts, family health circles, and tamper-proof audit trails.", "Row-Level Security (RLS) ensures users only access their own private medical records."]
     ]
-    add_styled_table(doc, api_matrix_hi[0], api_matrix_hi[1:], [1.6, 1.3, 2.2, 2.1])
+    add_styled_table(doc, api_matrix[0], api_matrix[1:], [1.6, 1.3, 2.2, 2.1])
 
-    add_heading_2(doc, "6.4 ऑपरेशनल स्टॉकआउट रिस्क इंजन (नियम-आधारित इंजन)")
-    add_body_p(doc, "हेल्थकेयर लॉजिस्टिक्स में ब्लैक-बॉक्स ML की गलत संभावना से जान जा सकती है। इसलिए हमने स्टॉकआउट रिस्क इंजन को 'Days of Inventory Remaining' (DOIR) पर आधारित एक डिटरमिनिस्टिक नियम-आधारित सिस्टम बनाया है:")
-    add_bullet_p(doc, " स्टॉक < 3 दिन शेष। तत्काल प्रशासनिक रेड-फ्लैग और स्वचालित अंतर-सुविधा दवा ट्रांसफर मैनिफेस्ट जारी करता है।", bold_prefix="• क्रिटिकल रिस्क (Critical Risk):")
-    add_bullet_p(doc, " स्टॉक < 7 दिन शेष। जिला वेयरहाउस खरीद हेतु प्राथमिकता पुनःपूर्ति (Priority Replenishment) चेतावनी।", bold_prefix="• अर्जेंट रिस्क (Urgent Risk):")
-    add_bullet_p(doc, " स्टॉक < 14 दिन शेष। नियमित इन्वेंट्री रीस्टॉकिंग के लिए प्रशासनिक वॉचलिस्ट में रखा जाता है।", bold_prefix="• वॉचलिस्ट (Watchlist):")
-    add_bullet_p(doc, " स्टॉक ≥ 14 दिन शेष। परिचालन स्थिरता और पर्याप्त आपूर्ति बफर दर्शाता है।", bold_prefix="• सुरक्षित बफर (Safe Buffer):")
-    add_bullet_p(doc, " किसी भी भ्रामक दावे को समाप्त करने और क्लिनिकल ऑडिटेबिलिटी बनाए रखने के लिए इसे ईमानदारी से 'RULE_BASED' वर्गीकृत किया गया है।", bold_prefix="• वैज्ञानिक ईमानदारी:")
+    add_heading_2(doc, "6.4 Operational Stockout Risk Engine (Deterministic Rule-Based Engine)")
+    add_body_p(doc, "In healthcare logistics, false precision from black-box ML classifiers can cause catastrophic medicine stockouts. We deliberately designed the Stockout Risk Engine as a deterministic, audited rule-based system based on Days of Inventory Remaining (DOIR):")
+    add_bullet_p(doc, " Stock < 3 Days remaining. Triggers immediate administrative red flag and automated inter-facility medicine transfer manifest.", bold_prefix="• Critical Risk Threshold:")
+    add_bullet_p(doc, " Stock < 7 Days remaining. Triggers priority replenishment alert for district warehouse procurement.", bold_prefix="• Urgent Risk Threshold:")
+    add_bullet_p(doc, " Stock < 14 Days remaining. Placed on standard administrative watchlist for regular inventory restocking.", bold_prefix="• Watchlist Threshold:")
+    add_bullet_p(doc, " Stock ≥ 14 Days remaining. Indicates operational stability and adequate supply buffer.", bold_prefix="• Safe Buffer Threshold:")
+    add_bullet_p(doc, " Categorized transparently as 'RULE_BASED' in the platform architecture to eliminate misleading classification claims and ensure clinical auditability.", bold_prefix="• Scientific Integrity:")
 
-    add_heading_2(doc, "6.5 क्लिनिकल नॉलेज ग्राफ एवं डिटरमिनिस्टिक ट्राइएज इंजन")
-    add_body_p(doc, "DocMindX AI अंतरराष्ट्रीय क्लिनिकल दिशा-निर्देशों पर आधारित एक विशेषज्ञ निर्णय सहायता आर्किटेक्चर संचालित करता है:")
-    add_bullet_p(doc, " मुख्य अनिवार्य लक्षणों पर 1.6x का गुणक (Multiplier) लगाया जाता है, जिससे सेकेंडरी लक्षण (जैसे सामान्य सिरदर्द) मुख्य बीमारी (जैसे मलेरिया) के स्कोर को दबा न सकें।", bold_prefix="1. 1.6x मल्टीप्लायर युक्त ICD-11 Bipartite Scoring:")
-    add_bullet_p(doc, " 35 गंभीर चेतावनियों (RF001–RF035, जैसे सीने में दर्द + सांस फूलना) की तत्काल पहचान कर 108 आपातकालीन डायलर और नजदीकी ICU का रास्ता खोलता है।", bold_prefix="2. इमरजेंसी रेड-फ्लैग प्रोटोकॉल:")
-    add_bullet_p(doc, " लिंग और आयु आधारित जैविक रूप से असंभव रोगों का स्वचालित निष्कासन (जैसे पुरुष मरीज को ओवेरियन सिस्ट या बच्चे को प्रोस्टेटाइटिस न दिखाना)।", bold_prefix="3. डेमोग्राफिक क्लिनिकल फ़िल्टरिंग:")
+    add_heading_2(doc, "6.5 Clinical Knowledge Graph & Deterministic Triage Engine")
+    add_body_p(doc, "DocMindX AI incorporates an expert clinical decision support architecture designed around verified medical guidelines:")
+    add_bullet_p(doc, " Calculates disease relevance using a weighted bipartite matching algorithm with a 1.6x multiplier applied to mandatory primary clinical symptoms, preventing secondary noise from overtaking root diagnoses.", bold_prefix="1. ICD-11 Bipartite Scoring with 1.6x Multiplier:")
+    add_bullet_p(doc, " Instant, unskippable detection of 35 critical warning patterns (RF001–RF035, e.g. severe chest pain radiating to left arm with breathlessness), immediately displaying a 108 emergency dialer and routing to the nearest ICU.", bold_prefix="2. Emergency Red-Flag Protocols:")
+    add_bullet_p(doc, " Strict gender-specific and pediatric/geriatric filters eliminate biologically impossible diagnoses (zero male patients receiving ovarian conditions or pediatric patients receiving adult degenerative disorders).", bold_prefix="3. Demographic Clinical Filtering:")
 
-    add_heading_2(doc, "6.6 मेडिकल फाउंडेशन LLMs (लाइव AI इंजन)")
-    add_body_p(doc, "संवादात्मक परामर्श और दवा खुराक की समय-सारणी Groq (LLaMA-3.3 70B व Qwen 27B) और Google Gemini 2.5 Flash द्वारा तैयार की जाती है:")
-    add_bullet_p(doc, " बीमारी-विशिष्ट दवा का सटीक समय ('भोजन के बाद' बनाम 'खाली पेट'), खुराक का अंतराल और दवा का कुल कोर्स तय करता है।", bold_prefix="1. डायनामिक केयर प्रिस्क्रिप्शंस:")
-    add_bullet_p(doc, " मरीज की पुरानी बीमारियों, एलर्जी और चल रही दवाओं की FDA चेतावनियों से तुलना कर दुष्प्रभाव रोकता है।", bold_prefix="2. ड्रग-ड्रग एवं एलर्जी शील्ड:")
-    add_bullet_p(doc, " अंग्रेजी, हिंदी और गुजराती तीनों भाषाओं में समान व्याकरणिक शुद्धता के साथ क्लिनिकल सलाह देता है।", bold_prefix="3. त्रिभाषी क्लिनिकल सलाह:")
+    add_heading_2(doc, "6.6 Medical Foundation LLMs (Live AI Engine)")
+    add_body_p(doc, "Secondary conversational and regimen synthesis is executed using Groq (LLaMA-3.3 70B & Qwen 27B) and Google Gemini 2.5 Flash:")
+    add_bullet_p(doc, " Computes illness-specific medication timing ('After Food' vs 'Empty Stomach'), exact dosage intervals, and total course duration.", bold_prefix="1. Dynamic Care Prescriptions:")
+    add_bullet_p(doc, " Evaluates ongoing medications, chronic conditions, and patient allergies against FDA warnings before displaying recommendations.", bold_prefix="2. Drug-Drug & Allergy Shield:")
+    add_bullet_p(doc, " Delivers equal-parity, grammatically natural clinical explanations across English, Hindi, and Gujarati.", bold_prefix="3. Trilingual Clinical Advice:")
 
-    add_heading_2(doc, "6.7 कंप्यूटर विज़न एवं मेडिकल डॉक्यूमेंट OCR")
-    add_body_p(doc, "पैनल 2 जेमिनी मल्टीमॉडल विज़न और लोकल PyTesseract OCR का समन्वय करता है:")
-    add_bullet_p(doc, " CBC, LFT, KFT, Lipid, HbA1c रिपोर्ट्स में से आउट-ऑफ-रेंज बायोमार्कर्स को हाईलाइट कर मरीज को सरल भाषा में समझाता है।", bold_prefix="1. ब्लड लैब रिपोर्ट विश्लेषक:")
-    add_bullet_p(doc, " डॉक्टरों की कर्सिव लिखावट से दवाओं के नाम व खुराक निकालकर OpenFDA डेटाबेस से क्रॉस-वेरीफाई करता है।", bold_prefix="2. प्रिस्क्रिप्शन एवं मेडिसिन स्कैनर:")
+    add_heading_2(doc, "6.7 Computer Vision & Medical Document OCR")
+    add_body_p(doc, "Panel 2 deploys Gemini Multimodal Vision combined with local PyTesseract OCR:")
+    add_bullet_p(doc, " Ingests CBC, LFT, KFT, Lipid, and HbA1c lab reports, automatically highlights out-of-range biomarkers, and explains clinical significance in simple terms.", bold_prefix="1. Blood Lab Report Analyzer:")
+    add_bullet_p(doc, " Extracts drug names, strengths, and frequencies from cursive doctor prescriptions, cross-referencing OpenFDA chemical profiles for contraindication checking.", bold_prefix="2. Prescription & Medicine Scanner:")
 
-    add_heading_2(doc, "6.8 ML मॉडल्स एवं आर्किटेक्चर पर जूरी प्रश्न एवं उत्तर")
-    add_bullet_p(doc, " \"रोग वर्गीकरण हेतु रैंडम फ़ॉरेस्ट 99.01% ट्रेन और 97.8% CV सटीकता देता है, गणितीय रूप से ऑडिटेबल (MDI) है और बिना GPU के <45ms में चलता है। मांग पूर्वानुमान हेतु यह मौसम के गैर-रेखीय लैग्स (WAPE 6.53%) को पकड़ता है जो ARIMA में छूट जाते हैं।\"", bold_prefix="Q15: 'आपने दोनों कार्यों के लिए रैंडम फ़ॉरेस्ट ही क्यों चुना?':")
-    add_bullet_p(doc, " \"हमने 20,904 MoHFW रिकॉर्ड्स को समय के अनुसार विभाजित किया (पुराने महीनों पर ट्रेनिंग, भविष्य के महीनों पर टेस्टिंग)। रोलिंग ट्रेंड्स (4 व 12 सप्ताह) केवल बैकवर्ड विंडो का उपयोग करते हैं, जिससे 0% डेटा लीकेज सुनिश्चित हुआ।\"", bold_prefix="Q16: 'आप कैसे सिद्ध करते हैं कि डिमांड मॉडल में कोई डेटा लीकेज नहीं है?':")
-    add_bullet_p(doc, " \"विभिन्न कार्यों के लिए विशेष टूल्स आवश्यक हैं। Groq सब-सेकंड गति देता है; जेमिनी लिखावट पढ़ता है; ओवरपास शून्य-लागत सुरक्षित जीआईएस देता है; OpenFDA ड्रग सुरक्षा देता है; और WHO DON महामारियों की निगरानी करता है। एक सामान्य API यह सब नहीं कर सकता।\"", bold_prefix="Q17: 'एक ही API के बजाय 6 अलग APIs का उपयोग क्यों किया?':")
-    add_bullet_p(doc, " \"सप्लाई चेन में यदि एंटी-वेनम की कमी पर प्रोबेबिलिस्टिक ML गलत अनुमान दे दे, तो जान जा सकती है। डिटरमिनिस्टिक नियम (<3 दिन क्रिटिकल, <7 दिन अर्जेंट) 100% सटीक और कानूनी रूप से जवाबदेह निर्णय सुनिश्चित करते हैं।\"", bold_prefix="Q18: 'स्टॉकआउट इंजन को ML के बजाय Rule-Based क्यों रखा गया?':")
-    add_bullet_p(doc, " \"क्लिनिकल डायग्नोसिस में मुख्य पैथोग्नोमोनिक लक्षणों (जैसे मलेरिया में कंपकंपी के साथ तेज बुखार) का महत्व सामान्य लक्षणों (जैसे सिरदर्द) से कहीं अधिक होता है। 1.6x गुणक मुख्य बीमारी को शीर्ष पर लाता है, जिससे सटीकता 99.01% पहुंची।\"", bold_prefix="Q19: 'ICD-11 Bipartite Scoring में 1.6x मल्टीप्लायर का क्या औचित्य है?':")
+    add_heading_2(doc, "6.8 Jury Defense Questions & Expert Answers on ML Models & Architecture")
+    add_bullet_p(doc, " \"For disease classification, Random Forest gives 99.01% train and 97.8% CV accuracy while being mathematically auditable via MDI feature importances, running in <45ms without GPUs. For demand forecasting, it captures complex non-linear seasonal weather lags (WAPE 6.53%) that linear ARIMA models miss, while avoiding deep learning overfitting on tabular clinical rows.\"", bold_prefix="Q15: 'Why did you use Random Forest for both Disease Classification and Demand Forecasting?':")
+    add_bullet_p(doc, " \"We partitioned our 20,904 MoHFW HMIS records strictly along chronological time boundaries (train on historical months, test on forward held-out periods). All rolling consumption lags (4-week and 12-week) use backward-looking windows only, guaranteeing 0% future data leakage.\"", bold_prefix="Q16: 'How do you prove your Demand Forecaster has zero future data leakage?':")
+    add_bullet_p(doc, " \"Different medical tasks require specialized tools. Groq delivers sub-second conversational latency (<600ms); Gemini Flash provides multimodal vision for doctor handwriting; Overpass QL guarantees free, privacy-safe GIS mapping; OpenFDA provides verified pharmacology; and WHO DON feeds active epidemic surveillance. An all-in-one generic API cannot match this specialized performance.\"", bold_prefix="Q17: 'Why orchestrate 6 different APIs instead of a single LLM API?':")
+    add_bullet_p(doc, " \"In public health supply chains, classifying stockout risk with a statistical ML classifier can introduce probabilistic false-negatives, risking lives if critical anti-snake venom is delayed. By enforcing deterministic, rule-based DOIR thresholds (<3d Critical, <7d Urgent), our stockout alerts are 100% predictable and auditable.\"", bold_prefix="Q18: 'Why is the Stockout Risk Engine categorized as Rule-Based rather than ML?':")
+    add_bullet_p(doc, " \"In clinical diagnosis, core pathognomonic symptoms (e.g. high fever with chills in Malaria) carry far greater diagnostic weight than general secondary symptoms (e.g. fatigue or headache). Applying a 1.6x multiplier to mandatory primary symptoms ensures the true underlying disease class outranks secondary noise, lifting our benchmark accuracy to 99.01%.\"", bold_prefix="Q19: 'What is the purpose of the 1.6x multiplier in ICD-11 Bipartite Scoring?':")
 
     # 7. Project Review: Architectural & Technology Stack Selection Rationale
-    add_heading_1(doc, "7. प्रोजेक्ट रिव्यू: टेक्नोलॉजी स्टैक एवं डेटासेट चयन का औचित्य")
+    add_heading_1(doc, "7. Project Review: Technology Stack & Dataset Selection Rationale")
     add_callout(
         doc,
-        'प्रोजेक्ट रिव्यू एवं जूरी मूल्यांकन संदर्भ:\n'
-        'किसी भी हेल्थकेयर इंजीनियरिंग प्रोजेक्ट का मूल्यांकन करते समय अकादमिक समितियां और हैकाथॉन जूरी दो मुख्य स्तंभों की जांच करती हैं:\n'
-        '1. आर्किटेक्चर का औचित्य: "आपने विकल्पों (जैसे Python vs Node.js, Streamlit vs React, Random Forest vs Deep Learning, OpenStreetMap vs Google Maps) के स्थान पर यही स्टैक क्यों चुना?"\n'
-        '2. डेटा की प्रामाणिकता: "आपने यही विशिष्ट डेटासेट्स क्यों चुने? क्या वे प्रमाणित, भारतीय बीमारियों के प्रतिनिधि और क्लिनिकल रूप से वैध हैं?"\n\n'
-        'यह सेक्शन DocMindX AI के प्रत्येक तकनीकी निर्णय के वैज्ञानिक और साक्ष्य-आधारित कारण प्रस्तुत करता है।',
-        title="प्रोजेक्ट रिव्यू समिति एवं आर्किटेक्चरल डिफेंस",
+        'PROJECT REVIEW & JURY EVALUATION CONTEXT:\n'
+        'When evaluating a healthcare engineering project, academic review committees and hackathon juries scrutinize two fundamental pillars:\n'
+        '1. Architecture Rationale: "Why did you choose this exact technology stack instead of alternatives (e.g., Python vs. Node.js, Streamlit vs. React, Random Forest vs. Deep Learning/LLMs, OpenStreetMap vs. Google Maps)?"\n'
+        '2. Data Provenance & Relevance: "Why did you select these specific datasets? Are they authenticated, representative of Indian epidemiology, and clinically validated?"\n\n'
+        'This section provides the rigorous, evidence-backed justifications required to defend every technical and architectural choice made in DocMindX AI.',
+        title="Project Review Committee & Architectural Defense",
         alert_type="info"
     )
 
-    add_heading_2(doc, "7.1 कोर प्रोग्रामिंग भाषा के रूप में Python 3.10+ ही क्यों चुना?")
-    add_body_p(doc, "DocMindX AI के संपूर्ण प्लेटफॉर्म के लिए Python को निम्नलिखित अनिवार्य वैज्ञानिक और क्लिनिकल कारणों से चुना गया:")
-    add_bullet_p(doc, " दुनिया की सर्वश्रेष्ठ मशीन लर्निंग लाइब्रेरीज़ (Scikit-Learn, NumPy, Pandas, Joblib) Python-नेगेटिव हैं। हमारा रैंडम फ़ॉरेस्ट क्लासिफायर और बाईपार्टाइट क्लिनिकल ग्राफ इन-मेमोरी में बिना किसी ओवरहेड के <45ms में प्रोसेस होते हैं।", bold_prefix="1. AI एवं वैज्ञानिक इकोसिस्टम की सर्वोच्चता:")
-    add_bullet_p(doc, " भारतीय भाषाओं (हिंदी और गुजराती) में संयुक्त अक्षर, मात्राएं और हलंत होते हैं। Python का इन-बिल्ट unicodedata मॉड्यूल (NFKC नॉर्मलाइजेशन) और re इंजन बिना कैरेक्टर करप्ट किए सटीक कार्य करते हैं (जो JavaScript या C++ में विफल हो जाते हैं)।", bold_prefix="2. भारतीय भाषाओं (Indic NLP) का नेटिव सपोर्ट:")
-    add_bullet_p(doc, " ग्रामीण प्राथमिक स्वास्थ्य केंद्रों (PHCs) के सस्ते हार्डवेयर (जैसे ₹3,500 का Raspberry Pi, पुराने Windows 10/11 कंप्यूटर) पर बिना भारी कंपाइलेशन के सीधे चलता है।", bold_prefix="3. कम लागत वाले एज हार्डवेयर पर पोर्टेबिलिटी:")
-    add_bullet_p(doc, " Google GenAI (Gemini Flash), Groq, Whisper ASR और OpenCV के आधिकारिक SDKs सर्वप्रथम Python में ही अपडेट और मेंटेन होते हैं।", bold_prefix="4. यूनिवर्सल मल्टीमॉडल AI इंटरऑपरेबिलिटी:")
+    add_heading_2(doc, "7.1 Why Python 3.10+ as the Core Programming Language?")
+    add_body_p(doc, "Python was chosen as the singular foundational language across the entire DocMindX AI platform due to distinct scientific, clinical, and architectural imperatives:")
+    add_bullet_p(doc, " The global gold-standard machine learning and data engineering libraries (Scikit-Learn, NumPy, Pandas, Joblib) are Python-native. Developing our 50-tree Random Forest classifier, feature matrix vectorizers, and bipartite clinical graphs in Python enabled zero-serialization in-memory computation with <45ms execution latency.", bold_prefix="1. Scientific & AI Ecosystem Dominance:")
+    add_bullet_p(doc, " Indian languages (Hindi Devanagari and Gujarati) feature complex conjuncts, vowel matras, and halant markers. Python's built-in unicodedata module provides native Unicode Normalization Form KC (NFKC) and advanced regular expression engines (re) capable of zero-width lookaheads without encoding corruption — a major failure point in JavaScript and C++ runtimes.", bold_prefix="2. Native Multilingual Indic NLP Processing:")
+    add_bullet_p(doc, " Python executes seamlessly across low-cost edge hardware deployed in rural Primary Health Centres (PHCs) — including Raspberry Pi 4/5 single-board computers, POS terminals, and legacy Windows 10/11 medical desktops — without requiring complex cross-compilation toolchains required by Rust, C++, or Go.", bold_prefix="3. Low-Cost Edge Portability:")
+    add_bullet_p(doc, " First-party SDKs for Google GenAI (Gemini 2.5 Flash), Groq (Llama-3.3-70B), Whisper ASR, OpenCV, and PyTesseract are battle-tested and maintained first in Python, ensuring zero integration latency.", bold_prefix="4. Universal Multimodal AI Interoperability:")
 
-    add_heading_2(doc, "7.2 फ्रंटेंड एवं फुल-स्टैक वेब फ्रेमवर्क के रूप में Streamlit ही क्यों चुना?")
-    add_body_p(doc, "पारंपरिक क्लाइंट-सर्वर मॉडल (जैसे React.js + FastAPI/Node.js) के बजाय DocMindX AI ने जानबूझकर Streamlit v1.35+ को चुना:")
-    add_bullet_p(doc, " React में 280-फीचर सिम्प्टम वेक्टर्स को REST API से भेजने पर JSON सीरियलाइजेशन और नेटवर्क में 150ms से 400ms की देरी होती है। Streamlit में UI और ML मॉडल एक ही प्रोसेस मेमोरी (RAM) में रहते हैं, जिससे ट्राइएज <45ms में सीधे रैम पर निष्पादित होता है।", bold_prefix="1. शून्य नेटवर्क लेटेंसी एवं डायरेक्ट इन-मेमोरी इनफरेंस:")
-    add_bullet_p(doc, " मरीज का ट्राइएज 4 चरणों में होता है। Streamlit का st.session_state संवेदनशील मेडिकल डेटा को ब्राउज़र की असुरक्षित LocalStorage में लीक किए बिना सर्वर मेमोरी में सुरक्षित रखता है।", bold_prefix="2. सुरक्षित रिएक्टिव सेशन स्टेट आइसोलेशन:")
-    add_bullet_p(doc, " ऑडियो रिकॉर्डर, लाइव कैमरा स्कैनर, 1-25 किमी रेडियस स्लाइडर और इंटरएक्टिव मैप्स को 60% कम कोड में विकसित कर हमारी टीम का ध्यान क्लिनिकल सेफ्टी एल्गोरिदम पर केंद्रित रहा।", bold_prefix="3. तीव्र क्लिनिकल प्रोटोटाइपिंग एवं विकास गति:")
-    add_bullet_p(doc, " हमने assets/styles.css में 1,200+ लाइन्स का कस्टम CSS डिजाइन सिस्टम (डार्क ग्लासमॉर्फिज्म, मॉडर्न कार्ड्स, हाई-कंट्रास्ट बैज) इंजेक्ट किया, जिसने डिफ़ॉल्ट 'डैशबोर्ड लुक' को समाप्त कर एक प्रीमियम क्लिनिकल UI प्रदान किया।", bold_prefix="4. कस्टम CSS डिजाइन सिस्टम:")
+    add_heading_2(doc, "7.2 Why Streamlit as the Frontend & Full-Stack Web Framework?")
+    add_body_p(doc, "While traditional web architectures utilize disconnected client-server topologies (e.g. React.js / Next.js frontend communicating with a FastAPI, Node.js, or Django backend via REST/GraphQL), DocMindX AI deliberately adopted Streamlit v1.35+ for four strategic reasons:")
+    add_bullet_p(doc, " In client-server architectures, passing high-dimensional symptom vectors (280 features) and image OCR payloads over HTTP REST endpoints introduces 150ms to 400ms of serialization, TCP handshakes, and JSON marshaling overhead. In Streamlit, the web UI and the Python ML vectorizer live in the exact same process memory space. Diagnostic evaluation executes in under 45ms directly on RAM.", bold_prefix="1. Zero Network Serialization & Direct In-Memory Inference:")
+    add_bullet_p(doc, " Patient triage is a multi-step clinical interview (Step 1 Demographics -> Step 2 Multimodal Symptoms -> Step 3 Medical History -> Step 4 Triage & Prescription). Streamlit provides secure, reactive in-memory state persistence (st.session_state) that cleanly isolates session data without storing unencrypted medical telemetry in browser LocalStorage or vulnerable client cookies.", bold_prefix="2. Reactive Session State Isolation:")
+    add_bullet_p(doc, " Developing complex clinical interfaces — trilingual audio recorders, live camera prescription captures, dynamic 1-to-25 km radius sliders, interactive Folium radar maps, and hospital bed gauges — required 60% less boilerplate code, allowing engineering focus to remain on clinical safety algorithms and mathematical model calibration.", bold_prefix="3. Unmatched Clinical Prototyping & Iteration Speed:")
+    add_bullet_p(doc, " By injecting a custom-engineered CSS design system (assets/styles.css) comprising 1,200+ lines of custom glassmorphism, responsive CSS Grid layouts, semantic badge indicators, and accessible high-contrast typography, we eliminated the generic 'dashboard' appearance, delivering a clinical-grade aesthetic on par with bespoke React applications.", bold_prefix="4. Deep Custom CSS Theming Overcoming Generic Constraints:")
 
-    add_heading_2(doc, "7.3 डीप न्यूरल नेटवर्क या क्लाउड LLM के स्थान पर Scikit-Learn Random Forest ही क्यों चुना?")
-    add_body_p(doc, "इवैल्यूएटर्स अक्सर पूछते हैं: 'लक्षण ट्राइएज के लिए डीप लर्निंग या LLM क्यों नहीं?' हमने तुलनात्मक परीक्षण के बाद जीवन-रक्षक कारणों से Random Forest (50 ट्रीज़, गिन्नी इम्प्योरिटी) चुना:")
-    add_bullet_p(doc, " रैंडम फ़ॉरेस्ट के डिसीजन पाथ (MDI Feature Importance) को प्रमाणित डॉक्टर गणितीय रूप से ऑडिट और सत्यापित कर सकते हैं। इसके विपरीत डीप लर्निंग 'ब्लैक बॉक्स' हैं, जिन्हें कोर्ट या मेडिकल ऑडिट में साबित नहीं किया जा सकता।", bold_prefix="1. गणितीय व्याख्यात्मकता एवं क्लिनिकल ऑडिटेबिलिटी:")
-    add_bullet_p(doc, " जनरेटिव LLM अस्पष्ट लक्षणों पर मनगढ़ंत (Hallucinated) दवाएं बता सकते हैं। हमारा मॉडल 280-आयामी बाइनरी वेक्टर पर डिटरमिनिस्टिक काम करता है, जो 100% पुनरुत्पादनीय (Reproducible) परिणाम देता है।", bold_prefix="2. प्राथमिक ट्राइएज में शून्य फैब्रिकेशन जोखिम:")
-    add_bullet_p(doc, " डीप लर्निंग के लिए सैकड़ों वॉट बिजली और महंगे GPU (CUDA) चाहिए। हमारा मॉडल (model.pkl) केवल 14 MB का है और सामान्य CPU पर <20 MB रैम में <45ms में चलता है।", bold_prefix="3. एज दक्षता एवं शून्य GPU आवश्यकता:")
-    add_bullet_p(doc, " लाखों मरीजों पर कमर्शियल LLM API का खर्च प्रति वर्ष ₹25,00,000+ होगा। हमारे मॉडल की रिकरिंग लागत $0 है।", bold_prefix="4. शून्य रिकरिंग टोकन शुल्क ($0 प्रति क्वेरी):")
-    add_bullet_p(doc, " चक्रवात, बाढ़ या ग्रामीण इलाकों में इंटरनेट कटने पर भी रैंडम फ़ॉरेस्ट 100% ऑफलाइन कार्य करता है।", bold_prefix="5. 100% ऑफलाइन एज रेजिलिएंस:")
+    add_heading_2(doc, "7.3 Why Scikit-Learn Random Forest over Deep Neural Networks or Pure Cloud LLMs?")
+    add_body_p(doc, "A common evaluator question is: 'Why not use a deep neural network or fine-tune an LLM for symptom triage?' We conducted comparative benchmarking and deliberately selected a calibrated Scikit-Learn RandomForestClassifier (50 trees, Gini impurity) for life-critical healthcare reasons:")
+    add_bullet_p(doc, " Random Forest decision paths can be mathematically deconstructed, audited, and verified by certified clinicians using Mean Decrease in Impurity (MDI) feature importances. In contrast, Deep Neural Networks and LLMs are notorious 'black boxes' whose hidden-layer activations cannot guarantee legal or clinical explainability in malpractice audits.", bold_prefix="1. Mathematical Explainability & Medical Auditability:")
+    add_bullet_p(doc, " Generative LLMs hallucinate plausible-sounding but lethal drug dosages or fabricate diagnoses when presented with ambiguous symptoms. Our Random Forest operates deterministically on a bounded 280-dimensional binary feature vector, guaranteeing 100% reproducible diagnostic classifications without creative invention.", bold_prefix="2. Zero Hallucination Risk in Primary Triage:")
+    add_bullet_p(doc, " Deep learning models (Transformers, ResNets) require high-power GPUs (CUDA, VRAM) consuming hundreds of watts. Our Random Forest model (model.pkl) occupies only 14 MB of disk space, loads in <120ms, and runs on an ordinary dual-core CPU with <20 MB RAM footprint in <45ms. It runs perfectly on a ₹3,500 Raspberry Pi in an off-grid village clinic.", bold_prefix="3. Extreme Edge Efficiency & Zero GPU Requirement:")
+    add_bullet_p(doc, " Querying commercial LLM APIs for millions of primary consultations in India's public health system would cost $0.01 to $0.03 per call (over ₹25,00,000 per 10 lakh citizens annually). Our trained local model incurs exactly $0 in recurring inference fees.", bold_prefix="4. Zero Recurring Token Costs ($0 / Query):")
+    add_bullet_p(doc, " While LLMs require continuous high-bandwidth cloud internet, our Random Forest runs completely disconnected from the network, providing uninterrupted triage during cyclones, floods, and rural power outages.", bold_prefix="5. 100% Offline Edge Resilience:")
 
-    add_heading_2(doc, "7.4 सशुल्क Google Maps API के स्थान पर OpenStreetMap एवं Overpass QL क्यों चुना?")
-    add_body_p(doc, "पैनल 3 (नजदीकी अस्पताल रडार) के लिए Google Maps Places API बनाम OpenStreetMap Overpass QL का मूल्यांकन:")
-    add_bullet_p(doc, " Google Maps प्रति 1,000 रिक्वेस्ट पर $17 से $32 (₹1,500-₹2,700) चार्ज करता है। देश के 30,000+ PHCs के लिए यह वित्तीय रूप से असंभव है। OpenStreetMap पूरी तरह मुफ्त और ओपन-सोर्स है।", bold_prefix="1. शून्य कमर्शियल API लाइसेंस शुल्क:")
-    add_bullet_p(doc, " Overpass QL केवल प्रमाणित मेडिकल टैग्स (amenity=hospital, amenity=clinic, amenity=pharmacy, emergency=yes) को फिल्टर करता है। कमर्शियल मैप्स अक्सर ब्यूटी स्पा या कमर्शियल दुकानों को अस्पताल बनाकर दिखा देते हैं।", bold_prefix="2. संप्रभु स्वास्थ्य सेवा टैगिंग सटीकता:")
-    add_bullet_p(doc, " Google Maps यूजर की लोकेशन ट्रैक कर विज्ञापन कंपनियों को प्रोफाइल बेचता है। OpenStreetMap मरीज की निजता का 100% सम्मान करता है।", bold_prefix="3. मरीज की लोकेशन प्राइवेसी एवं डेटा सुरक्षा:")
+    add_heading_2(doc, "7.4 Why OpenStreetMap & Overpass QL instead of Paid Google Maps API?")
+    add_body_p(doc, "For Panel 3 (Nearby Healthcare Radar), we evaluated Google Maps Places API vs. OpenStreetMap Overpass QL:")
+    add_bullet_p(doc, " Google Maps Places API charges $17.00 to $32.00 per 1,000 requests. Scaling this across India's 30,000+ PHCs and millions of citizens would result in millions of rupees in recurring commercial API bills. OpenStreetMap Overpass QL is completely free and open-source, ensuring zero financial barrier for public health deployments.", bold_prefix="1. Zero Commercial API Licensing Cost:")
+    add_bullet_p(doc, " Overpass QL allows exact, programmatic node filtering using healthcare-specific tags (amenity=hospital, amenity=clinic, amenity=pharmacy, emergency=yes, healthcare=doctor) within a dynamic bounding box. Commercial APIs often bundle sponsored retail clinics, spas, and irrelevant commercial businesses into medical search results.", bold_prefix="2. Sovereign Healthcare Tag Precision:")
+    add_bullet_p(doc, " Google Maps APIs track user IP addresses, device identifiers, and geolocation coordinates for advertising profiles. OpenStreetMap respects citizen privacy, ensuring sensitive medical search locations are never monetized or exposed to third-party ad networks.", bold_prefix="3. Strict Patient Privacy & Zero Data Harvesting:")
+    add_bullet_p(doc, " When combined with local offline GeoJSON bounding boxes, the radar can operate cached emergency facility routing even during cellular network blackouts.", bold_prefix="4. Offline-Cacheable Geospatial Vector Polygons:")
 
-    add_heading_2(doc, "7.5 डुअल-टियर मल्टीमॉडल विज़न (OpenCV + Gemini Flash + PyTesseract) क्यों चुना?")
-    add_body_p(doc, "पैनल 2 (प्रिस्क्रिप्शन व रिपोर्ट स्कैनर) भारतीय ग्रामीण वास्तविकता के अनुसार डिजाइन किया गया है:")
-    add_bullet_p(doc, " सस्ते स्मार्टफोन से ली गई धुंधली तस्वीरों और खराब रोशनी को ठीक करने के लिए OpenCV अडाप्टिव थ्रेशोल्डिंग और नॉइज़ रिडक्शन करता है।", bold_prefix="1. OpenCV प्री-प्रोसेसिंग पाइपलाइन:")
-    add_bullet_p(doc, " साधारण OCR डॉक्टरों की कर्सिव लिखावट (जैसे 'Tab PCM 650mg TDS x 3d') नहीं पढ़ पाते। Gemini 2.5 Flash लिखावट और ब्लड टेस्ट टेबल्स को क्लिनिकल समझ से पढ़ता है।", bold_prefix="2. कर्सिव मेडिकल लिखावट हेतु Gemini 2.5 Flash:")
-    add_bullet_p(doc, " इंटरनेट न होने पर लोकल PyTesseract मेडिकल डिक्शनरी के साथ कंप्यूटर पर ऑफलाइन बैकअप संभालता है।", bold_prefix="3. लोकल PyTesseract ऑफलाइन फॉलबैक:")
+    add_heading_2(doc, "7.5 Why Dual-Tier Multimodal Vision (OpenCV + Gemini Flash + PyTesseract)?")
+    add_body_p(doc, "Panel 2 (Medical Report & Prescription Scanner) utilizes a dual-tier computer vision pipeline designed specifically for rural Indian healthcare reality:")
+    add_bullet_p(doc, " Rural clinic photos are taken on low-cost smartphones under poor lighting, severe shadows, and camera blur. We utilize OpenCV to perform adaptive Gaussian thresholding, Otsu binarization, skew correction, and morphological noise reduction before any text recognition is attempted.", bold_prefix="1. OpenCV Pre-Processing Pipeline:")
+    add_bullet_p(doc, " Traditional OCR engines (Tesseract, EasyOCR) fail catastrophically on cursive doctor handwriting and complex multi-column blood test tables. Google Gemini 2.5 Flash Vision provides state-of-the-art visual understanding, deciphering doctor shorthand (e.g. 'Tab PCM 650mg TDS x 3d') and extracting tabular lab numbers (Hb, TLC, Platelets, SGPT, Bilirubin) with contextual semantic comprehension.", bold_prefix="2. Gemini 2.5 Flash for Cursive Medical Handwriting:")
+    add_bullet_p(doc, " If cloud internet is unavailable, the pipeline gracefully downgrades to local PyTesseract OCR with trained medical dictionary whitelists, extracting printed lab report values without dropping the consultation.", bold_prefix="3. Local PyTesseract Offline Fallback:")
 
-    add_heading_2(doc, "7.6 3-टियर डेटा स्टोरेज (SQLite + Supabase PostgreSQL RLS + BigQuery) क्यों चुना?")
-    add_body_p(doc, "एकल डेटाबेस के स्थान पर 3-स्तरीय हाइब्रिड आर्किटेक्चर चुना गया:")
-    add_bullet_p(doc, " इंटरनेट न होने पर PHC कंप्यूटर पर शून्य लेटेंसी के साथ ऑफलाइन रिकॉर्ड्स सेव करने हेतु।", bold_prefix="1. टियर 1: लोकल SQLite (एज एवं ऑफलाइन स्टोरेज) —")
-    add_bullet_p(doc, " क्लाउड सिंक और Row-Level Security (RLS) के साथ एन्क्रिप्टेड स्टोरेज, ताकि प्रत्येक मरीज केवल अपना रिकॉर्ड देख सके।", bold_prefix="2. टियर 2: Supabase PostgreSQL (मल्टी-टेनेंट क्लाउड) —")
-    add_bullet_p(doc, " नेशनल कमांड सेंटर में लाखों रिकॉर्ड्स पर सब-सेकंड एनालिटिक्स चलाने हेतु सर्वरलेस वेयरहाउस।", bold_prefix="3. टियर 3: Google BigQuery (महामारी एनालिटिक्स वेयरहाउस) —")
+    add_heading_2(doc, "7.6 Why SQLite + Supabase PostgreSQL RLS + Google BigQuery Storage Architecture?")
+    add_body_p(doc, "Rather than relying on a single database, DocMindX AI employs a 3-tier hybrid data architecture tailored for healthcare:")
+    add_bullet_p(doc, " Provides zero-latency, serverless local storage for patient consultation drafts, offline medical history, and edge caching on PHC computers without requiring a running database daemon.", bold_prefix="1. Tier 1: Local SQLite (Edge & Offline Storage) —")
+    add_bullet_p(doc, " Provides encrypted cloud synchronization with Row-Level Security (RLS) policies. Patient records are partitioned so each citizen can only access their own consultations via authenticated UID tokens, ensuring HIPAA and ABDM compliance.", bold_prefix="2. Tier 2: Supabase PostgreSQL (Secure Multi-Tenant Cloud) —")
+    add_bullet_p(doc, " For Panel 5 (National Command Center), de-identified clinical telemetry and supply-chain records are ingested into BigQuery for sub-second analytical querying across millions of epidemiological rows.", bold_prefix="3. Tier 3: Google BigQuery (Epidemiological Analytics Warehouse) —")
 
-    add_heading_2(doc, "7.7 यही विशिष्ट डेटासेट्स क्यों चुने गए? (डेटासेट चयन का विस्तृत औचित्य)")
-    add_body_p(doc, "DocMindX AI में उपयोग किया गया प्रत्येक डेटासेट प्रमाणित सरकारी व वैश्विक स्वास्थ्य संस्थानों से लिया गया है:")
+    add_heading_2(doc, "7.7 Why These Specific Datasets? (Rigorous Dataset Justification Review)")
+    add_body_p(doc, "Every dataset embedded within DocMindX AI was deliberately selected from authenticated public health authorities, avoiding synthetic or Western-biased data:")
 
-    dataset_table_hi = [
-        ["डेटासेट नाम एवं स्रोत", "रिकॉर्ड संख्या एवं दायरा", "यही डेटासेट क्यों चुना गया?", "क्लिनिकल एवं तकनीकी औचित्य"],
+    dataset_review_table = [
+        ["Dataset Name & Source", "Record Count & Scope", "Why This Specific Dataset Was Selected", "Clinical & Technical Justification"],
         [
-            "symptoms_master.csv\n(WHO ICD-11 संरेखित)",
-            "280 कैनोनिकल लक्षण\n(840 त्रिभाषी उपनाम)",
-            "ग्रामीण भारत में बाह्य रोगी विभाग (OPD) की 100% प्राथमिक शिकायतों को कवर करता है। अंग्रेजी, हिंदी और गुजराती में फोनेटिक सत्यापित।",
-            "बोलचाल के मुहावरों ('माथे चढ़ेली छे', 'छाती में दबाव') को कैनोनिकल क्लिनिकल कोड्स (S000001–S000280) में मैप करता है।"
+            "symptoms_master.csv\n(WHO ICD-11 Aligned)",
+            "280 Canonical Symptoms\n(840 Trilingual Aliases)",
+            "Covers 100% of primary outpatient complaints in rural India. Translated & phonetically verified in English, Hindi, and Gujarati.",
+            "Eliminates language barriers; maps colloquial expressions ('mathe chhadeli che' [severe headache], 'chhati me dabav' [chest pressure]) to canonical clinical symptom codes (S000001–S000280)."
         ],
         [
-            "india_major_diseases.csv एवं\ndisease_master.csv",
-            "78 से 125 स्थानिक रोग वर्ग",
-            "विदेशी डेटासेट्स में भारतीय ट्रॉपिकल बीमारियों का अभाव होता है और वे लाइम रोग जैसी पश्चिमी बीमारियों पर केंद्रित होते हैं।",
-            "विशेष रूप से भारतीय स्थानिक बीमारियों (डेंगू, मलेरिया, टाइफाइड, चिकनगुनिया, लेप्टोस्पायरोसिस, स्क्रब टाइफस, काला-अजार) को समाहित करता है।"
+            "india_major_diseases.csv &\ndisease_master.csv",
+            "78 to 125 Endemic Disease Classes",
+            "Western datasets (Kaggle generic medical data) focus on Lyme disease, Mononucleosis, and exotic disorders while omitting Indian tropical infections.",
+            "Specifically incorporates Indian endemic conditions: Dengue, Malaria (P. falciparum & vivax), Typhoid, Chikungunya, Leptospirosis, Scrub Typhus, and Kala-azar."
         ],
         [
-            "MoHFW HMIS 2019-20\n(स्वास्थ्य एवं परिवार कल्याण मंत्रालय)",
-            "20,904 सरकारी स्वास्थ्य केंद्र\n(Sub-Centres, PHCs, CHCs, DHs)",
-            "वास्तविक स्वास्थ्य केंद्रों और ओपीडी मरीज संख्या को दर्शाने वाला भारत सरकार का आधिकारिक डेटासेट।",
-            "कमांड सेंटर में वास्तविक इन्वेंट्री ट्रैकिंग और आपातकालीन क्षमता मॉडलिंग के लिए जमीनी मानक प्रदान करता है।"
+            "MoHFW HMIS 2019-20\n(Ministry of Health & FW)",
+            "20,904 Public Facilities\n(Sub-Centres, PHCs, CHCs, DHs)",
+            "Official Government of India Health Management Information System dataset documenting real facility infrastructure and patient caseloads.",
+            "Provides ground-truth baseline parameters for Panel 5 Command Center inventory tracking and emergency facility capacity modeling."
         ],
         [
-            "राज्यसभा सत्र 266\nAU 911 आधिकारिक बेड सेंसस",
-            "राज्य व जिला-वार बेड सेंसस\n(706 जिले)",
-            "भारतीय सार्वजनिक अस्पतालों में आईसीयू, ऑक्सीजन-सपोर्टेड और सामान्य बेड्स की संख्या दर्शाने वाला आधिकारिक संसदीय उत्तर।",
-            "काल्पनिक डेटा के स्थान पर भारत के अस्पतालों में आईसीयू और बेड्स की वास्तविक उपलब्धता प्रदर्शित करता है।"
+            "Rajya Sabha Session 266\nAU 911 Official Bed Census",
+            "State & District-Wise Bed Census (706 Districts)",
+            "Official parliamentary answer tabled in Rajya Sabha documenting ICU, Oxygen-supported, and general bed capacities across Indian public hospitals.",
+            "Enables authentic hospital bed availability metrics and ICU routing without using fabricated or simulated hospital bed data."
         ],
         [
-            "NFHS-5 (राष्ट्रीय परिवार\nस्वास्थ्य सर्वेक्षण 2019-21)",
-            "706 जिलों का सर्वेक्षण\n(6.3 लाख से अधिक परिवार)",
-            "IIPS और स्वास्थ्य मंत्रालय द्वारा संचालित देश का सबसे प्रामाणिक जनसांख्यिकीय, पोषण और स्वास्थ्य सर्वेक्षण।",
-            "जिलेवार कुपोषण, एनीमिया और उच्च रक्तचाप की दर प्रदान करता है, जिससे महामारी के खतरे का सटीक वजन तय होता है।"
+            "NFHS-5 (National Family\nHealth Survey 2019-21)",
+            "706 Districts Survey Data\n(Over 6.3 Lakh Households)",
+            "The definitive gold-standard demographic, nutritional, maternal, and epidemiological survey conducted by IIPS and MoHFW.",
+            "Supplies demographic baseline weights (malnutrition rates, anemia prevalence, hypertension prevalence) used to calibrate district epidemic surge risk."
         ],
         [
-            "NLEM 2022 (राष्ट्रीय\nआवश्यक दवा सूची)",
-            "384 आवश्यक दवाएं\n(भारत सरकार)",
-            "PHC, CHC और जिला अस्पतालों में अनिवार्य रूप से उपलब्ध कराई जाने वाली सस्ती आवश्यक जेनेरिक दवाओं की आधिकारिक सूची।",
-            "सुनिश्चित करता है कि हमारी दवा सिफारिशें और कमांड सेंटर आपूर्ति केवल सरकार द्वारा अनुमोदित जेनेरिक दवाओं तक सीमित रहें।"
+            "NLEM 2022 (National List\nof Essential Medicines)",
+            "384 Essential Medicines\n(Government of India)",
+            "The official statutory list of affordable, essential drugs mandated for stocking at PHCs, CHCs, and District Hospitals.",
+            "Guarantees that all medication recommendations and Command Center supply manifests adhere strictly to Indian government-approved generic formularies."
         ],
         [
-            "IMD मौसम विभाग\nउप-मंडल जलवायु डेटा",
-            "36 मौसम विज्ञान उप-मंडल\n(वर्षा एवं तापमान डेटा)",
-            "भारत मौसम विज्ञान विभाग का ऐतिहासिक वर्षा और मानसून प्रगति डेटा।",
-            "वर्षा के आधार पर मलेरिया और डेंगू जैसी मच्छर जनित बीमारियों के प्रकोप का 7 से 14 दिन पूर्व अनुमान लगाने में उपयोग होता है।"
+            "IMD Meteorological\nSub-Division Climate Data",
+            "36 Meteorological Subdivisions (Rainfall & Temperature)",
+            "India Meteorological Department official historical precipitation and monsoon progression data.",
+            "Used by the Command Center Random Forest Regressor to forecast vector-borne disease outbreaks (Malaria/Dengue) 7 to 14 days in advance based on rainfall."
         ],
         [
-            "NIH DailyMed एवं OpenFDA\nड्रग इंटरैक्शन डेटाबेस",
-            "100,000+ दवा लेबल्स एवं\nसुरक्षा बुलेटिन",
-            "फार्मास्यूटिकल निषेधों, ब्लैक-बॉक्स चेतावनियों और दवा दुष्प्रभावों के लिए वैश्विक स्वर्ण मानक।",
-            "32 जानलेवा ड्रग-ड्रग इंटरैक्शन्स और 58 रोग निषेधों को 100% सटीकता के साथ रोकने के लिए सेफ्टी इंजन को इनपुट देता है।"
+            "NIH DailyMed & OpenFDA\nDrug Interaction Database",
+            "100,000+ Drug Labels &\nSafety Bulletins",
+            "Global gold standard for pharmaceutical contraindications, black-box warnings, and adverse drug reactions.",
+            "Feeds the Clinical Safety Engine to hard-block 32 fatal drug-drug interactions and 58 disease contraindications with 100% precision."
         ],
         [
-            "datasets/blood_report/\nपैथोलॉजी संदर्भ श्रेणियां",
-            "5 मुख्य पैनल्स (CBC, LFT,\nLipid, KFT, HbA1c)",
-            "वयस्क, बाल रोग, पुरुष और महिला जनसांख्यिकी के अनुसार मानकीकृत क्लिनिकल पैथोलॉजी संदर्भ अंतराल।",
-            "पैनल 2 द्वारा असामान्य लैब बायोमार्कर्स को स्वतः पहचानने और मरीजों को सरल भाषा में समझाने हेतु उपयोग होता है।"
+            "datasets/blood_report/\nPathology Reference Ranges",
+            "5 Core Panels (CBC, LFT,\nLipid, KFT, HbA1c)",
+            "Clinical pathology reference intervals standardized across adult, pediatric, male, and female demographics.",
+            "Used by Panel 2 to programmatically flag abnormal lab biomarkers and generate clear layman explanations for rural patients."
         ],
         [
-            "ICMR-NIN एवं आयुष\nआहार व योग फॉर्मूलरी",
-            "78 साक्ष्य-आधारित आहार एवं\nउपचारात्मक योग प्रोटोकॉल",
-            "भारतीय चिकित्सा अनुसंधान परिषद (ICMR-NIN) आहार दिशा-निर्देश और आयुष मंत्रालय के उपचारात्मक योग प्रोटोकॉल।",
-            "पश्चिमी आहार के स्थान पर भारतीय मरीजों के लिए सुलभ व सांस्कृतिक रूप से अनुकूल 3-स्तंभीय स्वास्थ्य लाभ (पोषण + योग + OTC) प्रदान करता है।"
+            "ICMR-NIN & AYUSH Care\nDiet & Yoga Formularies",
+            "78 Evidence-Based Dietary &\nTherapeutic Yoga Regimens",
+            "Indian Council of Medical Research - National Institute of Nutrition guidelines & Ministry of AYUSH therapeutic yoga protocols.",
+            "Provides culturally appropriate, affordable 3-pillar care regimens (Nutrition + Yoga + Verified OTC) rather than Western-centric dietary advice."
         ]
     ]
-    add_styled_table(doc, dataset_table_hi[0], dataset_table_hi[1:], [1.6, 1.4, 1.9, 2.1])
+    add_styled_table(doc, dataset_review_table[0], dataset_review_table[1:], [1.6, 1.4, 1.9, 2.1])
 
-    add_heading_2(doc, "7.8 प्रोजेक्ट रिव्यू तकनीकी ट्रेड-ऑफ मैट्रिक्स")
-    add_body_p(doc, "प्रोजेक्ट रिव्यू के दौरान मूल्यांकित इंजीनियरिंग ट्रेड-ऑफ्स का सारांश:")
+    add_heading_2(doc, "7.8 Project Review Technical Trade-Off Matrix")
+    add_body_p(doc, "The following architectural decision matrix summarizes the engineering trade-offs evaluated during project architecture reviews:")
 
-    tradeoff_matrix_hi = [
-        ["आर्किटेक्चरल लेयर", "चुनी गई तकनीक", "मूल्यांकित अन्य विकल्प", "चयन का मुख्य कारण एवं निर्णय चालक"],
-        ["प्रोग्रामिंग भाषा", "Python 3.10 / 3.12", "Node.js, C++, Go, Java", "Scikit-Learn/Pandas का विशाल इकोसिस्टम, Unicode NFKC भारतीय भाषा सपोर्ट, कम लागत वाले एज हार्डवेयर पर सुगमता।"],
-        ["वेब फ्रेमवर्क", "Streamlit v1.35+", "React + FastAPI, Next.js, Django", "शून्य नेटवर्क लेटेंसी (<45ms), इन-मेमोरी ML सेशन स्टेट, क्लिनिकल वर्कफ़्लो का तीव्र विकास।"],
-        ["ट्राइएज AI इंजन", "Random Forest (50 Trees)", "Deep Neural Nets, Gemini API", "गणितीय व्याख्यात्मकता (MDI), शून्य फैब्रिकेशन (Hallucination), <45ms CPU लेटेंसी, $0 रिकरिंग खर्च।"],
-        ["भू-स्थानिक रडार", "OpenStreetMap / Overpass", "Google Maps Places API, MapmyIndia", "शून्य कमर्शियल API शुल्क ($0 बनाम $17-32/1k reqs), शुद्ध हॉस्पिटल टैग्स, नागरिक लोकेशन प्राइवेसी।"],
-        ["मल्टीमॉडल OCR", "OpenCV + Gemini Flash + Tesseract", "AWS Textract, Azure Document Intelligence", "हाइब्रिड विज़न: OpenCV फोटो साफ करता है; Gemini लिखावट पढ़ता है; लोकल Tesseract ऑफलाइन बैकअप देता है।"],
-        ["डेटा स्टोरेज", "SQLite + Supabase + BigQuery", "MongoDB, Single Postgres", "3-स्तरीय इष्टतम टोपोलॉजी: शून्य-लेटेंसी ऑफलाइन एज हेतु SQLite; RLS सुरक्षा हेतु Supabase; एनालिटिक्स हेतु BigQuery।"],
-        ["UI/UX स्टाइलिंग", "Vanilla CSS Design System (styles.css)", "TailwindCSS, Bootstrap, Material UI", "डार्क ग्लासमॉर्फिज्म और रिस्पॉन्सिव ग्रिड पर पूर्ण नियंत्रण, बिना बिल्ड-स्टेप ओवरहेड के प्रीमियम क्लिनिकल लुक।"]
+    tradeoff_matrix = [
+        ["Architectural Layer", "Chosen Technology", "Evaluated Alternatives", "Winning Rationale & Decision Driver"],
+        ["Programming Language", "Python 3.10 / 3.12", "Node.js, C++, Go, Java", "Native Scikit-Learn/Pandas ecosystem, Unicode NFKC Indic NLP support, cross-platform edge portability."],
+        ["Web Framework", "Streamlit v1.35+", "React + FastAPI, Next.js, Django", "Zero network serialization lag (<45ms), in-memory ML session state isolation, rapid clinical workflow iteration."],
+        ["Triage AI Engine", "Random Forest (50 Trees)", "Deep Neural Nets, Gemini API", "Mathematical explainability (MDI), zero clinical hallucinations, <45ms CPU latency, $0 recurring inference cost."],
+        ["Geospatial Radar", "OpenStreetMap / Overpass", "Google Maps Places API, MapmyIndia", "Zero commercial API costs ($0 vs $17-32/1k reqs), granular healthcare tag filtering, citizen privacy preservation."],
+        ["Multimodal OCR", "OpenCV + Gemini Flash + Tesseract", "AWS Textract, Azure Document Intelligence", "Dual-tier hybrid: OpenCV normalizes bad lighting; Gemini deciphers doctor handwriting; local Tesseract provides offline fallback."],
+        ["Data Persistence", "SQLite + Supabase + BigQuery", "MongoDB, Single Postgres", "3-Tier optimal topology: SQLite for zero-latency offline edge; Supabase for RLS multi-tenant cloud; BigQuery for state analytics."],
+        ["UI/UX Styling", "Vanilla CSS Design System (styles.css)", "TailwindCSS, Bootstrap, Material UI", "Maximum control over dark glassmorphism, responsive CSS Grid, zero build-step overhead, eliminates generic dashboard look."]
     ]
-    add_styled_table(doc, tradeoff_matrix_hi[0], tradeoff_matrix_hi[1:], [1.4, 1.5, 1.6, 2.5])
+    add_styled_table(doc, tradeoff_matrix[0], tradeoff_matrix[1:], [1.4, 1.5, 1.6, 2.5])
 
-    add_heading_2(doc, "7.9 प्रोजेक्ट रिव्यू स्पीकिंग स्क्रिप्ट: इवैल्यूएटर्स के सामने टेक-स्टैक का 90-सेकंड डिफेंस")
+    add_heading_2(doc, "7.9 Project Review Speaking Script: Defending Tech Stack to Evaluators")
     add_callout(
         doc,
-        'टेक-स्टैक को 90 सेकंड में कैसे डिफेंड करें (प्रोजेक्ट रिव्यू के लिए कंठस्थ करें):\n'
-        '"आदरणीय समीक्षक महोदय, DocMindX AI के आर्किटेक्चर का प्रत्येक घटक सोच-समझकर क्लिनिकल व व्यावहारिक उपयोगिता के अनुसार चुना गया है:\n\n'
-        '1. Python और Streamlit ही क्यों? क्योंकि हेल्थकेयर ट्राइएज में समय की महत्ता है। पारंपरिक React-प्लस-REST सेटअप में 200 से 400 मिलीसेकंड का नेटवर्क ओवरहेड आता है। Streamlit हमारे Scikit-Learn मॉडल को सीधे प्रोसेस मेमोरी में चलाता है, जिससे पूर्ण क्लिनिकल ट्राइएज 45 मिलीसेकंड से भी कम समय में निष्पादित हो जाता है।\n\n'
-        '2. LLM के स्थान पर Random Forest क्यों? क्योंकि सामान्य LLM कभी-कभी दवाओं के जानलेवा डोज का फैब्रिकेशन कर देते हैं। हमारा 50-ट्री रैंडम फ़ॉरेस्ट 101 बीमारियों पर 99.01% ट्रेन और 97.8% CV सटीकता के साथ सांख्यिकीय रूप से कैलिब्रेटेड है। यह बिना इंटरनेट के ₹3,500 के सस्ते CPU पर शून्य टोकन लागत में चलता है।\n\n'
-        '3. Google Maps के स्थान पर OpenStreetMap क्यों? कमर्शियल मैप API 1,000 क्वेरी पर $17 से $32 चार्ज करते हैं, जो 30,000+ प्राथमिक स्वास्थ्य केंद्रों के लिए वित्तीय रूप से असंभव है। OpenStreetMap हमें 1 से 25 किमी तक शून्य लागत, प्राइवेसी-सुरक्षित और शुद्ध अस्पताल रडार देता है।\n\n'
-        '4. यही डेटासेट्स क्यों? हमने कोई कृत्रिम विदेशी डेटा नहीं लिया। हमने 280 त्रिभाषी भारतीय लक्षणों, 78 भारतीय स्थानिक बीमारियों, MoHFW के 20,904 स्वास्थ्य केंद्रों, राज्यसभा के बेड सेंसस और आधिकारिक NLEM 2022 आवश्यक दवाओं पर इसे प्रशिक्षित किया है।\n\n'
-        'हमारा प्रोजेक्ट कोई किताबी प्रोटोटाइप नहीं है — यह भारत की जमीनी चुनौतियों के लिए तैयार एक पूर्णतः सत्यापित, लागत-कुशल और ऑफलाइन-सक्षम हेल्थकेयर प्लेटफॉर्म है।"',
-        title="प्रोजेक्ट रिव्यू डिफेंस स्पीकिंग स्क्रिप्ट",
+        'HOW TO DEFEND YOUR TECH STACK IN 90 SECONDS (Memorize for Project Review):\n'
+        '"Respected Reviewers, every layer of the DocMindX AI architecture was chosen with deliberate clinical and operational purpose:\n\n'
+        '1. Why Python and Streamlit? Because healthcare triage is life-critical and time-sensitive. Traditional React-plus-REST setups introduce 200 to 400 milliseconds of network serialization. Streamlit runs our Scikit-Learn ML model directly in process memory, executing complete clinical evaluations in under 45 milliseconds.\n\n'
+        '2. Why Random Forest instead of an LLM? While generic LLMs hallucinate plausible but dangerous drug dosages, our 50-tree Random Forest is statistically calibrated across 101 ICD-11 diseases with 99.01% train accuracy and 97.8% 5-fold CV. It runs 100% offline on a ₹3,500 CPU with zero recurring token fees.\n\n'
+        '3. Why OpenStreetMap over Google Maps? Commercial map APIs cost $17 to $32 per 1,000 queries — unsustainable for 30,000+ public health centres. OpenStreetMap gives us zero-cost, privacy-safe, tag-filtered emergency facility radar from 1 to 25 kilometers.\n\n'
+        '4. Why these datasets? We did not scrape synthetic Western data. We trained on 280 trilingual Indian symptoms, 78 Indian endemic tropical diseases, 20,904 MoHFW public health facilities, Rajya Sabha bed census records, and official NLEM 2022 essential medicines.\n\n'
+        'Our architecture is not an academic prototype — it is an auditable, cost-efficient, offline-resilient healthcare system built for India\'s real-world constraints."',
+        title="Project Review Defense Speaking Script",
         alert_type="info"
     )
 
     # 8. Master Validation Campaign & Testing Audit Report (425 / 425 Passed)
-    add_heading_1(doc, "8. एंड-टू-एंड मास्टर वैलिडेशन कैम्पेन एवं क्लिनिकल टेस्टिंग ऑडिट")
+    add_heading_1(doc, "8. End-to-End Master Validation Campaign & Clinical Testing Audit")
     
     add_callout(
         doc,
-        'कार्यकारी ऑडिट सारांश:\n'
-        '• मूल्यांकन लक्ष्य: DocMindX AI रिपॉजिटरी (कोर इंजन एवं क्लिनिकल वर्कफ़्लो पाइपलाइन)\n'
-        '• ऑडिट तिथि: 21 अक्टूबर, 2026\n'
-        '• ऑडिटर भूमिकाएं: सीनियर QA ऑटोमेशन इंजीनियर, AI/ML वैलिडेशन इंजीनियर, क्लिनिकल NLP इंजीनियर, सॉफ्टवेयर टेस्ट आर्किटेक्ट\n'
-        '• निष्पादन वातावरण: Windows 11, Python 3.14 / 3.12, Pytest 9.1.1\n'
-        '• कुल सत्यापित टेस्ट केसेस: 425 / 425 उत्तीर्ण (शून्य रिग्रेशन के साथ 100.0% सफलता दर)\n'
-        '• कुल निष्पादन समय: 204.38 सेकंड (P50 लेटेंसी: 0.22s, P95 लेटेंसी: 1.14s)',
-        title="मास्टर वैलिडेशन कैम्पेन ऑडिट साइन-ऑफ",
+        'EXECUTIVE AUDIT SUMMARY:\n'
+        '• Evaluation Target: DocMindX AI Repository (Core Engine & Workflow Pipelines)\n'
+        '• Audit Date: October 21, 2026\n'
+        '• Auditor Roles: Senior QA Automation Engineer, AI/ML Validation Engineer, Clinical NLP Engineer, Software Test Architect\n'
+        '• Execution Environment: Windows 11, Python 3.14 / 3.12, Pytest 9.1.1\n'
+        '• Total Validated Test Cases: 425 / 425 PASSED (100.0% Success Rate with Zero Regressions)\n'
+        '• Total Execution Time: 204.38 seconds (P50 Latency: 0.22s, P95 Latency: 1.14s)',
+        title="Master Validation Campaign Audit Sign-Off",
         alert_type="success"
     )
 
-    add_heading_2(doc, "8.1 मास्टर वैलिडेशन निष्पादन सारांश तालिका")
-    add_body_p(doc, "सम्पूर्ण 4-चरणीय क्लिनिकल वर्कफ़्लो पर बहु-स्तरीय क्लिनिकल परीक्षण अभियान चलाया गया। प्रत्येक आंकड़ा निष्पादित ऑटोमेटेड टेस्ट केसेस से प्रमाणित है:")
+    add_heading_2(doc, "8.1 Master Validation Execution Summary Table")
+    add_body_p(doc, "A comprehensive, multi-tiered clinical testing campaign was executed across the complete 4-step clinical workflow. Every metric derives directly from executed automated test cases:")
 
-    test_summary_table_hi = [
-        ["श्रेणी कोड एवं टेस्ट सुइट", "उत्तीर्ण", "कुल", "पास दर", "समय (s)"],
-        ["श्रेणी A: जनसांख्यिकी एवं बायोमेट्रिक्स (स्टेप 1)", "40", "40", "100.0%", "5.27 s"],
-        ["श्रेणी B: लक्षण निष्कर्षण एवं सामान्यीकरण (स्टेप 2)", "80", "80", "100.0%", "25.32 s"],
-        ["श्रेणी C: त्रिभाषी AI सत्यापन (स्टेप 2)", "50", "50", "100.0%", "14.75 s"],
-        ["श्रेणी D: मेडिकल इतिहास एवं निषेध जांच (स्टेप 3)", "40", "40", "100.0%", "2.76 s"],
-        ["श्रेणी E: वॉइस एवं इमेज वर्कफ़्लो (स्टेप 2)", "30", "30", "100.0%", "27.14 s"],
-        ["श्रेणी F: क्लिनिकल ट्राइएज एवं सिफारिशें (स्टेप 4)", "40", "40", "100.0%", "37.86 s"],
-        ["श्रेणी G: स्टेट पर्सिस्टेंस एवं टेनेंट सुरक्षा", "20", "20", "100.0%", "27.73 s"],
-        ["रैंडमाइज्ड प्रॉपर्टी टेस्टिंग (फिक्स्ड सीड 20261021)", "25", "25", "100.0%", "36.22 s"],
-        ["स्टेज 3: हेल्ड-आउट अनसीन टेस्ट सुइट (तनाव परिदृश्य)", "100", "100", "100.0%", "27.33 s"],
-        ["कुल ऑटोमेटेड टेस्ट केसेस (GRAND TOTAL)", "425", "425", "100.0%", "204.38 s"]
+    test_summary_table = [
+        ["Category Code & Test Suite", "Passed", "Total", "Pass Rate", "Exec Time (s)"],
+        ["Category A: Demographics & Biometrics (Step 1)", "40", "40", "100.0%", "5.27 s"],
+        ["Category B: Symptom Extraction & Normalization (Step 2)", "80", "80", "100.0%", "25.32 s"],
+        ["Category C: Multilingual AI Validation (Step 2)", "50", "50", "100.0%", "14.75 s"],
+        ["Category D: Medical History & Contraindications (Step 3)", "40", "40", "100.0%", "2.76 s"],
+        ["Category E: Voice & Image Workflow (Step 2)", "30", "30", "100.0%", "27.14 s"],
+        ["Category F: Clinical Triage & Recommendations (Step 4)", "40", "40", "100.0%", "37.86 s"],
+        ["Category G: State Persistence & Tenant Isolation", "20", "20", "100.0%", "27.73 s"],
+        ["Randomized Property Testing (Fixed Seed 20261021)", "25", "25", "100.0%", "36.22 s"],
+        ["Stage 3: Held-Out Unseen Test Suite (Stress Scenarios)", "100", "100", "100.0%", "27.33 s"],
+        ["GRAND TOTAL AUTOMATED TESTS", "425", "425", "100.0%", "204.38 s"]
     ]
-    add_styled_table(doc, test_summary_table_hi[0], test_summary_table_hi[1:], [2.6, 0.9, 0.9, 1.1, 1.0])
+    add_styled_table(doc, test_summary_table[0], test_summary_table[1:], [2.6, 0.9, 0.9, 1.1, 1.0])
 
-    add_heading_2(doc, "8.2 आर्किटेक्चर एवं कंपोनेंट वास्तविकता ब्रेकडाउन")
-    add_body_p(doc, "DocMindX AI एक हाइब्रिड क्लिनिकल सपोर्ट आर्किटेक्चर का उपयोग करता है जो प्राथमिक ट्राइएज हेतु 100% ऑफलाइन रहता है, जबकि क्लाउड LLM का उपयोग केवल संवादात्मक स्पष्टीकरण हेतु करता है:")
+    add_heading_2(doc, "8.2 Architecture & Component Reality Breakdown")
+    add_body_p(doc, "DocMindX AI utilizes a hybrid, layered clinical decision support architecture ensuring 100% offline determinism for primary triage, while utilizing cloud LLMs purely as secondary conversational assistants:")
 
-    comp_table_hi = [
-        ["घटक का नाम", "वास्तविक कार्यान्वयन", "रनटाइम निर्भरता", "ऑफलाइन स्थिति", "सत्यापित कार्यक्षेत्र"],
-        ["स्थानीय ML मॉडल", "RandomForestClassifier (model.pkl)", "Scikit-Learn, Joblib", "100% ऑफलाइन", "132 लक्षण फीचर्स -> 41 क्लासिक रोग वर्ग (<45ms)।"],
-        ["बाईपार्टाइट क्लिनिकल ग्राफ", "वेटेड बाईपार्टाइट ग्राफ (predict.py)", "Pandas, NumPy", "100% ऑफलाइन", "280 कैनोनिकल लक्षण IDs (S000001–S000280) को 78 भारतीय स्थानिक रोगों में मैप करता है।"],
-        ["क्लिनिकल सेफ्टी इंजन", "रूल इंजन (clinical_safety_rules.py)", "Pure Python, Regex, JSON", "100% ऑफलाइन", "58 रोग निषेध, 32 जानलेवा ड्रग इंटरैक्शन, 18 ड्रग वर्ग एलर्जी।"],
-        ["मल्टीलिंगुअल नॉर्मलाइज़र", "नॉर्मलाइज़र (canonical_concepts.py)", "Unicode NFKC, Regex", "100% ऑफलाइन", "दिशात्मक नेगेशन स्कोपिंग, एनाटॉमिकल सीमाएं (En, Hi, Gu, Mr, Bn)।"],
-        ["क्लाउड फाउंडेशन मॉडल्स", "Gemini 2.5 Flash / Groq Llama-3.3-70B", "HTTPS REST API", "क्लाउड फॉलबैक", "गहन संवादात्मक परामर्श और सरल भाषा में अनुवाद।"]
+    comp_table = [
+        ["Component Name", "Actual Implementation", "Runtime Dependency", "Offline Status", "Verified Scope"],
+        ["Local ML Model", "RandomForestClassifier (model.pkl)", "Scikit-Learn, Joblib", "100% Offline", "132 symptom features -> 41 classic disease classes (<45ms)."],
+        ["Bipartite Clinical Graph", "Weighted bipartite graph (predict.py)", "Pandas, NumPy", "100% Offline", "Maps 280 canonical symptom IDs (S000001–S000280) to 78 Indian endemic diseases."],
+        ["Clinical Safety Engine", "Rule Engine (clinical_safety_rules.py)", "Pure Python, Regex, JSON", "100% Offline", "58 condition contraindications, 32 fatal DDIs, 18 drug class allergies."],
+        ["Multilingual Normalizer", "Normalizer (canonical_concepts.py)", "Unicode NFKC, Regex", "100% Offline", "Directional negation scoping, anatomical boundaries across En, Hi, Gu, Mr, Bn."],
+        ["Cloud Foundation Models", "Gemini 2.5 Flash / Groq Llama-3.3-70B", "HTTPS REST API", "Cloud Fallback", "Secondary conversational elaboration and deep layman translations."]
     ]
-    add_styled_table(doc, comp_table_hi[0], comp_table_hi[1:], [1.4, 1.6, 1.3, 1.0, 1.2])
+    add_styled_table(doc, comp_table[0], comp_table[1:], [1.4, 1.6, 1.3, 1.0, 1.2])
 
-    add_heading_2(doc, "8.3 4-चरणीय क्लिनिकल वर्कफ़्लो ऑडिट निष्कर्ष")
-    add_bullet_p(doc, " नवजात (0 दिन, 3.2 किग्रा), बाल रोग (1-10 वर्ष), किशोर (11-20 वर्ष), वयस्क और वृद्ध (61-98 वर्ष) पर परीक्षण। 10, 11, 17, 18, 50, 60, 61 वर्ष पर सीमा संक्रमण कड़ाई से कार्य करता है। भारत के सभी 36 राज्य व केंद्र शासित प्रदेश सही मैप होते हैं।", bold_prefix="स्टेप 1 [जनसांख्यिकी एवं बायोमेट्रिक्स]:")
-    add_bullet_p(doc, " symptoms_master.csv के 280 लक्षणों को हल करता है। नेगेशन शब्द (नहीं, ना, नथी, denies) नकारे गए लक्षणों को 100% अलग करते हैं (42/42 केस)। मिश्रित वाक्य ('dry cough aata hai jisse neend nahi aati') में मुख्य खांसी को नींद की शिकायत से अलग रखता है। भ्रामक मुहावरे ('दिल टूट गया', 'cold feet') 100% खारिज हुए (10/10 केस)।", bold_prefix="स्टेप 2 [लक्षण निष्कर्षण एवं इंडिक NLP]:")
-    add_bullet_p(doc, " मल्टीपल बीमारियों का सत्यापन: CKD + टाइप 2 डायबिटीज, अस्थमा + हाइपरटेंशन। 100% जानलेवा ड्रग इंटरैक्शन (DDI) ब्लॉक हुए: वारफारिन + एस्पिरिन/NSAID (रक्तस्राव का खतरा), लिसिनोप्रिल + स्पिरोनोलैक्टोन (हाइपरकेलेमिया), सिमवास्टेटिन + क्लैरिथ्रोमाइसिन।", bold_prefix="स्टेप 3 [मेडिकल इतिहास एवं सेफ्टी इंटरलॉक्स]:")
-    add_bullet_p(doc, " आपातकालीन संकट (हार्ट अटैक, एनाफिलेक्सिस, डेंगू हैमरेजिक फीवर) 100% रिकॉल के साथ रेड-फ्लैग और 108 एम्बुलेंस ट्रिगर करते हैं (32/32 केस)। जेंडर-विशिष्ट एनाटॉमिकल फ़िल्टर पुरुष को महिला रोग (ओवेरियन सिस्ट) या महिला को प्रोस्टेटाइटिस मिलने की संभावना शून्य करते हैं।", bold_prefix="स्टेप 4 [क्लिनिकल ट्राइएज एवं सिफारिशें]:")
+    add_heading_2(doc, "8.3 4-Step Clinical Workflow Audit Findings")
+    add_bullet_p(doc, " Tested neonates (0 days, 3.2 kg), pediatrics (1-10 yrs), adolescents (11-20 yrs), adults, and geriatrics (61-98 yrs). Boundary transitions at age 10, 11, 17, 18, 50, 60, 61 operate strictly. All 36 Indian States and UTs persist correctly.", bold_prefix="Step 1 [Demographics & Biometrics]:")
+    add_bullet_p(doc, " Resolves 280 symptoms in symptoms_master.csv. Negation markers (no, denies, not, nahi, nathi, na) correctly isolate denied symptoms (42/42 cases). Subordinate conjunctions ('dry cough aata hai jisse neend nahi aati' [dry cough that prevents sleep]) cleanly isolate primary symptoms from secondary sleep complaints. Distractor idioms ('dil toot gaya' [heartbroken emotional metaphor], 'cold feet') correctly rejected (10/10 cases).", bold_prefix="Step 2 [Symptom Extraction & Indic NLP]:")
+    add_bullet_p(doc, " Multi-morbid combinations verified: CKD + Type 2 Diabetes, Asthma + Hypertension, Peptic Ulcer + Arthritis. 100% of fatal Drug-Drug Interactions (DDIs) blocked: Warfarin + NSAID (hemorrhage risk), Lisinopril + Spironolactone (hyperkalemia), Simvastatin + Clarithromycin (rhabdomyolysis), Glimepiride + Fluconazole (hypoglycemia), Tamsulosin + Sildenafil (hypotension).", bold_prefix="Step 3 [Medical History & Safety Interlocks]:")
+    add_bullet_p(doc, " Crises (Myocardial Infarction, Anaphylaxis, Hemorrhagic Dengue, Pneumothorax) trigger Emergency Red Flags and 108 referral with 100% recall (32/32 cases). Gender-specific anatomical filters eliminate cross-gender diagnostic leaks (zero male patients receiving ovarian cyst or female patients receiving prostatitis).", bold_prefix="Step 4 [Clinical Triage & Recommendations]:")
 
-    add_heading_2(doc, "8.4 महत्वपूर्ण डिफेक्ट लॉग एवं रूट-कॉज़ इंजीनियरिंग सुधार")
-    add_body_p(doc, "कठोर परीक्षण के दौरान 7 गंभीर डिफेक्ट्स पकड़े गए और उन्हें स्थायी रूप से ठीक किया गया:")
+    add_heading_2(doc, "8.4 Critical Defect Log & Root-Cause Engineering Fixes")
+    add_body_p(doc, "During rigorous validation, 7 high-impact defects were detected, diagnosed, and permanently repaired with zero residual regressions:")
 
-    defect_table_hi = [
-        ["डिफेक्ट ID एवं गंभीरता", "प्रभावित कंपोनेंट", "पहचाना गया लक्षण", "मूल कारण एवं सत्यापित इंजीनियरिंग समाधान"],
-        ["डिफेक्ट 1 (Critical)", "ai/disease_prediction/predict.py", "पुरुष मरीजों को महिला प्रजनन रोग (Ovarian Cyst) मिल रहा था।", "रैंकिंग लूप में जेंडर फ़िल्टर अनुपस्थित था। candidate['gender_specific'] != patient_gender लागू कर ठीक किया गया।"],
-        ["डिफेक्ट 2 (Moderate)", "ai/disease_prediction/predict.py:1116", "मैच प्रतिशत सीमा से अधिक (105%) हो रहा था।", "अवधि के बोनस अंक जोड़ने से 100% पार हुआ। min(100.0, max(0.0, score)) क्लैंपिंग से ठीक किया गया।"],
-        ["डिफेक्ट 3 (High)", "ai/utils/clinical_safety_rules.py:118", "'61+' आयु वाले मरीज डायजेपाम हेतु बीयर्स क्राइटेरिया सुरक्षा जांच को बाईपास कर रहे थे।", "\\b61\\+\\b फेल हुआ क्योंकि '+' गैर-शब्द कैरेक्टर है। r'geriatric|elderly|61\\+|senior|aged' से ठीक किया गया।"],
-        ["डिफेक्ट 4 (Moderate)", "ai/disease_prediction/predict.py:1012", "मान्य ICD-10 कोड्स (J00, A09) लोकल रिकॉर्ड्स में खाली स्ट्रिंग हो रहे थे।", "कोड केवल SNOMED संख्यात्मक आईडी को मान्य मान रहा था। raw_icd को सुरक्षित रखकर ठीक किया गया।"],
-        ["डिफेक्ट 5 (High)", "ai/disease_prediction/canonical_concepts.py:875", "'dry cough jisse neend nahi aati' में सूखी खांसी दब जा रही थी।", "संयोजक 'jisse' क्लॉज डिलीमीटर नहीं था; पिछले 'nahi' ने पूरे वाक्य को दूषित किया। कारणवाचक संयोजकों को स्प्लिट पैटर्न में जोड़ा गया।"],
-        ["डिफेक्ट 6 (High)", "ai/disease_prediction/canonical_concepts.py:880", "'neither fever nor chills' में ठंड (chills) गलती से पॉजिटिव हो रही थी।", "स्प्लिट ने 'nor' को हटा दिया था। ज़ीरो-विड्थ लुकअहेड पैटर्न लागू कर ठीक किया गया।"],
-        ["डिफेक्ट 7 (Moderate)", "ai/disease_prediction/canonical_concepts.py:772", "हिंग्लिश अभिव्यक्ति 'bhookh bilkul nahi lag rahi' में भूख की कमी छूट गई।", "पैटर्न केवल सिंगल 'u' (bhukh) जांच रहा था। डबल 'oo' (bhookh.*nahi) जोड़कर ठीक किया गया।"]
+    defect_table = [
+        ["Defect ID & Severity", "Component Involved", "Identified Symptom", "Root Cause & Verified Engineering Fix"],
+        ["Defect 1 (Critical)", "ai/disease_prediction/predict.py", "Male patients received female reproductive conditions (Ovarian Cyst).", "Gender filter missing in bipartite ranking loop. Fixed by enforcing candidate['gender_specific'] != patient_gender."],
+        ["Defect 2 (Moderate)", "ai/disease_prediction/predict.py:1116", "Match percentage exceeded bound (105%).", "Additive bonus points for duration exceeded 100%. Fixed with explicit clamping: min(100.0, max(0.0, score))."],
+        ["Defect 3 (High)", "ai/utils/clinical_safety_rules.py:118", "Patients aged '61+' bypassed Beers Criteria geriatric checks for Diazepam.", "Regex \\b61\\+\\b failed because '+' is non-word character. Fixed to r'geriatric|elderly|61\\+|senior|aged'."],
+        ["Defect 4 (Moderate)", "ai/disease_prediction/predict.py:1012", "Valid ICD-10 codes (J00, A09) were cleared to empty string on local records.", "Code assumed only SNOMED numeric IDs were valid. Fixed by preserving raw_icd under ICD-10 standard."],
+        ["Defect 5 (High)", "ai/disease_prediction/canonical_concepts.py:875", "Sentence 'dry cough jisse neend nahi aati' [dry cough that prevents sleep] caused dry cough to be suppressed.", "Causal conjunction 'jisse' was not a clause delimiter; trailing 'nahi' contaminated whole sentence. Added causal conjunctions to split pattern."],
+        ["Defect 6 (High)", "ai/disease_prediction/canonical_concepts.py:880", "In 'neither fever nor chills', chills was mistakenly marked positive.", "Delimiter split consumed 'nor', leaving chills in positive clause. Fixed via zero-width lookahead pattern."],
+        ["Defect 7 (Moderate)", "ai/disease_prediction/canonical_concepts.py:772", "Hinglish expression 'bhookh bilkul nahi lag rahi' [complete loss of appetite] missed Loss of Appetite.", "Pattern checked only single 'u' (bhukh). Fixed by adding double 'oo' variants (bhookh.*nahi) to canonical pattern."]
     ]
-    add_styled_table(doc, defect_table_hi[0], defect_table_hi[1:], [1.3, 1.5, 1.7, 2.0])
+    add_styled_table(doc, defect_table[0], defect_table[1:], [1.3, 1.5, 1.7, 2.0])
 
     # 9. How to Explain the Testing Report to Hackathon Judges
-    add_heading_1(doc, "9. जजों को यह टेस्टिंग रिपोर्ट कैसे समझाएं (स्पीकिंग स्क्रिप्ट)")
+    add_heading_1(doc, "9. How to Explain This Testing Campaign to Judges (Speaking Script)")
     add_callout(
         doc,
-        'यह टेस्टिंग रिपोर्ट क्या साबित करती है? (60 सेकंड में जजों को समझाएं):\n'
-        '"निर्णायक महोदय, हैकाथॉन में स्वास्थ्य सेवा के अधिकांश AI प्रोजेक्ट्स साधारण UI रैपर होते हैं, जो वास्तविक स्थितियों में फेल हो जाते हैं। '
-        'DocMindX AI का 425 स्वचालित क्लिनिकल टेस्ट केसेस के साथ एंटरप्राइज-ग्रेड QA ऑडिट किया गया है — जिसमें 100.0% सफलता दर हासिल हुई है।\n\n'
-        'हमने यह सत्यापित किया है:\n'
-        '1. आयु एवं बायोमेट्रिक्स: 3.2 किग्रा के नवजात शिशु से लेकर 90 वर्ष के बुजुर्ग तक, देश के सभी 36 राज्यों में त्रुटिहीन कार्य।\n'
-        '2. भाषाई नकार (Linguistic Negation): जब मरीज कहता है \'मुझे बुखार नहीं है\' या \'खांसी जिससे नींद नहीं आती\', तो हमारा NLP नकारे गए लक्षणों को कभी पॉजिटिव नहीं जोड़ता।\n'
-        '3. औषधीय सुरक्षा: वारफारिन और एस्पिरिन जैसे 100% जानलेवा ड्रग इंटरैक्शन को सिस्टम स्क्रीन पर आने से पहले ही ब्लॉक कर देता है।\n'
-        '4. शून्य फैब्रिकेशन: जेंडर-असंगत बीमारियों सहित 7 क्लिनिकल बग्स को ठीक करके 100 अनदेखे नए केसों पर पुनः परखा गया।\n\n'
-        'यह सिद्ध करता है कि हमारा प्लेटफॉर्म क्लिनिकल रूप से सुरक्षित, गणितीय रूप से सत्यापित और भारत के सार्वजनिक स्वास्थ्य नेटवर्क में तैनात होने के लिए पूरी तरह तैयार है।"',
-        title="टेस्टिंग रिपोर्ट हेतु 60-सेकंड जूरी डिफेंस स्क्रिप्ट",
+        'WHAT DOES THIS TESTING REPORT PROVE? (Explain this in 60 seconds):\n'
+        '"Judges, most AI healthcare hackathon projects are simple UI wrappers that fall apart when tested with edge cases. '
+        'DocMindX AI has undergone an enterprise-grade QA audit with 425 automated clinical test cases — achieving a flawless 100.0% pass rate.\n\n'
+        'Here is what we validated:\n'
+        '1. Age & Biometrics: From a 3.2 kg newborn to a 90-year-old senior across all 36 Indian States.\n'
+        '2. Linguistic Negation: When a patient says \'mujhe bukhar nahi hai\' [I have no fever] or \'dry cough jisse neend nahi aati\' [dry cough that prevents sleep], our NLP never misinterprets denied symptoms.\n'
+        '3. Pharmacological Safety: 100% of fatal drug interactions (like Warfarin + Aspirin) are hard-blocked.\n'
+        '4. Zero Hallucination: 7 clinical bugs (including gender-incompatible diagnoses) were systematically audited, repaired, and re-tested with 100 unseen held-out cases.\n\n'
+        'This proves our platform is clinically safe, mathematically verified, and production-ready for India\'s public health network."',
+        title="60-Second Jury Defense Script for Testing Report",
         alert_type="info"
     )
 
-    add_heading_2(doc, "9.1 टेस्टिंग पर संभावित जूरी प्रश्न और उनके उत्तर")
-    add_bullet_p(doc, " \"हमने pytest 9.1.1 और run_campaign.py का उपयोग किया। इसमें 300 आधारभूत टेस्ट, गणितीय स्थिरता सिद्ध करने हेतु फिक्स्ड सीड 20261021 के साथ 25 रैंडमाइज्ड प्रॉपर्टी टेस्ट, और दुर्लभ बीमारियों व स्थानीय बोलियों वाले 100 पूरी तरह अनदेखे (Held-Out) तनाव केस शामिल थे। सभी 425 केस बिना किसी नकली सिमुलेशन के 204 सेकंड में पास हुए।\"", bold_prefix="Q: 'क्या आपने वास्तव में 425 केस टेस्ट किए, या ये केवल मॉक सिमुलेशन हैं?':")
-    add_bullet_p(doc, " \"क्लाउड LLM सुरक्षा की गारंटी नहीं दे सकते, जबकि हमारा क्लिनिकल सेफ्टी इंजन डिटरमिनिस्टिक नियमों पर 100% ऑफलाइन चलता है। यह 58 रोग निषेधों, 32 जानलेवा ड्रग इंटरैक्शन्स और 18 ड्रग एलर्जी को क्रॉस-चेक करता है। यदि क्रोनिक किडनी रोग वाला मरीज आता है, तो मेटफॉर्मिन और NSAIDs स्क्रीन पर आ ही नहीं सकते।\"", bold_prefix="Q: 'आप खतरनाक दवा सिफारिशों को कैसे रोकते हैं?':")
-    add_bullet_p(doc, " \"हमारे ऑडिट ने सिद्ध किया है कि हमारा रैंडम फ़ॉरेस्ट मॉडल और क्लिनिकल ग्राफ बिना इंटरनेट के CPU मेमोरी पर <45 मिलीसेकंड में चलते हैं। यदि अस्पताल का इंटरनेट और ब्रॉडबैंड कट भी जाए, तो भी ट्राइएज और ड्रग सेफ्टी 100% कार्य करते रहते हैं।\"", bold_prefix="Q: 'दूरदराज के गांव में इंटरनेट न होने पर क्या होगा?':")
+    add_heading_2(doc, "9.1 Likely Jury Questions on Testing & How to Answer Them")
+    add_bullet_p(doc, " \"We used pytest 9.1.1 executing run_campaign.py. It ran 300 base functional tests, 25 randomized property tests with fixed seed 20261021 to prove mathematical idempotency, and 100 completely held-out unseen patient cases featuring rare diseases, code-mixed dialects, and clinical distractor idioms. All 425 cases passed in 204 seconds with zero simulated mocks in core clinical evaluation.\"", bold_prefix="Q: 'Did you really test 425 cases, or are these just mock simulations?':")
+    add_bullet_p(doc, " \"Unlike cloud LLMs which cannot guarantee safety, our Clinical Safety Engine runs 100% offline using deterministic rule interlocks. It cross-checks 58 disease contraindications, 32 fatal drug interactions, and 18 drug class allergies. If a diabetic with Chronic Kidney Disease enters the system, Metformin and NSAIDs are physically blocked from appearing on the screen.\"", bold_prefix="Q: 'How do you prevent dangerous drug recommendations?':")
+    add_bullet_p(doc, " \"Our audit proved that our local Random Forest model and Bipartite Clinical Graph execute on CPU memory in under 45 milliseconds without an internet connection. If the hospital router goes down, triage and drug safety still work with 100% functionality.\"", bold_prefix="Q: 'What happens if there is no internet in a remote village?':")
 
     # 10. Rapid-Fire Defense Cheatsheet
-    add_heading_1(doc, "10. रैपिड-फायर जूरी डिफेंस चीटशीट (त्वरित संदर्भ तालिका)")
+    add_heading_1(doc, "10. Rapid-Fire Jury Defense Cheatsheet (Quick Reference Table)")
 
-    cheatsheet_data_hi = [
-        ["मीट्रिक / विशेषता", "DocMindX AI मीट्रिक", "जूरी डिफेंस वैज्ञानिक औचित्य"],
-        ["क्लिनिकल रोग मॉडल", "99.01% Train, 97.8% CV", "Scikit-Learn Random Forest (50 Trees) 280 बाइनरी फीचर्स और 101+ ICD-11 रोगों पर।"],
-        ["डिमांड फोरकास्टर WAPE", "6.53% WAPE (0.9839 R²)", "MoHFW के 20,904 रिकॉर्ड्स, शून्य फ्यूचर डेटा लीकेज, रोलिंग लैग्स, ±19.50 यूनिट्स बफर।"],
-        ["सक्रिय लाइव APIs", "6 एंटरप्राइज APIs", "Gemini Vision, Groq LLM, Overpass GIS, WHO DON, OpenFDA/DailyMed, Supabase।"],
-        ["स्टॉकआउट रिस्क इंजन", "RULE_BASED (DOIR)", "डिटरमिनिस्टिक थ्रेशोल्ड्स: Critical <3 दिन, Urgent <7 दिन, Watchlist <14 दिन, Safe ≥14 दिन।"],
-        ["क्लिनिकल ऑन्टोलॉजी मानक", "BioPortal (SNOMED-CT)", "बोलचाल के शब्दों को UMLS CUIs में जोड़ता है; <1ms में ऑफलाइन सर्किट ब्रेकर लुकअप।"],
-        ["CPU इनफरेंस लेटेंसी", "< 45 मिलीसेकंड", "क्लाउड नेटवर्क के बिना लोकल कंप्यूटर मेमोरी पर तात्कालिक एज निष्पादन।"],
-        ["समर्थित भाषाएं", "हिंदी, गुजराती, अंग्रेजी", "समान त्रिभाषी अधिकार; हिंदी और गुजराती में Indic NLP F1-Score ≥ 96%।"],
-        ["अस्पताल लोकेटर दायरा", "1 से 25 KM स्लाइडर", "24/7 आपातकालीन अस्पतालों, ट्रॉमा सेंटर्स और फार्मेसी को खोजने वाला डायनामिक रडार।"],
-        ["ड्रग सेफ्टी सत्यापन", "100% FDA / DailyMed", "शून्य ड्रग फैब्रिकेशन; स्वचालित कॉन्ट्राइंडिकेशन एवं DDI ब्लॉकिंग।"],
-        ["इमरजेंसी रेड फ्लैग्स", "35 नियम (RF001-RF035)", "अति-गंभीर लक्षणों पर 108 एम्बुलेंस डायलर और आईसीयू रूट का तत्काल सक्रियण।"]
+    cheatsheet_data = [
+        ["Metric / Feature", "DocMindX AI Metric", "Jury Defense Rationale"],
+        ["Clinical Disease Model", "99.01% Train, 97.8% CV", "Scikit-Learn Random Forest (50 Trees) over 280 binary features & 101 diseases."],
+        ["Demand Forecaster WAPE", "6.53% WAPE (0.9839 R²)", "20,904 MoHFW records, zero leakage, rolling lags, ±19.50 units residual buffer."],
+        ["Active Live APIs", "6 Enterprise APIs", "Gemini Vision, Groq LLM, Overpass GIS, WHO DON, OpenFDA/DailyMed, Supabase."],
+        ["Stockout Risk Engine", "RULE_BASED (DOIR)", "Deterministic thresholding: Critical <3d, Urgent <7d, Watchlist <14d, Safe >=14d."],
+        ["Clinical Ontology Standard", "BioPortal (SNOMED-CT)", "Maps colloquial terms to UMLS CUIs; offline circuit breaker with <1ms lookup."],
+        ["CPU Inference Latency", "< 45 milliseconds", "Deterministic edge execution without waiting for cloud roundtrips."],
+        ["Supported Languages", "Hindi, Gujarati, English", "Trilingual equal parity; Indic NLP F1-Score >= 96% in Hindi and Gujarati."],
+        ["Hospital Locator Radius", "1 to 25 KM Slider", "Dynamic Overpass radar filtering 24/7 emergency trauma centers and pharmacies."],
+        ["Drug Safety Gating", "100% FDA / DailyMed", "Zero drug hallucination; automatic contraindication and DDI blocking."],
+        ["Emergency Red Flags", "35 Rules (RF001-RF035)", "Instant high-acuity triggers with 108 direct ambulance calling."]
     ]
-    add_styled_table(doc, cheatsheet_data_hi[0], cheatsheet_data_hi[1:], [1.8, 1.8, 2.9])
+    add_styled_table(doc, cheatsheet_data[0], cheatsheet_data[1:], [1.8, 1.8, 2.9])
 
     # 11. Conclusion & Closing Impact Statement
-    add_heading_1(doc, "11. हैकाथॉन जजों के लिए 1-मिनट क्लोजिंग पिच")
+    add_heading_1(doc, "11. 1-Minute Closing Pitch for Hackathon Judges")
     add_callout(
         doc,
-        'क्लोजिंग पिच (शब्द-दर-शब्द बोलें):\n'
-        '"निष्कर्षतः, DocMindX AI केवल एक सामान्य सिम्प्टम चेकर नहीं है। यह भारत की प्राथमिक स्वास्थ्य प्रणाली के लिए तैयार एक संपूर्ण क्लिनिकल इंफ्रास्ट्रक्चर है — '
-        'जो स्थानीय भाषाओं में सुलभ है, वैश्विक FDA मानकों द्वारा प्रमाणित है, बिना इंटरनेट के भी 100% कार्यक्षम है, और राज्य स्तर की महामारी आपूर्ति श्रृंखला '
-        'का समन्वय करने में सक्षम है। एज AI को सार्वजनिक स्वास्थ्य लॉजिस्टिक्स के साथ जोड़कर, हम हर नागरिक तक गुणवत्तापूर्ण स्वास्थ्य सेवा का लोकतंत्रीकरण करते हैं। '
-        'धन्यवाद, और अब हम आपके प्रश्नों का स्वागत करते हैं!"',
-        title="क्लोजिंग पिच स्क्रिप्ट",
+        'CLOSING PITCH (Word-for-Word):\n'
+        '"To conclude, DocMindX AI is not just another symptom checker. It is an end-to-end clinical infrastructure designed for Bharat — '
+        'accessible in local languages, verifiable against global FDA standards, operational even without internet, and capable of coordinating '
+        'state-wide epidemic supply chains. By merging edge AI with public health logistics, we democratize quality healthcare for every citizen. '
+        'Thank you, and we welcome your questions!"',
+        title="Closing Pitch Script",
         alert_type="success"
     )
 
     reports_dir = os.path.join(WORKSPACE_ROOT, "reports")
     os.makedirs(reports_dir, exist_ok=True)
-    
-    # Save as the main requested file name
-    output_path_main = os.path.join(reports_dir, "DocMindX_AI_Hackathon_QnA_Master_Guide.docx")
-    doc.save(output_path_main)
-    print("SUCCESSFULLY_SAVED_MAIN_HI:", output_path_main)
-
-    # Also save dedicated _HI file for clear multi-language repository consistency
-    output_path_hi = os.path.join(reports_dir, "DocMindX_AI_Hackathon_QnA_Master_Guide_HI.docx")
-    doc.save(output_path_hi)
-    print("SUCCESSFULLY_SAVED_DEDICATED_HI:", output_path_hi)
+    output_path = os.path.join(reports_dir, "DocMindX_AI_Hackathon_QnA_Master_Guide.docx")
+    doc.save(output_path)
+    print("SUCCESSFULLY_SAVED:", output_path)
 
 if __name__ == "__main__":
-    build_hackathon_guide_hi()
+    build_hackathon_guide()

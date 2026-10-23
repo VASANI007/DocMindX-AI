@@ -6605,19 +6605,46 @@ if st.session_state["active_panel"] == "Health Assessment":
                 st.markdown(f"<div style='font-size: 0.72rem; color: var(--mm-text-muted); margin: 6px 0 18px 0; font-style: italic;'>{T.get('medicine_gallery_disclaimer', 'Always confirm dosage with a physician or pharmacist.')}</div>", unsafe_allow_html=True)
         else:
             with st.container(border=True):
+                alert_bg = "rgba(239, 68, 68, 0.12)" if is_dark else "#FEF2F2"
+                alert_border = "rgba(239, 68, 68, 0.45)" if is_dark else "#FECACA"
+                alert_text_color = "#FCA5A5" if is_dark else "#991B1B"
+                badge_bg = "rgba(239, 68, 68, 0.20)" if is_dark else "#FEE2E2"
+                badge_border = "rgba(239, 68, 68, 0.50)" if is_dark else "#FCA5A5"
+                badge_color = "#F87171" if is_dark else "#DC2626"
+                icon_bg = "rgba(239, 68, 68, 0.22)" if is_dark else "#FEE2E2"
+
                 st.markdown(f"""
-                <div class="mm-section-header-card" style="margin-bottom: 0;">
-                    <div style="display: flex; align-items: center; gap: 16px; flex: 1;">
-                        <div class="mm-section-header-avatar" style="background: rgba(148, 163, 184, 0.15); color: #64748B;">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
+                <div class="mm-section-header-card" style="margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 260px;">
+                        <div class="mm-section-header-avatar" style="background: {icon_bg}; color: #EF4444; border: 1.2px solid {alert_border};">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5l10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/></svg>
                         </div>
                         <div>
-                            <div style="font-size: 1.12rem; font-weight: 800; color: var(--mm-text-primary); line-height: 1.25;">
+                            <div style="font-size: 1.15rem; font-weight: 850; color: var(--mm-text-primary); line-height: 1.25;">
                                 {T.get('verified_med_title', 'Verified Medical & Pharmaceutical Guidance')}
                             </div>
-                            <div style="font-size: 0.84rem; color: var(--mm-text-secondary); margin-top: 3px;">
-                                {T.get('no_meds_offline_note', 'No independently verified over-the-counter medicine data is available offline for this specific condition. Please consult a qualified clinician for prescription guidance.')}
+                            <div style="font-size: 0.82rem; color: var(--mm-text-secondary); margin-top: 2px;">
+                                {T.get('verified_med_sub', 'Safety assessment & prescription requirements for diagnosed condition.')}
                             </div>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="mm-badge" style="background: {badge_bg}; color: {badge_color}; border: 1.2px solid {badge_border}; border-radius: 999px; padding: 6px 14px; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 6px;">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            PRESCRIPTION REQUIRED
+                        </span>
+                    </div>
+                </div>
+                <div style="background: {alert_bg}; border: 1.5px solid {alert_border}; border-left: 5px solid #DC2626; border-radius: 10px; padding: 14px 18px; display: flex; align-items: flex-start; gap: 14px; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.08);">
+                    <div style="width: 28px; height: 28px; min-width: 28px; border-radius: 50%; background: #DC2626; display: flex; align-items: center; justify-content: center; color: #FFFFFF; flex-shrink: 0; margin-top: 2px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    </div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 0.88rem; font-weight: 800; color: #DC2626; letter-spacing: 0.02em; text-transform: uppercase; margin-bottom: 4px;">
+                            CLINICAL SAFETY NOTICE: NO OVER-THE-COUNTER (OTC) MEDICINES
+                        </div>
+                        <div style="font-size: 0.92rem; color: {alert_text_color}; font-weight: 600; line-height: 1.55;">
+                            {T.get('no_meds_offline_note', 'No independently verified over-the-counter medicine data is available offline for this specific condition. Please consult a qualified clinician for prescription guidance.')}
                         </div>
                     </div>
                 </div>
@@ -10309,7 +10336,7 @@ elif st.session_state["active_panel"] == "About":
             "sources_title": "Authentic Clinical Data Sources (Where Does the Data Come From?)",
             "sources_sub": "DocMindX AI strictly uses official, verified, and audited data sources with complete provenance traceability.",
             "src_who_title": "WHO Official Outbreak News API (DON API)",
-            "src_who_desc": "Automated ingestion via official WHO Disease Outbreak News REST API (<code>https://www.who.int/api/news/diseaseoutbreaknews</code>). Ingests 100 official global events categorized into Direct India, Relevant to India, and Global Outbreaks.",
+            "src_who_desc": "Automated ingestion via official WHO Disease Outbreak News REST API (DON API). Ingests 100 official global events categorized into Direct India, Relevant to India, and Global Outbreaks.",
             "src_hmis_title": "MoHFW HMIS Health Facility Data (Govt. of India)",
             "src_hmis_desc": "20,904 institutional health service records from the Ministry of Health and Family Welfare, providing empirical medicine utilization and facility workload metrics.",
             "src_nfhs_title": "National Family Health Survey (NFHS-5)",
@@ -10421,7 +10448,7 @@ elif st.session_state["active_panel"] == "About":
             "sources_title": "प्रामाणिक क्लिनिकल डेटा स्रोत (डेटा कहाँ से आता है?)",
             "sources_sub": "DocMindX AI केवल आधिकारिक, सत्यापित और सरकारी स्वास्थ्य रजिस्ट्रीयों का उपयोग करता है।",
             "src_who_title": "WHO आधिकारिक आउटब्रेक API (DON API)",
-            "src_who_desc": "विश्व स्वास्थ्य संगठन (WHO) के आधिकारिक Disease Outbreak News REST API (<code>https://www.who.int/api/news/diseaseoutbreaknews</code>) से सीधे 100 प्रमाणित महामारियों का लाइव डेटा।",
+            "src_who_desc": "विश्व स्वास्थ्य संगठन (WHO) के आधिकारिक Disease Outbreak News REST API (DON API) से सीधे 100 प्रमाणित महामारियों का लाइव डेटा।",
             "src_hmis_title": "MoHFW HMIS स्वास्थ्य डेटा (भारत सरकार)",
             "src_hmis_desc": "स्वास्थ्य एवं परिवार कल्याण मंत्रालय के 20,904 संस्थागत रिकॉर्ड्स से प्राप्त दवाओं की वास्तविक खपत का डेटा।",
             "src_nfhs_title": "राष्ट्रीय परिवार स्वास्थ्य सर्वेक्षण (NFHS-5)",
@@ -10533,7 +10560,7 @@ elif st.session_state["active_panel"] == "About":
             "sources_title": "પ્રમાણિક ક્લિનિકલ ડેટા સ્ત્રોત (ડેટા ક્યાંથી આવે છે?)",
             "sources_sub": "DocMindX AI માત્ર અધિકૃત, ચકાસાયેલ અને સરકારી આરોગ્ય રજિસ્ટ્રીઝનો ઉપયોગ કરે છે.",
             "src_who_title": "WHO સત્તાવાર આઉટબ્રેક API (DON API)",
-            "src_who_desc": "વિશ્વ આરોગ્ય સંસ્થા (WHO) ના સત્તાવાર Disease Outbreak News REST API (<code>https://www.who.int/api/news/diseaseoutbreaknews</code>) દ્વારા 100 પ્રમાણિત રોગચાળાની લાઇવ માહિતી.",
+            "src_who_desc": "વિશ્વ આરોગ્ય સંસ્થા (WHO) ના સત્તાવાર Disease Outbreak News REST API (DON API) દ્વારા 100 પ્રમાણિત રોગચાળાની લાઇવ માહિતી.",
             "src_hmis_title": "MoHFW HMIS આરોગ્ય સુવિધા ડેટા (ભારત સરકાર)",
             "src_hmis_desc": "ભારત સરકારના આરોગ્ય મંત્રાલયના 20,904 સંસ્થાકીય રેકોર્ડ્સમાંથી દવાઓના વાસ્તવિક વપરાશનો ડેટા.",
             "src_nfhs_title": "રાષ્ટ્રીય પરિવાર આરોગ્ય સર્વેક્ષણ (NFHS-5)",
@@ -11273,7 +11300,7 @@ elif st.session_state["active_panel"] == "About":
                             </div>
                             <b style="font-size: 0.90rem; color: #1D4ED8; line-height: 1.35;">{A['src_who_title']}</b>
                         </div>
-                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px;">
+                        <div style="font-size: 0.81rem; color: var(--mm-text-secondary); line-height: 1.55; margin-bottom: 16px; word-break: break-word; overflow-wrap: anywhere;">
                             {A['src_who_desc']}
                         </div>
                     </div>

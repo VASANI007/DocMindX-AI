@@ -77,7 +77,7 @@
   "sources_title": "प्रामाणिक क्लिनिकल डेटा स्रोत (डेटा कहाँ से आता है?)",
   "sources_sub": "DocMindX AI केवल आधिकारिक, सत्यापित और सरकारी स्वास्थ्य रजिस्ट्रीयों का उपयोग करता है।",
   "src_who_title": "WHO आधिकारिक आउटब्रेक API (DON API)",
-  "src_who_desc": "विश्व स्वास्थ्य संगठन (WHO) के आधिकारिक Disease Outbreak News REST API (<code>https://www.who.int/api/news/diseaseoutbreaknews</code>) से सीधे 100 प्रमाणित महामारियों का लाइव डेटा।",
+  "src_who_desc": "विश्व स्वास्थ्य संगठन (WHO) के आधिकारिक Disease Outbreak News REST API (DON API) से सीधे 100 प्रमाणित महामारियों का लाइव डेटा।",
   "src_hmis_title": "MoHFW HMIS स्वास्थ्य डेटा (भारत सरकार)",
   "src_hmis_desc": "स्वास्थ्य एवं परिवार कल्याण मंत्रालय के 20,904 संस्थागत रिकॉर्ड्स से प्राप्त दवाओं की वास्तविक खपत का डेटा।",
   "src_nfhs_title": "राष्ट्रीय परिवार स्वास्थ्य सर्वेक्षण (NFHS-5)",

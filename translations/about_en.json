@@ -77,7 +77,7 @@
   "sources_title": "Authentic Clinical Data Sources (Where Does the Data Come From?)",
   "sources_sub": "DocMindX AI strictly uses official, verified, and audited data sources with complete provenance traceability.",
   "src_who_title": "WHO Official Outbreak News API (DON API)",
-  "src_who_desc": "Automated ingestion via official WHO Disease Outbreak News REST API (<code>https://www.who.int/api/news/diseaseoutbreaknews</code>). Ingests 100 official global events categorized into Direct India, Relevant to India, and Global Outbreaks.",
+  "src_who_desc": "Automated ingestion via official WHO Disease Outbreak News REST API (DON API). Ingests 100 official global events categorized into Direct India, Relevant to India, and Global Outbreaks.",
   "src_hmis_title": "MoHFW HMIS Health Facility Data (Govt. of India)",
   "src_hmis_desc": "20,904 institutional health service records from the Ministry of Health and Family Welfare, providing empirical medicine utilization and facility workload metrics.",
   "src_nfhs_title": "National Family Health Survey (NFHS-5)",

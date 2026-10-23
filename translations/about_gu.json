@@ -77,7 +77,7 @@
   "sources_title": "પ્રમાણિક ક્લિનિકલ ડેટા સ્ત્રોત (ડેટા ક્યાંથી આવે છે?)",
   "sources_sub": "DocMindX AI માત્ર અધિકૃત, ચકાસાયેલ અને સરકારી આરોગ્ય રજિસ્ટ્રીઝનો ઉપયોગ કરે છે.",
   "src_who_title": "WHO સત્તાવાર આઉટબ્રેક API (DON API)",
-  "src_who_desc": "વિશ્વ આરોગ્ય સંસ્થા (WHO) ના સત્તાવાર Disease Outbreak News REST API (<code>https://www.who.int/api/news/diseaseoutbreaknews</code>) દ્વારા 100 પ્રમાણિત રોગચાળાની લાઇવ માહિતી.",
+  "src_who_desc": "વિશ્વ આરોગ્ય સંસ્થા (WHO) ના સત્તાવાર Disease Outbreak News REST API (DON API) દ્વારા 100 પ્રમાણિત રોગચાળાની લાઇવ માહિતી.",
   "src_hmis_title": "MoHFW HMIS આરોગ્ય સુવિધા ડેટા (ભારત સરકાર)",
   "src_hmis_desc": "ભારત સરકારના આરોગ્ય મંત્રાલયના 20,904 સંસ્થાકીય રેકોર્ડ્સમાંથી દવાઓના વાસ્તવિક વપરાશનો ડેટા.",
   "src_nfhs_title": "રાષ્ટ્રીય પરિવાર આરોગ્ય સર્વેક્ષણ (NFHS-5)",
