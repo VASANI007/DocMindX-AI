@@ -5028,6 +5028,9 @@ if st.session_state["active_panel"] == "Health Assessment":
             with nav_c1:
                 if st.button(f"← {T.get('btn_prev', 'Previous Step')}", key="p2_prev_btn", use_container_width=True):
                     st.session_state["assessment_step"] = 1
+                    st.session_state["assessment_completed"] = False
+                    st.session_state["p1_triage_results"] = None
+                    st.session_state["care_recommendations"] = None
                     st.rerun()
             with nav_c2:
                 if st.button(f"{T.get('btn_next_history', 'Next: Medical History')} →", key="btn_goto_step3", type="primary", use_container_width=True):
@@ -5183,6 +5186,9 @@ if st.session_state["active_panel"] == "Health Assessment":
             with nav_c1:
                 if st.button(f"← {T.get('btn_prev', 'Previous Step')}", key="p3_prev_btn", use_container_width=True):
                     st.session_state["assessment_step"] = 2
+                    st.session_state["assessment_completed"] = False
+                    st.session_state["p1_triage_results"] = None
+                    st.session_state["care_recommendations"] = None
                     st.rerun()
             with nav_c2:
                 if st.button(f"{T.get('btn_next_review', 'Next: Review & Run AI Analysis')} →", key="btn_goto_step4", type="primary", use_container_width=True):
@@ -5431,6 +5437,9 @@ if st.session_state["active_panel"] == "Health Assessment":
             with nav_c1:
                 if st.button(f"← {T.get('btn_prev', 'Previous Step')}", key="p4_prev_btn", use_container_width=True):
                     st.session_state["assessment_step"] = 3
+                    st.session_state["assessment_completed"] = False
+                    st.session_state["p1_triage_results"] = None
+                    st.session_state["care_recommendations"] = None
                     st.rerun()
             with nav_c2:
                 analyze_p1_btn = st.button(f"{T.get('btn_analyze', 'Run AI Health Analysis')} →", key="btn_run_analysis_final", type="primary", use_container_width=True)
@@ -5530,8 +5539,8 @@ if st.session_state["active_panel"] == "Health Assessment":
                 status.update(label="Clinical Assessment & Triage Complete", state="complete", expanded=False)
                 st.rerun()
 
-    # Results Section (Visible after Assessment)
-    if st.session_state.get("assessment_completed") and st.session_state.get("p1_triage_results"):
+    # Results Section (Visible ONLY after Assessment is completed and currently on Step 4)
+    if current_step == 4 and st.session_state.get("assessment_completed") and st.session_state.get("p1_triage_results"):
         t_res = st.session_state["p1_triage_results"]
         u_ctx = st.session_state.get("user_context", {})
         

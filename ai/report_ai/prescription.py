@@ -44,24 +44,42 @@ class PrescriptionAnalyzer:
         ]
 
         for line in lines:
-            # 1. Clean markdown artifacts, orphan asterisks, bullets, numbering
-            cleaned_line = re.sub(r'[*_~`#]', '', line).strip()
-            cleaned_line = re.sub(r'^[•\-\*\d\.\)\s]+', '', cleaned_line).strip()
-            if not cleaned_line:
-                continue
-
-            # Skip lines that are purely category headers (e.g. "Nerve Pain Modulator:")
-            if any(re.match(rf'^{kw}\s*:?$', cleaned_line, re.IGNORECASE) for kw in category_headers):
-                continue
-
-            # Separate inline purpose / instructions (e.g. "Inj. Neurokind: Prescribed to support nerve repair")
-            inline_purpose = ""
-            if ":" in cleaned_line:
-                parts = cleaned_line.split(":", 1)
-                med_candidate_part = parts[0].strip()
-                inline_purpose = parts[1].strip()
+            # Handle markdown table rows (e.g. | 1 | Inj. Nurokind | Tablet | ...)
+            if "|" in line:
+                cells = [c.strip() for c in line.split("|") if c.strip()]
+                # Skip divider lines (---|---) or header rows
+                if not cells or all(set(c).issubset({'-', ':', ' '}) for c in cells):
+                    continue
+                if any(c.lower() in ["sr", "no", "s.no", "sr.", "medicine", "drug", "drug name", "medicine name", "rx", "name", "dose"] for c in cells[:2]):
+                    continue
+                if len(cells) >= 2 and cells[0].isdigit():
+                    med_candidate_part = cells[1]
+                    inline_purpose = " | ".join(cells[2:])
+                elif len(cells) >= 1:
+                    med_candidate_part = cells[0]
+                    inline_purpose = " | ".join(cells[1:])
+                else:
+                    continue
+                cleaned_line = med_candidate_part
             else:
-                med_candidate_part = cleaned_line
+                # 1. Clean markdown artifacts, orphan asterisks, bullets, numbering
+                cleaned_line = re.sub(r'[*_~`#]', '', line).strip()
+                cleaned_line = re.sub(r'^[•\-\*\d\.\)\s]+', '', cleaned_line).strip()
+                if not cleaned_line:
+                    continue
+
+                # Skip lines that are purely category headers (e.g. "Nerve Pain Modulator:")
+                if any(re.match(rf'^{kw}\s*:?$', cleaned_line, re.IGNORECASE) for kw in category_headers):
+                    continue
+
+                # Separate inline purpose / instructions (e.g. "Inj. Neurokind: Prescribed to support nerve repair")
+                inline_purpose = ""
+                if ":" in cleaned_line:
+                    parts = cleaned_line.split(":", 1)
+                    med_candidate_part = parts[0].strip()
+                    inline_purpose = parts[1].strip()
+                else:
+                    med_candidate_part = cleaned_line
 
             # Extract parenthetical formulation if present (e.g. "Neurokind (Vitamin B12 / Mecobalamin)")
             generic_formulation = ""

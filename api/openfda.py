@@ -64,7 +64,16 @@ def search_drug_openfda(drug_name: str) -> Optional[Dict[str, Any]]:
     if not drug_name or not str(drug_name).strip():
         return None
 
-    clean_name = str(drug_name).strip().lower()
+    raw_clean = str(drug_name).strip()
+    import re
+    # Strip leading markdown table pipes, numbering, bullets, injections/tabs prefixes
+    raw_clean = re.sub(r'^[|\d\s\.\-\*•:]+', '', raw_clean).strip()
+    raw_clean = re.sub(r'^(?:inj(?:ection)?|tab(?:let)?|cap(?:sule)?|syr(?:up)?)[\.\s:]+', '', raw_clean, flags=re.IGNORECASE).strip()
+    raw_clean = raw_clean.replace('"', '').replace("'", '').replace('|', ' ').strip()
+    if len(raw_clean) < 2:
+        return None
+
+    clean_name = raw_clean.lower()
     now_iso = datetime.now().isoformat()
 
     # 1. Check local SQLite cache (previously validated live OpenFDA responses)
